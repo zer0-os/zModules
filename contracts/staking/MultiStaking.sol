@@ -45,13 +45,13 @@ contract MultiStaking is ERC721Upgradeable {
   }
 
   // Staking can only occur if the admin has set a staking configuration
-  modifier onlyConfigured(bytes32 poolId) {
+  modifier onlyExists(bytes32 poolId) {
     require(
       // TODO update this to check all configured variables in a stake config,
       // not just the staking token, otherwise will fail because we want
       // to allow multiple pools of the same staking token
       address(configs[poolId].stakingToken) != address(0),
-      "NFT Contract not configured for staking"
+      "Staking pool for NFT contract does not exist"
     );
     _;
   }
@@ -82,7 +82,7 @@ contract MultiStaking is ERC721Upgradeable {
     StakeConfig memory _config
   ) public onlyAdmin {
     // TODO we don't save this which could be a vulnerability
-    // the `onlyConfigured` modifier just checks the value of the poolId given to the function
+    // the `onlyExists` modifier just checks the value of the poolId given to the function
     // not that we have created one, and so it could be hashed off chain regardless of if one has been set
     // then staked, even if the admin hasn't set it up to do so yet.
     bytes32 poolId =
@@ -139,7 +139,7 @@ contract MultiStaking is ERC721Upgradeable {
   function stake(
     bytes32 poolId,
     uint256 tokenId
-  ) public onlyConfigured(poolId) onlyNFTOwner(poolId, tokenId) {
+  ) public onlyExists(poolId) onlyNFTOwner(poolId, tokenId) {
     // without tying the tokenId to the poolId somehow, they are not bound in any way
     // this means a user who staked in Pool A could successfully call unstake from Pool B
     // with their SNFT, because the system only sees "this token is staked" not *where* it is staked
