@@ -1,0 +1,16 @@
+{
+  "name": "zmodules",
+  "version": "1.0.0",
+  "description": "A collection of simple, modular contracts that can be optionally grouped together",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hardhat": "2.20.1",
+    "typescript": "5.3.3"
+  }
+}
