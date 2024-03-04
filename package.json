@@ -2,15 +2,49 @@
   "name": "zmodules",
   "version": "1.0.0",
   "description": "A collection of simple, modular contracts that can be optionally grouped together",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "typechain": "hardhat typechian",
+    "compile": "hardhat compile",
+    "clean": "hardhat clean",
+    "test": "hardhat test",
+    "docgen": "hardhat docgen",
+    "lint-sol": "yarn solhint ./contracts/**/*.sol",
+    "lint-ts": "yarn eslint ./test/** ./src/**",
+    "lint": "yarn lint-sol & yarn lint-ts --no-error-on-unmatched-pattern"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.9",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@openzeppelin/contracts": "4.9.3",
+    "@openzeppelin/contracts-upgradeable": "4.9.3",
+    "@openzeppelin/hardhat-upgrades": "2.5.0",
+    "@semantic-release/git": "^10.0.1",
+    "@typechain/ethers-v6": "0.5.1",
+    "@typechain/hardhat": "9.1.0",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^9.1.0",
+    "@types/node": "^18.15.11",
+    "@zero-tech/eslint-config-cpt": "0.2.7",
+    "chai": "^4.3.10",
+    "eslint": "^8.37.0",
+    "ethers": "^6.9.0",
+    "hardhat": "^2.19.1",
+    "hardhat-gas-reporter": "^1.0.9",
+    "semantic-release": "^21.0.1",
+    "solhint": "^4.0.0",
+    "solidity-coverage": "^0.8.5",
+    "solidity-docgen": "^0.6.0-beta.36",
+    "ts-node": "10.9.1",
+    "typechain": "^8.3.2",
+    "typescript": "^5.0.2"
+  },
   "dependencies": {
-    "hardhat": "2.20.1",
-    "typescript": "5.3.3"
+    "dotenv": "16.0.3"
   }
 }
