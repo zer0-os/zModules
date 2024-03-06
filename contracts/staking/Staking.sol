@@ -9,7 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // TODO idea, maybe receival of SNFT is what triggers unstake?
 // ERC721Wrapper makes the underlying token to be immutable, but we want to be able to change it
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+// import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 contract Staking is ERC721 {
     // TODO move to interface when created
