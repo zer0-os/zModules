@@ -1,14 +1,12 @@
 import * as hre from "hardhat";
-import { BaseContract, ethers } from "ethers";
+import { ethers } from "ethers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 import {
   MockERC20,
   MockERC721,
-  Staking,
 } from "../typechain";
-import { mine, reset } from "@nomicfoundation/hardhat-network-helpers";
 import {
   POOL_NOT_EXIST,
   INVALID_TOKEN_ID,
@@ -24,28 +22,28 @@ import {
 
 
 describe("MultiStaking", async () => {
-  let deployer: SignerWithAddress;
-  let stakerA: SignerWithAddress;
-  let stakerB: SignerWithAddress;
-  let notStaker: SignerWithAddress;
+  let deployer : SignerWithAddress;
+  let stakerA : SignerWithAddress;
+  let stakerB : SignerWithAddress;
+  let notStaker : SignerWithAddress;
 
-  let stakingContract: MultiStakingV6;
+  let stakingContract : MultiStakingV6;
 
-  let mockERC20: MockERC20;
-  let mockERC721: MockERC721;
+  let mockERC20 : MockERC20;
+  let mockERC721 : MockERC721;
 
-  let defaultPool: StakingConfig;
-  let defaultPoolId: string;
+  let defaultPool : StakingConfig;
+  let defaultPoolId : string;
 
-  let defaultStakeIdA: string;
-  let defaultStakeIdB: string;
+  let defaultStakeIdA : string;
+  let defaultStakeIdB : string;
 
-  const defaultTokenIdA: number = 1;
-  const defaultTokenIdB: number = 2;
+  const defaultTokenIdA  = 1;
+  const defaultTokenIdB  = 2;
 
   // TODO move to helper?
   // would require params, don't really want that necessarily
-  let resetContracts: Function;
+  let resetContracts : () => void;
   // dont necessarily need handles to the `let vars` above,
   // can just do redploy and then catch outside of the function as
   // [mockERC20, mockERC721, stakingContract] = await resetContracts();
@@ -79,13 +77,16 @@ describe("MultiStaking", async () => {
         stakingToken: await mockERC721.getAddress(),
         rewardsToken: await mockERC20.getAddress(),
         rewardsPerBlock: hre.ethers.parseEther("100").toString(),
-      }
+      };
 
       // Register initial staking pool
       await stakingContract.connect(deployer).createPool(defaultPool);
       defaultPoolId = await stakingContract.getPoolId(defaultPool);
 
-      await mockERC20.connect(deployer).transfer(await stakingContract.getAddress(), hre.ethers.parseEther("9000000000"));
+      await mockERC20.connect(deployer).transfer(
+        await stakingContract.getAddress(),
+        hre.ethers.parseEther("9000000000")
+      );
 
       // stakeId created by calling `.stake(defaultPoolId, defaultTokenIdA)`
       defaultStakeIdA = hre.ethers.solidityPackedKeccak256(
@@ -106,7 +107,7 @@ describe("MultiStaking", async () => {
       // Approve the staking contract for stakers.
       await mockERC721.connect(stakerA).approve(await stakingContract.getAddress(), defaultTokenIdA);
       await mockERC721.connect(stakerB).approve(await stakingContract.getAddress(), defaultTokenIdB);
-    }
+    };
 
     // Initial deployment
     await resetContracts();
@@ -169,7 +170,7 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
-    }
+    };
 
     // Create a new staking pool
     await stakingContract.connect(deployer).createPool(localConfig);
@@ -193,17 +194,13 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
-    }
+    };
 
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
     const balanceBefore = await mockERC20.balanceOf(stakerA.address);
 
     const newTokenId = 3;
-    const newStakeId = hre.ethers.solidityPackedKeccak256(
-      ["bytes32", "uint256"],
-      [localPoolId, newTokenId]
-    );
 
     await stakingContract.connect(stakerA).claim(defaultPoolId, defaultTokenIdA);
     await stakingContract.connect(stakerA).claim(localPoolId, newTokenId);
@@ -221,7 +218,7 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
-    }
+    };
 
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
@@ -313,14 +310,14 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
-    }
+    };
 
     // Create a new staking pool
     await stakingContract.connect(deployer).createPool(localConfig);
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
-    let newTokenA = 5;
-    let newTokenB = 6;
+    const newTokenA = 5;
+    const newTokenB = 6;
 
     // Mint new tokens
     await mockERC721.connect(deployer).mint(stakerA.address, newTokenA);
@@ -351,15 +348,15 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
-    }
+    };
 
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
     const balanceBeforeA = await mockERC20.balanceOf(stakerA.address);
     const balanceBeforeB = await mockERC20.balanceOf(stakerB.address);
 
-    let newTokenA = 5;
-    let newTokenB = 6;
+    const newTokenA = 5;
+    const newTokenB = 6;
 
     await stakingContract.connect(stakerA).claim(defaultPoolId, defaultTokenIdA);
     await stakingContract.connect(stakerA).claim(localPoolId, newTokenA);
@@ -382,15 +379,15 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
-    }
+    };
 
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
     const balanceBeforeA = await mockERC20.balanceOf(stakerA.address);
     const balanceBeforeB = await mockERC20.balanceOf(stakerB.address);
 
-    let newTokenA = 5;
-    let newTokenB = 6;
+    const newTokenA = 5;
+    const newTokenB = 6;
 
     await stakingContract.connect(stakerA).unstake(defaultPoolId, defaultTokenIdA);
     await stakingContract.connect(stakerA).unstake(localPoolId, newTokenA);
@@ -413,15 +410,15 @@ describe("MultiStaking", async () => {
 
     // Stake token for stakerB usng stakerA
     await expect
-      (
-        stakingContract.connect(stakerA).stake(defaultPoolId, defaultTokenIdB)
-      ).to.be.revertedWith(ONLY_NFT_OWNER);
+    (
+      stakingContract.connect(stakerA).stake(defaultPoolId, defaultTokenIdB)
+    ).to.be.revertedWith(ONLY_NFT_OWNER);
 
     // Stake token for stakerA using stakerB
     await expect
-      (
-        stakingContract.connect(stakerB).stake(defaultPoolId, defaultTokenIdA)
-      ).to.be.revertedWith(ONLY_NFT_OWNER);
+    (
+      stakingContract.connect(stakerB).stake(defaultPoolId, defaultTokenIdA)
+    ).to.be.revertedWith(ONLY_NFT_OWNER);
   });
 
   it("Fails when users try to claim valid tokens that aren't theirs", async () => {
@@ -432,56 +429,52 @@ describe("MultiStaking", async () => {
     await stakingContract.connect(stakerB).stake(defaultPoolId, defaultTokenIdB);
 
     await expect
-      (
-        stakingContract.connect(stakerA).claim(defaultPoolId, defaultTokenIdB)
-      ).to.be.revertedWith(ONLY_SNFT_OWNER);
+    (
+      stakingContract.connect(stakerA).claim(defaultPoolId, defaultTokenIdB)
+    ).to.be.revertedWith(ONLY_SNFT_OWNER);
 
     await expect
-      (
-        stakingContract.connect(stakerB).claim(defaultPoolId, defaultTokenIdA)
-      ).to.be.revertedWith(ONLY_SNFT_OWNER);
+    (
+      stakingContract.connect(stakerB).claim(defaultPoolId, defaultTokenIdA)
+    ).to.be.revertedWith(ONLY_SNFT_OWNER);
   });
 
   it("Fails when users try to unstake valid tokens that aren't theirs", async () => {
 
     await expect
-      (
-        stakingContract.connect(stakerA).unstake(defaultPoolId, defaultTokenIdB)
-      ).to.be.revertedWith(ONLY_SNFT_OWNER);
+    (
+      stakingContract.connect(stakerA).unstake(defaultPoolId, defaultTokenIdB)
+    ).to.be.revertedWith(ONLY_SNFT_OWNER);
 
     await expect
-      (
-        stakingContract.connect(stakerB).unstake(defaultPoolId, defaultTokenIdA)
-      ).to.be.revertedWith(ONLY_SNFT_OWNER);
+    (
+      stakingContract.connect(stakerB).unstake(defaultPoolId, defaultTokenIdA)
+    ).to.be.revertedWith(ONLY_SNFT_OWNER);
   });
 
   it("Fails when users try to stake non-existent tokens", async () => {
     const randomTokenId = 123;
     await expect
-      (
-        stakingContract.connect(stakerA).stake(defaultPoolId, randomTokenId)
-      ).to.be.revertedWith(INVALID_TOKEN_ID);
+    (
+      stakingContract.connect(stakerA).stake(defaultPoolId, randomTokenId)
+    ).to.be.revertedWith(INVALID_TOKEN_ID);
   });
 
   it("Fails when users try to claim non-existent tokens", async () => {
     const randomTokenId = 123;
-    const randomSNFT = hre.ethers.solidityPackedKeccak256(
-      ["bytes32", "uint256"],
-      [defaultPoolId, randomTokenId]
-    );
 
     await expect
-      (
-        stakingContract.connect(stakerA).claim(defaultPoolId, randomTokenId)
-      ).to.be.revertedWith(INVALID_TOKEN_ID);
+    (
+      stakingContract.connect(stakerA).claim(defaultPoolId, randomTokenId)
+    ).to.be.revertedWith(INVALID_TOKEN_ID);
   });
 
   it("Fails when users try to unstake non-existent tokens", async () => {
     const randomTokenId = 123;
     await expect
-      (
-        stakingContract.connect(stakerA).unstake(defaultPoolId, randomTokenId)
-      ).to.be.revertedWith(INVALID_TOKEN_ID);
+    (
+      stakingContract.connect(stakerA).unstake(defaultPoolId, randomTokenId)
+    ).to.be.revertedWith(INVALID_TOKEN_ID);
   });
 
   it("Fails when users have valid stakes but claim using the wrong SNFT", async () => {
@@ -497,14 +490,14 @@ describe("MultiStaking", async () => {
 
     // Expect claim to fail when using the wrong SNFT
     await expect
-      (
-        stakingContract.connect(stakerA).claim(defaultPoolId, defaultTokenIdB)
-      ).to.be.revertedWith(ONLY_SNFT_OWNER);
+    (
+      stakingContract.connect(stakerA).claim(defaultPoolId, defaultTokenIdB)
+    ).to.be.revertedWith(ONLY_SNFT_OWNER);
 
     await expect
-      (
-        stakingContract.connect(stakerB).claim(defaultPoolId, defaultTokenIdA)
-      ).to.be.revertedWith(ONLY_SNFT_OWNER);
+    (
+      stakingContract.connect(stakerB).claim(defaultPoolId, defaultTokenIdA)
+    ).to.be.revertedWith(ONLY_SNFT_OWNER);
   });
 
   it("Fails when users have valid stakes but unstake using the wrong SNFT", async () => {
@@ -514,14 +507,14 @@ describe("MultiStaking", async () => {
 
     // Expect claim to fail when using the wrong SNFT
     await expect
-      (
-        stakingContract.connect(stakerA).unstake(defaultPoolId, defaultTokenIdB)
-      ).to.be.revertedWith(ONLY_SNFT_OWNER);
+    (
+      stakingContract.connect(stakerA).unstake(defaultPoolId, defaultTokenIdB)
+    ).to.be.revertedWith(ONLY_SNFT_OWNER);
 
     await expect
-      (
-        stakingContract.connect(stakerB).unstake(defaultPoolId, defaultTokenIdA)
-      ).to.be.revertedWith(ONLY_SNFT_OWNER);
+    (
+      stakingContract.connect(stakerB).unstake(defaultPoolId, defaultTokenIdA)
+    ).to.be.revertedWith(ONLY_SNFT_OWNER);
   });
 
   it("Fails when you try to stake for a pool thats not setup by the admin", async () => {
@@ -529,7 +522,7 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("1").toString(),
-    }
+    };
 
     const poolId = await stakingContract.getPoolId(config);
 
@@ -548,7 +541,7 @@ describe("MultiStaking", async () => {
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("2").toString(),
       // Difference in rewardsPerBlock will create new stakingId
-    }
+    };
 
     const stakingId = await stakingContract.getPoolId(config);
 
@@ -565,7 +558,7 @@ describe("MultiStaking", async () => {
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("3").toString(),
       // Difference in rewardsPerBlock will create new stakingId
-    }
+    };
 
     const stakingId = await stakingContract.getPoolId(config);
 
@@ -594,7 +587,7 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
-    }
+    };
 
     // Create second pool to stake in
     await stakingContract.connect(deployer).createPool(localConfig);
@@ -668,7 +661,7 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("50").toString(),
-    }
+    };
 
     // Create a new staking pool
     await stakingContract.connect(deployer).createPool(localConfig);
@@ -696,7 +689,7 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("150").toString(),
-    }
+    };
 
     await stakingContract.connect(deployer).createPool(config);
 
@@ -710,7 +703,7 @@ describe("MultiStaking", async () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("150").toString(),
-    }
+    };
 
     await expect(
       stakingContract.connect(stakerA).createPool(config))
@@ -754,7 +747,7 @@ describe("MultiStaking", async () => {
       stakingToken: ethers.ZeroAddress,
       rewardsToken: ethers.ZeroAddress,
       rewardsPerBlock: hre.ethers.parseEther("0").toString(),
-    }
+    };
 
     await expect(
       stakingContract.connect(deployer).createPool(config))

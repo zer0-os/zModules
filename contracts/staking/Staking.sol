@@ -1,30 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-// TODO upgradeable?
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import {IStaking} from "./IStaking.sol";
 
 // TODO idea, maybe receival of SNFT is what triggers unstake?
 // ERC721Wrapper makes the underlying token to be immutable, but we want to be able to change it
 // import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract Staking is ERC721 {
-    // TODO move to interface when created
-    struct StakeConfig {
-        IERC721 stakingToken;
-        IERC20 rewardsToken;
-        uint256 rewardsPerBlock;
-    }
+contract Staking is ERC721, IStaking {
 
     // The current staking configuration that defines what token is being staked
     // and how rewards are distributed
     StakeConfig public config;
 
     // The operator of this contract
-    address admin;
+    address public admin;
 
     // Mapping of when a token staking rewards were most recently accessed.
     // On an initial stake, this is set to the current block for future calculations.
@@ -35,6 +27,8 @@ contract Staking is ERC721 {
     mapping(uint256 tokenId => address staker) public originalStakers;
 
     // Only the admin of the contract
+	// TODO consider not even having an admin here and just
+	// setting the config one time on deploy
     modifier onlyAdmin() {
         require(msg.sender == admin, "only admin");
         _;
@@ -70,7 +64,7 @@ contract Staking is ERC721 {
     }
 
     // stake NFT
-    function stake(uint256 tokenId) public onlyNFTOwner(tokenId) {
+    function stake(uint256 tokenId) public override onlyNFTOwner(tokenId) {
         require(stakedOrClaimedAt[tokenId] == 0, "Token is already staked");
 
         // Mark when the token was staked
@@ -87,13 +81,8 @@ contract Staking is ERC721 {
         // emit
     }
 
-    // temp
-    function lengthOfStake(uint256 tokenId) public view returns (uint256) {
-        return block.number - stakedOrClaimedAt[tokenId];
-    }
-
     // unstake
-    function unstake(uint256 tokenId) public onlySNFTOwner(tokenId) {
+    function unstake(uint256 tokenId) public override onlySNFTOwner(tokenId) {
         config.stakingToken.transferFrom(
             address(this),
             originalStakers[tokenId],
@@ -103,32 +92,28 @@ contract Staking is ERC721 {
         // Burn the representative token to symbolize the ending of the stake
         _burn(tokenId);
 
+		uint256 accessBlock = stakedOrClaimedAt[tokenId];
+        stakedOrClaimedAt[tokenId] = 0;
+
         // Transfer funds
         config.rewardsToken.transfer(
             msg.sender,
-            config.rewardsPerBlock * (block.number - stakedOrClaimedAt[tokenId])
+            config.rewardsPerBlock * (block.number - accessBlock)
         );
-        stakedOrClaimedAt[tokenId] = 0;
     }
 
     // claim
-    function claim(uint256 tokenId) public onlySNFTOwner(tokenId) {
+    function claim(uint256 tokenId) public override onlySNFTOwner(tokenId) {
         // only owner of that stake
         // split claim with original staker?
+        uint256 accessBlock = stakedOrClaimedAt[tokenId];
+		
+		stakedOrClaimedAt[tokenId] = block.number;
+
         config.rewardsToken.transfer(
             msg.sender,
-            config.rewardsPerBlock * (block.number - stakedOrClaimedAt[tokenId])
+            config.rewardsPerBlock * (block.number - accessBlock)
         );
-        stakedOrClaimedAt[tokenId] = block.number;
         // emit
     }
-
-    // Change the token that is being staked
-    // setConfig
-    // setStakingToken
-    // setRewardsToken
-    // setRewardsPerBlock
-    // function setToken(IERC721 _stakingToken) public onlyAdmin {
-    //   stakingToken = _stakingToken;
-    // }
 }

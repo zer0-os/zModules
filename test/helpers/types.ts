@@ -3,18 +3,17 @@ import {
   ContractInterface,
 } from "ethers";
 import {
-  MockERC20,
-  MockERC721,
   Staking,
   MultiStaking,
 } from "../../typechain";
 
-export type StakingConfig = {
+export interface StakingConfig {
   stakingToken : string;
   rewardsToken : string;
   rewardsPerBlock : string;
 }
 
+// Simplify the Ethers V6 contract type
 export type ContractV6 = BaseContract & Omit<ContractInterface, keyof BaseContract>;
 
 // For typing hardhat upgrades with Ethers v6

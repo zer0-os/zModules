@@ -1,5 +1,4 @@
 import * as hre from "hardhat";
-import { BaseContract, ethers } from "ethers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
@@ -8,31 +7,22 @@ import {
   MockERC721,
   Staking,
 } from "../typechain";
-import { mine, reset } from "@nomicfoundation/hardhat-network-helpers";
-import {
-  POOL_NOT_EXIST,
-  INVALID_TOKEN_ID,
-  ONLY_NFT_OWNER,
-  ONLY_SNFT_OWNER,
-  ONLY_ADMIN,
-  INVALID_POOL,
-} from "./helpers/errors";
+import { mine } from "@nomicfoundation/hardhat-network-helpers";
 import {
   StakingConfig,
-  MultiStakingV6,
 } from "./helpers/types";
 
 describe("Staking", () => {
-  let deployer: SignerWithAddress;
-  let staker: SignerWithAddress;
+  let deployer : SignerWithAddress;
+  let staker : SignerWithAddress;
 
-  let stakingContract: Staking;
+  let stakingContract : Staking;
 
-  let mockERC20: MockERC20;
-  let mockERC721: MockERC721;
+  let mockERC20 : MockERC20;
+  let mockERC721 : MockERC721;
 
-  let config: StakingConfig;
-  let tokenId: number;
+  let config : StakingConfig;
+  let tokenId : number;
 
   before(async () => {
     [
@@ -50,13 +40,13 @@ describe("Staking", () => {
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("100").toString(),
-    }
+    };
 
     const stakingFactory = await hre.ethers.getContractFactory("Staking");
     stakingContract = await stakingFactory.deploy("StakingNFT", "SNFT", config);
 
     // Give staking contract balance to pay rewards (maybe house these in a vault of some kind)
-    mockERC20.connect(deployer).transfer(await stakingContract.getAddress(), hre.ethers.parseEther("1000000"));
+    await mockERC20.connect(deployer).transfer(await stakingContract.getAddress(), hre.ethers.parseEther("1000000"));
 
     tokenId = 1;
   });
