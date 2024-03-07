@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 // import {IMultiStaking} from "./IMultiStaking.sol";
 // import {Types} from "./Types.sol";
@@ -139,59 +140,48 @@ contract MultiStaking is ERC721, ABaseStaking {
     ) external onlyExists(poolId) {
 		StakeConfig memory config = configs[poolId];
 
+		bytes32 stakeId;
+
 		if(config.stakingTokenType == TokenType.IERC721) {
-			_stakeERC721(poolId, tokenId);
+			stakeId = keccak256(abi.encodePacked(poolId, tokenId));
+
+			// Transfer the staker's NFT
+			IERC721(configs[poolId].stakingToken).transferFrom(
+				msg.sender,
+				address(this),
+				tokenId
+			);
 		} else if(config.stakingTokenType == TokenType.IERC20) {
-			// _stakeERC20(poolId, amount);
+			stakeId = keccak256(abi.encodePacked(poolId, tokenId));
+
+			IERC20(configs[poolId].stakingToken).transferFrom(
+				msg.sender,
+				address(this),
+				amount
+			);
 		} else if(config.stakingTokenType == TokenType.IERC1155) {
-			// stakeERC1155(poolId, tokenId, amount);
+			stakeId = keccak256(abi.encodePacked(poolId, tokenId, amount, msg.sender));
+			// TODO look for ways this can be exploited.ABaseStaking
+			// ZNS user creates a config that specifies erc1155 token as staking token
+			// but only transferring "from" the caller, reentrancy here? dont think so
+			IERC1155(configs[poolId].stakingToken).safeTransferFrom(
+				msg.sender,
+				address(this),
+				tokenId,
+				amount,
+				""
+			);
 		} else {
-			revert("Invalid TokenType");
+			revert("Invalid staking token type");
 		}
-    }
 
-	function _stakeERC721(bytes32 poolId, uint256 tokenId) internal returns (bytes32) {
-		bytes32 stakeId = keccak256(abi.encodePacked(poolId, tokenId));
-
-		// Mark the staking block number
         stakedOrClaimedAt[stakeId] = block.number;
-
-        // Transfer the staker's NFT
-        IERC721(configs[poolId].stakingToken).transferFrom(
-            msg.sender,
-            address(this),
-            tokenId
-        );
-
-        // Mark the user as the original staker for return in unstake
-        originalStakers[stakeId] = msg.sender;
+		originalStakers[stakeId] = msg.sender;
 
         // Mint the owner an SNFT
         _mint(msg.sender, uint256(stakeId));
         // emit StakedNFT(poolId, tokenId, msg.sender);
-	}
-
-	function _stakeERC20(bytes32 poolId, uint256 amount) internal returns (bytes32) {
-		bytes32 stakeId = keccak256(abi.encodePacked(poolId, amount, msg.sender));
-
-		// Mark the staking block number
-        stakedOrClaimedAt[stakeId] = block.number;
-
-		// Transfer the staker's funds
-        IERC20(configs[poolId].stakingToken).transferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
-
-        originalStakers[stakeId] = msg.sender;
-
-		// Mint representative token
-		_mint(msg.sender, uint256(stakeId));
-	}
-
-
-
+    }
 
 
     /**
