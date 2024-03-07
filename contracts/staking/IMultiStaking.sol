@@ -1,30 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Types} from "./Types.sol";
 
 interface IMultiStaking {
-    /**
-     * @notice The necessary details for a single staking pool comfiguration
-     * @param stakingToken The ERC721 token that is being staked
-     * @param rewardsToken The ERC20 token that is being distributed as rewards
-     * @param rewardsPerBlock The amount of rewards tokens distributed per block
-     */
-    // TODO should we make configs with tokens as ERC20 (e.g. stake $WILD)
-    // or rewards tokens as ERC721 (e.g. earn a WilderWheel)?
-    struct StakeConfig {
-        IERC721Upgradeable stakingToken;
-        IERC20Upgradeable rewardsToken;
-        uint256 rewardsPerBlock;
-    }
-
     /**
      * @notice Emitted when a new staking pool is created
      */
     event PoolCreated(
         bytes32 indexed poolId,
-        StakeConfig config,
+        Types.StakeConfig config,
         address admin
     );
 
@@ -62,9 +49,7 @@ interface IMultiStaking {
         uint256 rewardsAmount
     );
 
-    function initialize(string memory name, string memory symbol) external;
-
-    function createPool(StakeConfig memory _config) external;
+    function createPool(Types.StakeConfig memory _config) external;
 
     function stake(bytes32 poolId, uint256 tokenId) external;
 
@@ -78,7 +63,7 @@ interface IMultiStaking {
     ) external view returns (bool);
 
     function getPoolId(
-        StakeConfig memory _config
+        Types.StakeConfig memory _config
     ) external pure returns (bytes32);
 
     function getStakeId(
@@ -95,13 +80,9 @@ interface IMultiStaking {
 
     function getRewardsPerBlock(bytes32 poolId) external view returns (uint256);
 
-    function getStakingToken(
-        bytes32 poolId
-    ) external view returns (IERC721Upgradeable);
+    function getStakingToken(bytes32 poolId) external view returns (IERC721);
 
-    function getRewardsToken(
-        bytes32 poolId
-    ) external view returns (IERC20Upgradeable);
+    function getRewardsToken(bytes32 poolId) external view returns (IERC20);
 
     function setAdmin(address _admin) external;
 

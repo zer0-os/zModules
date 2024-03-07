@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import {IMultiStaking} from "./IMultiStaking.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+// import {IMultiStaking} from "./IMultiStaking.sol";
+// import {Types} from "./Types.sol";
+import {ABaseStaking} from "./ABaseStaking.sol";
 
 /**
  * @title MultiStaking - A contract for creating multiple staking configurations, or "pools", for ERC721 tokens
@@ -26,7 +28,7 @@ import {IMultiStaking} from "./IMultiStaking.sol";
  *
  * @dev This contract is upgradeable.
  */
-contract MultiStaking is ERC721Upgradeable, IMultiStaking {
+contract MultiStaking is ERC721, ABaseStaking {
     /**
      * @notice Restrict functions to be useable only by the `admin` set on deployment
      */
@@ -40,7 +42,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      */
     modifier onlyNFTOwner(bytes32 poolId, uint256 tokenId) {
         require(
-            configs[poolId].stakingToken.ownerOf(tokenId) == msg.sender,
+            IERC721(configs[poolId].stakingToken).ownerOf(tokenId) == msg.sender,
             "Caller is not the owner of the NFT to stake"
         );
         _;
@@ -70,13 +72,23 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
     // and still return the original NFT to the original staker on unstake
     mapping(bytes32 stakeId => address staker) public originalStakers;
 
-    function initialize(
-        string memory name,
-        string memory symbol
-    ) public override initializer {
-        admin = msg.sender;
-        __ERC721_init(name, symbol);
-    }
+	constructor(
+		string memory name,
+		string memory symbol,
+		StakeConfig[] memory _configs
+	) ERC721(name, symbol) {
+		admin = msg.sender;
+		// with multiple pools and contracts, tokenIds have to be guaranteed unique
+		// so we hash them to create stakeIds and `uint256(stakeId)` is the token we mint
+		// this wouldnt work with depositFor
+		// but we could override depositFor, it is virtual
+
+		uint256 i = 0;
+		uint length = _configs.length;
+		for(i; i < length; ++i) {
+			_createPool(_configs[i]);
+		}
+	}
 
     /**
      * @notice Create a staking pool with the given configuration. For a user to stake
@@ -84,8 +96,12 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      *
      * @param _config The staking token, rewards token (optional), and rewardsPerBlock (optional) details
      */
-    function createPool(StakeConfig memory _config) public override onlyAdmin {
-        // Staking token must not be zero, but rewards token can optionally be
+    function createPool(StakeConfig memory _config) public onlyAdmin {
+        _createPool(_config);
+    }
+
+	function _createPool(StakeConfig memory _config) internal {
+	// Staking token must not be zero, but rewards token can optionally be
         require(
             address(_config.stakingToken) != address(0),
             "Staking token must not be zero"
@@ -106,31 +122,42 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
         );
 
         configs[poolId] = _config;
-        emit PoolCreated(poolId, _config, admin);
-    }
+        // emit PoolCreated(poolId, _config, admin);
+	}
 
     /**
      * @notice Stake an NFT into a pool. Only the owner of the NFT can call to stake it.
      * Will fail if the staking pool has not been created yet.
      *
      * @param poolId The pool to stake in
-     * @param tokenId The NFT to stake
+    //  * @param tokenId The NFT to stake
      */
     function stake(
         bytes32 poolId,
-        uint256 tokenId
-    ) external override onlyExists(poolId) onlyNFTOwner(poolId, tokenId) {
-        // without tying the tokenId to the poolId somehow, they are not bound in any way
-        // this means a user who staked in Pool A could successfully call unstake from Pool B
-        // with their SNFT, because the system only sees "this token is staked" not *where* it is staked
-        // As a result, we must create a unique stakeId made from `poolId` and `tokenId`
-        bytes32 stakeId = keccak256(abi.encodePacked(poolId, tokenId));
+		uint256 tokenId, // for 721s
+		uint256 amount // for 20s
+    ) external onlyExists(poolId) {
+		StakeConfig memory config = configs[poolId];
 
-        // Mark the staking block number
+		if(config.stakingTokenType == TokenType.IERC721) {
+			_stakeERC721(poolId, tokenId);
+		} else if(config.stakingTokenType == TokenType.IERC20) {
+			// _stakeERC20(poolId, amount);
+		} else if(config.stakingTokenType == TokenType.IERC1155) {
+			// stakeERC1155(poolId, tokenId, amount);
+		} else {
+			revert("Invalid TokenType");
+		}
+    }
+
+	function _stakeERC721(bytes32 poolId, uint256 tokenId) internal returns (bytes32) {
+		bytes32 stakeId = keccak256(abi.encodePacked(poolId, tokenId));
+
+		// Mark the staking block number
         stakedOrClaimedAt[stakeId] = block.number;
 
         // Transfer the staker's NFT
-        configs[poolId].stakingToken.transferFrom(
+        IERC721(configs[poolId].stakingToken).transferFrom(
             msg.sender,
             address(this),
             tokenId
@@ -141,8 +168,31 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
 
         // Mint the owner an SNFT
         _mint(msg.sender, uint256(stakeId));
-        emit Staked(poolId, tokenId, msg.sender);
-    }
+        // emit StakedNFT(poolId, tokenId, msg.sender);
+	}
+
+	function _stakeERC20(bytes32 poolId, uint256 amount) internal returns (bytes32) {
+		bytes32 stakeId = keccak256(abi.encodePacked(poolId, amount, msg.sender));
+
+		// Mark the staking block number
+        stakedOrClaimedAt[stakeId] = block.number;
+
+		// Transfer the staker's funds
+        IERC20(configs[poolId].stakingToken).transferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+
+        originalStakers[stakeId] = msg.sender;
+
+		// Mint representative token
+		_mint(msg.sender, uint256(stakeId));
+	}
+
+
+
+
 
     /**
      * @notice Claim rewards from a staked NFT. Only the owner of the SNFT can call to claim rewards.
@@ -150,7 +200,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      * @param poolId The pool where the existing stake exists
      * @param tokenId The NFT staked in the given pool
      */
-    function claim(bytes32 poolId, uint256 tokenId) external override {
+    function claim(bytes32 poolId, uint256 tokenId) external  {
         // TODO we don't actually need `tokenId` here for anything other
         // than the event emission. It would be a gas improvement to remove it
         // and just have `bytes32 stakeId` as the parameter instead
@@ -172,7 +222,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
 
         configs[poolId].rewardsToken.transfer(msg.sender, rewards);
 
-        emit Claimed(poolId, tokenId, msg.sender, rewards);
+        // emit Claimed(poolId, tokenId, msg.sender, rewards);
     }
 
     /**
@@ -183,7 +233,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      * @param poolId The pool where the existing stake exists
      * @param tokenId The NFT staked in the given pool
      */
-    function unstake(bytes32 poolId, uint256 tokenId) external override {
+    function unstake(bytes32 poolId, uint256 tokenId) external  {
         // TODO maybe original NFT owner has to allow the SNFT owner to call unstake
         // otherwise the original NFT would have to resubmit to stake again if they didn't
         // want to unstake. But also maybe this is just a mechanic they have to accept as part
@@ -222,7 +272,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
 
         // Transfer the rewards
         config.rewardsToken.transfer(msg.sender, rewards);
-        emit Unstaked(poolId, tokenId, msg.sender, rewards);
+        // emit Unstaked(poolId, tokenId, msg.sender, rewards);
     }
 
     /**
@@ -233,7 +283,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
     function isStaking(
         bytes32 poolId,
         uint256 tokenId
-    ) public view override returns (bool) {
+    ) public view  returns (bool) {
         return
             stakedOrClaimedAt[keccak256(abi.encodePacked(poolId, tokenId))] !=
             0;
@@ -245,7 +295,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      */
     function getPoolId(
         StakeConfig memory _config
-    ) public pure override returns (bytes32) {
+    ) public pure  returns (bytes32) {
         return _getPoolId(_config);
     }
 
@@ -257,14 +307,14 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
     function getStakeId(
         bytes32 poolId,
         uint256 tokenId
-    ) public pure override returns (bytes32) {
+    ) public pure  returns (bytes32) {
         return keccak256(abi.encodePacked(poolId, tokenId));
     }
 
     /**
      * @notice Get the admin of this contract
      */
-    function getAdmin() public view override returns (address) {
+    function getAdmin() public view  returns (address) {
         return admin;
     }
 
@@ -276,7 +326,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
     function getPendingRewards(
         bytes32 poolId,
         uint256 tokenId
-    ) public view override returns (uint256) {
+    ) public view  returns (uint256) {
         uint256 stakedBlocks = (block.number -
             stakedOrClaimedAt[keccak256(abi.encodePacked(poolId, tokenId))]);
         return configs[poolId].rewardsPerBlock * stakedBlocks;
@@ -288,7 +338,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      */
     function getRewardsPerBlock(
         bytes32 poolId
-    ) public view override returns (uint256) {
+    ) public view  returns (uint256) {
         return configs[poolId].rewardsPerBlock;
     }
 
@@ -298,7 +348,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      */
     function getStakingToken(
         bytes32 poolId
-    ) public view override returns (IERC721Upgradeable) {
+    ) public view  returns (IERC721) {
         return configs[poolId].stakingToken;
     }
 
@@ -308,7 +358,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      */
     function getRewardsToken(
         bytes32 poolId
-    ) public view override returns (IERC20Upgradeable) {
+    ) public view  returns (IERC20) {
         return configs[poolId].rewardsToken;
     }
 
@@ -317,7 +367,7 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      * the current admin.
      * @param _admin The new admin to set
      */
-    function setAdmin(address _admin) public override onlyAdmin {
+    function setAdmin(address _admin) public  onlyAdmin {
         require(_admin != address(0), "Admin cannot be zero address");
         admin = _admin;
     }
@@ -328,13 +378,13 @@ contract MultiStaking is ERC721Upgradeable, IMultiStaking {
      */
     function deletePool(
         bytes32 poolId
-    ) public override onlyAdmin onlyExists(poolId) {
+    ) public  onlyAdmin onlyExists(poolId) {
         // TODO should we allow this? what if there are still stakers?
         // how will we reconcile all the existing stakes + rewards?
         // have to track every stake in every pool, if so
         // then iterate each stake in the pool being deleted and forcefully unstake each
         delete configs[poolId];
-        emit PoolDeleted(poolId, admin);
+        // emit PoolDeleted(poolId, admin);
     }
 
     function _getPoolId(
