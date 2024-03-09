@@ -25,8 +25,11 @@ interface IMultiStaking {
      */
     event Staked(
         bytes32 indexed poolId,
-        uint256 indexed tokenId,
-        address indexed staker
+        uint256 tokenId,
+		uint256 amount,
+		uint256 index, // The ERC1155 index of the asset being staked, if applicable
+        address indexed staker,
+		bytes32 indexed stakeId
     );
 
     /**
@@ -49,42 +52,43 @@ interface IMultiStaking {
         uint256 rewardsAmount
     );
 
-    function createPool(Types.StakeConfig memory _config) external;
+    // function createPool(Types.StakeConfig memory _config) external;
 
-    function stake(bytes32 poolId, uint256 tokenId) external;
+	// only have in ABaseStaking?
+    // function stake(bytes32 poolId, uint256 tokenId, uint256 amount) external;
 
-    function claim(bytes32 poolId, uint256 tokenId) external;
+    // function claim(bytes32 poolId, uint256 tokenId) external;
 
-    function unstake(bytes32 poolId, uint256 tokenId) external;
+    // function unstake(bytes32 poolId, uint256 tokenId) external;
 
-    function isStaking(
-        bytes32 poolId,
-        uint256 tokenId
-    ) external view returns (bool);
+    // function isStaking(
+    //     bytes32 poolId,
+    //     uint256 tokenId
+    // ) external view returns (bool);
 
-    function getPoolId(
-        Types.StakeConfig memory _config
-    ) external pure returns (bytes32);
+    // function getPoolId(
+    //     Types.StakeConfig memory _config
+    // ) external pure returns (bytes32);
 
-    function getStakeId(
-        bytes32 poolId,
-        uint256 tokenId
-    ) external pure returns (bytes32);
+    // function getStakeId(
+    //     bytes32 poolId,
+    //     uint256 tokenId
+    // ) external pure returns (bytes32);
 
-    function getAdmin() external view returns (address);
+    // function getAdmin() external view returns (address);
 
-    function getPendingRewards(
-        bytes32 poolId,
-        uint256 tokenId
-    ) external view returns (uint256);
+    // function getPendingRewards(
+    //     bytes32 poolId,
+    //     uint256 tokenId
+    // ) external view returns (uint256);
 
-    function getRewardsPerBlock(bytes32 poolId) external view returns (uint256);
+    // function getRewardsPerBlock(bytes32 poolId) external view returns (uint256);
 
-    function getStakingToken(bytes32 poolId) external view returns (IERC721);
+    // function getStakingToken(bytes32 poolId) external view returns (IERC721);
 
-    function getRewardsToken(bytes32 poolId) external view returns (IERC20);
+    // function getRewardsToken(bytes32 poolId) external view returns (IERC20);
 
-    function setAdmin(address _admin) external;
+    // function setAdmin(address _admin) external;
 
-    function deletePool(bytes32 poolId) external;
+    // function deletePool(bytes32 poolId) external;
 }

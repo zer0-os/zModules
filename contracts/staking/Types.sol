@@ -3,8 +3,9 @@ pragma solidity ^0.8.19;
 
 
 interface Types {
-	// Enum to describe the types of available tokens that could be used in
-	// staking or rewards
+	/**
+	 * @notice Enum to describe the types of available tokens that could be used in staking
+	 */
 	enum TokenType {
 		IERC721,
 		IERC20,
@@ -19,8 +20,9 @@ interface Types {
 	struct StakeConfig {
 		address stakingToken;
 		address rewardsToken;
+		address rewardsVault;
+		uint256 rewardsPerBlock;
 		TokenType stakingTokenType;
 		TokenType rewardsTokenType;
-		uint256 rewardsPerBlock;
 	}
 }
