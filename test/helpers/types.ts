@@ -7,10 +7,19 @@ import {
   MultiStaking,
 } from "../../typechain";
 
-export interface StakingConfig {
+export enum TokenType {
+  IERC721,
+  IERC20,
+  IERC1155
+}
+export interface StakeConfig {
   stakingToken : string;
   rewardsToken : string;
+  rewardsVault : string;
+  stakingTokenType : TokenType;
+  rewardsTokenType : TokenType;
   rewardsPerBlock : string;
+  minRewardsTime : string; // BigInt or number instead?
 }
 
 // Simplify the Ethers V6 contract type

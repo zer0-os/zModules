@@ -16,7 +16,8 @@ import {
   INVALID_POOL,
 } from "./helpers/errors";
 import {
-  StakingConfig,
+  TokenType,
+  StakeConfig,
   MultiStakingV6,
 } from "./helpers/types";
 
@@ -32,7 +33,7 @@ describe("MultiStaking", async () => {
   let mockERC20 : MockERC20;
   let mockERC721 : MockERC721;
 
-  let defaultPool : StakingConfig;
+  let defaultConfig : StakeConfig;
   let defaultPoolId : string;
 
   let defaultStakeIdA : string;
@@ -63,25 +64,29 @@ describe("MultiStaking", async () => {
       const mockERC721Factory = await hre.ethers.getContractFactory("MockERC721");
       mockERC721 = await mockERC721Factory.deploy("WilderWheels", "WW", "0://wheels-base");
 
+      // Create a default staking pool configuration
+      defaultConfig = {
+        stakingToken: await mockERC721.getAddress(),
+        rewardsToken: await mockERC20.getAddress(),
+        rewardsVault: await mockERC20.getAddress(),
+        stakingTokenType: TokenType.IERC721,
+        rewardsTokenType: TokenType.IERC20,
+        rewardsPerBlock: hre.ethers.parseEther("100").toString(),
+        minRewardsTime: "0",
+      };
+
       const stakingFactory = await hre.ethers.getContractFactory("MultiStaking");
-      stakingContract = await hre.upgrades.deployProxy(
-        stakingFactory,
+      stakingContract = await stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
         [
-          "StakingNFT",
-          "SNFT",
+          defaultConfig
         ]
       ) as MultiStakingV6;
 
-      // Create a default staking pool configuration
-      defaultPool = {
-        stakingToken: await mockERC721.getAddress(),
-        rewardsToken: await mockERC20.getAddress(),
-        rewardsPerBlock: hre.ethers.parseEther("100").toString(),
-      };
-
       // Register initial staking pool
-      await stakingContract.connect(deployer).createPool(defaultPool);
-      defaultPoolId = await stakingContract.getPoolId(defaultPool);
+      // await stakingContract.connect(deployer).createPool(defaultConfig);
+      defaultPoolId = await stakingContract.getPoolId(defaultConfig);
 
       await mockERC20.connect(deployer).transfer(
         await stakingContract.getAddress(),
@@ -267,8 +272,8 @@ describe("MultiStaking", async () => {
     const balanceAfterB = await mockERC20.balanceOf(stakerB.address);
 
     // Expect both stakers to have an SNFT
-    expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultPool.rewardsPerBlock) * 2n);
-    expect(balanceAfterB).to.eq(balanceBeforeB + BigInt(defaultPool.rewardsPerBlock) * 2n);
+    expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultConfig.rewardsPerBlock) * 2n);
+    expect(balanceAfterB).to.eq(balanceBeforeB + BigInt(defaultConfig.rewardsPerBlock) * 2n);
 
     // Expect stakedOrClaimedAt to have been updated
     expect(await stakingContract.stakedOrClaimedAt(defaultStakeIdA)).to.eq(txA.blockNumber);
@@ -289,8 +294,8 @@ describe("MultiStaking", async () => {
     const balanceAfterB = await mockERC20.balanceOf(stakerB.address);
 
     // Expect both stakers to have an SNFT
-    expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultPool.rewardsPerBlock) * 2n);
-    expect(balanceAfterB).to.eq(balanceBeforeB + BigInt(defaultPool.rewardsPerBlock) * 2n);
+    expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultConfig.rewardsPerBlock) * 2n);
+    expect(balanceAfterB).to.eq(balanceBeforeB + BigInt(defaultConfig.rewardsPerBlock) * 2n);
 
     // Expect the stakingContract to have 0 original NFTs
     expect(await mockERC721.balanceOf(stakerA.address)).to.eq(1);

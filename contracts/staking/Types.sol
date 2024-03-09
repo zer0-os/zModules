@@ -21,8 +21,9 @@ interface Types {
 		address stakingToken;
 		address rewardsToken;
 		address rewardsVault;
-		uint256 rewardsPerBlock;
 		TokenType stakingTokenType;
 		TokenType rewardsTokenType;
+		uint256 rewardsPerBlock;
+		uint256 minRewardsTime; // minimum amount of time to have passed before a person can claim
 	}
 }
