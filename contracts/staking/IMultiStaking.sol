@@ -11,8 +11,7 @@ interface IMultiStaking {
      */
     event PoolCreated(
         bytes32 indexed poolId,
-        Types.StakeConfig config,
-        address admin
+        Types.StakeConfig config
     );
 
     /**
@@ -27,30 +26,30 @@ interface IMultiStaking {
         bytes32 indexed poolId,
         uint256 tokenId,
 		uint256 amount,
-		uint256 index, // The ERC1155 index of the asset being staked, if applicable
-        address indexed staker,
-		bytes32 indexed stakeId
+		uint256 index,
+		bytes32 indexed stakeId,
+        address indexed staker
     );
 
     /**
      * @notice Emitted when a user claims rewards from an existing stake
      */
-    event Claimed(
-        bytes32 indexed poolId,
-        uint256 indexed tokenId,
-        address indexed staker,
-        uint256 rewardsAmount
-    );
+    // event Claimed(
+    //     bytes32 indexed poolId,
+    //     uint256 indexed tokenId,
+    //     address indexed staker,
+    //     uint256 rewardsAmount
+    // );
 
     /**
      * @notice Emitted when a user unstakes from a pool
      */
-    event Unstaked(
-        bytes32 indexed poolId,
-        uint256 indexed tokenId,
-        address indexed staker,
-        uint256 rewardsAmount
-    );
+    // event Unstaked(
+    //     bytes32 indexed poolId,
+    //     uint256 indexed tokenId,
+    //     address indexed staker,
+    //     uint256 rewardsAmount
+    // );
 
     // function createPool(Types.StakeConfig memory _config) external;
 

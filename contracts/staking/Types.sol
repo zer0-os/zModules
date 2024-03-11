@@ -15,7 +15,11 @@ interface Types {
      * @notice The necessary details for a single staking pool comfiguration
      * @param stakingToken The ERC721 token that is being staked
      * @param rewardsToken The ERC20 token that is being distributed as rewards
-     * @param rewardsPerBlock The amount of rewards tokens distributed per block
+     * @param rewardsVault The address of the vault that holds the rewards tokens
+	 * @param stakingTokenType The type of token that is being staked (ERC721, ERC20, ERC1155)
+	 * @param rewardsTokenType The type of token that is being distributed as rewards (ERC721, ERC20, ERC1155)
+	 * @param rewardsPerBlock The amount of rewards tokens distributed per block
+	 * @param minRewardsTime The minimum amount of time to have passed before a person can claim
      */
 	struct StakeConfig {
 		address stakingToken;
@@ -24,6 +28,6 @@ interface Types {
 		TokenType stakingTokenType;
 		TokenType rewardsTokenType;
 		uint256 rewardsPerBlock;
-		uint256 minRewardsTime; // minimum amount of time to have passed before a person can claim
+		uint256 minRewardsTime;
 	}
 }
