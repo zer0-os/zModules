@@ -16,11 +16,15 @@ import {ABaseStaking} from "./ABaseStaking.sol";
  * This role is transferrable if the current admin calls `setAdmin`
  *
  * To create a staking pool, the `admin` must call `createPool` with the necessary details for the staking pool
- * as defined in the `StakeConfig` struct. This specifies:
+ * as defined in the `StakeConfig` struct. This struct specifies:
  *
- * - The ERC721 token that is being staked
- * - The ERC20 token that is being distributed as rewards (optional)
- * - The amount of rewards tokens distributed per block (optional)
+ * - The token that is being staked
+ * - The token that is being distributed as rewards (optional)
+ * - The address of the vault that holds the rewards tokens (optional, required if using rewards)
+ * - The type of the staking token (ERC721, ERC20, ERC1155)
+ * - The type of the rewards token (ERC721, ERC20, ERC1155)
+ * - The amount of rewards tokens distributed per block (optional, required if using rewards)
+ * - The minimum amount of time to have passed before a person can claim (optional)
  *
  * Calling `createPool` will create a `poolId` that is the keccak256 hash of the given `StakeConfig` struct.
  * The `poolId` creates a unique identifier for each instance of a pool, allowing for several to exist for the
@@ -76,6 +80,10 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 	// We use this value for rewards calculation
 	mapping(address user => uint256 tokens) public totalStakedERC20;
 
+    // // Does total matter if we track this? maybe?
+    // Need to track this for unstaking a specific stake
+    mapping(bytes32 stakeId => uint256 amount) public amountPerStakeERC20;
+
 	// Maybe its better to track individual stakes, not the total staked (or do both?)
 	// is both just adding unnecessary on chain data?
 
@@ -120,6 +128,17 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
             address(_config.stakingToken) != address(0),
             "Staking token must not be zero"
         );
+        
+        if (_config.rewardsToken != address(0)) {
+            require(
+                _config.rewardsPerBlock != 0,
+                "Rewards per block must be non-zero if rewards token is set"
+            );
+            require(
+                _config.rewardsVault != address(0),
+                "Rewards vault cannot be 0 address"
+            );
+        }
 
 		require(
 			// Enum for token types is only three 0-based options
@@ -232,6 +251,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 		uint256 accessBlock = stakedOrClaimedAt[stakeId];
 		stakedOrClaimedAt[stakeId] = block.number;
 
+        // TODO make sure the user can see rewards available in a pool before they stake
 		if(config.rewardsTokenType == TokenType.IERC20) {
 			uint256 rewards = config.rewardsPerBlock * (block.number - accessBlock);
 
@@ -287,46 +307,33 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 
         StakeConfig memory config = configs[poolId];
 
-		// If they have not passed the rewardsTime, they forfeit those rewards on unstake
+		// If they have not passed the rewardsTime
+            // A) revert
+            // B) successfully unstake, forfeiting rewards
+            // C) successfully unstake, getting a prorated amount of rewards
+        // If they have passed the rewardsTime, claim rewards and unstake unstaking
 
         // Return NFT to the original staker
 		if (configs[poolId].stakingTokenType == TokenType.IERC721) {
 			stakedOrClaimedAt[stakeId] = 0;
+
+            address staker = originalStakers[stakeId];
 			originalStakers[stakeId] = address(0);
 
 			IERC721(config.stakingToken).transferFrom(
 				address(this),
-				originalStakers[stakeId],
+				staker,
 				tokenId
 			);
 		} else if (configs[poolId].stakingTokenType == TokenType.IERC20) {
-			// TODO should they be able to unstake a specific amount? or just a single stake entity?
+			// TODO should they be able to unstake a specific amount? or just a single stake?
 			
 		} else {
 
 		}
 
-		_burn(uint256(stakeId));
-
-
         // Burn the SNFT
-        // Note: The internal `_burn` used here does not check if the sender is authorized
-        // This allows us to call to `_burn` without possession of the token, as the ERC721 contract
-        // Because only the SNFT owner can call this function anyways, this feels similar in their
-        // consent to if they were required to transfer it, and then we burnt it.
         _burn(uint256(stakeId));
-
-        // Calculate the rewards
-        uint256 rewards = config.rewardsPerBlock *
-            (block.number - stakedOrClaimedAt[stakeId]);
-
-        // Update staked mappings
-        stakedOrClaimedAt[stakeId] = 0;
-        originalStakers[stakeId] = address(0);
-
-        // Transfer the rewards
-        // config.rewardsToken.transfer(msg.sender, rewards);
-        // emit Unstaked(poolId, tokenId, msg.sender, rewards);
     }
 
     /**
@@ -431,11 +438,13 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 	}
 
 	function _stakeERC20(bytes32 poolId, uint256 amount) internal {
-		// If stakes are not unique, there are two options when they stake the same amount and generate
+		// TODO If stakes are not unique, there are two options when they stake the same amount and generate
 		// the same stakeId (written before adding "salt" param above)
 		// If we DONT reset the block number on stake, they can claim lots of rewards without actually staking it
 		// until the very end of a stake, sort of defeating the purpose of staking
 		// and if we DO, they don't get rewards for the first period before resetting block
+        // although we don't need to make each stake unique if we separate claimed and staked block numbers
+        // that way we can add
 		require(
 			amount != 0,
 			"Amount must be non-zero when staking ERC20"

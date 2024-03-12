@@ -12,10 +12,10 @@ interface Types {
 		IERC1155
 	}
 	/**
-     * @notice The necessary details for a single staking pool comfiguration
-     * @param stakingToken The ERC721 token that is being staked
-     * @param rewardsToken The ERC20 token that is being distributed as rewards
-     * @param rewardsVault The address of the vault that holds the rewards tokens
+	 * @notice The necessary details for a single staking pool comfiguration
+	 * @param stakingToken The ERC721 token that is being staked
+	 * @param rewardsToken The ERC20 token that is being distributed as rewards
+	 * @param rewardsVault The address of the vault that holds the rewards tokens
 	 * @param stakingTokenType The type of token that is being staked (ERC721, ERC20, ERC1155)
 	 * @param rewardsTokenType The type of token that is being distributed as rewards (ERC721, ERC20, ERC1155)
 	 * @param rewardsPerBlock The amount of rewards tokens distributed per block
