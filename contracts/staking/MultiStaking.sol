@@ -80,6 +80,9 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 	// We use this value for rewards calculation
 	mapping(address user => uint256 tokens) public totalStakedERC20;
 
+    // stake id is just token id
+    mapping(address user => bytes32 stakeDetails) public theStakeDetailsTODO;
+
     // // Does total matter if we track this? maybe?
     // Need to track this for unstaking a specific stake
     mapping(bytes32 stakeId => uint256 amount) public amountPerStakeERC20;
@@ -128,7 +131,9 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
             address(_config.stakingToken) != address(0),
             "Staking token must not be zero"
         );
-        
+
+        // require supports interface using erc165 that has public mint function, an option
+
         if (_config.rewardsToken != address(0)) {
             require(
                 _config.rewardsPerBlock != 0,
@@ -183,6 +188,8 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 			"Cannot create empty stake"
 		);
 
+        // TODO nonce not salt
+
 		bytes32 stakeId = keccak256(
 			abi.encodePacked(
 				poolId, 
@@ -200,6 +207,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 		);
 
 		// Mark the initial staking block
+        // TODO could this be a struct?
 		stakedOrClaimedAt[stakeId] = block.number;
 		originalStakers[stakeId] = msg.sender;
 
@@ -219,6 +227,8 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
         
 		emit Staked(poolId, tokenId, amount, index, stakeId, msg.sender);
     }
+
+    // beforeTokenTransfer => update owner address
 
 	// Q's
 	// TODO why would the SNFT owner want to unstake and lose access to claiming rewards?
@@ -257,17 +267,21 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 
 			IERC20(config.rewardsVault).transfer(msg.sender, rewards);
 		} else if(config.rewardsTokenType == TokenType.IERC721) {
+            // ERC165 here? 
 			// TODO how do we resolve what the reward should be?
 			// A) Transfer an existing token as reward
 				// Assume they have a vault of existing tokens to transfer
 				// How do we know the tokenId to transfer?
+                // IERC721(config.rewardsVault).transferFrom(
+                //     address(this),
+                //     msg.sender,
+                //     tokenId
+                // );
 			// B) Call `mint` on their ERC721 contract to mint a new token as reward
 				// Need to confirm they have a public `mint` and that we are allow to call
 				// How do we know the ID of the token to mint?
 				// Should this be `uint256(stakeId)`?
 				// What about the format of the metadata, do we care?
-			// C) Mint a rewards token from this contract
-				// Why would that be useful to them?
 		} else {
 			// Similar questions to the above
 			// TODO how do we resolve what the reward should be?

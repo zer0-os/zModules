@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface Types {
 	/**
@@ -21,12 +22,25 @@ interface Types {
 	 * @param rewardsPerBlock The amount of rewards tokens distributed per block
 	 * @param minRewardsTime The minimum amount of time to have passed before a person can claim
      */
-	struct StakeConfig {
+	struct PoolConfig { // TODO rename PoolConfig
 		address stakingToken;
 		address rewardsToken;
 		address rewardsVault;
 		TokenType stakingTokenType;
 		TokenType rewardsTokenType;
+		uint256 rewardsPerBlock;
+		uint256 minRewardsTime;
+        mapping(address => StakeConfig) stakes; // Details about a specific stake
+	}
+
+    struct StakeConfig { } // Details about a specific stake
+
+    // Same as above but only reward in ERC20
+    struct StakeConfigSimple {
+		IERC20 rewardsToken;
+		address stakingToken;
+		address rewardsVault;
+		TokenType stakingTokenType;
 		uint256 rewardsPerBlock;
 		uint256 minRewardsTime;
 	}
