@@ -11,7 +11,7 @@ interface IMultiStaking {
      */
     event PoolCreated(
         bytes32 indexed poolId,
-        Types.StakeConfig config
+        Types.PoolConfig config
     );
 
     /**
@@ -23,11 +23,7 @@ interface IMultiStaking {
      * @notice Emitted when a user stakes into a pool
      */
     event Staked(
-        bytes32 indexed poolId,
-        uint256 tokenId,
-		uint256 amount,
-		uint256 index,
-		bytes32 indexed stakeId,
+        Types.Stake indexed stake,
         address indexed staker
     );
 

@@ -14,34 +14,35 @@ interface Types {
 	}
 	/**
 	 * @notice The necessary details for a single staking pool comfiguration
-	 * @param stakingToken The ERC721 token that is being staked
+	 * @param stakingToken The token that is being staked
 	 * @param rewardsToken The ERC20 token that is being distributed as rewards
-	 * @param rewardsVault The address of the vault that holds the rewards tokens
+	 * @param rewardsVault The address of the vault that holds the reward tokens
 	 * @param stakingTokenType The type of token that is being staked (ERC721, ERC20, ERC1155)
-	 * @param rewardsTokenType The type of token that is being distributed as rewards (ERC721, ERC20, ERC1155)
 	 * @param rewardsPerBlock The amount of rewards tokens distributed per block
 	 * @param minRewardsTime The minimum amount of time to have passed before a person can claim
      */
-	struct PoolConfig { // TODO rename PoolConfig
+	struct PoolConfig {
 		address stakingToken;
-		address rewardsToken;
-		address rewardsVault;
-		TokenType stakingTokenType;
-		TokenType rewardsTokenType;
-		uint256 rewardsPerBlock;
-		uint256 minRewardsTime;
-        mapping(address => StakeConfig) stakes; // Details about a specific stake
-	}
-
-    struct StakeConfig { } // Details about a specific stake
-
-    // Same as above but only reward in ERC20
-    struct StakeConfigSimple {
 		IERC20 rewardsToken;
-		address stakingToken;
 		address rewardsVault;
 		TokenType stakingTokenType;
 		uint256 rewardsPerBlock;
 		uint256 minRewardsTime;
 	}
+
+    // Details of a single stake
+    struct Stake {
+        bytes32 poolId;
+        uint256 tokenId;
+        uint256 amount;
+        uint256 index;
+        uint256 nonce;
+        uint256 stakedOrClaimedAt;
+    }
+
+    // Details of all stakes for a single user
+    struct StakeProfile {
+        uint256 currentStakeNonce; // unique nonce of most recent stake
+        mapping(uint256 stakeNonce => Stake _stakes) stakesMap;
+    }
 }

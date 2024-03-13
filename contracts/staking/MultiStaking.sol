@@ -16,7 +16,7 @@ import {ABaseStaking} from "./ABaseStaking.sol";
  * This role is transferrable if the current admin calls `setAdmin`
  *
  * To create a staking pool, the `admin` must call `createPool` with the necessary details for the staking pool
- * as defined in the `StakeConfig` struct. This struct specifies:
+ * as defined in the `PoolConfig` struct. This struct specifies:
  *
  * - The token that is being staked
  * - The token that is being distributed as rewards (optional)
@@ -26,7 +26,7 @@ import {ABaseStaking} from "./ABaseStaking.sol";
  * - The amount of rewards tokens distributed per block (optional, required if using rewards)
  * - The minimum amount of time to have passed before a person can claim (optional)
  *
- * Calling `createPool` will create a `poolId` that is the keccak256 hash of the given `StakeConfig` struct.
+ * Calling `createPool` will create a `poolId` that is the keccak256 hash of the given `PoolConfig` struct.
  * The `poolId` creates a unique identifier for each instance of a pool, allowing for several to exist for the
  * same ERC721 token. This value is `keccak256(abi.encodePacked(stakingToken, rewardsToken, rewardsPerBlock))`.
  *
@@ -67,39 +67,39 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
     address public admin;
 
     // Mapping to track staking configurations
-    mapping(bytes32 poolId => StakeConfig config) public configs;
+    mapping(bytes32 poolId => PoolConfig config) public configs;
 
     // Mapping to track when a token was last accessed by the system
-    mapping(bytes32 stakeId => uint256 blockNumber) public stakedOrClaimedAt;
+    // mapping(bytes32 stakeId => uint256 blockNumber) public stakedOrClaimedAt;
 
     // We track the original staker of the NFT to allow the SNFT to be transferable
     // and still return the original NFT to the original staker on unstake
-    mapping(bytes32 stakeId => address staker) public originalStakers;
+    // mapping(bytes32 stakeId => address staker) public originalStakers;
 
 	// Track the total amount of ERC20 tokens staked in the contract by a user
 	// We use this value for rewards calculation
-	mapping(address user => uint256 tokens) public totalStakedERC20;
+	// mapping(address user => uint256 tokens) public totalStakedERC20;
 
-    // stake id is just token id
-    mapping(address user => bytes32 stakeDetails) public theStakeDetailsTODO;
+    // Every user maps to a StakeProfile struct
+    mapping(address user => StakeProfile staker) public stakers;
 
     // // Does total matter if we track this? maybe?
     // Need to track this for unstaking a specific stake
-    mapping(bytes32 stakeId => uint256 amount) public amountPerStakeERC20;
+    // mapping(bytes32 stakeId => uint256 amount) public amountPerStakeERC20;
 
 	// Maybe its better to track individual stakes, not the total staked (or do both?)
 	// is both just adding unnecessary on chain data?
 
 	// Track the total amount of fungible assets in an ERC1155 that are staked in 
 	// the contract by a user. We use this value for rewards calculation
-	mapping(address user => mapping(uint256 index => uint256 amount)) public totalStakedERC1155;
+	// mapping(address user => mapping(uint256 index => uint256 amount)) public totalStakedERC1155;
 
 	// TODO need to track ERC721 total? probably not
 
 	constructor(
 		string memory name,
 		string memory symbol,
-		StakeConfig[] memory _configs
+		PoolConfig[] memory _configs
 	) ERC721(name, symbol) {
 		admin = msg.sender;
 		// with multiple pools and contracts, tokenIds have to be guaranteed unique
@@ -120,35 +120,32 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
      *
      * @param _config The staking token, rewards token (optional), and rewardsPerBlock (optional) details
      */
-    function createPool(StakeConfig memory _config) public onlyAdmin {
+    function createPool(PoolConfig memory _config) public onlyAdmin {
         _createPool(_config);
     }
 
-	function _createPool(StakeConfig memory _config) internal {
+	function _createPool(PoolConfig memory _config) internal {
 		// Staking token must not be zero
-		// Rewards token can optionally be 0 if there are no rewards in a pool
         require(
             address(_config.stakingToken) != address(0),
             "Staking token must not be zero"
         );
 
-        // require supports interface using erc165 that has public mint function, an option
-
-        if (_config.rewardsToken != address(0)) {
+		// Rewards token can optionally be 0 if there are no rewards in a pool
+        if (address(_config.rewardsToken) != address(0)) {
             require(
-                _config.rewardsPerBlock != 0,
-                "Rewards per block must be non-zero if rewards token is set"
-            );
-            require(
-                _config.rewardsVault != address(0),
-                "Rewards vault cannot be 0 address"
+                _config.rewardsPerBlock != 0  && _config.rewardsVault != address(0),
+                "Invalid rewards configuration"
             );
         }
 
 		require(
-			// Enum for token types is only three 0-based options
-			// so 3 or higher is an invalid token type
-			uint256(_config.stakingTokenType) < 3 && uint256(_config.rewardsTokenType) < 3,
+			// Enum for token types is
+            // 0 - ERC721
+            // 1 - ERC20
+            // 2 - ERC1155
+			// So 3 or higher is an invalid token type
+			uint256(_config.stakingTokenType) < 3,
 			"Invalid stake or rewards token type"
 		);
 
@@ -171,16 +168,14 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 	 * @param tokenId The ID of the NFT to stake (0 if not ERC721 pool)
 	 * @param amount The amount of tokens to stake (0 if not ERC20 pool)
 	 * @param index The index of the asset to stake (0 if not ERC1155 pool)
-	 * @param salt A large random number used in hashing to make the stakeId unique
 	 */
 	function stake(
 		bytes32 poolId,
 		uint256 tokenId,
 		uint256 amount,
-		uint256 index,
-		uint256 salt // TODO maybe bytes32 is better
+		uint256 index
     ) external onlyExists(poolId) {
-		StakeConfig memory config = configs[poolId];
+		PoolConfig memory config = configs[poolId];
 
 		// One of `tokenId` or `amount` must be non-zero
 		require(
@@ -188,30 +183,26 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 			"Cannot create empty stake"
 		);
 
-        // TODO nonce not salt
+        StakeProfile storage staker = stakers[msg.sender];
 
-		bytes32 stakeId = keccak256(
-			abi.encodePacked(
-				poolId, 
-				tokenId, 
-				amount, 
-				index, 
-				msg.sender, 
-				salt
-			)
-		);
+        // Every stake is unique
+        // If they stake the first time, currentStakeNonce is 0
+           // Can;t stake the same NFT again, no longer own it
+           // Can stake again for ERC20s
+		// bytes32 stakeId = keccak256(
+		// 	abi.encodePacked(
+		// 		poolId,
+		// 		tokenId,
+		// 		amount,
+		// 		index,
+        //         staker.currentStakeNonce,
+		// 		msg.sender
+		// 	)
+		// );
 
-		require(
-			stakedOrClaimedAt[stakeId] == 0,
-			"Token already staked"
-		);
+        // TODO must include "unstakeAll option"
 
-		// Mark the initial staking block
-        // TODO could this be a struct?
-		stakedOrClaimedAt[stakeId] = block.number;
-		originalStakers[stakeId] = msg.sender;
-
-		// Transfer appropriate tokens
+		// Transfer appropriate token types
 		if(config.stakingTokenType == TokenType.IERC721) {
 			_stakeERC721(poolId, tokenId);
 		} else if(config.stakingTokenType == TokenType.IERC20) {
@@ -222,132 +213,159 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 			_stakeERC1155(poolId, tokenId, amount, index);
 		}
 
+        // Log stake for user
+        Stake memory _stake = Stake({
+            poolId: poolId,
+            tokenId: tokenId,
+            amount: amount,
+            index: index,
+            nonce: staker.currentStakeNonce,
+            stakedOrClaimedAt: block.number
+        });
+
+        // The nth stake is `stake`, then keep `currentStakeNonce` as incremental value
+        // means we always can track all the stakes for a user without holding an array
+        staker.stakesMap[staker.currentStakeNonce] = _stake;
+        staker.currentStakeNonce += 1;
+
         // Mint the owner an SNFT
-		_mint(msg.sender, uint256(stakeId));
-        
-		emit Staked(poolId, tokenId, amount, index, stakeId, msg.sender);
+		_mint(msg.sender, uint256(keccak256(abi.encode(_stake))));
+
+        // why would is this unreachable?
+		emit Staked(_stake, msg.sender);
     }
 
-    // beforeTokenTransfer => update owner address
-
-	// Q's
-	// TODO why would the SNFT owner want to unstake and lose access to claiming rewards?
-	// TODO should the original staker be able to unstake at any time?
-	// TODO should the original staker also be able to claim, if the rewards are divided?
-	// TODO should rewards be slightly higher if staker allows others to use SNFT?
-	// TODO when the SNFT owner claims or unstakes, should we divide the rewards
-	// between the original staker and the SNFT owner?
+    // Only `_mint` and `_burn`
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal pure override {
+        // The SNFT is not transferrable
+        require(from == address(0) || to == address(0), "Token is non-transferable");
+    }
 
 	/**
 	 * @notice Claim rewards from a valid stake
 	 * 
-	 * @param poolId The pool in which the stake exists
-	 * @param stakeId The unique identifier of that stake
+	 * @param stakeNonce The integer number identifier of a stake for a user
 	 */
-	function claim(bytes32 poolId, bytes32 stakeId) external {
-		StakeConfig	memory config = configs[poolId];
+	function claim(uint256 stakeNonce) external {
+        StakeProfile storage staker = stakers[msg.sender]; // memory instead?
+        // Number of stakes is always currentStakeNonce
+        // but they are added to the mapping before incrementing currentStakeNonce
+        // so have indices of currentStakeNonce - 1
+        require(stakeNonce < staker.currentStakeNonce, "Invalid stake nonce");
+
+		Stake memory _stake = staker.stakesMap[stakeNonce];
+
 		require(
-			// Will fail with `invalid id` if `uint256(stakeId)` does not exist
-			ownerOf(uint256(stakeId)) == msg.sender,
+			// Will fail with `invalid id` if `uint256(_stake)` does not exist
+			ownerOf(uint256(keccak256(abi.encode(_stake)))) == msg.sender,
 			"Caller is not the owner of the SNFT"
 		);
 
+        PoolConfig memory config = configs[_stake.poolId];
+
+        require(
+            address(configs[_stake.poolId].rewardsToken) != address(0),
+            "Pool does not have rewards configured"
+        );
+
 		// Confirm rewards can be claimed
 		require(
-			block.number - stakedOrClaimedAt[stakeId] > config.minRewardsTime,
+			block.number - _stake.stakedOrClaimedAt > config.minRewardsTime,
 			"Minimum time to claim rewards has not passed"
 		);
 
-		uint256 accessBlock = stakedOrClaimedAt[stakeId];
-		stakedOrClaimedAt[stakeId] = block.number;
-
         // TODO make sure the user can see rewards available in a pool before they stake
-		if(config.rewardsTokenType == TokenType.IERC20) {
-			uint256 rewards = config.rewardsPerBlock * (block.number - accessBlock);
+        uint256 accessBlock = _stake.stakedOrClaimedAt;
+		_stake.stakedOrClaimedAt = block.number;
 
-			IERC20(config.rewardsVault).transfer(msg.sender, rewards);
-		} else if(config.rewardsTokenType == TokenType.IERC721) {
-            // ERC165 here? 
-			// TODO how do we resolve what the reward should be?
-			// A) Transfer an existing token as reward
-				// Assume they have a vault of existing tokens to transfer
-				// How do we know the tokenId to transfer?
-                // IERC721(config.rewardsVault).transferFrom(
-                //     address(this),
-                //     msg.sender,
-                //     tokenId
-                // );
-			// B) Call `mint` on their ERC721 contract to mint a new token as reward
-				// Need to confirm they have a public `mint` and that we are allow to call
-				// How do we know the ID of the token to mint?
-				// Should this be `uint256(stakeId)`?
-				// What about the format of the metadata, do we care?
-		} else {
-			// Similar questions to the above
-			// TODO how do we resolve what the reward should be?
-			// NFT? a fungible asset instead similar to ERC20?
-			// some asset specific to the ERC1155 contract
-				// We'd have to include `rewardsIndex` in stake config so
-				// they can specify the index of the asset to use as a reward
-				// then we can call `safeTransferFrom` to transfer the reward
-				// but we still don't know how much to reward
-					// If fungible reward asset, we can do similar to ERC20
-					// if NFT is reward, we do similar to ERC721
-		}
+        config.rewardsToken.transferFrom(
+            config.rewardsVault,
+            msg.sender,
+            config.rewardsPerBlock * (block.number - accessBlock)
+        );
+        // emit claimed
 	}
 
     /**
-     * @notice Unstake a staked NFT from a pool. Only the owner of the SNFT can call to unstake.
-     * Any pending rewards accrued from the staked NFT will be transferred to the caller and
-     * the original NFT will be returned to the original staker.
+     * @notice Unstake
      *
-     * @param poolId The pool where the existing stake exists
-     * @param stakeId The unique identifier of the stake
-     * @param tokenId The id of the token to unstake, if applicable
-     * @param amount The amount of a token to unstake, if applicable // TODO remove a full stake? or X amount?
-     * @param index The index of an asset to unstake, if applicable
+     * @param stakeNonce The integer number identifier of a stake for a user
      */
-    function unstake(bytes32 poolId, bytes32 stakeId, uint256 tokenId, uint256 amount, uint256 index) external {
-        // TODO maybe original NFT owner has to allow the SNFT owner to call unstake
-        // otherwise the original NFT would have to resubmit to stake again if they didn't
-        // want to unstake. But also maybe this is just a mechanic they have to accept as part
-        // of allowing the SNFT to be transferrable
-        // bytes32 stakeId = keccak256(abi.encodePacked(poolId, tokenId));
+    function unstake(uint256 stakeNonce) external {
+        StakeProfile storage staker = stakers[msg.sender]; // memory instead?
 
-        require(
-            ownerOf(uint256(stakeId)) == msg.sender,
-            "Caller is not the owner of the stake token"
-        );
+        // Number of stakes is always currentStakeNonce
+        // but they are added to the mapping before incrementing currentStakeNonce
+        // so have indices of currentStakeNonce - 1
+        require(stakeNonce < staker.currentStakeNonce, "Invalid stake nonce");
 
-        StakeConfig memory config = configs[poolId];
+		Stake memory _stake = staker.stakesMap[stakeNonce];
+        
+		require(
+			// Will fail with `invalid id` if `uint256(_stake)` does not exist
+			ownerOf(uint256(keccak256(abi.encode(_stake)))) == msg.sender,
+			"Caller is not the owner of the SNFT"
+		);
 
-		// If they have not passed the rewardsTime
-            // A) revert
-            // B) successfully unstake, forfeiting rewards
-            // C) successfully unstake, getting a prorated amount of rewards
-        // If they have passed the rewardsTime, claim rewards and unstake unstaking
+        PoolConfig memory config = configs[_stake.poolId];
 
         // Return NFT to the original staker
-		if (configs[poolId].stakingTokenType == TokenType.IERC721) {
-			stakedOrClaimedAt[stakeId] = 0;
-
-            address staker = originalStakers[stakeId];
-			originalStakers[stakeId] = address(0);
-
+		if (config.stakingTokenType == TokenType.IERC721) {
 			IERC721(config.stakingToken).transferFrom(
 				address(this),
-				staker,
-				tokenId
+				msg.sender,
+				_stake.tokenId
 			);
-		} else if (configs[poolId].stakingTokenType == TokenType.IERC20) {
-			// TODO should they be able to unstake a specific amount? or just a single stake?
-			
-		} else {
+		} else if (config.stakingTokenType == TokenType.IERC20) {
+            uint256 amount = _stake.amount;
+            _stake.amount = 0;
 
+            IERC20(config.stakingToken).transferFrom(
+                address(this),
+                msg.sender,
+                amount
+            );
+		} else {
+            uint256 amount = _stake.amount;
+            _stake.amount = 0;
+
+            IERC1155(config.stakingToken).safeTransferFrom(
+                address(this),
+                msg.sender,
+                _stake.tokenId,
+                amount,
+                ""
+            );
 		}
 
+        // If they have not passed the rewardsTime do we 
+            // A) revert
+            // B) successfully unstake, forfeiting rewards <-- This one, for now
+            // C) successfully unstake, getting a prorated amount of rewards
+        // If they have passed the rewardsTime, claim rewards and unstake
+
+        uint256 blockDiff = block.number - _stake.stakedOrClaimedAt;
+        if (address(config.rewardsToken) != address(0) && blockDiff > config.minRewardsTime) {
+
+            uint256 rewards = config.rewardsPerBlock * blockDiff;
+            _stake.stakedOrClaimedAt = 0;
+
+            config.rewardsToken.transferFrom(
+                config.rewardsVault,
+                msg.sender,
+                rewards
+            );
+        }
+
         // Burn the SNFT
-        _burn(uint256(stakeId));
+        // TODO should this be higher in the function?
+        _burn(uint256(keccak256(abi.encode(_stake))));
+        // emit unstaked
     }
 
     /**
@@ -355,15 +373,15 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
      * @param _config The configuration to be hashed to create the poolId
      */
     function getPoolId(
-        StakeConfig memory _config
-    ) public pure  returns (bytes32) {
+        PoolConfig memory _config
+    ) public pure returns (bytes32) {
         return _getPoolId(_config);
     }
 
     /**
      * @notice Get the admin of this contract
      */
-    function getAdmin() public view  returns (address) {
+    function getAdmin() public view returns (address) {
         return admin;
     }
 
@@ -371,9 +389,9 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
      * @notice Get the staking token for a given pool
      * @param poolId The pool to check
      */
-    function getRewardsPerBlock(
+    function getRewardsPerBlockForPool(
         bytes32 poolId
-    ) public view  returns (uint256) {
+    ) public view returns (uint256) {
         return configs[poolId].rewardsPerBlock;
     }
 
@@ -381,9 +399,9 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
      * @notice Get the staking token for a given pool
      * @param poolId The pool to check
      */
-    function getStakingToken(
+    function getStakingTokenForPool(
         bytes32 poolId
-    ) public view  returns (address, TokenType) {
+    ) public view returns (address, TokenType) {
         return (configs[poolId].stakingToken, configs[poolId].stakingTokenType);
     }
 
@@ -391,12 +409,17 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
      * @notice Get the rewards token for a given pool
      * @param poolId The pool to check
      */
-    function getRewardsToken(
+    function getRewardsTokenForPool(
         bytes32 poolId
-    ) public view  returns (address, TokenType) {
-        return (configs[poolId].rewardsToken, configs[poolId].rewardsTokenType);
+    ) public view returns (IERC20) {
+        return configs[poolId].rewardsToken;
     }
 
+    // View the amount of rewards remaining to be distributed to staking users
+    function getAvailableRewardsBalance(bytes32 poolId) public view returns (uint256) {
+        PoolConfig memory config = configs[poolId];
+        return config.rewardsToken.balanceOf(config.rewardsVault);
+    }
     /**
      * @notice Set the new admin for this contract. Only callable by
      * the current admin.
@@ -423,7 +446,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
     }
 
     function _getPoolId(
-        StakeConfig memory _config
+        PoolConfig memory _config
     ) internal pure returns (bytes32) {
         return
             keccak256(
@@ -452,19 +475,15 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 	}
 
 	function _stakeERC20(bytes32 poolId, uint256 amount) internal {
-		// TODO If stakes are not unique, there are two options when they stake the same amount and generate
-		// the same stakeId (written before adding "salt" param above)
-		// If we DONT reset the block number on stake, they can claim lots of rewards without actually staking it
-		// until the very end of a stake, sort of defeating the purpose of staking
-		// and if we DO, they don't get rewards for the first period before resetting block
-        // although we don't need to make each stake unique if we separate claimed and staked block numbers
-        // that way we can add
 		require(
 			amount != 0,
 			"Amount must be non-zero when staking ERC20"
 		);
 
-		totalStakedERC20[msg.sender] += amount;
+		// totalStakedERC20[msg.sender] += amount;
+
+        // calc amount owed currently in rewards now
+        // update block
 
 		// Transfer the stakers funds
 		IERC20(configs[poolId].stakingToken).transferFrom(
@@ -485,7 +504,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 			"Must have quantity to stake when staking ERC1155"
 		);
 
-		totalStakedERC1155[msg.sender][index] += amount;
+		// totalStakedERC1155[msg.sender][index] += amount;
 
 		IERC1155(configs[poolId].stakingToken).safeTransferFrom(
 			msg.sender,
@@ -545,7 +564,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 	// 	bytes32 poolId,
 	// 	uint256 amount
 	// ) external onlyExists(poolId) {
-	// 	StakeConfig memory config = configs[poolId];
+	// 	PoolConfig memory config = configs[poolId];
 	// 	require(
 	// 		config.stakingTokenType == TokenType.IERC20,
 	// 		"Pool staking token type must be IERC20"
@@ -588,7 +607,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 	// 	uint256 amount,
 	// 	uint256 index
 	// ) external onlyExists(poolId) onlyNFTOwner(poolId, tokenId) {
-	// 	StakeConfig memory config = configs[poolId];
+	// 	PoolConfig memory config = configs[poolId];
 	// 	require(
 	// 		config.stakingTokenType == TokenType.IERC1155,
 	// 		"Pool staking token type must be IERC1155"

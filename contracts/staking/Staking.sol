@@ -16,7 +16,7 @@ contract Staking is
 
 	// The current staking configuration that defines what token is being staked
     // and how rewards are distributed
-    Types.StakeConfig public config;
+    Types.PoolConfig public config;
 
     // Mapping of when a token staking rewards were most recently accessed.
     // On an initial stake, this is set to the current block for future calculations.
@@ -49,7 +49,7 @@ contract Staking is
         string memory name,
         string memory symbol,
         IERC721 _stakingToken,
-        Types.StakeConfig memory _config
+        Types.PoolConfig memory _config
     ) ERC721(name, symbol) ERC721Wrapper(_stakingToken) {
         config = _config;
     }
