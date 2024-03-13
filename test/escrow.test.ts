@@ -43,14 +43,19 @@ describe("Escrow Contract", function () {
         it("Should allow deposits", async function () {
             const depositAmount = ethers.parseEther("100");
             await mockERC20.connect(addr1).approve(await escrow.getAddress(), depositAmount);
-            await escrow.connect(addr1).deposit(depositAmount);
+            await expect(escrow.connect(addr1).deposit(depositAmount))
+                .to.emit(escrow, "Deposited")
+                .withArgs(addr1.address, depositAmount);
 
             expect(await escrow.getBalance(addr1.address)).to.equal(depositAmount);
         });
 
         it("Should execute payments", async function () {
             const paymentAmount = ethers.parseEther("50");
-            await escrow.connect(owner).executePayment(addr1.address, paymentAmount);
+
+            await expect(escrow.connect(owner).executePayment(addr1.address, paymentAmount))
+                .to.emit(escrow, "PaymentExecuted")
+                .withArgs(addr1.address, paymentAmount);
 
             const finalBalance = await escrow.getBalance(addr1.address);
             expect(finalBalance).to.equal(ethers.parseEther("50"));
@@ -58,13 +63,15 @@ describe("Escrow Contract", function () {
         });
 
         it("Should handle refunds correctly", async function () {
-            await escrow.connect(owner).refund(addr1.address);
+            await expect(escrow.connect(owner).refund(addr1.address))
+                .to.emit(escrow, "Refunded")
+                .withArgs(addr1.address, ethers.parseEther("50")); // Adjust amount based on previous test state
 
             expect(await escrow.getBalance(addr1.address)).to.equal(ethers.parseEther("0"));
             expect(await mockERC20.balanceOf(addr1.address)).to.equal(ethers.parseEther("1000"));
         });
     });
-    describe("Negative Tests", function () {
+    describe("Escrow, Negative Tests", function () {
         it("Should fail for insufficient balance on payment", async function () {
             const excessiveAmount = ethers.parseEther("1100"); // More than addr1's balance
             await expect(escrow.connect(owner).executePayment(addr1.address, excessiveAmount))
