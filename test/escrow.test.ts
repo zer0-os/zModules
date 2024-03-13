@@ -29,7 +29,7 @@ describe("Escrow Contract", function () {
         await mockERC20.mint(addr2.address, ethers.parseEther("500"));
     });
 
-    describe("Deployment", function () {
+    describe("Deploy Escrow", function () {
         it("Should set the right owner", async function () {
             expect(await escrow.owner()).to.equal(owner.address);
         });
@@ -39,7 +39,7 @@ describe("Escrow Contract", function () {
         });
     });
 
-    describe("Functionality", function () {
+    describe("Escrow", function () {
         it("Should allow deposits", async function () {
             const depositAmount = ethers.parseEther("100");
             await mockERC20.connect(addr1).approve(await escrow.getAddress(), depositAmount);
@@ -62,6 +62,24 @@ describe("Escrow Contract", function () {
 
             expect(await escrow.getBalance(addr1.address)).to.equal(ethers.parseEther("0"));
             expect(await mockERC20.balanceOf(addr1.address)).to.equal(ethers.parseEther("1000"));
+        });
+    });
+    describe("Negative Tests", function () {
+        it("Should fail for insufficient balance on payment", async function () {
+            const excessiveAmount = ethers.parseEther("1100"); // More than addr1's balance
+            await expect(escrow.connect(owner).executePayment(addr1.address, excessiveAmount))
+                .to.be.revertedWith("Insufficient balance"); // Adjust error message based on your contract's requirements
+        });
+
+        it("Should fail for unauthorized payment execution", async function () {
+            const paymentAmount = ethers.parseEther("10");
+            await expect(escrow.connect(addr1).executePayment(addr2.address, paymentAmount))
+                .to.be.revertedWith("Caller is not the owner"); // Adjust error message based on your contract's requirements
+        });
+
+        it("Should fail for unauthorized refund", async function () {
+            await expect(escrow.connect(addr1).refund(addr2.address))
+                .to.be.revertedWith("Caller is not the owner"); // Adjust error message based on your contract's requirements
         });
     });
 });
