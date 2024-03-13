@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 contract Escrow {
-    address public owner;
-    IERC20 public token;
+    address public owner; ///Owner of the contract
+    IERC20 public token; ///Token contract operates on
 
-    mapping(address => uint256) public balances;
+    mapping(address client => uint256 amount) public balance; ///Balance of given client
 
-    constructor(address _token) {
-        owner = msg.sender;
+    constructor(address _token, address _owner) {
         token = IERC20(_token);
+        owner = _owner;
     }
 
     modifier onlyOwner() {
@@ -20,25 +20,36 @@ contract Escrow {
         _;
     }
 
-    function deposit(uint256 _amount) external {
-        require(token.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
-        balances[msg.sender] += _amount;
+    function deposit(uint256 amount) external {
+        token.transferFrom(msg.sender, address(this), amount);
+        balance[msg.sender] += amount;
+
+        emit Deposited(msg.sender, amount);
     }
 
-    function checkBalance(address client) external view returns (uint256) {
-        return balances[client];
-    }
+    function executePayment(address to, uint256 amount) external onlyOwner {
+        require(balance[to] >= amount, "Insufficient balance");
+        token.transfer(to, amount);
+        balance[to] -= amount;
 
-    function executePayment(address client, uint256 _amount) external onlyOwner {
-        require(balances[client] >= _amount, "Insufficient balance");
-        require(token.transfer(client, _amount), "Transfer failed");
-        balances[client] -= _amount;
+        emit PaymentExecuted(to, amount);
     }
 
     function refund(address client) external onlyOwner {
-        uint256 balance = balances[client];
-        require(balance > 0, "No balance to refund");
-        require(token.transfer(client, balance), "Transfer failed");
-        balances[client] = 0;
+        uint256 _balance = balance[client];
+        require(_balance > 0, "No balance to refund");
+        
+        token.transfer(client, _balance);
+        balance[client] = 0;
+
+        emit Refunded(client, _balance); 
     }
+
+    function getBalance(address client) external view returns(uint256){
+        return balance[client];
+    }
+
+    event Deposited(address client, uint256 amount);
+    event PaymentExecuted(address client, uint256 amount);
+    event Refunded(address client, uint256 amount);
 }

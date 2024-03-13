@@ -22,7 +22,7 @@ describe("Escrow Contract", function () {
         mockERC20 = (await MockERC20Factory.deploy("MockToken", "MTK")) as ERC20TestToken;
 
         const escrowFactory = await hre.ethers.getContractFactory("Escrow");
-        escrow = (await escrowFactory.deploy(await mockERC20.getAddress())) as Escrow;
+        escrow = (await escrowFactory.deploy(await mockERC20.getAddress(), await owner.getAddress())) as Escrow;
 
         // Mint some tokens to test accounts
         await mockERC20.mint(addr1.address, ethers.parseEther("1000"));
@@ -45,14 +45,14 @@ describe("Escrow Contract", function () {
             await mockERC20.connect(addr1).approve(await escrow.getAddress(), depositAmount);
             await escrow.connect(addr1).deposit(depositAmount);
 
-            expect(await escrow.checkBalance(addr1.address)).to.equal(depositAmount);
+            expect(await escrow.getBalance(addr1.address)).to.equal(depositAmount);
         });
 
         it("Should execute payments", async function () {
             const paymentAmount = ethers.parseEther("50");
             await escrow.connect(owner).executePayment(addr1.address, paymentAmount);
 
-            const finalBalance = await escrow.checkBalance(addr1.address);
+            const finalBalance = await escrow.getBalance(addr1.address);
             expect(finalBalance).to.equal(ethers.parseEther("50"));
             expect(await mockERC20.balanceOf(addr1.address)).to.equal(ethers.parseEther("950"));
         });
@@ -60,7 +60,7 @@ describe("Escrow Contract", function () {
         it("Should handle refunds correctly", async function () {
             await escrow.connect(owner).refund(addr1.address);
 
-            expect(await escrow.checkBalance(addr1.address)).to.equal(ethers.parseEther("0"));
+            expect(await escrow.getBalance(addr1.address)).to.equal(ethers.parseEther("0"));
             expect(await mockERC20.balanceOf(addr1.address)).to.equal(ethers.parseEther("1000"));
         });
     });
