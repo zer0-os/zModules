@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 contract Escrow {
     address public owner; ///Owner of the contract
     IERC20 public token; ///Token contract operates on
