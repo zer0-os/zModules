@@ -24,7 +24,6 @@ interface Types {
 	struct PoolConfig {
 		address stakingToken;
 		IERC20 rewardsToken;
-		address rewardsVault;
 		TokenType stakingTokenType;
 		uint256 rewardsPerBlock;
 		uint256 minRewardsTime;

@@ -15,7 +15,6 @@ export enum TokenType {
 export interface PoolConfig {
   stakingToken : string;
   rewardsToken : string;
-  rewardsVault : string;
   stakingTokenType : TokenType;
   rewardsPerBlock : string;
   minRewardsTime : string; // BigInt or number instead?
