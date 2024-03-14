@@ -106,8 +106,11 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
 		uint256 i = 0;
 		uint256 length = _configs.length;
-		for(i; i < length; ++i) {
+		for(i; i < length;) {
 			_createPool(_configs[i]);
+            unchecked {
+                ++i;
+            }
 		}
 	}
 
@@ -168,7 +171,9 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         // The nth stake is `stake`, then keep `currentStakeNonce` as incremental value
         // means we always can track all the stakes for a user without holding an array
         staker.stakesMap[staker.currentStakeNonce] = _stake;
-        ++staker.currentStakeNonce;
+        unchecked {
+            ++staker.currentStakeNonce;
+        }
 
         // Mint the owner an SNFT
 		_mint(msg.sender, uint256(keccak256(abi.encode(_stake))));
@@ -209,10 +214,30 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         );
         // emit claimed
 	}
+
+    function claimAll() external {
+        uint256 totalRewards = _getPendingRewardsTotal();
+        // TODO can this be done? need way to transfer for each token?
+        // could be done if we do a bunch of invidual transfers, but that's very gas
+        // if the user has more than a few stakes
+    }
+
+    
+
+    function getPendingRewardsTotal() external view returns(uint256) {
+        return _getPendingRewardsTotal();
+    }
     
     // TODO make sure the user can see rewards available in a pool before they stake
-    // TODO claimAll, claim all the stakes you have present
-    // TODO unstakeAll, unstake all the unstakes
+    // getPendingRewards(uint256 stakeNonce)
+    // getPendingRewardsTotal() => use this in claimAll
+
+    // TODO
+    // getPendingRewards for a user for a specific stake
+    // getPendingRewardsTotal for a user
+    // add way to see all users in a pool
+    // add way to see all stakes for a user
+    // unstakeAll, unstake all the stakes for a user
 
     // If they have not passed the rewardsTime do we
         // TODO double check this with neo and joel
@@ -337,10 +362,25 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     }
 
     // View the amount of rewards remaining to be distributed to staking users
-    function getAvailableRewardsBalance(bytes32 poolId) public view returns (uint256) {
+    function getAvailableRewardsForPool(bytes32 poolId) public view returns (uint256) {
         PoolConfig memory config = configs[poolId];
         return config.rewardsToken.balanceOf(address(this));
     }
+
+    // Show the remaining amount of time before a staker can claim rewards
+    function getRemainingTimeToClaim(uint256 stakeNonce) public view returns (uint256) {
+        StakeProfile storage staker = stakers[msg.sender];
+        Stake memory _stake = staker.stakesMap[stakeNonce];
+
+        uint256 canClaimAt = _stake.stakedOrClaimedAt + configs[_stake.poolId].minRewardsTime;
+
+        if (block.number < canClaimAt) {
+            return canClaimAt - block.number;
+        } else {
+            return 0;
+        }
+    }
+
     /**
      * @notice Set the new admin for this contract. Only callable by
      * the current admin.
@@ -389,6 +429,49 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         bytes calldata
     ) external pure override returns (bytes4) {
         return INTERFACE_ID_ERC1155_BATCH_RECEIVED;
+    }
+
+    function _getPendingRewardsTotal() internal view returns (uint256) {
+        StakeProfile storage staker = stakers[msg.sender];
+
+        uint256 i = 0;
+        uint256 len = staker.currentStakeNonce;
+
+        // TODO pools could use different erc20s in rewards
+        // so total rewards could be x of token A, and y of token B, and so on
+        // how do we show this correctly, instead of just `rewardsTotal` like below
+
+        // Could this be an option? can't create mappings dynamically, but could build out two arrays 
+        // to create a "mapping" maybe
+        // ERC20 => rewardAmounts
+        IERC20[] memory rewardsTokens;
+        uint256[] memory rewardsAmounts; 
+
+        uint256 rewardsTotal;
+        Stake memory _stake;
+        PoolConfig memory config;
+
+        for(i; i < len;) {
+            _stake = staker.stakesMap[i];
+            config = configs[_stake.poolId];
+
+            if (
+                // The token is burned on unstake and non-transferable, if not the owner it's invalid
+                ownerOf(uint256(keccak256(abi.encode(_stake)))) == msg.sender
+                &&
+                // Stake must be able to be claimed
+                block.number - _stake.stakedOrClaimedAt > config.minRewardsTime
+            ) {
+                
+                rewardsTotal += config.rewardsPerBlock * (block.number - _stake.stakedOrClaimedAt);
+                _stake.stakedOrClaimedAt = block.number;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        return rewardsTotal;
     }
 
     function _createPool(PoolConfig memory _config) internal {

@@ -46,9 +46,6 @@ describe("MultiStaking", async () => {
   let defaultConfigERC1155 : PoolConfig;
   let defaultPoolERC1155 : string;
 
-  let defaultStakeIdA : string;
-  let defaultStakeIdB : string;
-
   const defaultTokenIdA  = 1;
   const defaultTokenIdB  = 2;
 
@@ -160,7 +157,7 @@ describe("MultiStaking", async () => {
   });
 
   // Single user, single pool
-  it.only("Allows a user to stake", async () => {
+  it("Allows a user to stake", async () => {
     await mockERC721.connect(stakerA).approve(await stakingContract.getAddress(), defaultTokenIdA);
 
     // Stake NFT
@@ -179,12 +176,12 @@ describe("MultiStaking", async () => {
     await stakingContract.connect(stakerA).stake(
       defaultPoolERC20,
       0,
-      hre.ethers.parseEther("1"),
+      hre.ethers.parseEther("100"),
       0
     );
     
     // Stake Wild, award Meow
-    // expect(await mockWild.balanceOf(stakerA.address)).to.eq(0);
+    // expect(await mockERC721.balanceOf(stakerA.address)).to.eq(0);
     expect(await stakingContract.balanceOf(stakerA.address)).to.eq(2);
 
     // Stake ERC1155
@@ -204,24 +201,17 @@ describe("MultiStaking", async () => {
     expect(await stakingContract.balanceOf(stakerA.address)).to.eq(3);
   });
 
-  // cannot stake if dont own nft
-  // cannot stake if no balance erc20
-  // cannot stake if no balance erc1155
-  // cannot stake if pool doesn't exist
-  // cannot stake if wrong pool
-
   it("Allows a user to claim rewards from a single pool", async () => {
     // Expect token is staked
-    expect(await stakingContract.stakedOrClaimedAt(defaultStakeIdA)).to.not.eq(0);
 
-    const balanceBefore = await mockWild.balanceOf(stakerA.address);
+    const balanceBefore = await mockERC721.balanceOf(stakerA.address);
 
     const stakerProfile = await stakingContract.stakerProfiles(stakerA.address);
 
     console.log(stakerProfile);
     // await stakingContract.connect(stakerA).claim( );
 
-    const balanceAfter = await mockWild.balanceOf(stakerA.address);
+    const balanceAfter = await mockERC721.balanceOf(stakerA.address);
 
     const rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
 
@@ -230,11 +220,11 @@ describe("MultiStaking", async () => {
   });
 
   it("Allows a user to unstake a token from a pool", async () => {
-    const balanceBefore = await mockWild.balanceOf(stakerA.address);
+    const balanceBefore = await mockERC721.balanceOf(stakerA.address);
 
     await stakingContract.connect(stakerA).unstake(defaultPoolERC721, defaultTokenIdA);
 
-    const balanceAfter = await mockWild.balanceOf(stakerA.address);
+    const balanceAfter = await mockERC721.balanceOf(stakerA.address);
 
     const rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
 
@@ -250,13 +240,19 @@ describe("MultiStaking", async () => {
     await expect(stakingContract.ownerOf(defaultTokenIdA)).to.be.revertedWith(INVALID_TOKEN_ID);
   });
 
+  // cannot stake if dont own nft
+  // cannot stake if no balance erc20
+  // cannot stake if no balance erc1155
+  // cannot stake if pool doesn't exist
+  // cannot stake if wrong pool
+
   // single user, multiple pools
   it("Allows a user to stake in multiple pools", async () => {
     await resetContracts();
 
     const localConfig = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
     };
 
@@ -280,20 +276,20 @@ describe("MultiStaking", async () => {
   it("Allows a user to claim rewards from multiple pools", async () => {
     const localConfig = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
     };
 
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
-    const balanceBefore = await mockWild.balanceOf(stakerA.address);
+    const balanceBefore = await mockERC721.balanceOf(stakerA.address);
 
     const newTokenId = 3;
 
     await stakingContract.connect(stakerA).claim(defaultPoolERC721, defaultTokenIdA);
     await stakingContract.connect(stakerA).claim(localPoolId, newTokenId);
 
-    const balanceAfter = await mockWild.balanceOf(stakerA.address);
+    const balanceAfter = await mockERC721.balanceOf(stakerA.address);
 
     const rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
     const rewardsPerBlockLocal = (await stakingContract.configs(localPoolId)).rewardsPerBlock;
@@ -304,20 +300,20 @@ describe("MultiStaking", async () => {
   it("Allows a user to unstake from multiple pools", async () => {
     const localConfig = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
     };
 
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
-    const balanceBefore = await mockWild.balanceOf(stakerA.address);
+    const balanceBefore = await mockERC721.balanceOf(stakerA.address);
 
     const newTokenId = 3;
 
     await stakingContract.connect(stakerA).unstake(defaultPoolERC721, defaultTokenIdA);
     await stakingContract.connect(stakerA).unstake(localPoolId, newTokenId);
 
-    const balanceAfter = await mockWild.balanceOf(stakerA.address);
+    const balanceAfter = await mockERC721.balanceOf(stakerA.address);
 
     const rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
     const rewardsPerBlockLocal = (await stakingContract.configs(localPoolId)).rewardsPerBlock;
@@ -345,14 +341,14 @@ describe("MultiStaking", async () => {
 
   it("Allows multiple users to claim from a single pool", async () => {
     // Check balances individually because of weirdness with HH block mining
-    const balanceBeforeA = await mockWild.balanceOf(stakerA.address);
+    const balanceBeforeA = await mockERC721.balanceOf(stakerA.address);
     const txA = await stakingContract.connect(stakerA).claim(defaultPoolERC721, defaultTokenIdA);
-    const balanceAfterA = await mockWild.balanceOf(stakerA.address);
+    const balanceAfterA = await mockERC721.balanceOf(stakerA.address);
 
-    const balanceBeforeB = await mockWild.balanceOf(stakerB.address);
+    const balanceBeforeB = await mockERC721.balanceOf(stakerB.address);
     // why 0 => 200000000000000000000n in a single claim?
     const txB = await stakingContract.connect(stakerB).claim(defaultPoolERC721, defaultTokenIdB);
-    const balanceAfterB = await mockWild.balanceOf(stakerB.address);
+    const balanceAfterB = await mockERC721.balanceOf(stakerB.address);
 
     // Expect both stakers to have an SNFT
     expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultConfigERC721.rewardsPerBlock) * 2n);
@@ -367,14 +363,14 @@ describe("MultiStaking", async () => {
   });
 
   it("Allows multiple users to unstake from a single pool", async () => {
-    const balanceBeforeA = await mockWild.balanceOf(stakerA.address);
-    const balanceBeforeB = await mockWild.balanceOf(stakerB.address);
+    const balanceBeforeA = await mockERC721.balanceOf(stakerA.address);
+    const balanceBeforeB = await mockERC721.balanceOf(stakerB.address);
 
     await stakingContract.connect(stakerA).unstake(defaultPoolERC721, defaultTokenIdA);
     await stakingContract.connect(stakerB).unstake(defaultPoolERC721, defaultTokenIdB);
 
-    const balanceAfterA = await mockWild.balanceOf(stakerA.address);
-    const balanceAfterB = await mockWild.balanceOf(stakerB.address);
+    const balanceAfterA = await mockERC721.balanceOf(stakerA.address);
+    const balanceAfterB = await mockERC721.balanceOf(stakerB.address);
 
     // Expect both stakers to have an SNFT
     expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultConfigERC721.rewardsPerBlock) * 2n);
@@ -396,7 +392,7 @@ describe("MultiStaking", async () => {
 
     const localConfig = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
     };
 
@@ -434,14 +430,14 @@ describe("MultiStaking", async () => {
   it("Allows multiple users to claim from multiple pools", async () => {
     const localConfig = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
     };
 
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
-    const balanceBeforeA = await mockWild.balanceOf(stakerA.address);
-    const balanceBeforeB = await mockWild.balanceOf(stakerB.address);
+    const balanceBeforeA = await mockERC721.balanceOf(stakerA.address);
+    const balanceBeforeB = await mockERC721.balanceOf(stakerB.address);
 
     const newTokenA = 5;
     const newTokenB = 6;
@@ -452,8 +448,8 @@ describe("MultiStaking", async () => {
     await stakingContract.connect(stakerB).claim(defaultPoolERC721, defaultTokenIdB);
     await stakingContract.connect(stakerB).claim(localPoolId, newTokenB);
 
-    const balanceAfterA = await mockWild.balanceOf(stakerA.address);
-    const balanceAfterB = await mockWild.balanceOf(stakerB.address);
+    const balanceAfterA = await mockERC721.balanceOf(stakerA.address);
+    const balanceAfterB = await mockERC721.balanceOf(stakerB.address);
 
     const rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
     const rewardsPerBlockLocal = (await stakingContract.configs(localPoolId)).rewardsPerBlock;
@@ -465,14 +461,14 @@ describe("MultiStaking", async () => {
   it("Allows multiple users to unstake from multiple pools", async () => {
     const localConfig = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
     };
 
     const localPoolId = await stakingContract.getPoolId(localConfig);
 
-    const balanceBeforeA = await mockWild.balanceOf(stakerA.address);
-    const balanceBeforeB = await mockWild.balanceOf(stakerB.address);
+    const balanceBeforeA = await mockERC721.balanceOf(stakerA.address);
+    const balanceBeforeB = await mockERC721.balanceOf(stakerB.address);
 
     const newTokenA = 5;
     const newTokenB = 6;
@@ -483,8 +479,8 @@ describe("MultiStaking", async () => {
     await stakingContract.connect(stakerB).unstake(defaultPoolERC721, defaultTokenIdB);
     await stakingContract.connect(stakerB).unstake(localPoolId, newTokenB);
 
-    const balanceAfterA = await mockWild.balanceOf(stakerA.address);
-    const balanceAfterB = await mockWild.balanceOf(stakerB.address);
+    const balanceAfterA = await mockERC721.balanceOf(stakerA.address);
+    const balanceAfterB = await mockERC721.balanceOf(stakerB.address);
 
     const rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
     const rewardsPerBlockLocal = (await stakingContract.configs(localPoolId)).rewardsPerBlock;
@@ -608,7 +604,7 @@ describe("MultiStaking", async () => {
   it("Fails when you try to stake for a pool thats not setup by the admin", async () => {
     const config = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("1").toString(),
     };
 
@@ -626,7 +622,7 @@ describe("MultiStaking", async () => {
 
     const config = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("2").toString(),
       // Difference in rewardsPerBlock will create new stakingId
     };
@@ -643,7 +639,7 @@ describe("MultiStaking", async () => {
     // So fails with `ERC721: invalid token id`
     const config = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("3").toString(),
       // Difference in rewardsPerBlock will create new stakingId
     };
@@ -673,7 +669,7 @@ describe("MultiStaking", async () => {
     await resetContracts();
     const localConfig = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("101").toString(),
     };
 
@@ -747,7 +743,7 @@ describe("MultiStaking", async () => {
     // Difference in rewardsPerBlock will create new stakingId
     const localConfig = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("50").toString(),
     };
 
@@ -775,7 +771,7 @@ describe("MultiStaking", async () => {
 
     const config = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("150").toString(),
     };
 
@@ -789,7 +785,7 @@ describe("MultiStaking", async () => {
   it("Fails when a non-admin tries to create a pool", async () => {
     const config = {
       stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockWild.getAddress(),
+      rewardsToken: await mockERC721.getAddress(),
       rewardsPerBlock: hre.ethers.parseEther("150").toString(),
     };
 
