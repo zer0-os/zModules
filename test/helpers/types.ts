@@ -12,14 +12,21 @@ export enum TokenType {
   IERC20,
   IERC1155
 }
-export interface StakeConfig {
+export interface PoolConfig {
   stakingToken : string;
   rewardsToken : string;
   rewardsVault : string;
   stakingTokenType : TokenType;
-  rewardsTokenType : TokenType;
   rewardsPerBlock : string;
   minRewardsTime : string; // BigInt or number instead?
+}
+
+export interface Stake {
+  poolId : string;
+  tokenId : string;
+  amount : string;
+  index : string;
+  stakedOrClaimedAt : string;
 }
 
 // Simplify the Ethers V6 contract type

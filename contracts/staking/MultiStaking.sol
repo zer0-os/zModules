@@ -69,32 +69,8 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
     // Mapping to track staking configurations
     mapping(bytes32 poolId => PoolConfig config) public configs;
 
-    // Mapping to track when a token was last accessed by the system
-    // mapping(bytes32 stakeId => uint256 blockNumber) public stakedOrClaimedAt;
-
-    // We track the original staker of the NFT to allow the SNFT to be transferable
-    // and still return the original NFT to the original staker on unstake
-    // mapping(bytes32 stakeId => address staker) public originalStakers;
-
-	// Track the total amount of ERC20 tokens staked in the contract by a user
-	// We use this value for rewards calculation
-	// mapping(address user => uint256 tokens) public totalStakedERC20;
-
     // Every user maps to a StakeProfile struct
     mapping(address user => StakeProfile staker) public stakers;
-
-    // // Does total matter if we track this? maybe?
-    // Need to track this for unstaking a specific stake
-    // mapping(bytes32 stakeId => uint256 amount) public amountPerStakeERC20;
-
-	// Maybe its better to track individual stakes, not the total staked (or do both?)
-	// is both just adding unnecessary on chain data?
-
-	// Track the total amount of fungible assets in an ERC1155 that are staked in 
-	// the contract by a user. We use this value for rewards calculation
-	// mapping(address user => mapping(uint256 index => uint256 amount)) public totalStakedERC1155;
-
-	// TODO need to track ERC721 total? probably not
 
 	constructor(
 		string memory name,
@@ -185,23 +161,6 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 
         StakeProfile storage staker = stakers[msg.sender];
 
-        // Every stake is unique
-        // If they stake the first time, currentStakeNonce is 0
-           // Can;t stake the same NFT again, no longer own it
-           // Can stake again for ERC20s
-		// bytes32 stakeId = keccak256(
-		// 	abi.encodePacked(
-		// 		poolId,
-		// 		tokenId,
-		// 		amount,
-		// 		index,
-        //         staker.currentStakeNonce,
-		// 		msg.sender
-		// 	)
-		// );
-
-        // TODO must include "unstakeAll option"
-
 		// Transfer appropriate token types
 		if(config.stakingTokenType == TokenType.IERC721) {
 			_stakeERC721(poolId, tokenId);
@@ -219,14 +178,13 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
             tokenId: tokenId,
             amount: amount,
             index: index,
-            nonce: staker.currentStakeNonce,
             stakedOrClaimedAt: block.number
         });
 
         // The nth stake is `stake`, then keep `currentStakeNonce` as incremental value
         // means we always can track all the stakes for a user without holding an array
         staker.stakesMap[staker.currentStakeNonce] = _stake;
-        staker.currentStakeNonce += 1;
+        ++staker.currentStakeNonce;
 
         // Mint the owner an SNFT
 		_mint(msg.sender, uint256(keccak256(abi.encode(_stake))));
@@ -252,7 +210,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 	 * @param stakeNonce The integer number identifier of a stake for a user
 	 */
 	function claim(uint256 stakeNonce) external {
-        StakeProfile storage staker = stakers[msg.sender]; // memory instead?
+        StakeProfile storage staker = stakers[msg.sender];
         // Number of stakes is always currentStakeNonce
         // but they are added to the mapping before incrementing currentStakeNonce
         // so have indices of currentStakeNonce - 1
@@ -279,7 +237,6 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 			"Minimum time to claim rewards has not passed"
 		);
 
-        // TODO make sure the user can see rewards available in a pool before they stake
         uint256 accessBlock = _stake.stakedOrClaimedAt;
 		_stake.stakedOrClaimedAt = block.number;
 
@@ -290,6 +247,16 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
         );
         // emit claimed
 	}
+    
+    // TODO make sure the user can see rewards available in a pool before they stake
+    // TODO claimAll, claim all the stakes you have present
+    // TODO unstakeAll, unstake all the unstakes
+
+    // If they have not passed the rewardsTime do we
+        // TODO double check this with neo and joel
+        // A) revert
+        // B) successfully unstake, forfeiting rewards <-- This one, for now
+    // If they have passed the rewardsTime, claim rewards and unstake
 
     /**
      * @notice Unstake
@@ -343,12 +310,6 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
             );
 		}
 
-        // If they have not passed the rewardsTime do we 
-            // A) revert
-            // B) successfully unstake, forfeiting rewards <-- This one, for now
-            // C) successfully unstake, getting a prorated amount of rewards
-        // If they have passed the rewardsTime, claim rewards and unstake
-
         uint256 blockDiff = block.number - _stake.stakedOrClaimedAt;
         if (address(config.rewardsToken) != address(0) && blockDiff > config.minRewardsTime) {
 
@@ -360,6 +321,8 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
                 msg.sender,
                 rewards
             );
+        } else {
+            revert();
         }
 
         // Burn the SNFT
@@ -436,7 +399,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
      */
     function deletePool(
         bytes32 poolId
-    ) public  onlyAdmin onlyExists(poolId) {
+    ) public onlyAdmin onlyExists(poolId) {
         // TODO should we allow this? what if there are still stakers?
         // how will we reconcile all the existing stakes + rewards?
         // have to track every stake in every pool, if so
@@ -480,11 +443,6 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 			"Amount must be non-zero when staking ERC20"
 		);
 
-		// totalStakedERC20[msg.sender] += amount;
-
-        // calc amount owed currently in rewards now
-        // update block
-
 		// Transfer the stakers funds
 		IERC20(configs[poolId].stakingToken).transferFrom(
 			msg.sender,
@@ -499,13 +457,7 @@ contract MultiStaking is ERC721, ABaseStaking, IMultiStaking {
 		uint256 amount,
 		uint256 index
 	) internal {
-		require(
-			IERC1155(configs[poolId].stakingToken).balanceOf(msg.sender, index) != 0,
-			"Must have quantity to stake when staking ERC1155"
-		);
-
-		// totalStakedERC1155[msg.sender][index] += amount;
-
+        // TODO test confirm balance
 		IERC1155(configs[poolId].stakingToken).safeTransferFrom(
 			msg.sender,
 			address(this),

@@ -36,13 +36,12 @@ interface Types {
         uint256 tokenId;
         uint256 amount;
         uint256 index;
-        uint256 nonce;
         uint256 stakedOrClaimedAt;
     }
 
     // Details of all stakes for a single user
     struct StakeProfile {
-        uint256 currentStakeNonce; // unique nonce of most recent stake
+        uint256 currentStakeNonce;
         mapping(uint256 stakeNonce => Stake _stakes) stakesMap;
     }
 }
