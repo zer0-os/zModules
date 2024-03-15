@@ -165,7 +165,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
             tokenId: tokenId,
             amount: amount,
             index: index,
-            stakedOrClaimedAt: block.number
+            stakedOrClaimedAt: block.timestamp
         });
 
         // The nth stake is `stake`, then keep `currentStakeNonce` as incremental value
@@ -200,21 +200,32 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         );
 
 		// Confirm rewards can be claimed
-        uint256 accessBlock = _stake.stakedOrClaimedAt;
+        uint256 accessTime = _stake.stakedOrClaimedAt;
 		require(
-			block.number - accessBlock > config.minRewardsTime,
+			block.timestamp - accessTime > config.minRewardsTime,
 			"Minimum time to claim rewards has not passed"
 		);
 
+        uint256 rewards;
+        if (config.stakingTokenType == TokenType.IERC20) {
+            // TODO we need to reward based on the quantity staked
+            // is this the best way to go about that?
+            // other protocol just does `stake.amount * (endTime - startTime)
+            // but we want to be able to have owners set various rewardsRates,
+            // so rewardsPerBlock is that
+            rewards = config.rewardsPerBlock * _stake.amount * (block.timestamp - accessTime);
+        } else {
+            rewards = config.rewardsPerBlock * (block.timestamp - accessTime);
+        }
+
         // require pool has balance for transfer
-        uint256 rewards = config.rewardsPerBlock * (block.number - accessBlock);
         require(
             config.rewardsToken.balanceOf(address(this)) > rewards,
             "Pool does not have enough rewards"
         );
 
         // update block number before transfer
-		_stake.stakedOrClaimedAt = block.number;
+		_stake.stakedOrClaimedAt = block.timestamp;
 
         config.rewardsToken.transfer(
             msg.sender,
@@ -269,7 +280,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         );
 
         // Mark stake as removed
-        uint256 blockDiff = block.number - _stake.stakedOrClaimedAt;
+        uint256 blockDiff = block.timestamp - _stake.stakedOrClaimedAt;
         _stake.stakedOrClaimedAt = 0;
 
         PoolConfig memory config = configs[_stake.poolId];
@@ -381,8 +392,8 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
         uint256 canClaimAt = _stake.stakedOrClaimedAt + configs[_stake.poolId].minRewardsTime;
 
-        if (block.number < canClaimAt) {
-            return canClaimAt - block.number;
+        if (block.timestamp < canClaimAt) {
+            return canClaimAt - block.timestamp;
         } else {
             return 0;
         }
@@ -467,11 +478,11 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
                 ownerOf(uint256(keccak256(abi.encode(_stake)))) == msg.sender
                 &&
                 // Stake must be able to be claimed
-                block.number - _stake.stakedOrClaimedAt > config.minRewardsTime
+                block.timestamp - _stake.stakedOrClaimedAt > config.minRewardsTime
             ) {
                 
-                rewardsTotal += config.rewardsPerBlock * (block.number - _stake.stakedOrClaimedAt);
-                _stake.stakedOrClaimedAt = block.number;
+                rewardsTotal += config.rewardsPerBlock * (block.timestamp - _stake.stakedOrClaimedAt);
+                _stake.stakedOrClaimedAt = block.timestamp;
             }
             unchecked {
                 ++i;
