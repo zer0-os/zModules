@@ -26,8 +26,9 @@ interface Types {
 		address stakingToken;
 		IERC20 rewardsToken;
 		TokenType stakingTokenType;
+		// TODO st: possibly add timeframe here based on which rewards will generate
 		uint256 rewardsPerBlock;
-		uint256 minRewardsTime;
+		uint256 minRewardsTime; // TODO st: this should be timelock, which prevents from withdrawing or getting rewards
 	}
 
     // Details of a single stake
@@ -42,6 +43,7 @@ interface Types {
     // Details of all stakes for a single user
     struct StakeProfile {
         uint256 currentStakeNonce;
+		// TODO st: remove this and calc the rewards on stake() if previous stakes exist
         mapping(uint256 stakeNonce => Stake _stakes) stakesMap;
     }
 }
