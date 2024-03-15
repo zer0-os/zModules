@@ -99,10 +99,6 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 		PoolConfig[] memory _configs
 	) ERC721(name, symbol) {
 		admin = msg.sender;
-		// with multiple pools and contracts, tokenIds have to be guaranteed unique
-		// so we hash them to create stakeIds and `uint256(stakeId)` is the token we mint
-		// this wouldnt work with depositFor
-		// but we could override depositFor, it is virtual
 
 		uint256 i = 0;
 		uint256 length = _configs.length;
