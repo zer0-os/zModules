@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {IMultiStaking} from "./IMultiStaking.sol";
-import {ABaseStaking} from "./ABaseStaking.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC1155 } from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import { IERC1155Receiver } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { IMultiStaking } from "./IMultiStaking.sol";
+import { ABaseStaking } from "./ABaseStaking.sol";
+
 
 /**
  * @title MultiStaking - A contract for creating multiple staking configurations, or "pools", for ERC721 tokens
@@ -29,8 +30,6 @@ import {ABaseStaking} from "./ABaseStaking.sol";
  * Calling `createPool` will create a `poolId` that is the keccak256 hash of the given `PoolConfig` struct.
  * The `poolId` creates a unique identifier for each instance of a pool, allowing for several to exist for the
  * same ERC721 token. This value is `keccak256(abi.encodePacked(stakingToken, rewardsToken, rewardsPerBlock))`.
- *
- * @dev This contract is upgradeable.
  */
 contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     /**
@@ -122,7 +121,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
 	/**
 	 * @notice Stake an asset of either ERC721, ERC20, or ERC1155 into an existing pool
-	 * 
+	 *
 	 * @param poolId The ID of the pool to stake in
 	 * @param tokenId The ID of the NFT to stake (0 if not ERC721 pool)
 	 * @param amount The amount of tokens to stake (0 if not ERC20 pool)
@@ -180,7 +179,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
 	/**
 	 * @notice Claim rewards from a valid stake
-	 * 
+	 *
 	 * @param stakeNonce The integer number identifier of a stake for a user
 	 */
 	function claim(uint256 stakeNonce) external onlySNFTOwner(stakeNonce) {
@@ -237,12 +236,12 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         // if the user has more than a few stakes
     }
 
-    
+
 
     function getPendingRewardsTotal() external view returns(uint256) {
         return _getPendingRewardsTotal();
     }
-    
+
     // TODO make sure the user can see rewards available in a pool before they stake
     // getPendingRewards(uint256 stakeNonce)
     // getPendingRewardsTotal() => use this in claimAll
@@ -276,14 +275,14 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         );
 
         // Mark stake as removed
-        uint256 blockDiff = block.timestamp - _stake.stakedOrClaimedAt;
+        uint256 timeDiff = block.timestamp - _stake.stakedOrClaimedAt;
         _stake.stakedOrClaimedAt = 0;
 
         PoolConfig memory config = configs[_stake.poolId];
 
         // If rewards are configured and the stake existed for long enough
-        if (address(config.rewardsToken) == address(0) && blockDiff > config.minRewardsTime) {
-            uint256 rewards = config.rewardsPerBlock * blockDiff;
+        if (address(config.rewardsToken) == address(0) && timeDiff > config.minRewardsTime) {
+            uint256 rewards = config.rewardsPerBlock * timeDiff;
 
             config.rewardsToken.transfer(
                 msg.sender,
@@ -455,11 +454,11 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         // so total rewards could be x of token A, and y of token B, and so on
         // how do we show this correctly, instead of just `rewardsTotal` like below
 
-        // Could this be an option? can't create mappings dynamically, but could build out two arrays 
+        // Could this be an option? can't create mappings dynamically, but could build out two arrays
         // to create a "mapping" maybe
         // ERC20 => rewardAmounts
         // IERC20[] memory rewardsTokens;
-        // uint256[] memory rewardsAmounts; 
+        // uint256[] memory rewardsAmounts;
 
         uint256 rewardsTotal;
         Stake memory _stake;
@@ -476,7 +475,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
                 // Stake must be able to be claimed
                 block.timestamp - _stake.stakedOrClaimedAt > config.minRewardsTime
             ) {
-                
+
                 rewardsTotal += config.rewardsPerBlock * (block.timestamp - _stake.stakedOrClaimedAt);
                 _stake.stakedOrClaimedAt = block.timestamp;
             }
@@ -508,8 +507,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
             // 0 - ERC721
             // 1 - ERC20
             // 2 - ERC1155
-			// So 3 or higher is an invalid token type
-			uint256(_config.stakingTokenType) < 3,
+			uint256(_config.stakingTokenType) <= uint256(type(TokenType).max),
 			"Invalid stake or rewards token type"
 		);
 

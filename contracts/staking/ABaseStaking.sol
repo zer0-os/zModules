@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Types} from "./Types.sol";
+import { Types } from "./Types.sol";
+
 
 abstract contract ABaseStaking is Types {
 	// Functions that accept several types of tokens for staking

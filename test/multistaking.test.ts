@@ -66,7 +66,7 @@ describe("MultiStaking", async () => {
       stakerA,
       stakerB,
       notStaker,
-      rewardsVault
+      rewardsVault,
     ] = await hre.ethers.getSigners();
 
     resetContracts = async () => {
@@ -93,7 +93,7 @@ describe("MultiStaking", async () => {
         [
           defaultConfigERC721,
           defaultConfigERC20,
-          defaultConfigERC1155
+          defaultConfigERC1155,
         ]
       ) as MultiStakingV6;
 
@@ -111,7 +111,7 @@ describe("MultiStaking", async () => {
       // Mint NFTs for stakers
       await mockERC721.connect(deployer).mint(stakerA.address, defaultTokenIdA);
       await mockERC721.connect(deployer).mint(stakerB.address, defaultTokenIdB);
-      
+
       // Give mockERC20 to stakers
       await mockERC20.connect(deployer).transfer(
         stakerA.address,
@@ -137,9 +137,9 @@ describe("MultiStaking", async () => {
         hre.ethers.ZeroHash
       );
       await mockERC1155.connect(deployer).safeTransferFrom(
-        deployer.address, 
-        stakerA.address, 
-        1, 
+        deployer.address,
+        stakerA.address,
+        1,
         hre.ethers.parseEther("1000000000"),
         hre.ethers.ZeroHash
       );
@@ -180,7 +180,7 @@ describe("MultiStaking", async () => {
       hre.ethers.parseEther("100"),
       0
     );
-    
+
     // Stake Wild, award Meow
     // expect(await mockERC721.balanceOf(stakerA.address)).to.eq(0);
     expect(await stakingContract.balanceOf(stakerA.address)).to.eq(2);
@@ -195,7 +195,7 @@ describe("MultiStaking", async () => {
       1 // TODO what if they enter index wrong? its not needed in transfer
     );
     const balancesAfter = await mockERC1155.balanceOfBatch([stakerA.address, stakerA.address], [0, 1]);
-    
+
     expect(balancesAfter[0]).to.eq(balancesBefore[0]);
     expect(balancesAfter[1]).to.eq(balancesBefore[1] - hre.ethers.parseEther("1"));
 

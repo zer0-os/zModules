@@ -1,4 +1,4 @@
-import { 
+import {
   MockERC721,
   MockERC20,
   MockERC1155,
@@ -6,7 +6,7 @@ import {
 
 import {
   PoolConfig,
-  TokenType
+  TokenType,
 } from "./types";
 
 import { ethers } from "hardhat";
@@ -24,7 +24,7 @@ export const createDefaultConfigs = async (
     stakingTokenType: TokenType.IERC721,
     rewardsPerBlock: ethers.parseEther("100").toString(),
     minRewardsTime: DEFAULT_LOCK_TIME,
-  }
+  };
 
   const erc20Config : PoolConfig = {
     stakingToken: await erc20.getAddress(),
@@ -32,7 +32,7 @@ export const createDefaultConfigs = async (
     stakingTokenType: TokenType.IERC20,
     rewardsPerBlock: ethers.parseEther("100").toString(),
     minRewardsTime: DEFAULT_LOCK_TIME,
-  }
+  };
 
   const erc1155Config : PoolConfig = {
     stakingToken: await erc1155.getAddress(),
@@ -40,7 +40,7 @@ export const createDefaultConfigs = async (
     stakingTokenType: TokenType.IERC1155,
     rewardsPerBlock: ethers.parseEther("100").toString(),
     minRewardsTime: DEFAULT_LOCK_TIME,
-  }
+  };
 
   return [ erc721Config, erc20Config, erc1155Config ];
 };

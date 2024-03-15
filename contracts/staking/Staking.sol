@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC721, ERC721Wrapper} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Wrapper.sol";
-import {IStaking} from "./IStaking.sol";
-import {ABaseStaking} from "./ABaseStaking.sol";
-import {Types} from "./Types.sol";
-import {AnyToken} from "./AnyToken.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC721, ERC721Wrapper } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Wrapper.sol";
+import { IStaking } from "./IStaking.sol";
+import { ABaseStaking } from "./ABaseStaking.sol";
+import { Types } from "./Types.sol";
+import { AnyToken } from "./AnyToken.sol";
+
 
 contract Staking is
     ERC721Wrapper
