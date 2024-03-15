@@ -200,17 +200,25 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         );
 
 		// Confirm rewards can be claimed
+        uint256 accessBlock = _stake.stakedOrClaimedAt;
 		require(
-			block.number - _stake.stakedOrClaimedAt > config.minRewardsTime,
+			block.number - accessBlock > config.minRewardsTime,
 			"Minimum time to claim rewards has not passed"
 		);
 
-        uint256 accessBlock = _stake.stakedOrClaimedAt;
+        // require pool has balance for transfer
+        uint256 rewards = config.rewardsPerBlock * (block.number - accessBlock);
+        require(
+            config.rewardsToken.balanceOf(address(this)) > rewards,
+            "Pool does not have enough rewards"
+        );
+
+        // update block number before transfer
 		_stake.stakedOrClaimedAt = block.number;
 
         config.rewardsToken.transfer(
             msg.sender,
-            config.rewardsPerBlock * (block.number - accessBlock)
+            rewards
         );
         // emit claimed
 	}
@@ -361,10 +369,9 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         return configs[poolId].rewardsToken;
     }
 
-    // View the amount of rewards remaining to be distributed to staking users
+    // View the amount of rewards in a pool remaining to be distributed to staking users
     function getAvailableRewardsForPool(bytes32 poolId) public view returns (uint256) {
-        PoolConfig memory config = configs[poolId];
-        return config.rewardsToken.balanceOf(address(this));
+        return configs[poolId].rewardsToken.balanceOf(address(this));
     }
 
     // Show the remaining amount of time before a staker can claim rewards
@@ -444,8 +451,8 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         // Could this be an option? can't create mappings dynamically, but could build out two arrays 
         // to create a "mapping" maybe
         // ERC20 => rewardAmounts
-        IERC20[] memory rewardsTokens;
-        uint256[] memory rewardsAmounts; 
+        // IERC20[] memory rewardsTokens;
+        // uint256[] memory rewardsAmounts; 
 
         uint256 rewardsTotal;
         Stake memory _stake;

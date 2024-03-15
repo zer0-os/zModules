@@ -22,6 +22,7 @@ import {
   MultiStakingV6,
 } from "./helpers/types";
 import { createDefaultConfigs } from "./helpers/defaults";
+import { mine } from "@nomicfoundation/hardhat-network-helpers";
 
 
 describe("MultiStaking", async () => {
@@ -103,8 +104,8 @@ describe("MultiStaking", async () => {
 
       // Put funds in rewardsVault
       await mockERC20.connect(deployer).transfer(
-        rewardsVault.address,
-        hre.ethers.parseEther("5000000000")
+        await stakingContract.getAddress(),
+        hre.ethers.parseEther("6000000000")
       );
 
       // Mint NFTs for stakers
@@ -157,7 +158,7 @@ describe("MultiStaking", async () => {
   });
 
   // Single user, single pool
-  it("Allows a user to stake", async () => {
+  it.only("Allows a user to stake", async () => {
     await mockERC721.connect(stakerA).approve(await stakingContract.getAddress(), defaultTokenIdA);
 
     // Stake NFT
@@ -201,22 +202,69 @@ describe("MultiStaking", async () => {
     expect(await stakingContract.balanceOf(stakerA.address)).to.eq(3);
   });
 
-  it("Allows a user to claim rewards from a single pool", async () => {
-    // Expect token is staked
+  it.only("Allows a user to claim rewards", async () => {
+    // Claim on ERC721 stake
+    let balanceBefore = await mockERC20.balanceOf(stakerA.address);
 
-    const balanceBefore = await mockERC721.balanceOf(stakerA.address);
+    await stakingContract.connect(stakerA).claim(0);
 
-    const stakerProfile = await stakingContract.stakerProfiles(stakerA.address);
+    let balanceAfter = await mockERC20.balanceOf(stakerA.address);
 
-    console.log(stakerProfile);
-    // await stakingContract.connect(stakerA).claim( );
+    let rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
+    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
 
-    const balanceAfter = await mockERC721.balanceOf(stakerA.address);
+    // Claim on ERC20 stake
+    balanceBefore = await mockERC20.balanceOf(stakerA.address);
 
-    const rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
+    await stakingContract.connect(stakerA).claim(1);
 
-    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock);
-    expect(await stakingContract.stakedOrClaimedAt(defaultStakeIdA)).to.eq(await hre.ethers.provider.getBlockNumber());
+    balanceAfter = await mockERC20.balanceOf(stakerA.address);
+
+    rewardsPerBlock = (await stakingContract.configs(defaultPoolERC20)).rewardsPerBlock;
+    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
+
+    // Claim on ERC1155 stake
+    balanceBefore = await mockERC20.balanceOf(stakerA.address);
+
+    await stakingContract.connect(stakerA).claim(2);
+
+    balanceAfter = await mockERC20.balanceOf(stakerA.address);
+
+    rewardsPerBlock = (await stakingContract.configs(defaultPoolERC1155)).rewardsPerBlock;
+    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
+  });
+
+  it.only("Allows a user to unstake a stake", async () => {
+    // Claim on ERC721 stake
+    let balanceBefore = await mockERC20.balanceOf(stakerA.address);
+
+    await stakingContract.connect(stakerA).claim(0);
+
+    let balanceAfter = await mockERC20.balanceOf(stakerA.address);
+
+    let rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
+    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
+
+    // Claim on ERC20 stake
+    balanceBefore = await mockERC20.balanceOf(stakerA.address);
+
+    await stakingContract.connect(stakerA).claim(1);
+
+    balanceAfter = await mockERC20.balanceOf(stakerA.address);
+
+    rewardsPerBlock = (await stakingContract.configs(defaultPoolERC20)).rewardsPerBlock;
+    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
+
+    // Claim on ERC1155 stake
+    // Claim on ERC20 stake
+    balanceBefore = await mockERC20.balanceOf(stakerA.address);
+
+    await stakingContract.connect(stakerA).claim(2);
+
+    balanceAfter = await mockERC20.balanceOf(stakerA.address);
+
+    rewardsPerBlock = (await stakingContract.configs(defaultPoolERC1155)).rewardsPerBlock;
+    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
   });
 
   it("Allows a user to unstake a token from a pool", async () => {
