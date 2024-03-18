@@ -127,14 +127,14 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 	 *
 	 * @param poolId The ID of the pool to stake in
 	 * @param tokenId The ID of the NFT to stake (0 if not ERC721 pool)
-	 * @param amount The amount of tokens to stake (0 if not ERC20 pool)
+	 * @param amount The amount of tokens to stake (0 if not ERC20 pool) TODO st: should be 1 instead and we can use the same formula
 	 * @param index The index of the asset to stake (0 if not ERC1155 pool)
 	 */
 	function stake(
 		bytes32 poolId,
 		uint256 tokenId,
 		uint256 amount,
-		uint256 index // TODO st: what is it and why do we need this?
+		uint256 index
     ) external onlyExists(poolId) {
 		PoolConfig memory config = pools[poolId];
 
@@ -176,8 +176,6 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         // Mint the owner an SNFT
 		_mint(msg.sender, uint256(keccak256(abi.encode(_stake))));
 
-        // why would is this unreachable?
-        // TODO st: what ^?
 		emit Staked(_stake, msg.sender);
     }
 
@@ -205,29 +203,31 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 			"Minimum time to claim rewards has not passed"
 		);
 
-        uint256 rewards;
-        if (config.stakingTokenType == TokenType.IERC20) {
-            // TODO we need to reward based on the quantity staked
-            // is this the best way to go about that?
-            // other protocol just does `stake.amount * (endTime - startTime)
-            // but we want to be able to have owners set various rewardsRates,
-            // so rewardsPerBlock is that
-            // TODO st: one option would be `rewards = (block.timestamp - stakedAt) / timeframe (set by owner, e.g. 7 days) * weight (set by owner) * _stake.amount`
-            rewards = config.rewardWeight * _stake.amount * (block.timestamp - accessTime);
-        } else {
-            // TODO st: fix this formula as well
-            rewards = config.rewardWeight * (block.timestamp - accessTime);
-        }
+        // TODO st: we need to make sure that amount is passed as 1 and not zero,
+        //      this way we don't need any if statements and can use the same function
+        uint256 rewards = _calculateRewards(
+            block.timestamp - accessTime,
+            config.rewardWeight,
+            config.rewardPeriod,
+            _stake.amount
+        );
 
         // require pool has balance for transfer
         // TODO st: [REMOVE] I believe this is not necessary. we are just pulling the revert forward by 2 operations
         //  the transfer below will fail if the pool does not have enough balance
+        // TODO st: this should possibly be a check of the funding of the specific pool!
+        //  we may have to create balances for each pool on this contract to not spend someone else's token,
+        //  unless we would let the users know that they should not share this contract between different organizations!
+        //  it should be one contract per org. otherwise, if several pools use the same reward token,
+        //  contract would automatically fund from somebody elses token reserves when their pool runs out.
+        //  If the latter is a choice, this is not needed, since it will fail on transfer later.
         require(
             config.rewardsToken.balanceOf(address(this)) > rewards,
             "Pool does not have enough rewards"
         );
 
         // update block timestamp before transfer
+        // TODO st: this is set in memory, not storage, fix !!!
 		_stake.stakedOrClaimedAt = block.timestamp;
 
         config.rewardsToken.transfer(
@@ -322,6 +322,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
         // If rewards are configured and the stake existed for long enough
         if (address(config.rewardsToken) != address(0) && timeDiff > config.minRewardsTime) {
+            // TODO st: why is this different than the formula in claim? should it be the same formula?
             uint256 rewards = config.rewardWeight * timeDiff;
 
             config.rewardsToken.transfer(
@@ -340,19 +341,20 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     function calculateRewards(
         uint256 timePassed,
         uint256 poolWeight,
-        uint256 poolRewardTimeframe,
+        uint256 rewardPeriod,
         uint256 stakeAmount
     ) external view returns (uint256) {
-        return _calculateRewards(timePassed, poolWeight, poolRewardTimeframe, stakeAmount);
+        return _calculateRewards(timePassed, poolWeight, rewardPeriod, stakeAmount);
     }
 
+    // TODO st: make this formula perfect, connect it to all the logic and swap this one.
     function _calculateRewards(
         uint256 timePassed,
         uint256 poolWeight,
-        uint256 poolRewardTimeframe,
+        uint256 rewardPeriod,
         uint256 stakeAmount
     ) internal view returns (uint256) {
-        return poolWeight * stakeAmount * timePassed / (poolRewardTimeframe * 10**19);
+        return poolWeight * stakeAmount * timePassed / (rewardPeriod * 10**19);
     }
 
     /**
@@ -369,7 +371,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
      * @notice Get the staking token for a given pool
      * @param poolId The pool to check
      */
-    // TODO st: adapt this to the new timestamp based rewards and rename
+    // TODO st: [REMOVE] `pools` is already public, so it has an automatic getter upon compilation, so this seems unnecessary
     function getRewardsPerBlockForPool(
         bytes32 poolId
     ) public view returns (uint256) {
@@ -380,7 +382,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
      * @notice Get the staking token for a given pool
      * @param poolId The pool to check
      */
-    // TODO st: `pools` is already public, so it has an automatic getter upon compilation, so this seems unnecessary
+    // TODO st: [REMOVE] `pools` is already public, so it has an automatic getter upon compilation, so this seems unnecessary
     function getStakingTokenForPool(
         bytes32 poolId
     ) public view returns (address, TokenType) {
@@ -391,7 +393,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
      * @notice Get the rewards token for a given pool
      * @param poolId The pool to check
      */
-    // TODO st: `pools` is already public, so it has an automatic getter upon compilation, so this seems unnecessary
+    // TODO st: [REMOVE] `pools` is already public, so it has an automatic getter upon compilation, so this seems unnecessary
     function getRewardsTokenForPool(
         bytes32 poolId
     ) public view returns (IERC20) {
@@ -399,7 +401,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     }
 
     // View the amount of rewards in a pool remaining to be distributed to staking users
-    function getAvailableRewardsForPool(bytes32 poolId) public view returns (uint256) {
+    function getAvailableRewardsForPool(bytes32 poolId) external view returns (uint256) {
         return pools[poolId].rewardsToken.balanceOf(address(this));
     }
 
