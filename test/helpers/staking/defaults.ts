@@ -2,7 +2,7 @@ import {
   MockERC721,
   MockERC20,
   MockERC1155,
-} from "../../typechain";
+} from "../../../typechain";
 
 import {
   PoolConfig,
@@ -10,6 +10,7 @@ import {
 } from "./types";
 
 import { ethers } from "hardhat";
+import { dayInSeconds } from "./constants";
 
 export const DEFAULT_LOCK_TIME = BigInt(1).toString();
 
@@ -22,7 +23,8 @@ export const createDefaultConfigs = async (
     stakingToken: await erc721.getAddress(),
     rewardsToken: await erc20.getAddress(),
     stakingTokenType: TokenType.IERC721,
-    rewardWeight: ethers.parseEther("100").toString(),
+    rewardWeight: ethers.parseEther("0.00005"),
+    rewardPeriod: dayInSeconds,
     minRewardsTime: DEFAULT_LOCK_TIME,
   };
 
@@ -30,7 +32,8 @@ export const createDefaultConfigs = async (
     stakingToken: await erc20.getAddress(),
     rewardsToken: await erc20.getAddress(),
     stakingTokenType: TokenType.IERC20,
-    rewardWeight: ethers.parseEther("100").toString(),
+    rewardWeight: ethers.parseEther("0.005"),
+    rewardPeriod: dayInSeconds,
     minRewardsTime: DEFAULT_LOCK_TIME,
   };
 
@@ -38,7 +41,8 @@ export const createDefaultConfigs = async (
     stakingToken: await erc1155.getAddress(),
     rewardsToken: await erc20.getAddress(),
     stakingTokenType: TokenType.IERC1155,
-    rewardWeight: ethers.parseEther("100").toString(),
+    rewardWeight: ethers.parseEther("0.005"),
+    rewardPeriod: dayInSeconds,
     minRewardsTime: DEFAULT_LOCK_TIME,
   };
 

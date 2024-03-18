@@ -5,7 +5,7 @@ import {
 import {
   Staking,
   MultiStaking,
-} from "../../typechain";
+} from "../../../typechain";
 
 export enum TokenType {
   IERC721,
@@ -16,7 +16,8 @@ export interface PoolConfig {
   stakingToken : string;
   rewardsToken : string;
   stakingTokenType : TokenType;
-  rewardWeight : string;
+  rewardWeight : bigint;
+  rewardPeriod : bigint;
   minRewardsTime : string; // BigInt or number instead?
 }
 

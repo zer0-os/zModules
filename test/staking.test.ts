@@ -10,7 +10,7 @@ import {
 import { mine } from "@nomicfoundation/hardhat-network-helpers";
 import {
   StakingConfig,
-} from "./helpers/types";
+} from "./helpers/staking/types";
 
 describe("Staking", () => {
   let deployer : SignerWithAddress;
