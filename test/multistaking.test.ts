@@ -1,5 +1,5 @@
 import * as hre from "hardhat";
-import { ethers } from "ethers";
+import { ethers, parseEther } from "ethers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
@@ -147,8 +147,14 @@ describe("MultiStaking", async () => {
       // Approve the staking contract for stakers.
       await mockERC721.connect(stakerA).approve(await stakingContract.getAddress(), defaultTokenIdA);
       await mockERC721.connect(stakerB).approve(await stakingContract.getAddress(), defaultTokenIdB);
-      await mockERC20.connect(stakerA).approve(await stakingContract.getAddress(),  hre.ethers.parseEther("1000000000").toString());
-      await mockERC20.connect(stakerB).approve(await stakingContract.getAddress(), hre.ethers.parseEther("1000000000").toString());
+      await mockERC20.connect(stakerA).approve(
+        await stakingContract.getAddress(),
+        hre.ethers.parseEther("1000000000").toString()
+      );
+      await mockERC20.connect(stakerB).approve(
+        await stakingContract.getAddress(),
+        hre.ethers.parseEther("1000000000").toString()
+      );
       await mockERC1155.connect(stakerA).setApprovalForAll(await stakingContract.getAddress(), true);
       await mockERC1155.connect(stakerB).setApprovalForAll(await stakingContract.getAddress(), true);
     };
@@ -157,8 +163,30 @@ describe("MultiStaking", async () => {
     await resetContracts();
   });
 
+  describe("Reward calculation", () => {
+    it.only("should calculate rewards correctly", async () => {
+      const weekInSecs = 604800n;
+      const timePassed = 3n * weekInSecs;
+      const poolWeight = parseEther("0.00000000005");
+      const poolRewardTimeFrame = weekInSecs;
+      const stakeAmount = parseEther("13");
+
+      // calced outside
+      const rewardsRef = 15n * (10n ** 18n);
+
+      const rewards = await stakingContract.calculateRewards(
+        timePassed,
+        poolWeight,
+        poolRewardTimeFrame,
+        stakeAmount
+      );
+
+      expect(rewards).to.eq(rewardsRef);
+    });
+  });
+
   // Single user, single pool
-  it.only("Allows a user to stake", async () => {
+  it("Allows a user to stake", async () => {
     await mockERC721.connect(stakerA).approve(await stakingContract.getAddress(), defaultTokenIdA);
 
     // Stake NFT
@@ -202,7 +230,7 @@ describe("MultiStaking", async () => {
     expect(await stakingContract.balanceOf(stakerA.address)).to.eq(3);
   });
 
-  it.only("Allows a user to claim rewards", async () => {
+  it("Allows a user to claim rewards", async () => {
     // Claim on ERC721 stake
     let balanceBefore = await mockERC20.balanceOf(stakerA.address);
 
@@ -234,7 +262,7 @@ describe("MultiStaking", async () => {
     expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
   });
 
-  it.only("Allows a user to unstake a stake", async () => {
+  it("Allows a user to unstake a stake", async () => {
     // Claim on ERC721 stake
     let balanceBefore = await mockERC20.balanceOf(stakerA.address);
 
@@ -399,8 +427,8 @@ describe("MultiStaking", async () => {
     const balanceAfterB = await mockERC721.balanceOf(stakerB.address);
 
     // Expect both stakers to have an SNFT
-    expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultConfigERC721.rewardsPerBlock) * 2n);
-    expect(balanceAfterB).to.eq(balanceBeforeB + BigInt(defaultConfigERC721.rewardsPerBlock) * 2n);
+    expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultConfigERC721.rewardWeight) * 2n);
+    expect(balanceAfterB).to.eq(balanceBeforeB + BigInt(defaultConfigERC721.rewardWeight) * 2n);
 
     // Expect stakedOrClaimedAt to have been updated
     expect(await stakingContract.stakedOrClaimedAt(defaultStakeIdA)).to.eq(txA.blockNumber);
@@ -421,8 +449,8 @@ describe("MultiStaking", async () => {
     const balanceAfterB = await mockERC721.balanceOf(stakerB.address);
 
     // Expect both stakers to have an SNFT
-    expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultConfigERC721.rewardsPerBlock) * 2n);
-    expect(balanceAfterB).to.eq(balanceBeforeB + BigInt(defaultConfigERC721.rewardsPerBlock) * 2n);
+    expect(balanceAfterA).to.eq(balanceBeforeA + BigInt(defaultConfigERC721.rewardWeight) * 2n);
+    expect(balanceAfterB).to.eq(balanceBeforeB + BigInt(defaultConfigERC721.rewardWeight) * 2n);
 
     // Expect the stakingContract to have 0 original NFTs
     expect(await mockERC721.balanceOf(stakerA.address)).to.eq(1);

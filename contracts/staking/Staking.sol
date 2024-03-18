@@ -118,7 +118,7 @@ contract Staking is
         // Transfer funds
         IERC20(config.rewardsToken).transfer(
             msg.sender,
-            config.rewardsPerBlock * (block.number - accessBlock)
+            config.rewardWeight * (block.number - accessBlock)
         );
     }
 
@@ -136,7 +136,7 @@ contract Staking is
         // like 1.1x or 1.2x
         IERC20(config.rewardsToken).transfer(
             msg.sender,
-            config.rewardsPerBlock * (block.number - accessBlock)
+            config.rewardWeight * (block.number - accessBlock)
         );
         // emit
     }
@@ -144,7 +144,7 @@ contract Staking is
     // Show the amount of rewards accrued for a given token
     function pendingRewards(uint256 tokenId) public view returns (uint256) {
         return
-            config.rewardsPerBlock *
+            config.rewardWeight *
             (block.number - stakedOrClaimedAt[tokenId]);
     }
 

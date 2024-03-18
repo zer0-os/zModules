@@ -213,10 +213,10 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
             // but we want to be able to have owners set various rewardsRates,
             // so rewardsPerBlock is that
             // TODO st: one option would be `rewards = (block.timestamp - stakedAt) / timeframe (set by owner, e.g. 7 days) * weight (set by owner) * _stake.amount`
-            rewards = config.rewardsPerBlock * _stake.amount * (block.timestamp - accessTime);
+            rewards = config.rewardWeight * _stake.amount * (block.timestamp - accessTime);
         } else {
             // TODO st: fix this formula as well
-            rewards = config.rewardsPerBlock * (block.timestamp - accessTime);
+            rewards = config.rewardWeight * (block.timestamp - accessTime);
         }
 
         // require pool has balance for transfer
@@ -322,7 +322,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
         // If rewards are configured and the stake existed for long enough
         if (address(config.rewardsToken) != address(0) && timeDiff > config.minRewardsTime) {
-            uint256 rewards = config.rewardsPerBlock * timeDiff;
+            uint256 rewards = config.rewardWeight * timeDiff;
 
             config.rewardsToken.transfer(
                 msg.sender,
@@ -335,6 +335,24 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         }
 
         // TODO st: emit unstaked
+    }
+
+    function calculateRewards(
+        uint256 timePassed,
+        uint256 poolWeight,
+        uint256 poolRewardTimeframe,
+        uint256 stakeAmount
+    ) external view returns (uint256) {
+        return _calculateRewards(timePassed, poolWeight, poolRewardTimeframe, stakeAmount);
+    }
+
+    function _calculateRewards(
+        uint256 timePassed,
+        uint256 poolWeight,
+        uint256 poolRewardTimeframe,
+        uint256 stakeAmount
+    ) internal view returns (uint256) {
+        return poolWeight * stakeAmount * timePassed / (poolRewardTimeframe * 10**19);
     }
 
     /**
@@ -355,7 +373,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     function getRewardsPerBlockForPool(
         bytes32 poolId
     ) public view returns (uint256) {
-        return pools[poolId].rewardsPerBlock;
+        return pools[poolId].rewardWeight;
     }
 
     /**
@@ -490,7 +508,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
             ) {
 
                 // TODO st: this should use an already written internal function
-                rewardsTotal += config.rewardsPerBlock * (block.timestamp - _stake.stakedOrClaimedAt);
+                rewardsTotal += config.rewardWeight * (block.timestamp - _stake.stakedOrClaimedAt);
                 _stake.stakedOrClaimedAt = block.timestamp;
             }
             unchecked {
@@ -513,7 +531,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 		// Rewards token can optionally be 0 if there are no rewards in a pool
         if (address(_config.rewardsToken) != address(0)) {
             require(
-                _config.rewardsPerBlock != 0,
+                _config.rewardWeight != 0,
                 "Invalid rewards configuration"
             );
         }
@@ -547,7 +565,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
                 abi.encodePacked(
                     _config.stakingToken,
                     _config.rewardsToken,
-                    _config.rewardsPerBlock,
+                    _config.rewardWeight,
 					_config.minRewardsTime
                 )
             );

@@ -22,7 +22,7 @@ export const createDefaultConfigs = async (
     stakingToken: await erc721.getAddress(),
     rewardsToken: await erc20.getAddress(),
     stakingTokenType: TokenType.IERC721,
-    rewardsPerBlock: ethers.parseEther("100").toString(),
+    rewardWeight: ethers.parseEther("100").toString(),
     minRewardsTime: DEFAULT_LOCK_TIME,
   };
 
@@ -30,7 +30,7 @@ export const createDefaultConfigs = async (
     stakingToken: await erc20.getAddress(),
     rewardsToken: await erc20.getAddress(),
     stakingTokenType: TokenType.IERC20,
-    rewardsPerBlock: ethers.parseEther("100").toString(),
+    rewardWeight: ethers.parseEther("100").toString(),
     minRewardsTime: DEFAULT_LOCK_TIME,
   };
 
@@ -38,7 +38,7 @@ export const createDefaultConfigs = async (
     stakingToken: await erc1155.getAddress(),
     rewardsToken: await erc20.getAddress(),
     stakingTokenType: TokenType.IERC1155,
-    rewardsPerBlock: ethers.parseEther("100").toString(),
+    rewardWeight: ethers.parseEther("100").toString(),
     minRewardsTime: DEFAULT_LOCK_TIME,
   };
 

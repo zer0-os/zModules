@@ -16,7 +16,7 @@ export interface PoolConfig {
   stakingToken : string;
   rewardsToken : string;
   stakingTokenType : TokenType;
-  rewardsPerBlock : string;
+  rewardWeight : string;
   minRewardsTime : string; // BigInt or number instead?
 }
 

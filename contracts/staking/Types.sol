@@ -13,6 +13,7 @@ interface Types {
 		IERC20,
 		IERC1155
 	}
+
 	/**
 	 * @notice The necessary details for a single staking pool comfiguration
 	 * @param stakingToken The token that is being staked
@@ -27,7 +28,8 @@ interface Types {
 		IERC20 rewardsToken;
 		TokenType stakingTokenType;
 		// TODO st: possibly add timeframe here based on which rewards will generate
-		uint256 rewardsPerBlock;
+		//	HAS TO BE < 1! How do we denominate this one then? 10^18?
+		uint256 rewardWeight;
 		uint256 minRewardsTime; // TODO st: this should be timelock, which prevents from withdrawing or getting rewards
 	}
 
