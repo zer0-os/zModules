@@ -2,6 +2,7 @@ import * as hre from "hardhat";
 import { ethers, parseEther } from "ethers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import {
   MockERC1155,
@@ -16,13 +17,14 @@ import {
   ONLY_SNFT_OWNER,
   ONLY_ADMIN,
   INVALID_POOL,
-} from "./helpers/errors";
+} from "./helpers/staking/errors";
 import {
   PoolConfig,
   MultiStakingV6,
-} from "./helpers/types";
-import { createDefaultConfigs } from "./helpers/defaults";
-import { mine } from "@nomicfoundation/hardhat-network-helpers";
+} from "./helpers/staking/types";
+import { createDefaultConfigs } from "./helpers/staking/defaults";
+import { calcRewardsAmount } from "./helpers/staking/rewards";
+import { dayInSeconds } from "./helpers/staking/constants";
 
 
 describe("MultiStaking", async () => {
@@ -49,6 +51,11 @@ describe("MultiStaking", async () => {
 
   const defaultTokenIdA  = 1;
   const defaultTokenIdB  = 2;
+
+  const stakeAmount = parseEther("137");
+  let stakeTimestamp721 : number;
+  let stakeTimestamp20 : number;
+  let stakeTimestamp1155 : number;
 
   // TODO move to helper
   // would require params, don't really want that necessarily
@@ -105,7 +112,7 @@ describe("MultiStaking", async () => {
       // Put funds in rewardsVault
       await mockERC20.connect(deployer).transfer(
         await stakingContract.getAddress(),
-        hre.ethers.parseEther("6000000000")
+        hre.ethers.parseEther("6000000000000")
       );
 
       // Mint NFTs for stakers
@@ -164,7 +171,7 @@ describe("MultiStaking", async () => {
   });
 
   describe("Reward calculation", () => {
-    it.only("should calculate rewards correctly", async () => {
+    it("should calculate rewards correctly", async () => {
       const weekInSecs = 604800n;
       const timePassed = 3n * weekInSecs;
       const poolWeight = parseEther("0.00000000005");
@@ -186,16 +193,17 @@ describe("MultiStaking", async () => {
   });
 
   // Single user, single pool
-  it("Allows a user to stake", async () => {
+  it.only("Allows a user to stake", async () => {
     await mockERC721.connect(stakerA).approve(await stakingContract.getAddress(), defaultTokenIdA);
 
     // Stake NFT
     await stakingContract.connect(stakerA).stake(
       defaultPoolERC721,
       defaultTokenIdA,
-      0,
+      1,
       0
     );
+    stakeTimestamp721 = await time.latest();
 
     // User has staked their NFT and gained an SNFT
     expect(await mockERC721.balanceOf(stakerA.address)).to.eq(0);
@@ -205,9 +213,10 @@ describe("MultiStaking", async () => {
     await stakingContract.connect(stakerA).stake(
       defaultPoolERC20,
       0,
-      hre.ethers.parseEther("100"),
+      stakeAmount,
       0
     );
+    stakeTimestamp20 = await time.latest();
 
     // Stake Wild, award Meow
     // expect(await mockERC721.balanceOf(stakerA.address)).to.eq(0);
@@ -222,6 +231,8 @@ describe("MultiStaking", async () => {
       hre.ethers.parseEther("1"),
       1 // TODO what if they enter index wrong? its not needed in transfer
     );
+    stakeTimestamp1155 = await time.latest();
+
     const balancesAfter = await mockERC1155.balanceOfBatch([stakerA.address, stakerA.address], [0, 1]);
 
     expect(balancesAfter[0]).to.eq(balancesBefore[0]);
@@ -230,16 +241,24 @@ describe("MultiStaking", async () => {
     expect(await stakingContract.balanceOf(stakerA.address)).to.eq(3);
   });
 
-  it("Allows a user to claim rewards", async () => {
+  it.only("Allows a user to claim rewards", async () => {
     // Claim on ERC721 stake
     let balanceBefore = await mockERC20.balanceOf(stakerA.address);
 
+    await time.increaseTo(BigInt(stakeTimestamp721) + 7n * dayInSeconds);
+    const latestTime = await time.latest();
     await stakingContract.connect(stakerA).claim(0);
 
     let balanceAfter = await mockERC20.balanceOf(stakerA.address);
 
-    let rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
-    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
+    let rewardAmountRef = calcRewardsAmount({
+      timePassed: BigInt(latestTime - stakeTimestamp721),
+      rewardWeight: defaultConfigERC721.rewardWeight,
+      rewardPeriod: defaultConfigERC721.rewardPeriod,
+      stakeAmount: 1n,
+    });
+    // TODO st: doesn't work now, possibly wait for formula to be ready to not waste time now
+    expect(balanceAfter).to.eq(balanceBefore + rewardAmountRef);
 
     // Claim on ERC20 stake
     balanceBefore = await mockERC20.balanceOf(stakerA.address);
@@ -248,8 +267,8 @@ describe("MultiStaking", async () => {
 
     balanceAfter = await mockERC20.balanceOf(stakerA.address);
 
-    rewardsPerBlock = (await stakingContract.configs(defaultPoolERC20)).rewardsPerBlock;
-    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
+    rewardAmountRef = (await stakingContract.pools(defaultPoolERC20)).rewardWeight;
+    expect(balanceAfter).to.eq(balanceBefore + rewardAmountRef * 3n);
 
     // Claim on ERC1155 stake
     balanceBefore = await mockERC20.balanceOf(stakerA.address);
@@ -258,8 +277,8 @@ describe("MultiStaking", async () => {
 
     balanceAfter = await mockERC20.balanceOf(stakerA.address);
 
-    rewardsPerBlock = (await stakingContract.configs(defaultPoolERC1155)).rewardsPerBlock;
-    expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
+    rewardAmountRef = (await stakingContract.pools(defaultPoolERC1155)).rewardWeight;
+    expect(balanceAfter).to.eq(balanceBefore + rewardAmountRef * 3n);
   });
 
   it("Allows a user to unstake a stake", async () => {
@@ -270,7 +289,7 @@ describe("MultiStaking", async () => {
 
     let balanceAfter = await mockERC20.balanceOf(stakerA.address);
 
-    let rewardsPerBlock = (await stakingContract.configs(defaultPoolERC721)).rewardsPerBlock;
+    let rewardsPerBlock = (await stakingContract.pools(defaultPoolERC721)).rewardWeight;
     expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
 
     // Claim on ERC20 stake
@@ -280,7 +299,7 @@ describe("MultiStaking", async () => {
 
     balanceAfter = await mockERC20.balanceOf(stakerA.address);
 
-    rewardsPerBlock = (await stakingContract.configs(defaultPoolERC20)).rewardsPerBlock;
+    rewardsPerBlock = (await stakingContract.pools(defaultPoolERC20)).rewardWeight;
     expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
 
     // Claim on ERC1155 stake
@@ -291,7 +310,7 @@ describe("MultiStaking", async () => {
 
     balanceAfter = await mockERC20.balanceOf(stakerA.address);
 
-    rewardsPerBlock = (await stakingContract.configs(defaultPoolERC1155)).rewardsPerBlock;
+    rewardsPerBlock = (await stakingContract.pools(defaultPoolERC1155)).rewardWeight;
     expect(balanceAfter).to.eq(balanceBefore + rewardsPerBlock * 3n);
   });
 
