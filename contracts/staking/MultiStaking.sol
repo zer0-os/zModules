@@ -211,6 +211,8 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
             config.rewardPeriod,
             _stake.amount
         );
+        // TODO st: [REMOVE] after testing !!!!
+        require(rewards > 0, "ZERO REWARDS!!!");
 
         // require pool has balance for transfer
         // TODO st: [REMOVE] I believe this is not necessary. we are just pulling the revert forward by 2 operations
@@ -354,7 +356,8 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         uint256 rewardPeriod,
         uint256 stakeAmount
     ) internal view returns (uint256) {
-        return poolWeight * stakeAmount * timePassed / (rewardPeriod * 10**19);
+        // TODO st: this formula is bad and is a placeholder for now !!
+        return poolWeight * stakeAmount * timePassed / rewardPeriod;
     }
 
     /**
