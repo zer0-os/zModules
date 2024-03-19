@@ -362,7 +362,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     	require(rewardPeriod > 0, "Reward period must be greater than zero.");
     
     	/// Calculate stake ratio
-    	uint256 stakeRatio = stakeAmount * 1e18 / totalPoolStake; // 10**18 for precision
+    	uint256 stakeRatio = stakeAmount * 10**18 / totalPoolStake; // 10**18 for precision
     
     	/// Adjust reward by pool weight and stake ratio, then by the base reward
     	uint256 adjustedReward = baseReward * poolWeight * stakeRatio / 10**18; // Adjust back after precision
