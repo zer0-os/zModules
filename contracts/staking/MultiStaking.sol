@@ -11,8 +11,9 @@ import { ABaseStaking } from "./ABaseStaking.sol";
 
 
 /**
- * @title MultiStaking - A contract for creating multiple staking configurations, or "pools", for ERC721 tokens
- * that earn rewards in ERC20 tokens.
+	// TODO not sure what to create at constructor, if anything
+ * @title MultiStaking - A contract for creating multiple staking configurations, or "pools",
+ * that use various types of staking tokens and earn rewards in ERC20 tokens.
  *
  * @notice When this contract is deployed, the deploying account is set to be the `admin`.
  * This role is transferrable if the current admin calls `setAdmin`
@@ -42,29 +43,10 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         _;
     }
 
-    /**
-     * @notice Restrict functions to be useable only by the owner of the original NFT
-     */
-    // TODO st: do we need this? if a user is not the owner, any transfer or approve call will fail anyway. is that true?
-    modifier onlyNFTOwner(bytes32 poolId, uint256 tokenId) {
-        require(
-            IERC721(pools[poolId].stakingToken).ownerOf(tokenId) == msg.sender,
-            "Caller is not the owner of the NFT to stake"
-        );
-        _;
-    }
-
     modifier onlySNFTOwner(uint256 stakeNonce) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
-        // Number of stakes is always currentStakeNonce
-        // but they are added to the mapping before incrementing currentStakeNonce
-        // so have indices of currentStakeNonce - 1
-        require(
-            stakeNonce < staker.currentStakeNonce,
-            "Invalid stake nonce"
-        );
-
+        // If `stakeNonce > staker.currentStakeNonce` below will grab a 0 stake, `ownerOf` will fail
 		Stake memory _stake = staker.stakesMap[stakeNonce];
 
 		require(
@@ -92,8 +74,8 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     // Mapping to track staking configurations
     mapping(bytes32 poolId => PoolConfig config) public pools;
 
-    // Every user maps to a StakeProfile struct
-    mapping(address user => StakeProfile staker) public stakers;
+    // Every user maps to a StakerProfile struct
+    mapping(address user => StakerProfile staker) public stakers;
 
 	constructor(
 		string memory name,
@@ -135,7 +117,9 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 		uint256 tokenId,
 		uint256 amount,
 		uint256 index
-    ) external onlyExists(poolId) {
+    ) external {
+        // No need to check if pool exists, a 0'd config is returned by `pools[poolId]` if
+        // the pool does not exist and that will route to `_stakeERC721`, which will fail on `ownerOf`
 		PoolConfig memory config = pools[poolId];
 
 		// One of `tokenId` or `amount` must be non-zero
@@ -144,7 +128,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 			"Cannot create empty stake"
 		);
 
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
 		// Transfer appropriate token types
 		if(config.stakingTokenType == TokenType.IERC721) {
@@ -185,9 +169,9 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 	 * @param stakeNonce The integer number identifier of a stake for a user
 	 */
 	function claim(uint256 stakeNonce) external onlySNFTOwner(stakeNonce) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
-		Stake memory _stake = staker.stakesMap[stakeNonce];
+		Stake storage _stake = staker.stakesMap[stakeNonce];
 
         PoolConfig memory config = pools[_stake.poolId];
 
@@ -229,7 +213,6 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         );
 
         // update block timestamp before transfer
-        // TODO st: this is set in memory, not storage, fix !!!
 		_stake.stakedOrClaimedAt = block.timestamp;
 
         config.rewardsToken.transfer(
@@ -239,17 +222,6 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
         // TODO st: emit claimed
 	}
-
-    function claimAll() external {
-        uint256 totalRewards = _getPendingRewardsTotal();
-        // TODO can this be done? need way to transfer for each token?
-        // could be done if we do a bunch of invidual transfers, but that's very gas
-        // if the user has more than a few stakes
-    }
-
-    function getPendingRewardsTotal() external view returns(uint256) {
-        return _getPendingRewardsTotal();
-    }
 
     // TODO make sure the user can see rewards available in a pool before they stake
     // getPendingRewards(uint256 stakeNonce)
@@ -274,9 +246,9 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
      * @param stakeNonce The integer number identifier of a stake for a user
      */
     function unstake(uint256 stakeNonce) external onlySNFTOwner(stakeNonce) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
-		Stake memory _stake = staker.stakesMap[stakeNonce];
+		Stake storage _stake = staker.stakesMap[stakeNonce];
 
         require(
             _stake.stakedOrClaimedAt != 0,
@@ -285,7 +257,6 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
         // Mark stake as removed
         uint256 timeDiff = block.timestamp - _stake.stakedOrClaimedAt;
-        // TODO st: this is being set in memory, not in storage ! Needs a fix!
         _stake.stakedOrClaimedAt = 0;
 
         PoolConfig memory config = pools[_stake.poolId];
@@ -370,39 +341,6 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         return _getPoolId(_config);
     }
 
-    /**
-     * @notice Get the staking token for a given pool
-     * @param poolId The pool to check
-     */
-    // TODO st: [REMOVE] `pools` is already public, so it has an automatic getter upon compilation, so this seems unnecessary
-    function getRewardsPerBlockForPool(
-        bytes32 poolId
-    ) public view returns (uint256) {
-        return pools[poolId].rewardWeight;
-    }
-
-    /**
-     * @notice Get the staking token for a given pool
-     * @param poolId The pool to check
-     */
-    // TODO st: [REMOVE] `pools` is already public, so it has an automatic getter upon compilation, so this seems unnecessary
-    function getStakingTokenForPool(
-        bytes32 poolId
-    ) public view returns (address, TokenType) {
-        return (pools[poolId].stakingToken, pools[poolId].stakingTokenType);
-    }
-
-    /**
-     * @notice Get the rewards token for a given pool
-     * @param poolId The pool to check
-     */
-    // TODO st: [REMOVE] `pools` is already public, so it has an automatic getter upon compilation, so this seems unnecessary
-    function getRewardsTokenForPool(
-        bytes32 poolId
-    ) public view returns (IERC20) {
-        return pools[poolId].rewardsToken;
-    }
-
     // View the amount of rewards in a pool remaining to be distributed to staking users
     function getAvailableRewardsForPool(bytes32 poolId) external view returns (uint256) {
         return pools[poolId].rewardsToken.balanceOf(address(this));
@@ -410,8 +348,10 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
     // Show the remaining amount of time before a staker can claim rewards
     // TODO st: is this the best way to get data for user? is this the data he would want?
+    // TODO reply: Yes, I would see why the user wants this data, so they can know when they can claim rewards
+    // I am not sure if this is the most optimal way to do it,  but it is a `view` function and won't cost gas
     function getRemainingTimeToClaim(uint256 stakeNonce) public view returns (uint256) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
         Stake memory _stake = staker.stakesMap[stakeNonce];
 
         uint256 canClaimAt = _stake.stakedOrClaimedAt + pools[_stake.poolId].minRewardsTime;
@@ -431,24 +371,17 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     function setAdmin(address _admin) public onlyAdmin {
         require(_admin != address(0), "Admin cannot be zero address");
         admin = _admin;
-        // TODO st: add event
+
+        emit AdminSet(_admin);
     }
 
-    /**
-     * @notice Delete a staking pool. Only callable by the admin.
-     * @param poolId The poolId of the pool to delete
-     */
     // TODO st: remove this, most likely, unless there is a strong case for this
-    function deletePool(
-        bytes32 poolId
-    ) public onlyAdmin onlyExists(poolId) {
-        // TODO should we allow this? what if there are still stakers?
-        // how will we reconcile all the existing stakes + rewards?
-        // have to track every stake in every pool, if so
-        // then iterate each stake in the pool being deleted and forcefully unstake each
-        delete pools[poolId];
-        // emit PoolDeleted(poolId, admin);
-    }
+    // function deletePool(
+    //     bytes32 poolId
+    // ) public onlyAdmin onlyExists(poolId) {
+    //     delete pools[poolId];
+    //     // emit PoolDeleted(poolId, admin);
+    // }
 
     // ERC1155Receiver implementation
     // Values from IERC1155Receiver
@@ -478,44 +411,61 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         return INTERFACE_ID_ERC1155_BATCH_RECEIVED;
     }
 
-    // TODO st: should be `getPendingRewardsForPool()`
-    function _getPendingRewardsTotal() internal view returns (uint256) {
-        StakeProfile storage staker = stakers[msg.sender];
+    function _getPendingRewardsForStake(uint256 stakeNonce) internal view returns (uint256) {
+        StakerProfile storage staker = stakers[msg.sender];
 
-        uint256 i = 0;
-        uint256 len = staker.currentStakeNonce;
+        Stake memory _stake = staker.stakesMap[stakeNonce];
+        PoolConfig memory config = pools[_stake.poolId];
 
-        // TODO pools could use different erc20s in rewards
-        // so total rewards could be x of token A, and y of token B, and so on
-        // how do we show this correctly, instead of just `rewardsTotal` like below
+        if (
+            // The token is burned on unstake and non-transferable, if not the owner it's invalid
+            ownerOf(uint256(keccak256(abi.encode(_stake)))) == msg.sender
+            &&
+            // Stake must be able to be claimed
+            block.timestamp - _stake.stakedOrClaimedAt > config.minRewardsTime
+        ) {
 
-        // TODO st: too complex and unnecessary. one should only be able to see rewards PER POOL
-        // Could this be an option? can't create mappings dynamically, but could build out two arrays
-        // to create a "mapping" maybe
-        // ERC20 => rewardAmounts
-        // IERC20[] memory rewardsTokens;
-        // uint256[] memory rewardsAmounts;
+            // TODO st: formula for rewards TBD
+            // move to internal function that calcs this when ready
+            return config.rewardWeight * (block.timestamp - _stake.stakedOrClaimedAt);
+        }
+
+        return 0;
+    }
+
+
+    // TODO st: user could have multiple stakes in single pool, but we can't know which
+    // stakes those are in the stake nonce, how do we do this to total for that single pool?
+    // e.g. user has stakes [ 0, 1, 2, 3, 4] and stakes 0, 3, and 4 are in the same pool,
+    // is the only way to sum rewards for that pool by just iterating all the stakes?
+    function _getPendingRewardsForPool(bytes32 poolId) internal view returns (uint256) {
+        StakerProfile storage staker = stakers[msg.sender];
 
         uint256 rewardsTotal;
         Stake memory _stake;
         PoolConfig memory config;
 
+        uint256 i = 0;
+        uint256 len = staker.currentStakeNonce;
+
         for(i; i < len;) {
             _stake = staker.stakesMap[i];
             config = pools[_stake.poolId];
 
-            if (
-                // The token is burned on unstake and non-transferable, if not the owner it's invalid
-                ownerOf(uint256(keccak256(abi.encode(_stake)))) == msg.sender
-                &&
-                // Stake must be able to be claimed
-                block.timestamp - _stake.stakedOrClaimedAt > config.minRewardsTime
-            ) {
+            if (_stake.poolId == poolId) {
+                if (
+                    // The token is burned on unstake and non-transferable, if not the owner it's invalid
+                    ownerOf(uint256(keccak256(abi.encode(_stake)))) == msg.sender
+                    &&
+                    // Stake must be able to be claimed
+                    block.timestamp - _stake.stakedOrClaimedAt > config.minRewardsTime
+                ) {
 
-                // TODO st: this should use an already written internal function
-                rewardsTotal += config.rewardWeight * (block.timestamp - _stake.stakedOrClaimedAt);
-                _stake.stakedOrClaimedAt = block.timestamp;
+                    // TODO st: this should use an already written internal function
+                    rewardsTotal += config.rewardWeight * (block.timestamp - _stake.stakedOrClaimedAt);
+                }
             }
+
             unchecked {
                 ++i;
             }

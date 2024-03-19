@@ -6,7 +6,6 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import {
   MockERC1155,
-  MockERC1155Receiver,
   MockERC20,
   MockERC721,
 } from "../typechain";
@@ -57,6 +56,15 @@ describe("MultiStaking", async () => {
   let stakeTimestamp20 : number;
   let stakeTimestamp1155 : number;
 
+  // TODO tests for calling `stake` with the wrong token type
+    // e.g. `amount` param is not 0 and you intend to call with staking token type as ERC20
+    // but call with token type as ERC721, it should fail on token check
+    // do this for variations as well
+  // TODO if you say the token type is 1155 when you call stake, even if incorrect, it calls 
+  // `safeTransferFrom` with the IERC1155 wrapper, but that function would exist on an ERC721 token,
+  // would this fail? Would calling as casted EC1155 on an erc721 address work?
+
+  // internally it might still  
   // TODO move to helper
   // would require params, don't really want that necessarily
   // figure this out

@@ -44,7 +44,7 @@ interface Types {
     }
 
     // Details of all stakes for a single user
-    struct StakeProfile {
+    struct StakerProfile {
         uint256 currentStakeNonce;
 		// TODO st: remove this and calc the rewards on stake() if previous stakes exist
         mapping(uint256 stakeNonce => Stake _stakes) stakesMap;

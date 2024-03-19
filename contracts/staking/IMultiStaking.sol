@@ -27,6 +27,10 @@ interface IMultiStaking {
         address indexed staker
     );
 
+    event AdminSet ( 
+        address indexed admin
+    );
+
     /**
      * @notice Emitted when a user claims rewards from an existing stake
      */
