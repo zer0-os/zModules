@@ -349,15 +349,28 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         return _calculateRewards(timePassed, poolWeight, rewardPeriod, stakeAmount);
     }
 
-    // TODO st: make this formula perfect, connect it to all the logic and swap this one.
     function _calculateRewards(
-        uint256 timePassed,
-        uint256 poolWeight,
-        uint256 rewardPeriod,
-        uint256 stakeAmount
+    	uint256 timePassed,
+    	uint256 poolWeight,
+    	uint256 rewardPeriod,
+    	uint256 stakeAmount,
+    	uint256 totalPoolStake,
+    	uint256 baseReward
     ) internal view returns (uint256) {
-        // TODO st: this formula is bad and is a placeholder for now !!
-        return poolWeight * stakeAmount * timePassed / rewardPeriod;
+    	/// Ensuring non-zero values to prevent division by zero errors
+    	require(totalPoolStake > 0, "Total pool stake must be greater than zero.");
+    	require(rewardPeriod > 0, "Reward period must be greater than zero.");
+    
+    	/// Calculate stake ratio
+    	uint256 stakeRatio = stakeAmount * 1e18 / totalPoolStake; // 10**18 for precision
+    
+    	/// Adjust reward by pool weight and stake ratio, then by the base reward
+    	uint256 adjustedReward = baseReward * poolWeight * stakeRatio / 10**18; // Adjust back after precision
+    
+    	/// Calculate time-adjusted reward (linear scaling)
+    	uint256 reward = adjustedReward * timePassed / rewardPeriod;
+    
+    	return reward;
     }
 
     /**
@@ -365,7 +378,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
      * @param _config The configuration to be hashed to create the poolId
      */
     function getPoolId(
-        PoolConfig memory _config
+	PoolConfig memory _config
     ) external pure returns (bytes32) {
         return _getPoolId(_config);
     }
