@@ -7,7 +7,6 @@ import { ERC721, ERC721Wrapper } from "@openzeppelin/contracts/token/ERC721/exte
 import { IStaking } from "./IStaking.sol";
 import { ABaseStaking } from "./ABaseStaking.sol";
 import { Types } from "./Types.sol";
-import { AnyToken } from "./AnyToken.sol";
 
 
 contract Staking is
@@ -70,9 +69,6 @@ contract Staking is
 
     // stake NFT
     function stake(uint256 tokenId) public onlyNFTOwner(tokenId) {
-        // Params
-        // ERC721 => tokenId
-        // ERC1155
         require(stakedOrClaimedAt[tokenId] == 0, "Token is already staked");
 
         // Mark when the token was staked

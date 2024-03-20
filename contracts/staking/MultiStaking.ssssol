@@ -46,16 +46,16 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
      * @notice Restrict functions to be useable only by the owner of the original NFT
      */
     // TODO st: do we need this? if a user is not the owner, any transfer or approve call will fail anyway. is that true?
-    modifier onlyNFTOwner(bytes32 poolId, uint256 tokenId) {
-        require(
-            IERC721(pools[poolId].stakingToken).ownerOf(tokenId) == msg.sender,
-            "Caller is not the owner of the NFT to stake"
-        );
-        _;
-    }
+    // modifier onlyNFTOwner(bytes32 poolId, uint256 tokenId) {
+    //     require(
+    //         IERC721(pools[poolId].stakingToken).ownerOf(tokenId) == msg.sender,
+    //         "Caller is not the owner of the NFT to stake"
+    //     );
+    //     _;
+    // }
 
     modifier onlySNFTOwner(uint256 stakeNonce) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
         // Number of stakes is always currentStakeNonce
         // but they are added to the mapping before incrementing currentStakeNonce
@@ -75,16 +75,16 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         _;
     }
 
-    /**
-     * @notice Confirm if a pool exists before being able to stake in it.
-     */
-    modifier onlyExists(bytes32 poolId) {
-        require(
-            address(pools[poolId].stakingToken) != address(0),
-            "Staking pool does not exist"
-        );
-        _;
-    }
+    // /**
+    //  * @notice Confirm if a pool exists before being able to stake in it.
+    //  */
+    // modifier onlyExists(bytes32 poolId) {
+    //     require(
+    //         address(pools[poolId].stakingToken) != address(0),
+    //         "Staking pool does not exist"
+    //     );
+    //     _;
+    // }
 
     // The operator of this contract
     address public admin;
@@ -92,8 +92,8 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     // Mapping to track staking configurations
     mapping(bytes32 poolId => PoolConfig config) public pools;
 
-    // Every user maps to a StakeProfile struct
-    mapping(address user => StakeProfile staker) public stakers;
+    // Every user maps to a StakerProfile struct
+    mapping(address user => StakerProfile staker) public stakers;
 
 	constructor(
 		string memory name,
@@ -135,7 +135,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 		uint256 tokenId,
 		uint256 amount,
 		uint256 index
-    ) external onlyExists(poolId) {
+    ) external {
 		PoolConfig memory config = pools[poolId];
 
 		// One of `tokenId` or `amount` must be non-zero
@@ -144,7 +144,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 			"Cannot create empty stake"
 		);
 
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
 		// Transfer appropriate token types
 		if(config.stakingTokenType == TokenType.IERC721) {
@@ -185,7 +185,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 	 * @param stakeNonce The integer number identifier of a stake for a user
 	 */
 	function claim(uint256 stakeNonce) external onlySNFTOwner(stakeNonce) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
 		Stake memory _stake = staker.stakesMap[stakeNonce];
 
@@ -274,7 +274,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
      * @param stakeNonce The integer number identifier of a stake for a user
      */
     function unstake(uint256 stakeNonce) external onlySNFTOwner(stakeNonce) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
 		Stake memory _stake = staker.stakesMap[stakeNonce];
 
@@ -411,7 +411,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     // Show the remaining amount of time before a staker can claim rewards
     // TODO st: is this the best way to get data for user? is this the data he would want?
     function getRemainingTimeToClaim(uint256 stakeNonce) public view returns (uint256) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
         Stake memory _stake = staker.stakesMap[stakeNonce];
 
         uint256 canClaimAt = _stake.stakedOrClaimedAt + pools[_stake.poolId].minRewardsTime;
@@ -441,7 +441,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
     // TODO st: remove this, most likely, unless there is a strong case for this
     function deletePool(
         bytes32 poolId
-    ) public onlyAdmin onlyExists(poolId) {
+    ) public onlyAdmin {
         // TODO should we allow this? what if there are still stakers?
         // how will we reconcile all the existing stakes + rewards?
         // have to track every stake in every pool, if so
@@ -480,7 +480,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
     // TODO st: should be `getPendingRewardsForPool()`
     function _getPendingRewardsTotal() internal view returns (uint256) {
-        StakeProfile storage staker = stakers[msg.sender];
+        StakerProfile storage staker = stakers[msg.sender];
 
         uint256 i = 0;
         uint256 len = staker.currentStakeNonce;
@@ -622,15 +622,4 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 			""
 		);
 	}
-
-    // Only `_mint` and `_burn`
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 firstTokenId,
-        uint256 batchSize
-    ) internal pure override {
-        // The SNFT is not transferrable
-        require(from == address(0) || to == address(0), "Token is non-transferable");
-    }
 }
