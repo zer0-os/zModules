@@ -26,6 +26,7 @@ interface Types {
 	struct PoolConfig {
 		address stakingToken;
 		IERC20 rewardsToken;
+		// TODO st: delete this when splitting into separate contracts
 		TokenType stakingTokenType;
 		// TODO st: possibly add timeframe here based on which rewards will generate
 		//	HAS TO BE < 1! How do we denominate this one then? 10^18?
