@@ -27,7 +27,7 @@ interface Types {
      */
 	struct PoolConfig {
         address stakingToken;
-        TokenType stakingTokenType;
+        TokenType stakingTokenType; // Have to have this if using `StakingPool` to create multiple types of pools
 		IERC20 rewardsToken;
 		// TODO st: delete this when splitting into separate contracts
 		// TODO st: possibly add timeframe here based on which rewards will generate
@@ -36,21 +36,6 @@ interface Types {
 		uint256 rewardPeriod;
 		uint256 minRewardsTime; // TODO st: this should be timelock, which prevents from withdrawing or getting rewards
 	}
-
-    struct ERC721Config {
-        IERC721 stakingToken;
-        PoolConfig config;
-    }
-
-    struct ERC20Config {
-        IERC20 stakingToken;
-        PoolConfig config;
-    }
-
-    struct ERC1155Config {
-        IERC1155 stakingToken;
-        PoolConfig config;
-    }
 
     // Details of a single stake
     struct Stake {

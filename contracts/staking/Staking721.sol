@@ -5,10 +5,11 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Types } from "./Types.sol";
-import  { StakingPool } from "./StakingPool.sol";
-import  { IStaking721 } from "./IStaking721.sol";
+import { StakingPool } from "./StakingPool.sol";
+import { IStaking } from "./IStaking.sol";
 
-contract Staking721 is ERC721, StakingPool, IStaking721 {
+
+contract Staking721 is ERC721, StakingPool, IStaking {
     Types.PoolConfig public config;
 
     // Track number of stakes for a user with their stake nonce
@@ -65,7 +66,8 @@ contract Staking721 is ERC721, StakingPool, IStaking721 {
         
         // Mint user SNFT
         _mint(msg.sender, tokenId);
-        emit Staked(tokenId, msg.sender);
+        // TODO st: this event is shared with ERC20 and ERC1155, bad idea?
+        emit Staked(tokenId, 0, 0, msg.sender);
     }
 
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
@@ -75,7 +77,7 @@ contract Staking721 is ERC721, StakingPool, IStaking721 {
         if (block.timestamp - accessTime < config.minRewardsTime) {
             revert InvalidClaim("Staking721: Cannot claim rewards yet");
         }
-        
+
         // _calculateRewards will add in any additional amount from `rewardsOwed`
         // TODO st: implement calc rewards
         uint256 rewards = _calculateRewards(msg.sender);
