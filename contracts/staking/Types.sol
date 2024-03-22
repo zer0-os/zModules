@@ -27,14 +27,13 @@ interface Types {
      */
 	struct PoolConfig {
         address stakingToken;
-        TokenType stakingTokenType; // Have to have this if using `StakingPool` to create multiple types of pools
 		IERC20 rewardsToken;
-		// TODO st: delete this when splitting into separate contracts
 		// TODO st: possibly add timeframe here based on which rewards will generate
 		// HAS TO BE < 1! How do we denominate this one then? 10^18?
-		uint256 rewardWeight;
-		uint256 rewardPeriod;
-		uint256 minRewardsTime; // TODO st: this should be timelock, which prevents from withdrawing or getting rewards
+		uint256 rewardsPerPeriod; // amount of rewards distributed per period
+        uint256 rewardsFraction; // fraction of stakeAmount that is multiplier in rewards calc
+		uint256 rewardsPeriod; // length of a time period, specified in days
+		uint256 timeLockPeriods; // number of time periods required to pass to be able to claim rewards or unstake
 	}
 
     // Details of a single stake

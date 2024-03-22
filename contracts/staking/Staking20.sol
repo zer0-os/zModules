@@ -68,18 +68,18 @@ contract StakingERC20 is ERC721, StakingPool, IStaking {
         // why mint sNFT? can we just track on claim with msg.sender in mapping?
         // _mint(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender, amount))));
 
-        emit Staked(0, amount, 0, msg.sender);
+        emit Staked(0, amount, 0, config.stakingToken, msg.sender);
     }
 
     function claim() external {
-        // User must have staked for the lock time before claiming
-        if (block.timestamp - stakedOrClaimedAt[msg.sender] < config.minRewardsTime) {
-            revert InvalidClaim("Caller has not staked for at least the lock period");
-        }
+        uint256 rewards = _calculateRewards(
+            block.timestamp - stakedOrClaimedAt[msg.sender],
+            staked[msg.sender],
+            config
+        ) + pendingRewards[msg.sender];
 
-        // TODO st: implement _calculateRewards
-        uint256 rewards = _calculateRewards() + pendingRewards[msg.sender];
         pendingRewards[msg.sender] = 0;
+        stakedOrClaimedAt[msg.sender] = block.timestamp;
 
         IERC20(config.rewardsToken).transfer(msg.sender, rewards);
         emit Claimed(rewards, msg.sender);
@@ -88,11 +88,6 @@ contract StakingERC20 is ERC721, StakingPool, IStaking {
     ////////////////////////////////////
         /* Internal Functions */
     ////////////////////////////////////
-
-    function _calculateRewards() internal returns (uint256) {
-        // TODO ST: implement
-        return 0;
-    }
 
     // TODO st: consider making custom version of ERC712Wrapper to keep this
     // Only `_mint` and `_burn`

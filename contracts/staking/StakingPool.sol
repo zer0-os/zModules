@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 import { IStakingPool } from "./IStakingPool.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-// TODO abstract?
 contract StakingPool is IStakingPool {
 
     // Throw if staking configuration is invalid or already exists
@@ -17,6 +16,9 @@ contract StakingPool is IStakingPool {
         _createPool(_config);
     }
 
+    // TODO st: perhaps create a constructor here that allows creation of several
+    // pools still, just as `new StakingERC721(...), new StakingERC20(...)` etc.
+
     ////////////////////////////////////
         /* Internal Functions */
     ////////////////////////////////////
@@ -28,18 +30,18 @@ contract StakingPool is IStakingPool {
 
         // Rewards configuration must be specified
         // TODO st: this may change when the rewards formula is developed
-        if (_config.rewardWeight == 0) {
+        if (_config.rewardsFraction == 0) {
             revert InvalidRewards("Pool: Invalid rewards configuration");
         }
         // TODO st: figure out other checks when formula is done
 
-        if (uint256(_config.stakingTokenType) > uint256(type(TokenType).max)) {
-            // Enum for token types is
-            // 0 - ERC721
-            // 1 - ERC20
-            // 2 - ERC1155
-            revert InvalidStaking("Pool: Invalid staking token type");
-        }
+        // if (uint256(_config.stakingTokenType) > uint256(type(TokenType).max)) {
+        //     // Enum for token types is
+        //     // 0 - ERC721
+        //     // 1 - ERC20
+        //     // 2 - ERC1155
+        //     revert InvalidStaking("Pool: Invalid staking token type");
+        // }
 
         bytes32 poolId = _getPoolId(_config);
 
@@ -60,20 +62,42 @@ contract StakingPool is IStakingPool {
             abi.encodePacked(
                 _config.stakingToken,
                 _config.rewardsToken,
-                _config.rewardWeight,
-                _config.minRewardsTime
+                _config.rewardsFraction,
+                _config.timeLockPeriods
             )
         );
     }
 
     // TODO st: make this formula perfect, connect it to all the logic and swap this one.
     function _calculateRewards(
-        uint256 timePassed,
-        uint256 poolWeight,
-        uint256 rewardPeriod,
-        uint256 stakeAmount
-    ) internal pure returns (uint256) {
-        // TODO st: this formula is bad and is a placeholder for now !!
-        return poolWeight * stakeAmount * timePassed / rewardPeriod;
+        uint256 timePassedSinceLastClaimOrStake, // in seconds, block.timeStamp, convert to days
+        uint256 stakeAmount,
+        PoolConfig memory config
+    ) internal pure virtual returns (uint256) {
+
+        // virtual so can be overridden by erc721, but erc20 and erc1155 can use this function I think
+        // TODO is there a Time module that's better for this?
+        // 86400 seconds in 1 day
+        uint256 timePassedDays = timePassedSinceLastClaimOrStake / 86400; // do / 24 hours ???
+        uint256 timeRequiredToClaim = config.rewardsPeriod * config.timeLockPeriods;
+        // one period is 7 days, require 2 periods to have passed before claiming, so 14 days
+
+        if (timePassedDays < timeRequiredToClaim) {
+            return 0; // TODO revert error?
+        }
+
+        // ERC721, or non-fungible ERC1155
+        if (stakeAmount == 1) {
+            return config.rewardsPerPeriod * timeRequiredToClaim;
+        } else {
+            // ERC20, or fungible ERC1155
+            return stakeAmount * (stakeAmount / config.rewardsFraction);
+            // TODO temp formula, need to see if we want rewardsRatio with ERC4626
+        }
+        // we need
+            // time period
+            // rate at which we generate rewards (fraction of tokens staked per period)
+            // time lock (mininmum number of periods)
+        // return poolWeight * stakeAmount * timePassed / rewardPeriod;
     }
 }

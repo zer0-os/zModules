@@ -52,6 +52,10 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         // Accrue rewards if they have staked before
         if (stakeNonces[msg.sender] != 0) {
             rewardsOwed[msg.sender] += _calculateRewards(msg.sender);
+            
+            unchecked {
+                ++stakeNonces[msg.sender];
+            }
         }
 
         // Mark when the token was staked
@@ -66,39 +70,82 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         
         // Mint user SNFT
         _mint(msg.sender, tokenId);
-        // TODO st: this event is shared with ERC20 and ERC1155, bad idea?
-        emit Staked(tokenId, 0, 0, msg.sender);
+
+        emit Staked(tokenId, 0, 0, config.stakingToken, msg.sender);
     }
 
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
-        // TODO ST: implement
-        uint256 accessTime = stakedOrClaimedAt[tokenId];
+        uint256 rewards = _calculateRewards(
+            block.timestamp - stakedOrClaimedAt[tokenId],
+            1,
+            config
+        );
 
-        if (block.timestamp - accessTime < config.minRewardsTime) {
-            revert InvalidClaim("Staking721: Cannot claim rewards yet");
-        }
-
-        // _calculateRewards will add in any additional amount from `rewardsOwed`
-        // TODO st: implement calc rewards
-        uint256 rewards = _calculateRewards(msg.sender);
-
+        // TODO st: will this every happen? when would they have 0 rewards
+        // but have passed the time period requirement?
         if (rewards == 0) {
             revert InvalidClaim("Staking721: No rewards to claim");
         }
 
-        // update block timestamp before transfer
-        // TODO st: this is set in memory, not storage, fix !!!
+        // Update timestamp before transfer
 		stakedOrClaimedAt[tokenId] = block.timestamp;
 
         config.rewardsToken.transfer(
             msg.sender,
             rewards
         );
-        
+
+        emit Claimed(rewards, msg.sender);
     }
 
-    function unstake() external {
-        // TODO ST: implement
+    function unstake(uint256 tokenId) external onlySNFTOwner(tokenId) {
+        uint256 rewards = _calculateRewards(
+            block.timestamp - stakedOrClaimedAt[tokenId],
+            1,
+            config
+        );
+
+        // Update timestamp to unstaked
+		stakedOrClaimedAt[tokenId] = 0;
+
+        // Burn the sNFT
+        _burn(tokenId);
+
+        // Send final rewards to staker
+        IERC20(config.rewardsToken).transfer(
+            msg.sender,
+            rewards
+        );
+
+        // Return NFT to staker
+        IERC721(config.stakingToken).transferFrom(
+            address(this),
+            msg.sender,
+            tokenId
+        );
+
+        emit Unstaked(tokenId, 0, 0, config.stakingToken, msg.sender);
+    }
+
+    // In the case that a pool is abandoned or no longer has funds for rewards, allow
+    // users to unstake their tokens with no consideration for time lock period
+    function emergencyUnstake(uint256 tokenId) external onlySNFTOwner(tokenId){
+        _emergencyUnstake(tokenId);
+    }
+
+    function emergencyUnstakeBulk(uint256[] calldata tokenIds) external {
+        uint256 i;
+        uint256 len = tokenIds.length;
+        for (i; i < len;) {
+            if (ownerOf(tokenIds[i]) != msg.sender) {
+                revert InvalidOwner("Caller is not the owner of the representative stake token");
+            }
+            _emergencyUnstake(tokenIds[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     // View the balance of this pool in the reward token
@@ -108,14 +155,23 @@ contract Staking721 is ERC721, StakingPool, IStaking {
 
     // view the rewards waiting to be claimed for a user
     function viewPendingRewards() external view returns (uint256) {
-        // TODO ST: implement
+        return _calculateRewards(msg.sender);
     }
 
     ////////////////////////////////////
         /* Internal Functions */
     ////////////////////////////////////
 
-    function _calculateRewards(address user) internal returns (uint256) {
+    function _emergencyUnstake(uint256 tokenId) internal {
+        IERC721(config.stakingToken).transferFrom(
+            address(this),
+            msg.sender,
+            tokenId
+        );
+        _burn(tokenId);
+    }
+
+    function _calculateRewards(address user) internal pure returns (uint256) {
         // TODO ST: implement
         return 0;
     }
