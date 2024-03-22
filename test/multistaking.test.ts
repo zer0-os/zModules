@@ -27,39 +27,39 @@ import { dayInSeconds } from "./helpers/staking/constants";
 
 
 describe("MultiStaking", async () => {
-  let deployer : SignerWithAddress;
-  let stakerA : SignerWithAddress;
-  let stakerB : SignerWithAddress;
-  let notStaker : SignerWithAddress;
-  let rewardsVault : SignerWithAddress;
+  let deployer: SignerWithAddress;
+  let stakerA: SignerWithAddress;
+  let stakerB: SignerWithAddress;
+  let notStaker: SignerWithAddress;
+  let rewardsVault: SignerWithAddress;
 
-  let stakingContract : MultiStakingV6;
+  let stakingContract: MultiStakingV6;
 
-  let mockERC20 : MockERC20;
-  let mockERC721 : MockERC721;
-  let mockERC1155 : MockERC1155;
+  let mockERC20: MockERC20;
+  let mockERC721: MockERC721;
+  let mockERC1155: MockERC1155;
 
-  let defaultConfigERC721 : PoolConfig;
-  let defaultPoolERC721 : string;
+  let defaultConfigERC721: PoolConfig;
+  let defaultPoolERC721: string;
 
-  let defaultConfigERC20 : PoolConfig;
-  let defaultPoolERC20 : string;
+  let defaultConfigERC20: PoolConfig;
+  let defaultPoolERC20: string;
 
-  let defaultConfigERC1155 : PoolConfig;
-  let defaultPoolERC1155 : string;
+  let defaultConfigERC1155: PoolConfig;
+  let defaultPoolERC1155: string;
 
-  const defaultTokenIdA  = 1;
-  const defaultTokenIdB  = 2;
+  const defaultTokenIdA = 1;
+  const defaultTokenIdB = 2;
 
   const stakeAmount = parseEther("137");
-  let stakeTimestamp721 : number;
-  let stakeTimestamp20 : number;
-  let stakeTimestamp1155 : number;
+  let stakeTimestamp721: number;
+  let stakeTimestamp20: number;
+  let stakeTimestamp1155: number;
 
   // TODO tests for calling `stake` with the wrong token type
-    // e.g. `amount` param is not 0 and you intend to call with staking token type as ERC20
-    // but call with token type as ERC721, it should fail on token check
-    // do this for variations as well
+  // e.g. `amount` param is not 0 and you intend to call with staking token type as ERC20
+  // but call with token type as ERC721, it should fail on token check
+  // do this for variations as well
   // TODO if you say the token type is 1155 when you call stake, even if incorrect, it calls 
   // `safeTransferFrom` with the IERC1155 wrapper, but that function would exist on an ERC721 token,
   // would this fail? Would calling as casted EC1155 on an erc721 address work?
@@ -68,9 +68,9 @@ describe("MultiStaking", async () => {
   // TODO move to helper
   // would require params, don't really want that necessarily
   // figure this out
-  let resetContracts : () => void;
+  let resetContracts: () => void;
 
-  let stakeNFT : () => void;
+  let stakeNFT: () => void;
   // dont necessarily need handles to the `let vars` above,
   // can just do redploy and then catch outside of the function as
   // [mockERC20, mockERC721, stakingContract] = await resetContracts();
@@ -95,7 +95,7 @@ describe("MultiStaking", async () => {
       mockERC1155 = await mockERC1155Factory.deploy("0://wheels-1155-base");
 
       // Create a default staking pool configuration for ERC721
-      [ defaultConfigERC721, defaultConfigERC20, defaultConfigERC1155 ] = await createDefaultConfigs(
+      [defaultConfigERC721, defaultConfigERC20, defaultConfigERC1155] = await createDefaultConfigs(
         mockERC721,
         mockERC20,
         mockERC1155,
@@ -249,6 +249,29 @@ describe("MultiStaking", async () => {
     expect(await stakingContract.balanceOf(stakerA.address)).to.eq(3);
   });
 
+  it.only("Allows a user to claim rewards on ERC721 stake", async () => {
+    // Claim on ERC721 stake
+    let balanceBefore = await mockERC20.balanceOf(stakerA.address);
+
+    await time.increaseTo(BigInt(stakeTimestamp721) + 7n * dayInSeconds);
+
+    await stakingContract.connect(stakerA).claim(0);
+
+    let balanceAfter = await mockERC20.balanceOf(stakerA.address);
+
+    const latestTime = await time.latest(); //moved latest time here, after awaits above
+    let rewardAmountRef = calcRewardsAmount({
+      timePassed: BigInt(latestTime - stakeTimestamp721),
+      rewardWeight: defaultConfigERC721.rewardWeight,
+      rewardPeriod: defaultConfigERC721.rewardPeriod,
+      stakeAmount: 1n,
+    });
+
+    expect(balanceAfter).to.eq(balanceBefore + rewardAmountRef);
+
+    stakeTimestamp721 = await time.latest();
+  });
+
   it.only("Allows a user to claim rewards", async () => {
     // Claim on ERC721 stake
     let balanceBefore = await mockERC20.balanceOf(stakerA.address);
@@ -265,6 +288,7 @@ describe("MultiStaking", async () => {
       rewardPeriod: defaultConfigERC721.rewardPeriod,
       stakeAmount: 1n,
     });
+
     // TODO st: doesn't work now, possibly wait for formula to be ready to not waste time now
     expect(balanceAfter).to.eq(balanceBefore + rewardAmountRef);
 
@@ -597,15 +621,15 @@ describe("MultiStaking", async () => {
 
     // Stake token for stakerB usng stakerA
     await expect
-    (
-      stakingContract.connect(stakerA).stake(defaultPoolERC721, defaultTokenIdB)
-    ).to.be.revertedWith(ONLY_NFT_OWNER);
+      (
+        stakingContract.connect(stakerA).stake(defaultPoolERC721, defaultTokenIdB)
+      ).to.be.revertedWith(ONLY_NFT_OWNER);
 
     // Stake token for stakerA using stakerB
     await expect
-    (
-      stakingContract.connect(stakerB).stake(defaultPoolERC721, defaultTokenIdA)
-    ).to.be.revertedWith(ONLY_NFT_OWNER);
+      (
+        stakingContract.connect(stakerB).stake(defaultPoolERC721, defaultTokenIdA)
+      ).to.be.revertedWith(ONLY_NFT_OWNER);
   });
 
   it("Fails when users try to claim valid tokens that aren't theirs", async () => {
@@ -616,52 +640,52 @@ describe("MultiStaking", async () => {
     await stakingContract.connect(stakerB).stake(defaultPoolERC721, defaultTokenIdB);
 
     await expect
-    (
-      stakingContract.connect(stakerA).claim(defaultPoolERC721, defaultTokenIdB)
-    ).to.be.revertedWith(ONLY_SNFT_OWNER);
+      (
+        stakingContract.connect(stakerA).claim(defaultPoolERC721, defaultTokenIdB)
+      ).to.be.revertedWith(ONLY_SNFT_OWNER);
 
     await expect
-    (
-      stakingContract.connect(stakerB).claim(defaultPoolERC721, defaultTokenIdA)
-    ).to.be.revertedWith(ONLY_SNFT_OWNER);
+      (
+        stakingContract.connect(stakerB).claim(defaultPoolERC721, defaultTokenIdA)
+      ).to.be.revertedWith(ONLY_SNFT_OWNER);
   });
 
   it("Fails when users try to unstake valid tokens that aren't theirs", async () => {
 
     await expect
-    (
-      stakingContract.connect(stakerA).unstake(defaultPoolERC721, defaultTokenIdB)
-    ).to.be.revertedWith(ONLY_SNFT_OWNER);
+      (
+        stakingContract.connect(stakerA).unstake(defaultPoolERC721, defaultTokenIdB)
+      ).to.be.revertedWith(ONLY_SNFT_OWNER);
 
     await expect
-    (
-      stakingContract.connect(stakerB).unstake(defaultPoolERC721, defaultTokenIdA)
-    ).to.be.revertedWith(ONLY_SNFT_OWNER);
+      (
+        stakingContract.connect(stakerB).unstake(defaultPoolERC721, defaultTokenIdA)
+      ).to.be.revertedWith(ONLY_SNFT_OWNER);
   });
 
   it("Fails when users try to stake non-existent tokens", async () => {
     const randomTokenId = 123;
     await expect
-    (
-      stakingContract.connect(stakerA).stake(defaultPoolERC721, randomTokenId)
-    ).to.be.revertedWith(INVALID_TOKEN_ID);
+      (
+        stakingContract.connect(stakerA).stake(defaultPoolERC721, randomTokenId)
+      ).to.be.revertedWith(INVALID_TOKEN_ID);
   });
 
   it("Fails when users try to claim non-existent tokens", async () => {
     const randomTokenId = 123;
 
     await expect
-    (
-      stakingContract.connect(stakerA).claim(defaultPoolERC721, randomTokenId)
-    ).to.be.revertedWith(INVALID_TOKEN_ID);
+      (
+        stakingContract.connect(stakerA).claim(defaultPoolERC721, randomTokenId)
+      ).to.be.revertedWith(INVALID_TOKEN_ID);
   });
 
   it("Fails when users try to unstake non-existent tokens", async () => {
     const randomTokenId = 123;
     await expect
-    (
-      stakingContract.connect(stakerA).unstake(defaultPoolERC721, randomTokenId)
-    ).to.be.revertedWith(INVALID_TOKEN_ID);
+      (
+        stakingContract.connect(stakerA).unstake(defaultPoolERC721, randomTokenId)
+      ).to.be.revertedWith(INVALID_TOKEN_ID);
   });
 
   it("Fails when users have valid stakes but claim using the wrong SNFT", async () => {
@@ -677,14 +701,14 @@ describe("MultiStaking", async () => {
 
     // Expect claim to fail when using the wrong SNFT
     await expect
-    (
-      stakingContract.connect(stakerA).claim(defaultPoolERC721, defaultTokenIdB)
-    ).to.be.revertedWith(ONLY_SNFT_OWNER);
+      (
+        stakingContract.connect(stakerA).claim(defaultPoolERC721, defaultTokenIdB)
+      ).to.be.revertedWith(ONLY_SNFT_OWNER);
 
     await expect
-    (
-      stakingContract.connect(stakerB).claim(defaultPoolERC721, defaultTokenIdA)
-    ).to.be.revertedWith(ONLY_SNFT_OWNER);
+      (
+        stakingContract.connect(stakerB).claim(defaultPoolERC721, defaultTokenIdA)
+      ).to.be.revertedWith(ONLY_SNFT_OWNER);
   });
 
   it("Fails when users have valid stakes but unstake using the wrong SNFT", async () => {
@@ -694,14 +718,14 @@ describe("MultiStaking", async () => {
 
     // Expect claim to fail when using the wrong SNFT
     await expect
-    (
-      stakingContract.connect(stakerA).unstake(defaultPoolERC721, defaultTokenIdB)
-    ).to.be.revertedWith(ONLY_SNFT_OWNER);
+      (
+        stakingContract.connect(stakerA).unstake(defaultPoolERC721, defaultTokenIdB)
+      ).to.be.revertedWith(ONLY_SNFT_OWNER);
 
     await expect
-    (
-      stakingContract.connect(stakerB).unstake(defaultPoolERC721, defaultTokenIdA)
-    ).to.be.revertedWith(ONLY_SNFT_OWNER);
+      (
+        stakingContract.connect(stakerB).unstake(defaultPoolERC721, defaultTokenIdA)
+      ).to.be.revertedWith(ONLY_SNFT_OWNER);
   });
 
   it("Fails when you try to stake for a pool thats not setup by the admin", async () => {
