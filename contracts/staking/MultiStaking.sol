@@ -327,8 +327,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         uint256 rewardPeriod,
         uint256 stakeAmount
     ) internal view returns (uint256) {
-        // TODO st: this formula is bad and is a placeholder for now !!
-        return poolWeight * stakeAmount * timePassed / rewardPeriod;
+        return 10**18 * poolWeight * stakeAmount * timePassed / rewardPeriod / 10**18;
     }
 
     /**
