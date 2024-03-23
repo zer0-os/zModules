@@ -13,27 +13,29 @@ export enum TokenType {
   IERC1155
 }
 export interface PoolConfig {
-  stakingToken : string;
-  rewardsToken : string;
-  stakingTokenType : TokenType;
-  rewardWeight : bigint;
-  rewardPeriod : bigint;
-  minRewardsTime : string; // BigInt or number instead?
+  stakingToken: string;
+  rewardsToken: string;
+  stakingTokenType: TokenType;
+  rewardWeightMult: bigint;
+  rewardWeightDiv: bigint;
+  rewardPeriod: bigint;
+  minRewardsTime: string; // BigInt or number instead?
 }
 
 export interface Stake {
-  poolId : string;
-  tokenId : string;
-  amount : string;
-  index : string;
-  stakedOrClaimedAt : string;
+  poolId: string;
+  tokenId: string;
+  amount: string;
+  index: string;
+  stakedOrClaimedAt: string;
 }
 
 export interface RewardsConfig {
-  timePassed : bigint;
-  rewardWeight : bigint;
-  rewardPeriod : bigint;
-  stakeAmount : bigint;
+  timePassed: bigint;
+  rewardWeightMult: bigint;
+  rewardWeightDiv: bigint;
+  rewardPeriod: bigint;
+  stakeAmount: bigint;
 }
 // Simplify the Ethers V6 contract type
 export type ContractV6 = BaseContract & Omit<ContractInterface, keyof BaseContract>;

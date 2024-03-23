@@ -29,7 +29,8 @@ interface Types {
 		TokenType stakingTokenType;
 		// TODO st: possibly add timeframe here based on which rewards will generate
 		//	HAS TO BE < 1! How do we denominate this one then? 10^18?
-		uint256 rewardWeight;
+		uint256 rewardWeightMult;
+		uint256 rewardWeightDiv;
 		uint256 rewardPeriod;
 		uint256 minRewardsTime; // TODO st: this should be timelock, which prevents from withdrawing or getting rewards
 	}

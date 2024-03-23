@@ -191,7 +191,8 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         //      this way we don't need any if statements and can use the same function
         uint256 rewards = _calculateRewards(
             block.timestamp - accessTime,
-            config.rewardWeight,
+            config.rewardWeightMult,
+            config.rewardWeightDiv,
             config.rewardPeriod,
             _stake.amount
         );
@@ -296,7 +297,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
         // If rewards are configured and the stake existed for long enough
         if (address(config.rewardsToken) != address(0) && timeDiff > config.minRewardsTime) {
             // TODO st: why is this different than the formula in claim? should it be the same formula?
-            uint256 rewards = config.rewardWeight * timeDiff;
+            uint256 rewards = config.rewardWeightMult * timeDiff;
 
             config.rewardsToken.transfer(
                 msg.sender,
@@ -313,21 +314,23 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
     function calculateRewards(
         uint256 timePassed,
-        uint256 poolWeight,
+        uint256 poolWeightMult,
+        uint256 poolWeightDiv,
         uint256 rewardPeriod,
         uint256 stakeAmount
     ) external view returns (uint256) {
-        return _calculateRewards(timePassed, poolWeight, rewardPeriod, stakeAmount);
+        return _calculateRewards(timePassed, poolWeightMult, poolWeightDiv, rewardPeriod, stakeAmount);
     }
 
     // TODO st: make this formula perfect, connect it to all the logic and swap this one.
     function _calculateRewards(
         uint256 timePassed,
-        uint256 poolWeight,
+        uint256 poolWeightMult,
+        uint256 poolWeightDiv,
         uint256 rewardPeriod,
         uint256 stakeAmount
     ) internal view returns (uint256) {
-        return 10**18 * poolWeight * stakeAmount * timePassed / rewardPeriod / 10**18;
+        return 10**18 * poolWeightMult * stakeAmount * timePassed / rewardPeriod / poolWeightDiv / 10**18;
     }
 
     /**
@@ -426,7 +429,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 
             // TODO st: formula for rewards TBD
             // move to internal function that calcs this when ready
-            return config.rewardWeight * (block.timestamp - _stake.stakedOrClaimedAt);
+            return config.rewardWeightMult * (block.timestamp - _stake.stakedOrClaimedAt);
         }
 
         return 0;
@@ -461,7 +464,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
                 ) {
 
                     // TODO st: this should use an already written internal function
-                    rewardsTotal += config.rewardWeight * (block.timestamp - _stake.stakedOrClaimedAt);
+                    rewardsTotal += config.rewardWeightMult * (block.timestamp - _stake.stakedOrClaimedAt);
                 }
             }
 
@@ -485,7 +488,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
 		// Rewards token can optionally be 0 if there are no rewards in a pool
         if (address(_config.rewardsToken) != address(0)) {
             require(
-                _config.rewardWeight != 0,
+                _config.rewardWeightMult != 0,
                 "Invalid rewards configuration"
             );
         }
@@ -519,7 +522,7 @@ contract MultiStaking is ERC721, ABaseStaking, IERC1155Receiver, IMultiStaking {
                 abi.encodePacked(
                     _config.stakingToken,
                     _config.rewardsToken,
-                    _config.rewardWeight,
+                    _config.rewardWeightMult,
 					_config.minRewardsTime
                 )
             );
