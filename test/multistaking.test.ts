@@ -201,7 +201,7 @@ describe("MultiStaking", async () => {
   });
 
   // Single user, single pool
-  it.only("Allows a user to stake", async () => {
+  it("Allows a user to stake", async () => {
     await mockERC721.connect(stakerA).approve(await stakingContract.getAddress(), defaultTokenIdA);
 
     // Stake NFT
@@ -249,7 +249,7 @@ describe("MultiStaking", async () => {
     expect(await stakingContract.balanceOf(stakerA.address)).to.eq(3);
   });
 
-  it.only("Allows a user to claim rewards on ERC721 stake", async () => {
+  it("Allows a user to claim rewards on ERC721 stake", async () => {
     // Claim on ERC721 stake
     let balanceBefore = await mockERC20.balanceOf(stakerA.address);
 
@@ -272,7 +272,42 @@ describe("MultiStaking", async () => {
     stakeTimestamp721 = await time.latest();
   });
 
-  it.only("Allows a user to claim rewards", async () => {
+  describe.only("Reward calculation edge cases", function () {
+    // Define edge cases for each parameter
+    const timePassedCases = [1, 2, 100, 1000, 10 ** 6];
+    const poolWeightCases = [0, 1, 1000, 10000, 10 ** 6];
+    const rewardPeriodCases = [1, 2, 10, 1000, 10 ** 6]; // todo, cover rewardPeriod >= timePassed
+    const stakeAmountCases = [0, 1, 1000, 10000, 10 ** 6];
+
+    // Loop over all combinations of edge cases
+    for (const timePassed of timePassedCases) {
+      for (const poolWeight of poolWeightCases) {
+        for (const rewardPeriod of rewardPeriodCases) {
+          for (const stakeAmount of stakeAmountCases) {
+            it(`calculates rewards for timePassed=${timePassed}, poolWeight=${poolWeight}, rewardPeriod=${rewardPeriod}, stakeAmount=${stakeAmount}`, async function () {
+              // Calculate rewards using the smart contract
+              const contractRewards = await stakingContract.calculateRewards(
+                timePassed, poolWeight, rewardPeriod, stakeAmount
+              );
+
+              // Calculate expected rewards using JavaScript
+              const expectedRewards = calcRewardsAmount({
+                timePassed: BigInt(timePassed),
+                rewardWeight: BigInt(poolWeight), // Assuming `calcRewardsAmount` expects a rewardWeight instead of poolWeight
+                rewardPeriod: BigInt(rewardPeriod),
+                stakeAmount: BigInt(stakeAmount),
+              });
+
+              // Compare the results
+              expect(contractRewards.toString()).to.equal(expectedRewards.toString());
+            });
+          }
+        }
+      }
+    }
+  });
+
+  it("Allows a user to claim rewards", async () => {
     // Claim on ERC721 stake
     let balanceBefore = await mockERC20.balanceOf(stakerA.address);
 
