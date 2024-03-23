@@ -30,7 +30,7 @@ contract StakingPool is IStakingPool {
 
         // Rewards configuration must be specified
         // TODO st: this may change when the rewards formula is developed
-        if (_config.rewardsFraction == 0) {
+        if (address(_config.rewardsToken) == address(0)) {
             revert InvalidRewards("Pool: Invalid rewards configuration");
         }
         // TODO st: figure out other checks when formula is done
@@ -49,6 +49,8 @@ contract StakingPool is IStakingPool {
         // if (address(pools[poolId].stakingToken) != address(0)) {
         //     revert InvalidStaking("Pool: Staking configuration already exists");
         // }
+        // TODO st: need supportsInterface check to more certainly verify staking token being used
+        // more of a problem when zero uses this, not WW
 
         // pools[poolId] = _config;
         emit PoolCreated(poolId, _config);
@@ -74,21 +76,22 @@ contract StakingPool is IStakingPool {
         uint256 stakeAmount,
         PoolConfig memory config
     ) internal pure virtual returns (uint256) {
-
         // virtual so can be overridden by erc721, but erc20 and erc1155 can use this function I think
         // TODO is there a Time module that's better for this?
         // 86400 seconds in 1 day
         uint256 timePassedDays = timePassedSinceLastClaimOrStake / 86400; // do / 24 hours ???
-        uint256 timeRequiredToClaim = config.rewardsPeriod * config.timeLockPeriods;
+        uint256 timePassedPeriods = timePassedDays / config.rewardsPeriod; // num periods that have passed
+
+        config.timeLockPeriods;
         // one period is 7 days, require 2 periods to have passed before claiming, so 14 days
 
-        if (timePassedDays < timeRequiredToClaim) {
+        if (timePassedDays < config.timeLockPeriods) {
             return 0; // TODO revert error?
         }
 
         // ERC721, or non-fungible ERC1155
         if (stakeAmount == 1) {
-            return config.rewardsPerPeriod * timeRequiredToClaim;
+            return config.rewardsPerPeriod * timePassedPeriods;
         } else {
             // ERC20, or fungible ERC1155
             return stakeAmount * (stakeAmount / config.rewardsFraction);

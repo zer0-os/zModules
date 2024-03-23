@@ -8,7 +8,8 @@ import { Types } from "./Types.sol";
 import { StakingPool } from "./StakingPool.sol";
 import { IStaking } from "./IStaking.sol";
 
-
+// TODO make Untransferable721.sol that has _beforeTokenTransfer override
+// then inherit that contract in each individual staking contract
 contract Staking721 is ERC721, StakingPool, IStaking {
     Types.PoolConfig public config;
 
@@ -51,7 +52,11 @@ contract Staking721 is ERC721, StakingPool, IStaking {
 
         // Accrue rewards if they have staked before
         if (stakeNonces[msg.sender] != 0) {
-            rewardsOwed[msg.sender] += _calculateRewards(msg.sender);
+            rewardsOwed[msg.sender] += _calculateRewards(
+                block.timestamp - stakedOrClaimedAt[tokenId],
+                1,
+                config
+            );
             
             unchecked {
                 ++stakeNonces[msg.sender];
@@ -81,8 +86,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
             config
         );
 
-        // TODO st: will this every happen? when would they have 0 rewards
-        // but have passed the time period requirement?
+        // _calculateRewards will return 0 if the time lock period is not met
         if (rewards == 0) {
             revert InvalidClaim("Staking721: No rewards to claim");
         }
@@ -104,6 +108,10 @@ contract Staking721 is ERC721, StakingPool, IStaking {
             1,
             config
         );
+
+        if (rewards == 0) {
+            revert InvalidClaim("Staking721: Unable to unstake");
+        }
 
         // Update timestamp to unstaked
 		stakedOrClaimedAt[tokenId] = 0;
@@ -129,11 +137,11 @@ contract Staking721 is ERC721, StakingPool, IStaking {
 
     // In the case that a pool is abandoned or no longer has funds for rewards, allow
     // users to unstake their tokens with no consideration for time lock period
-    function emergencyUnstake(uint256 tokenId) external onlySNFTOwner(tokenId){
+    function removeStake(uint256 tokenId) external onlySNFTOwner(tokenId){
         _emergencyUnstake(tokenId);
     }
 
-    function emergencyUnstakeBulk(uint256[] calldata tokenIds) external {
+    function removeStakeBulk(uint256[] calldata tokenIds) external {
         uint256 i;
         uint256 len = tokenIds.length;
         for (i; i < len;) {
@@ -153,9 +161,13 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         return IERC20(config.rewardsToken).balanceOf(address(this));
     }
 
-    // view the rewards waiting to be claimed for a user
-    function viewPendingRewards() external view returns (uint256) {
-        return _calculateRewards(msg.sender);
+    // view available rewards waiting to be claimed for a user
+    function viewPendingRewards(uint256 tokenId) external view returns (uint256) {
+        _calculateRewards(
+            block.timestamp - stakedOrClaimedAt[tokenId],
+            1,
+            config
+        );
     }
 
     ////////////////////////////////////
@@ -171,18 +183,13 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         _burn(tokenId);
     }
 
-    function _calculateRewards(address user) internal pure returns (uint256) {
-        // TODO ST: implement
-        return 0;
-    }
-
     // TODO st: consider making custom version of ERC712Wrapper to keep this
     // Only `_mint` and `_burn`
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 firstTokenId,
-        uint256 batchSize
+        uint256,
+        uint256
     ) internal pure override {
         // The SNFT is not transferrable
         require(from == address(0) || to == address(0), "Token is non-transferable");

@@ -49,12 +49,14 @@ contract StakingERC20 is ERC721, StakingPool, IStaking {
     function stake(uint256 amount) external {
         // Accrue rewards if they have already staked
         if (staked[msg.sender] != 0) {
-            pendingRewards[msg.sender] += _calculateRewards(); // TODO st: implement
+            pendingRewards[msg.sender] += _calculateRewards(
+                block.timestamp - stakedOrClaimedAt[msg.sender],
+                staked[msg.sender],
+                config
+            );
         }
 
         staked[msg.sender] += amount;
-
-        // TODO st: figure out how we want time locking to work
         stakedOrClaimedAt[msg.sender] = block.timestamp;
 
         IERC20(config.stakingToken).transferFrom(
@@ -101,4 +103,12 @@ contract StakingERC20 is ERC721, StakingPool, IStaking {
         require(from == address(0) || to == address(0), "Token is non-transferable");
     }
 
+    function _calculateRewards(
+        uint256 timePassedSinceLastClaimOrStake, // in seconds, block.timeStamp, convert to days
+        uint256 stakeAmount,
+        PoolConfig memory _config
+    ) internal pure override returns (uint256) {
+        // TODO ST: implement
+        return 0;
+    }
 }
