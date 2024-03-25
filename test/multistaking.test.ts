@@ -274,10 +274,10 @@ describe("MultiStaking", async () => {
 
   describe.only("Reward calculation edge cases", function () {
     // Define edge cases for each parameter
-    const timePassedCases = [1, 2, 100, 1000, 10 ** 10, 10 ** 15];
-    const poolWeightCases = [0, 1, 1000, 10000, 10 ** 10, 10 ** 15];
-    const rewardPeriodCases = [1, 2, 10, 1000, 10 ** 10, 10 ** 15]; // todo, cover rewardPeriod >= timePassed
-    const stakeAmountCases = [0, 1, 1000, 10000, 10 ** 10, 10 ** 15];
+    const timePassedCases = [1, 2, 100, 1000, 10 ** 15, BigInt("1000000000000000000"), BigInt("1000000000000000000000000")]; //up to 10^24
+    const poolWeightCases = [0, 1, 1000, 10000, 10 ** 15, BigInt("1000000000000000000"), BigInt("1000000000000000000000000")];
+    const rewardPeriodCases = [1, 2, 10, 1000, 10 ** 15, BigInt("1000000000000000000"), BigInt("1000000000000000000000000")]; // todo, cover rewardPeriod >= timePassed
+    const stakeAmountCases = [0, 1, 1000, 10000, 10 ** 15, BigInt("1000000000000000000"), BigInt("1000000000000000000000000")];
 
     // Loop over all combinations of edge cases
     for (const timePassed of timePassedCases) {
@@ -285,10 +285,6 @@ describe("MultiStaking", async () => {
         for (const rewardPeriod of rewardPeriodCases) {
           for (const stakeAmount of stakeAmountCases) {
             it(`calculates rewards for timePassed=${timePassed}, poolWeight=${poolWeight}, rewardPeriod=${rewardPeriod}, stakeAmount=${stakeAmount}`, async function () {
-              // Calculate rewards using the smart contract
-              const contractRewards = await stakingContract.calculateRewards(
-                timePassed, poolWeight, rewardPeriod, stakeAmount
-              );
 
               // Calculate expected rewards using JavaScript
               const expectedRewards = calcRewardsAmount({
@@ -298,8 +294,24 @@ describe("MultiStaking", async () => {
                 stakeAmount: BigInt(stakeAmount),
               });
 
-              // Compare the results
-              expect(contractRewards.toString()).to.equal(expectedRewards.toString());
+              //This is the max uint in solidity 2^256 - 1
+              let maxUint = BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935");
+              //This is the numerator of the reward calc, if it is over the max uint, it will overflow
+              let upperEdgeCalc = BigInt("1000000000000000000") * BigInt(poolWeight) * BigInt(timePassed) * BigInt(stakeAmount);
+
+              if (upperEdgeCalc >= maxUint) {
+                // Calculate rewards using the smart contract
+                await expect(stakingContract.calculateRewards(
+                  timePassed, poolWeight, rewardPeriod, stakeAmount
+                )).to.be.reverted;
+              } else {
+                // Calculate rewards using the smart contract
+                const contractRewards = await stakingContract.calculateRewards(
+                  timePassed, poolWeight, rewardPeriod, stakeAmount
+                );
+                // Compare the results
+                expect(contractRewards.toString()).to.equal(expectedRewards.toString());
+              }
             });
           }
         }
