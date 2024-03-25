@@ -71,6 +71,14 @@ contract MockERC721 is ERC721, AccessControl {
         _mint(to, id);
     }
 
+    function burn(uint id) public virtual {
+        require(
+            hasRole(MINTER_ROLE, _msgSender()),
+            "ERC721PresetMinterPauserAutoId: must have minter role to burn"
+        );
+        _burn(id);
+    }
+
     /**
      * @dev See {IERC165-supportsInterface}.
      */

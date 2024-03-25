@@ -28,6 +28,13 @@ contract Staking721 is ERC721, StakingPool, IStaking {
     // Throw when caller is unable to claim rewards
     error InvalidClaim(string message);
 
+    modifier onlyNFTOwner(uint256 tokenId) {
+        if (IERC721(config.stakingToken).ownerOf(tokenId) != msg.sender) {
+            revert InvalidOwner("Staking721: Caller is not the owner of the token");
+        }
+        _;
+    }
+
     // Only the owner of the representative stake NFT
     modifier onlySNFTOwner(uint256 tokenId) {
         if (ownerOf(tokenId) != msg.sender) {
@@ -46,10 +53,23 @@ contract Staking721 is ERC721, StakingPool, IStaking {
 	}
 
     function stake(uint256 tokenId) external {
-        if (IERC721(config.stakingToken).ownerOf(tokenId) != msg.sender) {
-            revert InvalidOwner("Staking721: Caller is not the owner of the token");
-        }
+        _stake(tokenId);
+    }
 
+    function stakeBulk(uint256[] calldata tokenIds) external {
+        uint i;
+        uint len = tokenIds.length;
+        for (i; i < len;) {
+            _stake(tokenIds[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    // TODO move this below
+    function _stake(uint256 tokenId) internal onlyNFTOwner(tokenId) {
         // Accrue rewards if they have staked before
         if (stakeNonces[msg.sender] != 0) {
             rewardsOwed[msg.sender] += _calculateRewards(
@@ -57,10 +77,10 @@ contract Staking721 is ERC721, StakingPool, IStaking {
                 1,
                 config
             );
-            
-            unchecked {
-                ++stakeNonces[msg.sender];
-            }
+        }
+
+        unchecked {
+            ++stakeNonces[msg.sender];
         }
 
         // Mark when the token was staked
@@ -72,12 +92,19 @@ contract Staking721 is ERC721, StakingPool, IStaking {
             address(this),
             tokenId
         );
-        
+
         // Mint user SNFT
         _mint(msg.sender, tokenId);
 
         emit Staked(tokenId, 0, 0, config.stakingToken, msg.sender);
     }
+
+    // TODO
+    // claimBulk
+    // unstakeBulk
+
+
+    // TODO onlysnftowner in bulk funcs
 
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
         uint256 rewards = _calculateRewards(
@@ -94,6 +121,49 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         // Update timestamp before transfer
 		stakedOrClaimedAt[tokenId] = block.timestamp;
 
+        config.rewardsToken.transfer(
+            msg.sender,
+            rewards
+        );
+
+        emit Claimed(rewards, msg.sender);
+    }
+
+    function claimBulk(uint256[] calldata tokenIds) external {
+        uint i;
+        uint256 rewards;
+        uint len = tokenIds.length;
+        for (i; i < len;) {
+            // If they are not the owner of the SNFT, skip this tokenId
+            if (ownerOf(tokenIds[i]) != msg.sender) {
+                continue;
+            }
+
+            // _calculateRewards will return 0 if the time lock period is not met
+            uint256 tempRewards = _calculateRewards(
+                block.timestamp - stakedOrClaimedAt[tokenIds[i]],
+                1,
+                config
+            );
+
+            // If there are rewards to be claimed, mark that token as claimed
+            if (tempRewards > 0) {
+                rewards += tempRewards;
+                stakedOrClaimedAt[tokenIds[i]] = block.timestamp;
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        if (rewards == 0) {
+            // TODO will revert here when array is all unowned, valid ids
+            // is that fine?
+            revert InvalidClaim("Staking721: No rewards to claim");
+        }
+
+        // Transfer all rewards at once
         config.rewardsToken.transfer(
             msg.sender,
             rewards
@@ -138,7 +208,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
     // In the case that a pool is abandoned or no longer has funds for rewards, allow
     // users to unstake their tokens with no consideration for time lock period
     function removeStake(uint256 tokenId) external onlySNFTOwner(tokenId){
-        _emergencyUnstake(tokenId);
+        _removeStake(tokenId);
     }
 
     function removeStakeBulk(uint256[] calldata tokenIds) external {
@@ -148,7 +218,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
             if (ownerOf(tokenIds[i]) != msg.sender) {
                 revert InvalidOwner("Caller is not the owner of the representative stake token");
             }
-            _emergencyUnstake(tokenIds[i]);
+            _removeStake(tokenIds[i]);
 
             unchecked {
                 ++i;
@@ -163,7 +233,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
 
     // view available rewards waiting to be claimed for a user
     function viewPendingRewards(uint256 tokenId) external view returns (uint256) {
-        _calculateRewards(
+        return _calculateRewards(
             block.timestamp - stakedOrClaimedAt[tokenId],
             1,
             config
@@ -174,7 +244,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         /* Internal Functions */
     ////////////////////////////////////
 
-    function _emergencyUnstake(uint256 tokenId) internal {
+    function _removeStake(uint256 tokenId) internal {
         IERC721(config.stakingToken).transferFrom(
             address(this),
             msg.sender,

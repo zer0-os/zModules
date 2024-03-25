@@ -102,13 +102,4 @@ contract StakingERC20 is ERC721, StakingPool, IStaking {
         // The SNFT is not transferrable
         require(from == address(0) || to == address(0), "Token is non-transferable");
     }
-
-    function _calculateRewards(
-        uint256 timePassedSinceLastClaimOrStake, // in seconds, block.timeStamp, convert to days
-        uint256 stakeAmount,
-        PoolConfig memory _config
-    ) internal pure override returns (uint256) {
-        // TODO ST: implement
-        return 0;
-    }
 }

@@ -32,7 +32,7 @@ interface Types {
 		// HAS TO BE < 1! How do we denominate this one then? 10^18?
 		uint256 rewardsPerPeriod; // amount of rewards distributed per period
         uint256 rewardsFraction; // fraction of stakeAmount that is multiplier in rewards calc
-		uint256 rewardsPeriod; // length of a time period, specified in days
+		uint256 rewardsPeriodLength; // length of a time period, specified in days
 		uint256 timeLockPeriods; // number of time periods required to pass to be able to claim rewards or unstake
 	}
 

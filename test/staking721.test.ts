@@ -93,6 +93,36 @@ describe("Staking721", () => {
       expect(await mockERC721.balanceOf(staker.address)).to.eq(0);
       expect(await staking721.balanceOf(staker.address)).to.eq(1);
     });
+
+    it("Can stake multiple NFTs", async () => {
+      const tokenId2 = 2;
+      const tokenId3 = 3;
+
+      await mockERC721.connect(deployer).mint(staker.address, tokenId2);
+      await mockERC721.connect(deployer).mint(staker.address, tokenId3);
+
+      await mockERC721.connect(staker).approve(await staking721.getAddress(), tokenId2);
+      await mockERC721.connect(staker).approve(await staking721.getAddress(), tokenId3);
+
+      const balanceBefore = await mockERC721.balanceOf(staker.address);
+      const balanceBeforeSNFT = await staking721.balanceOf(staker.address);
+
+      // Stake multiple 
+      await staking721.connect(staker).stakeBulk([tokenId2, tokenId3]);
+
+      const balanceAfter = await mockERC721.balanceOf(staker.address);
+      const balanceAfterSNFT = await staking721.balanceOf(staker.address);
+
+      expect(balanceAfter).to.eq(balanceBefore - 2n);
+      expect(balanceAfterSNFT).to.eq(balanceBeforeSNFT + 2n);
+
+      // Reset state
+      await staking721.connect(staker).removeStakeBulk([tokenId2, tokenId3]);
+      
+      // Burn
+      await mockERC721.connect(deployer).burn(tokenId2);
+      await mockERC721.connect(deployer).burn(tokenId3);
+    });
   
     it("Fails to stake when the token id is invalid", async () => {
       // No new token is created, so id is invalid
@@ -108,12 +138,16 @@ describe("Staking721", () => {
   
     it("Fails to stake when the caller is not the owner of the NFT", async () => {
       // Deployer has new token
-      await mockERC721.connect(deployer).mint(deployer.address, tokenId + 1);
+      const tokenId2 = 2;
+      await mockERC721.connect(deployer).mint(deployer.address, tokenId2);
   
-      await mockERC721.connect(deployer).approve(await staking721.getAddress(), tokenId + 1);
+      await mockERC721.connect(deployer).approve(await staking721.getAddress(), tokenId2);
   
       // Staker does not own the newly minted token and cannot stake it
-      await expect(staking721.connect(staker).stake(tokenId + 1)).to.be.revertedWithCustomError(staking721, "InvalidOwner");
+      await expect(staking721.connect(staker).stake(tokenId2)).to.be.revertedWithCustomError(staking721, "InvalidOwner");
+
+      // Reset
+      await mockERC721.connect(deployer).burn(tokenId2);
     });
   })
 
@@ -174,7 +208,7 @@ describe("Staking721", () => {
     });
 
     it("Fails to unstake when not enough time has passed", async () => {
-      // Restake to be able to unstake
+      // Restake to be able to unstake again
       await mockERC721.connect(staker).approve(await staking721.getAddress(), tokenId);
       await staking721.connect(staker).stake(tokenId);
 
@@ -194,6 +228,68 @@ describe("Staking721", () => {
     it("Fails when token id is not staked", async () => {
       // If the a token is not staked, the relevant SNFT does not exist and so we can't unstake it
       await expect(staking721.connect(staker).unstake(tokenId + 2)).to.be.revertedWith(INVALID_TOKEN_ID);
+
+      // To reset state, we unstake here
+      await time.increase(dayInSeconds * (config.rewardsPeriod));
+      await staking721.connect(staker).unstake(tokenId);
+    });
+  });
+
+  describe("#removeStake | #removeStakeBulk", () => {
+    it("Allows the user to remove their stake within the timelock period without rewards", async () => {
+      // Token is already staked from `Fails to unstake when not enough time has passed` test above
+      await mockERC721.connect(staker).approve(await staking721.getAddress(), tokenId);
+      await staking721.connect(staker).stake(tokenId);
+
+      // User has staked their NFT and gained an SNFT
+      expect(await mockERC721.balanceOf(staker.address)).to.eq(0);
+      expect(await staking721.balanceOf(staker.address)).to.eq(1);
+
+      const balanceBefore = await mockERC20.balanceOf(staker.address);
+
+      await staking721.connect(staker).removeStake(tokenId);
+
+      const balanceAfter = await mockERC20.balanceOf(staker.address);
+
+      expect(balanceAfter).to.eq(balanceBefore);
+      expect(await mockERC721.balanceOf(staker.address)).to.eq(1);
+      expect(await staking721.balanceOf(staker.address)).to.eq(0);
+    });
+
+    // TODO cases
+    // fails when not owner of sNFT
+    // fails when token id is invalid
+    // fails when token id is not staked (snft does not exist)
+
+    it("Allows the user to remove multiple stakes within the timelock period without rewards", async () => {
+      const tokenId2 = 2;
+      const tokenId3 = 3;
+
+      // Mint extra tokens
+      await mockERC721.connect(deployer).mint(staker.address, tokenId2);
+      await mockERC721.connect(deployer).mint(staker.address, tokenId3);
+
+      // Approve all
+      await mockERC721.connect(staker).approve(await staking721.getAddress(), tokenId);
+      await mockERC721.connect(staker).approve(await staking721.getAddress(), tokenId2);
+      await mockERC721.connect(staker).approve(await staking721.getAddress(), tokenId3);
+
+      // Stake multiple
+      await staking721.connect(staker).stakeBulk([tokenId, tokenId2, tokenId3]);
+
+      expect(await mockERC721.balanceOf(staker.address)).to.eq(0);
+      expect(await staking721.balanceOf(staker.address)).to.eq(3);
+
+      const balanceBefore = await mockERC20.balanceOf(staker.address);
+
+      // Verify we can remove multiple stakes in a single tx
+      await staking721.connect(staker).removeStakeBulk([tokenId, tokenId2, tokenId3]);
+
+      const balanceAfter = await mockERC20.balanceOf(staker.address);
+
+      expect(balanceAfter).to.eq(balanceBefore);
+      expect(await mockERC721.balanceOf(staker.address)).to.eq(3);
+      expect(await staking721.balanceOf(staker.address)).to.eq(0);
     });
   });
 });

@@ -72,26 +72,28 @@ contract StakingPool is IStakingPool {
 
     // TODO st: make this formula perfect, connect it to all the logic and swap this one.
     function _calculateRewards(
-        uint256 timePassedSinceLastClaimOrStake, // in seconds, block.timeStamp, convert to days
+        uint256 timePassed, // in seconds, time since last claim or stake
         uint256 stakeAmount,
         PoolConfig memory config
-    ) internal pure virtual returns (uint256) {
-        // virtual so can be overridden by erc721, but erc20 and erc1155 can use this function I think
-        // TODO is there a Time module that's better for this?
+    ) internal pure returns (uint256) {
         // 86400 seconds in 1 day
-        uint256 timePassedDays = timePassedSinceLastClaimOrStake / 86400; // do / 24 hours ???
-        uint256 timePassedPeriods = timePassedDays / config.rewardsPeriod; // num periods that have passed
+        uint256 timePassedDays = timePassed / 86400;
+        // uint256 timePassedPeriods = timePassedDays / config.rewardsPeriod; // num periods that have passed
 
-        config.timeLockPeriods;
+        // config.timeLockPeriods;
         // one period is 7 days, require 2 periods to have passed before claiming, so 14 days
 
-        if (timePassedDays < config.timeLockPeriods) {
-            return 0; // TODO revert error?
+        // timePassedPeriods = timePassedDays / config.rewardsPeriod;
+        if (timePassedDays / config.rewardsPeriodLength < config.timeLockPeriods) {
+            return 0;
         }
-
+        // if stakeAmount == 0 worth checking? we only call it internally 
+        // TODO remove if statement
         // ERC721, or non-fungible ERC1155
         if (stakeAmount == 1) {
-            return config.rewardsPerPeriod * timePassedPeriods;
+            // TODO ideally shouldnt need if statement can combine logic
+            // TODO bring to damien, then he can go to escrow
+            return config.rewardsPerPeriod * (timePassedDays / config.rewardsPeriodLength);
         } else {
             // ERC20, or fungible ERC1155
             return stakeAmount * (stakeAmount / config.rewardsFraction);
