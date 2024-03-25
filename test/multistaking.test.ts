@@ -300,7 +300,7 @@ describe("MultiStaking", async () => {
               let upperEdgeCalc = BigInt("1000000000000000000") * BigInt(poolWeight) * BigInt(timePassed) * BigInt(stakeAmount);
 
               if (upperEdgeCalc >= maxUint) {
-                // Calculate rewards using the smart contract
+                // Contract call should overflow
                 await expect(stakingContract.calculateRewards(
                   timePassed, poolWeight, rewardPeriod, stakeAmount
                 )).to.be.reverted;
