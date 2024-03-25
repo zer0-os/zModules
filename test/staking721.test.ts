@@ -32,10 +32,7 @@ describe("Staking721", () => {
   let config : PoolConfig;
   let tokenId : number;
 
-  let stakeTime : number;
-  let claimTime : number;
-  let unstakeTime : number;
-
+  let stakedOrClaimedAt : number;
 
   before(async () => {
     [
@@ -88,7 +85,7 @@ describe("Staking721", () => {
       await staking721.connect(staker).stake(tokenId);
 
       // Log for claim and unstake test
-      stakeTime = await time.latest();
+      stakedOrClaimedAt = await time.latest();
 
       // User has staked their NFT and gained an SNFT
       expect(await mockERC721.balanceOf(staker.address)).to.eq(0);
@@ -161,10 +158,14 @@ describe("Staking721", () => {
 
       await staking721.connect(staker).claim(tokenId);
 
-      claimTime = await time.latest();
+      const expectedRewards = calcRewardsAmount(
+        config,
+        BigInt(1),
+        BigInt(await time.latest() - stakedOrClaimedAt)
+      );
       
-      const expectedRewards = calcRewardsAmount(config, BigInt(1), BigInt(claimTime - stakeTime));
-  
+      stakedOrClaimedAt = await time.latest();
+
       const balanceAfter = await mockERC20.balanceOf(staker.address);
       
       // One period has passed, expect that rewards for one period were given
@@ -193,7 +194,7 @@ describe("Staking721", () => {
   describe("#unstake", () => {
     it("Can unstake a token", async () => {
       // Move forward in time one period to be able to claim
-      await time.increase(dayInSeconds * config.rewardsPeriod);
+      await time.increase(config.periodLength);
 
       const balanceBefore = await mockERC20.balanceOf(staker.address);
 
@@ -202,7 +203,14 @@ describe("Staking721", () => {
       const balanceAfter = await mockERC20.balanceOf(staker.address);
 
       // One period has passed, expect that rewards for one period were given
-      expect(balanceAfter).to.eq(balanceBefore + config.rewardsPerPeriod);
+      const expectedRewards = calcRewardsAmount(
+        config,
+        BigInt(1),
+        BigInt(await time.latest() - stakedOrClaimedAt)
+      );
+
+      stakedOrClaimedAt = await time.latest();
+      expect(balanceAfter).to.eq(balanceBefore + expectedRewards);
       
       // User has regained their NFT and the SNFT was burned
       expect(await mockERC721.balanceOf(staker.address)).to.eq(1);
@@ -214,8 +222,6 @@ describe("Staking721", () => {
       // Restake to be able to unstake again
       await mockERC721.connect(staker).approve(await staking721.getAddress(), tokenId);
       await staking721.connect(staker).stake(tokenId);
-
-      await time.increase(dayInSeconds * (config.rewardsPeriod - 1n));
 
       await expect(staking721.connect(staker).unstake(tokenId)).to.be.revertedWithCustomError(staking721, "InvalidClaim");
     });
@@ -233,7 +239,7 @@ describe("Staking721", () => {
       await expect(staking721.connect(staker).unstake(tokenId + 2)).to.be.revertedWith(INVALID_TOKEN_ID);
 
       // To reset state, we unstake here
-      await time.increase(dayInSeconds * (config.rewardsPeriod));
+      await time.increase(config.periodLength);
       await staking721.connect(staker).unstake(tokenId);
     });
   });
