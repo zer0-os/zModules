@@ -274,10 +274,10 @@ describe("MultiStaking", async () => {
 
   describe.only("Reward calculation edge cases", function () {
     // Define edge cases for each parameter
-    const timePassedCases = [1, 2, 100, 1000, 10 ** 6];
-    const poolWeightCases = [0, 1, 1000, 10000, 10 ** 6];
-    const rewardPeriodCases = [1, 2, 10, 1000, 10 ** 6]; // todo, cover rewardPeriod >= timePassed
-    const stakeAmountCases = [0, 1, 1000, 10000, 10 ** 6];
+    const timePassedCases = [1, 2, 100, 1000, 10 ** 10, 10 ** 15];
+    const poolWeightCases = [0, 1, 1000, 10000, 10 ** 10, 10 ** 15];
+    const rewardPeriodCases = [1, 2, 10, 1000, 10 ** 10, 10 ** 15]; // todo, cover rewardPeriod >= timePassed
+    const stakeAmountCases = [0, 1, 1000, 10000, 10 ** 10, 10 ** 15];
 
     // Loop over all combinations of edge cases
     for (const timePassed of timePassedCases) {
