@@ -16,7 +16,8 @@ import {
   unmintedTokenId,
 } from "./helpers/staking/constants";
 import { INVALID_TOKEN_ID, ONLY_NFT_OWNER } from "./helpers/staking/errors";
-import { mock } from "node:test";
+import { createDefaultConfigs } from "./helpers/staking/defaults";
+import { calcRewardsAmount } from "./helpers/staking/rewards";
 
 describe("Staking721", () => {
   let deployer : SignerWithAddress;
@@ -30,6 +31,10 @@ describe("Staking721", () => {
 
   let config : PoolConfig;
   let tokenId : number;
+
+  let stakeTime : number;
+  let claimTime : number;
+  let unstakeTime : number;
 
 
   before(async () => {
@@ -45,14 +50,7 @@ describe("Staking721", () => {
     const mockERC721Factory = await hre.ethers.getContractFactory("MockERC721");
     mockERC721 = await mockERC721Factory.deploy("WilderWheels", "WW", "0://wheels-base");
 
-    config = {
-      stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockERC20.getAddress(),
-      rewardsPeriod: BigInt(7), // a single rewards period is 7 days
-      rewardsPerPeriod: hre.ethers.parseEther("5"),
-      rewardsFraction: BigInt(0), // Not used in 721 rewards calcs
-      timeLockPeriods: BigInt(1), // 1 period time lock
-    };
+    config = await createDefaultConfigs(mockERC20, mockERC721);
 
     const stakingFactory = await hre.ethers.getContractFactory("Staking721");
     staking721 = await stakingFactory.deploy(
@@ -88,7 +86,10 @@ describe("Staking721", () => {
   describe("#stake", () => {
     it("Can stake an NFT", async () => {  
       await staking721.connect(staker).stake(tokenId);
-  
+
+      // Log for claim and unstake test
+      stakeTime = await time.latest();
+
       // User has staked their NFT and gained an SNFT
       expect(await mockERC721.balanceOf(staker.address)).to.eq(0);
       expect(await staking721.balanceOf(staker.address)).to.eq(1);
@@ -154,21 +155,23 @@ describe("Staking721", () => {
   describe("#claim", () => {
     it("Can claim rewards on a staked token", async () => {
       // Move forward in time one period to be able to claim
-      await time.increase(dayInSeconds * config.rewardsPeriod);
-  
+      await time.increase(config.timeLockPeriod);
+
       const balanceBefore = await mockERC20.balanceOf(staker.address);
-  
+
       await staking721.connect(staker).claim(tokenId);
+
+      claimTime = await time.latest();
+      
+      const expectedRewards = calcRewardsAmount(config, BigInt(1), BigInt(claimTime - stakeTime));
   
       const balanceAfter = await mockERC20.balanceOf(staker.address);
       
       // One period has passed, expect that rewards for one period were given
-      expect(balanceAfter).to.eq(balanceBefore + config.rewardsPerPeriod);
+      expect(balanceAfter).to.eq(balanceBefore + expectedRewards);
     });
 
     it ("Fails to claim when not enough time has passed", async () => {
-      await time.increase(dayInSeconds * (config.rewardsPeriod - 1n));
-  
       await expect(staking721.connect(staker).claim(tokenId)).to.be.revertedWithCustomError(staking721, "InvalidClaim")
     });
 

@@ -105,6 +105,20 @@ contract Staking721 is ERC721, StakingPool, IStaking {
 
 
     // TODO onlysnftowner in bulk funcs
+    function showValues (uint256 tokenId) public view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
+        return _showValues(
+            block.timestamp - stakedOrClaimedAt[tokenId],
+            1,
+            config
+        );
+    }
+
+    function showValues2(uint256 tokenId) public view returns (uint256, bool) {
+        return _showValues2(
+            block.timestamp - stakedOrClaimedAt[tokenId],
+            config
+        );
+    }
 
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
         uint256 rewards = _calculateRewards(

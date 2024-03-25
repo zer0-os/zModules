@@ -30,10 +30,10 @@ interface Types {
 		IERC20 rewardsToken;
 		// TODO st: possibly add timeframe here based on which rewards will generate
 		// HAS TO BE < 1! How do we denominate this one then? 10^18?
-		uint256 rewardsPerPeriod; // amount of rewards distributed per period
-        uint256 rewardsFraction; // fraction of stakeAmount that is multiplier in rewards calc
-		uint256 rewardsPeriodLength; // length of a time period, specified in days
-		uint256 timeLockPeriods; // number of time periods required to pass to be able to claim rewards or unstake
+		// uint256 rewardsPerPeriod; // amount of rewards distributed per period
+        uint256 poolWeight; // fraction of stakeAmount that is multiplier in rewards calc
+		uint256 periodLength; // length of a time period
+		uint256 timeLockPeriod; // number of time periods required to pass to be able to claim rewards or unstake
 	}
 
     // Details of a single stake

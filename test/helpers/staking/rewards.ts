@@ -1,12 +1,10 @@
-import { RewardsConfig } from "./types";
+import { PoolConfig, RewardsConfig } from "./types";
 
 
-// TODO st: fix this when formula is done
-export const calcRewardsAmount = ({
-  timePassed,
-  rewardWeight,
-  rewardPeriod,
-  stakeAmount,
-} : RewardsConfig) => {
-  return rewardWeight * stakeAmount * timePassed / rewardPeriod;
+export const calcRewardsAmount = (
+  config : PoolConfig,
+  stakeAmount : bigint,
+  timePassed : bigint
+) => {
+  return config.poolWeight * stakeAmount * timePassed / config.periodLength;
 }
