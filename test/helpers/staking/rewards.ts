@@ -1,3 +1,4 @@
+import { RewardsConfig } from "./types";
 
 
 // TODO st: fix this when formula is done
@@ -6,9 +7,6 @@ export const calcRewardsAmount = ({
   rewardWeight,
   rewardPeriod,
   stakeAmount,
-} : {
-  timePassed : bigint;
-  rewardWeight : bigint;
-  rewardPeriod : bigint;
-  stakeAmount : bigint;
-}) => rewardWeight * stakeAmount * timePassed / rewardPeriod;
+} : RewardsConfig) => {
+  return rewardWeight * stakeAmount * timePassed / rewardPeriod;
+}

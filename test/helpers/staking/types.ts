@@ -30,6 +30,12 @@ export interface PoolConfig {
 //   stakedOrClaimedAt : string;
 // }
 
+export interface RewardsConfig {
+  timePassed : bigint;
+  rewardWeight : bigint;
+  rewardPeriod : bigint;
+  stakeAmount : bigint;
+}
 // Simplify the Ethers V6 contract type
 export type ContractV6 = BaseContract & Omit<ContractInterface, keyof BaseContract>;
 

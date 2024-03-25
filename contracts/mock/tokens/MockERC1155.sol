@@ -6,7 +6,6 @@ pragma solidity ^0.8.19;
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
 contract MockERC1155 is ERC1155 {
-	// TODO not sure what to create at constructor, if anything
 	uint256 public constant ASSET_ONE = 0;
 	uint256 public constant ASSET_TWO = 1;
 
