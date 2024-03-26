@@ -12,27 +12,9 @@ contract StakingPool is IStakingPool {
     // Throw if the rewards configuration is non-zero and invalid
     error InvalidRewards(string message);
 
-    // constructor(PoolConfig[] memory _configs) {
-    //     uint256 i;
-    //     uint256 len = _configs.length;
-
-    //     for(i; i < len;) {
-    //         _createPool(_configs[i]);
-    //         unchecked {
-    //             ++i;
-    //         }
-    //     }
-
-    // }
-
-    function createPool(PoolConfig memory _config) external {
-        _createPool(_config);
-    }
-
-    // TODO st: perhaps create a constructor here that allows creation of several
-    // pools still, just as `new StakingERC721(...), new StakingERC20(...)` etc.
-
-    ////////////////////////////////////
+	// TODO need public `createPool` function?
+    
+	////////////////////////////////////
         /* Internal Functions */
     ////////////////////////////////////
 

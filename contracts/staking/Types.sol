@@ -37,18 +37,11 @@ interface Types {
 	}
 
     // Details of a single stake
-    struct Stake {
-        bytes32 poolId;
-        uint256 tokenId;
-        uint256 amount;
-        uint256 index;
-        uint256 stakedOrClaimedAt;
-    }
-
-    // Details of all stakes for a single user
-    struct StakerProfile {
-        uint256 currentStakeNonce;
-		// TODO st: remove this and calc the rewards on stake() if previous stakes exist
-        // mapping(uint256 stakeNonce => Stake _stakes) stakesMap;
-    }
+    // struct Stake {
+    //     bytes32 poolId;
+    //     uint256 tokenId;
+    //     uint256 amount;
+    //     uint256 index;
+    //     uint256 stakedOrClaimedAt;
+    // }
 }

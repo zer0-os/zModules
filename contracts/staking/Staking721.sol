@@ -1,33 +1,52 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { ERC721NonTransferable } from "../tokens/ERC721NonTransferable.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Types } from "./Types.sol";
 import { StakingPool } from "./StakingPool.sol";
 import { IStaking } from "./IStaking.sol";
 
-// TODO make Untransferable721.sol that has _beforeTokenTransfer override
-// then inherit that contract in each individual staking contract
-contract Staking721 is ERC721, StakingPool, IStaking {
-    Types.PoolConfig public config;
+/**
+ * @title Staking721
+ * @notice A staking contract that allows depositing ERC721 tokens and mints a 
+ * non-transferable ERC721 token in return as representation of the deposit. 
+ */
+contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
+    /**
+	 * @dev The configuration of this staking pool
+	 */
+	Types.PoolConfig public config;
 
-    // Track number of stakes for a user with their stake nonce
+    /**
+	 * Track number of stakes for a user with their stake nonce
+	 */
     mapping(address user => uint256 currentStakeNonce) public stakeNonces;
 
-    // Rewards tallied to the user for additional stakes to be claimed
+    /**
+	 * @dev Rewards tallied to the user for additional stakes to be claimed
+	 */
     mapping(address user => uint256 rewards) public rewardsOwed;
 
-    // Track for each stake when it was most recently accessed
+    /**
+	 * @dev Track for each stake when it was most recently accessed
+	 */
     mapping(uint256 tokenId => uint256 blockNumber) public stakedOrClaimedAt;
 
-    // Throw when the caller is not the owner of the given token
+    /**
+	 * @dev Throw when the caller is not the owner of the given token
+	 */
     error InvalidOwner(string message);
 
-    // Throw when caller is unable to claim rewards
+    /**
+	 * @dev Throw when caller is unable to claim rewards
+	 */
     error InvalidClaim(string message);
 
+	/**
+	 * @dev Restrict calls to be only from the original NFT owner
+	 */
     modifier onlyNFTOwner(uint256 tokenId) {
         if (IERC721(config.stakingToken).ownerOf(tokenId) != msg.sender) {
             revert InvalidOwner("Staking721: Caller is not the owner of the token");
@@ -35,7 +54,9 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         _;
     }
 
-    // Only the owner of the representative stake NFT
+	/**
+	 * @dev Restrict calls to be only from the sNFT owner
+	 */
     modifier onlySNFTOwner(uint256 tokenId) {
         if (ownerOf(tokenId) != msg.sender) {
             revert InvalidOwner("Caller is not the owner of the representative stake token");
@@ -47,15 +68,23 @@ contract Staking721 is ERC721, StakingPool, IStaking {
 		string memory name,
 		string memory symbol,
 		Types.PoolConfig memory _config
-	) ERC721(name, symbol) {
-        _createPool(_config); // do we need concept of pools?
+	) ERC721NonTransferable(name, symbol) {
+        _createPool(_config);
         config = _config;
 	}
 
+	/**
+	 * @notice Stake an ERC721 token and receive a non-transferable ERC721 token
+	 * @param tokenId The tokenId of the ERC721 staking token contract
+	 */
     function stake(uint256 tokenId) external {
         _stake(tokenId);
     }
 
+	/**
+	 * @notice Stake multiple ERC721 tokens and receive non-transferable ERC721 tokens in return
+	 * @param tokenIds The tokenIds of the ERC721 staking token contracts
+	 */
     function stakeBulk(uint256[] calldata tokenIds) external {
         uint i;
         uint len = tokenIds.length;
@@ -68,43 +97,13 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         }
     }
 
-    // TODO move this below
-    function _stake(uint256 tokenId) internal onlyNFTOwner(tokenId) {
-        // Accrue rewards if they have staked before
-        if (stakeNonces[msg.sender] != 0) {
-            rewardsOwed[msg.sender] += _calculateRewards(
-                block.timestamp - stakedOrClaimedAt[tokenId],
-                1,
-                config
-            );
-        }
-
-        unchecked {
-            ++stakeNonces[msg.sender];
-        }
-
-        // Mark when the token was staked
-        stakedOrClaimedAt[tokenId] = block.timestamp;
-
-        // Transfer the NFT to this contract
-        IERC721(config.stakingToken).transferFrom(
-            msg.sender,
-            address(this),
-            tokenId
-        );
-
-        // Mint user SNFT
-        _mint(msg.sender, tokenId);
-
-        emit Staked(tokenId, 0, 0, config.stakingToken, msg.sender);
-    }
-
     // TODO
     // claimBulk
     // unstakeBulk
-
-
     // TODO onlysnftowner in bulk funcs
+
+
+	// Temp debug for calcs
     function showValues (uint256 tokenId) public view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
         return _showValues(
             block.timestamp - stakedOrClaimedAt[tokenId],
@@ -120,6 +119,12 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         );
     }
 
+	/**
+	 * @notice Claim rewards for a staked ERC721 token
+	 * @dev Will revert if the time lock period has not been met or 
+	 * the caller is not the owner of the sNFT.
+	 * @param tokenId The tokenId of the ERC721 staking token contract
+	 */
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
         uint256 rewards = _calculateRewards(
             block.timestamp - stakedOrClaimedAt[tokenId],
@@ -127,7 +132,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
             config
         );
 
-        // _calculateRewards will return 0 if the time lock period is not met
+        // `_calculateRewards` will return 0 if the time lock period is not met
         if (rewards == 0) {
             revert InvalidClaim("Staking721: No rewards to claim");
         }
@@ -135,6 +140,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         // Update timestamp before transfer
 		stakedOrClaimedAt[tokenId] = block.timestamp;
 
+		// Rewards are valid, transfer to user
         config.rewardsToken.transfer(
             msg.sender,
             rewards
@@ -143,12 +149,16 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         emit Claimed(rewards, msg.sender);
     }
 
+	/**
+	 * @notice Claim rewards for multiple staked ERC721 tokens
+	 * @param tokenIds The tokenIds of the ERC721 staking token contracts
+	 */
     function claimBulk(uint256[] calldata tokenIds) external {
         uint i;
         uint256 rewards;
         uint len = tokenIds.length;
         for (i; i < len;) {
-            // If they are not the owner of the SNFT, skip this tokenId
+            // If they are not the owner of the sNFT, skip this tokenId
             if (ownerOf(tokenIds[i]) != msg.sender) {
                 continue;
             }
@@ -170,10 +180,10 @@ contract Staking721 is ERC721, StakingPool, IStaking {
                 ++i;
             }
         }
-
+		
+		// If there are no rewards to claim, revert
+		// This will also cover if all tokens are not owned by the caller
         if (rewards == 0) {
-            // TODO will revert here when array is all unowned, valid ids
-            // is that fine?
             revert InvalidClaim("Staking721: No rewards to claim");
         }
 
@@ -193,6 +203,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
             config
         );
 
+        // `_calculateRewards` will return 0 if the time lock period is not met
         if (rewards == 0) {
             revert InvalidClaim("Staking721: Unable to unstake");
         }
@@ -204,7 +215,7 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         _burn(tokenId);
 
         // Send final rewards to staker
-        IERC20(config.rewardsToken).transfer(
+        config.rewardsToken.transfer(
             msg.sender,
             rewards
         );
@@ -221,10 +232,22 @@ contract Staking721 is ERC721, StakingPool, IStaking {
 
     // In the case that a pool is abandoned or no longer has funds for rewards, allow
     // users to unstake their tokens with no consideration for time lock period
+	/**
+	 * @notice Remove a stake from the pool without consideration for time lock period
+	 * or for rewards. This is a last resort function for users to remove their stake
+	 * in the case the a pool is abandoned by the owner, is not funded, or they simply
+	 * want to withdraw their stake.
+	 * @param tokenId The tokenId of the ERC721 staking token contract
+	 */
     function removeStake(uint256 tokenId) external onlySNFTOwner(tokenId){
         _removeStake(tokenId);
     }
 
+	/**
+	 * @notice Remove stakes from the pool without consideration for time lock period
+	 * or for rewards. This is the same as `removeStake` but for multiple tokens.
+	 * @param tokenIds Array of tokenIds from the ERC721 staking token contracts
+	 */
     function removeStakeBulk(uint256[] calldata tokenIds) external {
         uint256 i;
         uint256 len = tokenIds.length;
@@ -258,6 +281,37 @@ contract Staking721 is ERC721, StakingPool, IStaking {
         /* Internal Functions */
     ////////////////////////////////////
 
+	// TODO move this below
+    function _stake(uint256 tokenId) internal onlyNFTOwner(tokenId) {
+        // Accrue rewards if they have staked before
+        if (stakeNonces[msg.sender] != 0) {
+            rewardsOwed[msg.sender] += _calculateRewards(
+                block.timestamp - stakedOrClaimedAt[tokenId],
+                1,
+                config
+            );
+        }
+
+        unchecked {
+            ++stakeNonces[msg.sender];
+        }
+
+        // Mark when the token was staked
+        stakedOrClaimedAt[tokenId] = block.timestamp;
+
+        // Transfer the NFT to this contract
+        IERC721(config.stakingToken).transferFrom(
+            msg.sender,
+            address(this),
+            tokenId
+        );
+
+        // Mint user sNFT
+        _mint(msg.sender, tokenId);
+
+        emit Staked(tokenId, 0, 0, config.stakingToken, msg.sender);
+    }
+
     function _removeStake(uint256 tokenId) internal {
         IERC721(config.stakingToken).transferFrom(
             address(this),
@@ -265,17 +319,5 @@ contract Staking721 is ERC721, StakingPool, IStaking {
             tokenId
         );
         _burn(tokenId);
-    }
-
-    // TODO st: consider making custom version of ERC712Wrapper to keep this
-    // Only `_mint` and `_burn`
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256,
-        uint256
-    ) internal pure override {
-        // The SNFT is not transferrable
-        require(from == address(0) || to == address(0), "Token is non-transferable");
     }
 }

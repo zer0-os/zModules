@@ -269,6 +269,7 @@ describe("Staking721", () => {
     // fails when not owner of sNFT
     // fails when token id is invalid
     // fails when token id is not staked (snft does not exist)
+    // fails on claim when not enough time has passed, single and bulk
 
     it("Allows the user to remove multiple stakes within the timelock period without rewards", async () => {
       const tokenId2 = 2;
