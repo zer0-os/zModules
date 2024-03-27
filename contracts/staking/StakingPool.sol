@@ -12,8 +12,6 @@ contract StakingPool is IStakingPool {
     // Throw if the rewards configuration is non-zero and invalid
     error InvalidRewards(string message);
 
-	// TODO need public `createPool` function?
-    
 	////////////////////////////////////
         /* Internal Functions */
     ////////////////////////////////////
@@ -28,8 +26,8 @@ contract StakingPool is IStakingPool {
         if (address(_config.rewardsToken) == address(0)) {
             revert InvalidRewards("Pool: Invalid rewards configuration");
         }
-        // TODO st: figure out other checks when formula is done
 
+        // TODO st: Figure out if we need this for erc1155 or not
         // if (uint256(_config.stakingTokenType) > uint256(type(TokenType).max)) {
         //     // Enum for token types is
         //     // 0 - ERC721
@@ -37,17 +35,11 @@ contract StakingPool is IStakingPool {
         //     // 2 - ERC1155
         //     revert InvalidStaking("Pool: Invalid staking token type");
         // }
-
-        bytes32 poolId = _getPoolId(_config);
-
-        // Staking configuration must not already exist
-        // if (address(pools[poolId].stakingToken) != address(0)) {
-        //     revert InvalidStaking("Pool: Staking configuration already exists");
-        // }
         // TODO st: need supportsInterface check to more certainly verify staking token being used
         // more of a problem when zero uses this, not WW
 
-        // pools[poolId] = _config;
+        bytes32 poolId = _getPoolId(_config);
+
         emit PoolCreated(poolId, _config);
     }
 
@@ -65,77 +57,22 @@ contract StakingPool is IStakingPool {
         );
     }
 
-    // debug funcs
-
-    // function _showValues(
-    //     uint256 timePassed, // in seconds, time since last claim or stake
-    //     uint256 stakeAmount, // is 1 in NFT case
-    //     PoolConfig memory config
-    // ) internal view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
-    //     return (
-    //         timePassed,
-    //         stakeAmount,
-    //         config.poolWeight,
-    //         config.periodLength,
-    //         config.timeLockPeriod,
-    //         timePassed / config.periodLength
-    //     );
-    // }
-
-    // function _showValues2(
-    //     uint256 timePassed, // in seconds, time since last claim or stake
-    //     PoolConfig memory config
-    // ) internal view returns (uint256, bool) {
-    //     return (
-    //         timePassed / config.periodLength,
-    //         timePassed / config.periodLength < config.timeLockPeriod
-    //     );
-    // }
-
-    // TODO st: make this formula perfect, connect it to all the logic and swap this one.
+    /**
+     * @notice Calculate rewards for a staker
+     * @dev Returns 0 if time lock period is not passed
+     * @param timePassed Time passed since last stake or claim, in seconds
+     * @param stakeAmount Amount of staking token staked
+     * @param config Pool configuration
+     */
     function _calculateRewards(
-        uint256 timePassed, // in seconds, time since last claim or stake
-        uint256 stakeAmount, // is 1 in NFT case
+        uint256 timePassed,
+        uint256 stakeAmount,
         PoolConfig memory config
     ) internal pure returns (uint256) {
-        // 86400 seconds in 1 day
-        // uint256 timePassedDays = timePassed / 86400;
-        // uint256 timePassedPeriods = timePassedDays / config.rewardsPeriod; // num periods that have passed
-
-        // config.timeLockPeriods;
-        // one period is 7 days, require 2 periods to have passed before claiming, so 14 days
-
-        // timePassedPeriods = timePassedDays / config.rewardsPeriod;
         if (timePassed < config.timeLockPeriod) {
             return 0;
         }
 
         return 10**18 * config.poolWeight * stakeAmount * timePassed / config.periodLength / 10**18;
-
-        // rewardsPerPeriod * (howManyPeriodsHavePassed) * (stakeAmount) * (% of stake amount)
-
-        // "rewardsPerPeriod * x% of their stake * length of their stake"
-
-
-        // rewardsPerPeriod * (stakeAmount / config.rewardsFraction) * (timePassed / config.rewardsPeriodLength);
-
-        // rewardFraction would be higher in NFT pool so now outdone by ERC20 pool
-
-        // TODO remove if statement
-        // ERC721, or non-fungible ERC1155
-        // if (stakeAmount == 1) {
-        //     // TODO ideally shouldnt need if statement can combine logic
-        //     // TODO bring to damien, then he can go to escrow
-        //     return config.pool * (timePassed / config.rewardsPeriodLength);
-        // } else {
-        //     // ERC20, or fungible ERC1155
-        //     return stakeAmount * (stakeAmount / config.rewardsFraction);
-        //     // TODO temp formula, need to see if we want rewardsRatio with ERC4626
-        // }
-        // we need
-            // time period
-            // rate at which we generate rewards (fraction of tokens staked per period)
-            // time lock (mininmum number of periods)
-        // return poolWeight * stakeAmount * timePassed / rewardPeriod;
     }
 }

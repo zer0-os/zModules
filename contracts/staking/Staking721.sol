@@ -103,23 +103,6 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
         }
     }
 
-    // TODO delete
-	// // Temp debug for calcs
-    // function showValues (uint256 tokenId) public view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
-    //     return _showValues(
-    //         block.timestamp - stakedOrClaimedAt[tokenId],
-    //         1,
-    //         config
-    //     );
-    // }
-
-    // function showValues2(uint256 tokenId) public view returns (uint256, bool) {
-    //     return _showValues2(
-    //         block.timestamp - stakedOrClaimedAt[tokenId],
-    //         config
-    //     );
-    // }
-
 	/**
 	 * @notice Claim rewards for a staked ERC721 token
 	 * @dev Will revert if the time lock period has not been met
@@ -223,7 +206,6 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
      * @param tokenId The tokenId of the ERC721 staking token contract
      */
     function viewPendingRewards(uint256 tokenId) external view returns (uint256) {
-        // TODO should only the owner of `tokenId` be able to view this?
         return _viewPendingRewards(tokenId);
     }
 
@@ -231,7 +213,7 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
      * @notice View pending rewards for all given tokens
      * @param tokenIds The tokenIds of the ERC721 staking token contracts
      */
-    function viewPendingRewardsTotal(uint256[] calldata tokenIds) external view returns (uint256) {
+    function viewPendingRewardsBulk(uint256[] calldata tokenIds) external view returns (uint256) {
         uint256 i;
         uint256 len = tokenIds.length;
         uint256 totalRewards;
@@ -244,8 +226,16 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
             }
         }
 
-        // TODO should only the owner of `tokenId` be able to view this?
         return totalRewards;
+    }
+
+    /**
+     * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
+     * @param tokenId The tokenId of the ERC721 staking token contract
+     */
+    function viewRemainingTimeLock(uint256 tokenId) external view returns (uint256) {
+        // Return the time remaining for the stake to be claimed or unstaked
+        return (block.timestamp - stakedOrClaimedAt[tokenId]);
     }
 
     /**
