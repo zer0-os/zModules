@@ -6,5 +6,7 @@ export const calcRewardsAmount = (
   stakeAmount : bigint,
   timePassed : bigint
 ) => {
-  return config.poolWeight * stakeAmount * timePassed / config.periodLength;
+  const v = config.poolWeight * stakeAmount * timePassed / config.periodLength;
+  return v;
+  // return config.poolWeight * stakeAmount * timePassed / config.periodLength;
 }

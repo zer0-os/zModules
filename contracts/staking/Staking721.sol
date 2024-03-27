@@ -20,11 +20,6 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
 	Types.PoolConfig public config;
 
     /**
-	 * Track number of stakes for a user with their stake nonce
-	 */
-    mapping(address user => uint256 currentStakeNonce) public stakeNonces;
-
-    /**
 	 * @dev Rewards tallied to the user for additional stakes to be claimed
 	 */
     mapping(address user => uint256 rewards) public rewardsOwed;
@@ -43,6 +38,11 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
 	 * @dev Throw when caller is unable to claim rewards
 	 */
     error InvalidClaim(string message);
+
+    /**
+     * @dev Throw when caller is unable to unstake
+     */
+    error InvalidUnstake(string message);
 
 	/**
 	 * @dev Restrict calls to be only from the original NFT owner
@@ -78,6 +78,9 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
 	 * @param tokenId The tokenId of the ERC721 staking token contract
 	 */
     function stake(uint256 tokenId) external {
+        if (IERC721(config.stakingToken).ownerOf(tokenId) != msg.sender) {
+            revert InvalidOwner("Staking721: Caller is not the owner of the token");
+        }
         _stake(tokenId);
     }
 
@@ -89,6 +92,9 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
         uint i;
         uint len = tokenIds.length;
         for (i; i < len;) {
+            if (IERC721(config.stakingToken).ownerOf(tokenIds[i]) != msg.sender) {
+                revert InvalidOwner("Staking721: Caller is not the owner of the token");
+            }
             _stake(tokenIds[i]);
 
             unchecked {
@@ -97,40 +103,30 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
         }
     }
 
-    // TODO
-    // claimBulk
-    // unstakeBulk
-    // TODO onlysnftowner in bulk funcs
+    // TODO delete
+	// // Temp debug for calcs
+    // function showValues (uint256 tokenId) public view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
+    //     return _showValues(
+    //         block.timestamp - stakedOrClaimedAt[tokenId],
+    //         1,
+    //         config
+    //     );
+    // }
 
-
-	// Temp debug for calcs
-    function showValues (uint256 tokenId) public view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
-        return _showValues(
-            block.timestamp - stakedOrClaimedAt[tokenId],
-            1,
-            config
-        );
-    }
-
-    function showValues2(uint256 tokenId) public view returns (uint256, bool) {
-        return _showValues2(
-            block.timestamp - stakedOrClaimedAt[tokenId],
-            config
-        );
-    }
+    // function showValues2(uint256 tokenId) public view returns (uint256, bool) {
+    //     return _showValues2(
+    //         block.timestamp - stakedOrClaimedAt[tokenId],
+    //         config
+    //     );
+    // }
 
 	/**
 	 * @notice Claim rewards for a staked ERC721 token
-	 * @dev Will revert if the time lock period has not been met or 
-	 * the caller is not the owner of the sNFT.
+	 * @dev Will revert if the time lock period has not been met
 	 * @param tokenId The tokenId of the ERC721 staking token contract
 	 */
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
-        uint256 rewards = _calculateRewards(
-            block.timestamp - stakedOrClaimedAt[tokenId],
-            1,
-            config
-        );
+        uint256 rewards = _viewPendingRewards(tokenId);
 
         // `_calculateRewards` will return 0 if the time lock period is not met
         if (rewards == 0) {
@@ -146,66 +142,32 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
             rewards
         );
 
-        emit Claimed(rewards, msg.sender);
+        emit Claimed(rewards, config.stakingToken);
     }
 
 	/**
 	 * @notice Claim rewards for multiple staked ERC721 tokens
+     * @dev Will revert if the time lock period has not been met
 	 * @param tokenIds The tokenIds of the ERC721 staking token contracts
 	 */
     function claimBulk(uint256[] calldata tokenIds) external {
-        uint i;
-        uint256 rewards;
-        uint len = tokenIds.length;
-        for (i; i < len;) {
-            // If they are not the owner of the sNFT, skip this tokenId
-            if (ownerOf(tokenIds[i]) != msg.sender) {
-                continue;
-            }
+        uint256 rewards = _claimOrUnstakeBulk(tokenIds, false);
 
-            // _calculateRewards will return 0 if the time lock period is not met
-            uint256 tempRewards = _calculateRewards(
-                block.timestamp - stakedOrClaimedAt[tokenIds[i]],
-                1,
-                config
-            );
-
-            // If there are rewards to be claimed, mark that token as claimed
-            if (tempRewards > 0) {
-                rewards += tempRewards;
-                stakedOrClaimedAt[tokenIds[i]] = block.timestamp;
-            }
-
-            unchecked {
-                ++i;
-            }
-        }
-		
-		// If there are no rewards to claim, revert
-		// This will also cover if all tokens are not owned by the caller
-        if (rewards == 0) {
-            revert InvalidClaim("Staking721: No rewards to claim");
-        }
-
-        // Transfer all rewards at once
-        config.rewardsToken.transfer(
-            msg.sender,
-            rewards
-        );
-
-        emit Claimed(rewards, msg.sender);
+        // Emit event for bulk claim
+        emit Claimed(rewards, config.stakingToken);
     }
 
+    /**
+     * @notice Unstake a token and receive rewards
+     * @dev Will revert if the time lock period has not been met
+     * @param tokenId The tokenId of the ERC721 staking token contract
+     */
     function unstake(uint256 tokenId) external onlySNFTOwner(tokenId) {
-        uint256 rewards = _calculateRewards(
-            block.timestamp - stakedOrClaimedAt[tokenId],
-            1,
-            config
-        );
+        uint256 rewards = _viewPendingRewards(tokenId);
 
         // `_calculateRewards` will return 0 if the time lock period is not met
         if (rewards == 0) {
-            revert InvalidClaim("Staking721: Unable to unstake");
+            revert InvalidUnstake("Staking721: Unable to unstake");
         }
 
         // Update timestamp to unstaked
@@ -227,12 +189,66 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
             tokenId
         );
 
-        emit Unstaked(tokenId, 0, 0, config.stakingToken, msg.sender);
+        emit Unstaked(
+            tokenId,
+            0,
+            0,
+            rewards,
+            config.stakingToken
+        );
     }
 
-    // In the case that a pool is abandoned or no longer has funds for rewards, allow
-    // users to unstake their tokens with no consideration for time lock period
-	/**
+    function unstakeBulk(uint256[] calldata tokenIds) external {
+        uint256 rewards = _claimOrUnstakeBulk(tokenIds, true);
+
+        // Emit event for bulk unstake
+        emit UnstakedBulk(
+            tokenIds,
+            new uint256[](0), // TODO improve this, better way?
+            new uint256[](0),
+            rewards,
+            config.stakingToken
+        );
+    }
+
+    /**
+     * @notice View the rewards balance in this pool
+     */
+    function viewRewardsInPool() external view returns (uint256) {
+        return IERC20(config.rewardsToken).balanceOf(address(this));
+    }
+
+    /**
+     * @notice View the pending rewards balance for a staked token
+     * @param tokenId The tokenId of the ERC721 staking token contract
+     */
+    function viewPendingRewards(uint256 tokenId) external view returns (uint256) {
+        // TODO should only the owner of `tokenId` be able to view this?
+        return _viewPendingRewards(tokenId);
+    }
+
+    /**
+     * @notice View pending rewards for all given tokens
+     * @param tokenIds The tokenIds of the ERC721 staking token contracts
+     */
+    function viewPendingRewardsTotal(uint256[] calldata tokenIds) external view returns (uint256) {
+        uint256 i;
+        uint256 len = tokenIds.length;
+        uint256 totalRewards;
+
+        for (i; i < len;) {
+            totalRewards += _viewPendingRewards(tokenIds[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        // TODO should only the owner of `tokenId` be able to view this?
+        return totalRewards;
+    }
+
+    /**
 	 * @notice Remove a stake from the pool without consideration for time lock period
 	 * or for rewards. This is a last resort function for users to remove their stake
 	 * in the case the a pool is abandoned by the owner, is not funded, or they simply
@@ -263,38 +279,13 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
         }
     }
 
-    // View the balance of this pool in the reward token
-    function viewRewardsInPool() external view returns (uint256) {
-        return IERC20(config.rewardsToken).balanceOf(address(this));
-    }
-
-    // view available rewards waiting to be claimed for a user
-    function viewPendingRewards(uint256 tokenId) external view returns (uint256) {
-        return _calculateRewards(
-            block.timestamp - stakedOrClaimedAt[tokenId],
-            1,
-            config
-        );
-    }
-
     ////////////////////////////////////
         /* Internal Functions */
     ////////////////////////////////////
 
-	// TODO move this below
-    function _stake(uint256 tokenId) internal onlyNFTOwner(tokenId) {
-        // Accrue rewards if they have staked before
-        if (stakeNonces[msg.sender] != 0) {
-            rewardsOwed[msg.sender] += _calculateRewards(
-                block.timestamp - stakedOrClaimedAt[tokenId],
-                1,
-                config
-            );
-        }
-
-        unchecked {
-            ++stakeNonces[msg.sender];
-        }
+    function _stake(uint256 tokenId) internal {
+        // Accrue rewards, they may have staked before
+        rewardsOwed[msg.sender] += _viewPendingRewards(tokenId);
 
         // Mark when the token was staked
         stakedOrClaimedAt[tokenId] = block.timestamp;
@@ -309,7 +300,73 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
         // Mint user sNFT
         _mint(msg.sender, tokenId);
 
-        emit Staked(tokenId, 0, 0, config.stakingToken, msg.sender);
+        emit Staked(tokenId, 0, 0, config.stakingToken);
+    }
+
+    function _claimOrUnstakeBulk(uint256[] calldata tokenIds, bool isUnstake) public returns (uint256) {
+        uint i;
+        uint256 rewards;
+        uint len = tokenIds.length;
+        for (i; i < len;) {
+            // If they are not the owner of the sNFT, revert
+            if (ownerOf(tokenIds[i]) != msg.sender) {
+                revert InvalidOwner("Caller is not the owner of the representative stake token");
+            }
+
+            // _calculateRewards will return 0 if the time lock period is not met
+            uint256 tempRewards = _viewPendingRewards(tokenIds[i]);
+
+            // If there are rewards to be claimed
+            if (tempRewards > 0) {
+                rewards += tempRewards;
+
+                // If we are unstaking, burn the sNFT and return the NFT as well
+                if (isUnstake) {                    
+                    // Update timestamp to unstaked
+                    stakedOrClaimedAt[tokenIds[i]] = 0;
+
+                    // Burn the sNFT
+                    _burn(tokenIds[i]);
+
+                    // Return NFT to staker
+                    // TODO can we bulk these transfers at all?
+                    IERC721(config.stakingToken).transferFrom(
+                        address(this),
+                        msg.sender,
+                        tokenIds[i]
+                    );
+                } else {
+                    // Mark the most recent claim timestamp
+                    stakedOrClaimedAt[tokenIds[i]] = block.timestamp;
+                }
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+		
+		// This will also cover if all tokens are not owned by the caller
+        if (rewards == 0) {
+            revert InvalidClaim("Staking721: Unable to claim or unstake");
+        }
+
+        // Transfer all rewards at once
+        config.rewardsToken.transfer(
+            msg.sender,
+            rewards
+        );
+
+        // We return the value transferred so Event firing is accurate
+        return rewards;
+    }
+
+    function _viewPendingRewards(uint256 tokenId) internal view returns (uint256) {
+        return _calculateRewards(
+            block.timestamp - stakedOrClaimedAt[tokenId],
+            1,
+            config
+        );
     }
 
     function _removeStake(uint256 tokenId) internal {

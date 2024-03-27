@@ -70,7 +70,7 @@ contract StakingERC20 is ERC721, StakingPool, IStaking {
         // why mint sNFT? can we just track on claim with msg.sender in mapping?
         // _mint(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender, amount))));
 
-        emit Staked(0, amount, 0, config.stakingToken, msg.sender);
+        emit Staked(0, amount, 0, config.stakingToken);
     }
 
     function claim() external {
@@ -84,7 +84,7 @@ contract StakingERC20 is ERC721, StakingPool, IStaking {
         stakedOrClaimedAt[msg.sender] = block.timestamp;
 
         IERC20(config.rewardsToken).transfer(msg.sender, rewards);
-        emit Claimed(rewards, msg.sender);
+        emit Claimed(rewards, config.stakingToken);
     }
 
     ////////////////////////////////////
@@ -93,13 +93,4 @@ contract StakingERC20 is ERC721, StakingPool, IStaking {
 
     // TODO st: consider making custom version of ERC712Wrapper to keep this
     // Only `_mint` and `_burn`
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 firstTokenId,
-        uint256 batchSize
-    ) internal pure override {
-        // The SNFT is not transferrable
-        require(from == address(0) || to == address(0), "Token is non-transferable");
-    }
 }

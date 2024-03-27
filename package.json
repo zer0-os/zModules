@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A collection of simple, modular contracts that can be optionally grouped together",
   "scripts": {
-    "typechain": "hardhat typechian",
+    "typechain": "hardhat typechain",
     "compile": "hardhat compile",
     "clean": "hardhat clean",
     "test": "hardhat test",

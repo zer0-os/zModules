@@ -67,30 +67,30 @@ contract StakingPool is IStakingPool {
 
     // debug funcs
 
-    function _showValues(
-        uint256 timePassed, // in seconds, time since last claim or stake
-        uint256 stakeAmount, // is 1 in NFT case
-        PoolConfig memory config
-    ) internal view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
-        return (
-            timePassed,
-            stakeAmount,
-            config.poolWeight,
-            config.periodLength,
-            config.timeLockPeriod,
-            timePassed / config.periodLength
-        );
-    }
+    // function _showValues(
+    //     uint256 timePassed, // in seconds, time since last claim or stake
+    //     uint256 stakeAmount, // is 1 in NFT case
+    //     PoolConfig memory config
+    // ) internal view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
+    //     return (
+    //         timePassed,
+    //         stakeAmount,
+    //         config.poolWeight,
+    //         config.periodLength,
+    //         config.timeLockPeriod,
+    //         timePassed / config.periodLength
+    //     );
+    // }
 
-    function _showValues2(
-        uint256 timePassed, // in seconds, time since last claim or stake
-        PoolConfig memory config
-    ) internal view returns (uint256, bool) {
-        return (
-            timePassed / config.periodLength,
-            timePassed / config.periodLength < config.timeLockPeriod
-        );
-    }
+    // function _showValues2(
+    //     uint256 timePassed, // in seconds, time since last claim or stake
+    //     PoolConfig memory config
+    // ) internal view returns (uint256, bool) {
+    //     return (
+    //         timePassed / config.periodLength,
+    //         timePassed / config.periodLength < config.timeLockPeriod
+    //     );
+    // }
 
     // TODO st: make this formula perfect, connect it to all the logic and swap this one.
     function _calculateRewards(
