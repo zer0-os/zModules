@@ -13,16 +13,14 @@ import { IStaking } from "./IStaking.sol";
  * @notice A staking contract that allows depositing ERC721 tokens and mints a 
  * non-transferable ERC721 token in return as representation of the deposit. 
  */
-contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
+contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
     /**
 	 * @dev The configuration of this staking pool
 	 */
 	Types.PoolConfig public config;
 
-    /**
-	 * @dev Rewards tallied to the user for additional stakes to be claimed
-	 */
-    mapping(address user => uint256 rewards) public rewardsOwed;
+    // Rewards owed to a user. Added to on each additional stake, set to 0 on claim
+    mapping(address user => uint256 pendingRewards) public pendingRewards;
 
     /**
 	 * @dev Track for each stake when it was most recently accessed
@@ -109,12 +107,12 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
 	 * @param tokenId The tokenId of the ERC721 staking token contract
 	 */
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
-        uint256 rewards = _viewPendingRewards(tokenId);
-
-        // `_calculateRewards` will return 0 if the time lock period is not met
-        if (rewards == 0) {
+        if (block.timestamp - stakedOrClaimedAt[tokenId] < config.timeLockPeriod) {
             revert InvalidClaim("Staking721: No rewards to claim");
         }
+
+        // TODO this flow reads from `stakeOrClaimedAt[tokenId]` twice, unnecessary
+        uint256 rewards = _viewPendingRewards(tokenId);
 
         // Update timestamp before transfer
 		stakedOrClaimedAt[tokenId] = block.timestamp;
@@ -198,7 +196,7 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
      * @notice View the rewards balance in this pool
      */
     function viewRewardsInPool() external view returns (uint256) {
-        return IERC20(config.rewardsToken).balanceOf(address(this));
+        return config.rewardsToken.balanceOf(address(this));
     }
 
     /**
@@ -233,9 +231,10 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
      * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
      * @param tokenId The tokenId of the ERC721 staking token contract
      */
-    function viewRemainingTimeLock(uint256 tokenId) external view returns (uint256) {
+    function viewRemainingLockTime(uint256 tokenId) external view returns (uint256) {
         // Return the time remaining for the stake to be claimed or unstaked
-        return (block.timestamp - stakedOrClaimedAt[tokenId]);
+        // TODO if the claimed, the time shows as larger then what it actually is
+        return config.timeLockPeriod - (block.timestamp - stakedOrClaimedAt[tokenId]);
     }
 
     /**
@@ -275,7 +274,7 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
 
     function _stake(uint256 tokenId) internal {
         // Accrue rewards, they may have staked before
-        rewardsOwed[msg.sender] += _viewPendingRewards(tokenId);
+        pendingRewards[msg.sender] += _viewPendingRewards(tokenId);
 
         // Mark when the token was staked
         stakedOrClaimedAt[tokenId] = block.timestamp;
@@ -292,6 +291,8 @@ contract Staking721 is ERC721NonTransferable, StakingPool, IStaking {
 
         emit Staked(tokenId, 0, 0, config.stakingToken);
     }
+
+    // TODO claimOrUnstake single
 
     function _claimOrUnstakeBulk(uint256[] calldata tokenIds, bool isUnstake) public returns (uint256) {
         uint i;

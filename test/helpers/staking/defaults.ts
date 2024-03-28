@@ -5,16 +5,14 @@ import {
 } from "../../../typechain";
 
 import {
-  Maybe,
   PoolConfig,
-  TokenType,
 } from "./types";
 
-import { ethers } from "hardhat";
-import { dayInSeconds } from "./constants";
-
-export const DEFAULT_PERIOD_LENGTH = dayInSeconds * 5n;
-export const DEFAULT_LOCK_TIME = DEFAULT_PERIOD_LENGTH;
+import {
+  DEFAULT_LOCK_TIME,
+  DEFAULT_PERIOD_LENGTH,
+  DEFAULT_POOL_WEIGHT,
+} from "./constants";
 
 export const createDefaultConfigs = async (
   rewardsERC20 : MockERC20,
@@ -26,7 +24,7 @@ export const createDefaultConfigs = async (
     return {
       stakingToken: await erc721.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
-      poolWeight: ethers.parseEther("5"),
+      poolWeight: DEFAULT_POOL_WEIGHT,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
     } as PoolConfig;
@@ -34,7 +32,7 @@ export const createDefaultConfigs = async (
     return {
       stakingToken: await stakeERC20.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
-      poolWeight: BigInt(800),
+      poolWeight: DEFAULT_POOL_WEIGHT,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
     } as PoolConfig;
@@ -42,7 +40,7 @@ export const createDefaultConfigs = async (
     return {
       stakingToken: await erc1155.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
-      poolWeight: BigInt(800),
+      poolWeight: DEFAULT_POOL_WEIGHT,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
     } as PoolConfig;

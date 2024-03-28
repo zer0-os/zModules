@@ -3,7 +3,7 @@ import {
   ContractInterface,
 } from "ethers";
 import {
-  Staking721,
+  StakingERC721,
   // MultiStaking,
 } from "../../../typechain";
 

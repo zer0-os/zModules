@@ -22,7 +22,6 @@ contract StakingPool is IStakingPool {
         }
 
         // Rewards configuration must be specified
-        // TODO st: this may change when the rewards formula is developed
         if (address(_config.rewardsToken) == address(0)) {
             revert InvalidRewards("Pool: Invalid rewards configuration");
         }
@@ -68,11 +67,8 @@ contract StakingPool is IStakingPool {
         uint256 timePassed,
         uint256 stakeAmount,
         PoolConfig memory config
+        // flag for view?
     ) internal pure returns (uint256) {
-        if (timePassed < config.timeLockPeriod) {
-            return 0;
-        }
-
-        return 10**18 * config.poolWeight * stakeAmount * timePassed / config.periodLength / 10**18;
+        return 10**18 * config.poolWeight * stakeAmount * (timePassed / config.periodLength) / 10**18;
     }
 }

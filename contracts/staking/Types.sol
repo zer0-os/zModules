@@ -36,12 +36,7 @@ interface Types {
 		uint256 timeLockPeriod; // number of time periods required to pass to be able to claim rewards or unstake
 	}
 
-    // Details of a single stake
-    // struct Stake {
-    //     bytes32 poolId;
-    //     uint256 tokenId;
-    //     uint256 amount;
-    //     uint256 index;
-    //     uint256 stakedOrClaimedAt;
-    // }
+    // TODO stakingTokenType, try without until 1155 and see what's necessary
+    // might need for pool validation on creation
+    // maybe add address of token that was staked, e.g. stakingToken contract
 }
