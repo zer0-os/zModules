@@ -20,10 +20,9 @@ interface Types {
 	 * @notice The necessary details for a single staking pool comfiguration
 	 * @param stakingToken The token that is being staked
 	 * @param rewardsToken The ERC20 token that is being distributed as rewards
-	 * @param rewardsVault The address of the vault that holds the reward tokens
-	 * @param stakingTokenType The type of token that is being staked (ERC721, ERC20, ERC1155)
-	 * @param rewardsPerBlock The amount of rewards tokens distributed per block
-	 * @param minRewardsTime The minimum amount of time to have passed before a person can claim
+	 * @param poolWeight The weight of the pool in the rewards calculation
+	 * @param periodLength The length of a time period
+	 * @param timeLockPeriod The amount of time required to pass to be able to claim or unstake
      */
 	struct PoolConfig {
         address stakingToken;
@@ -33,8 +32,21 @@ interface Types {
 		// uint256 rewardsPerPeriod; // amount of rewards distributed per period
         uint256 poolWeight; // fraction of stakeAmount that is multiplier in rewards calc
 		uint256 periodLength; // length of a time period
-		uint256 timeLockPeriod; // number of time periods required to pass to be able to claim rewards or unstake
+		uint256 timeLockPeriod; // number of time periods required to pass to be able to claim or unstake
 	}
+
+    // struct Stake {
+    //     // address staker; /// probably dont need this
+    //     uint256 stakeAmount;
+    //     uint256 stakeTimestamp;
+    //     uint256 claimTimestamp;
+    //     uint256 stakeNonce;
+    // }
+
+    struct Stake{
+        uint256 stakeTimestamp;
+        uint256 claimTimestamp;    
+    }
 
     // TODO stakingTokenType, try without until 1155 and see what's necessary
     // might need for pool validation on creation

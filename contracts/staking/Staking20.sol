@@ -17,19 +17,36 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
 	Types.PoolConfig public config;
 
     /**
-     * @notice Counter for the number of stakes by a user
+     * @notice Log the timestamp when a user stakes.
+     * Additional stakes by the same user do not get new timestamps. This
+     * is used to calculate the lock period for rewards. Rewards from previous
+     * stakes would differ if grouped with new stakes, so they are snapshotted
+     * and logged as rewards owed to the user before adding to their total staked amount
      */
-    mapping(address user => uint256 stakedOrClaimedAt) public stakedOrClaimedAt;
+
+    mapping(address staker => Stake stake) public stakes;
 
     /**
      * @notice Total amount staked by a user
      */
-    mapping(address user => uint256 amountStaked) public staked;
-
+    mapping(address staker => uint256 amountStaked) public staked; // make a 2 var struct for this instead?, reduce # of maps
     /**
      * @notice Rewards owed to a user. Added to on each additional stake, set to 0 on claim
      */
-    mapping(address user => uint256 pendingRewards) public pendingRewards;
+    mapping(address staker => uint256 pendingRewards) public pendingRewards;
+
+    // mapping(address staker => uint256 lockTime) public lockTimes;
+
+
+
+    // TODO keeping this for `removeStake` but an extra mapping for a niche use case seems unneccessary?
+    // makes deployment and interaction a bit more costly
+
+    // mapping for stakes might have to exist to properly calc rewards on multiple stakes
+    // maybe struct with stakeAmount, stakeTimestamp, stakeNonce
+
+    // mapping(address staker => mapping(uint256 stakeNonce => Stake stake)) public stakes; // TODO st: do we need this? (for multiple stakes)
+    mapping(address staker => uint256 currentStakeNonce) public currentStakeNonce; // TODO st: do we need this? (for multiple stakes)
 
     /**
      * @notice Throw when the caller is not the owner of the given token
@@ -46,19 +63,11 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
      */
     error InvalidUnstake(string message);
 
-    // // Only the owner of the representative stake NFT
-    // modifier onlySNFTOwner(uint256 tokenId) {
-    //     if (ownerOf(tokenId) != msg.sender) {
-    //         revert InvalidClaim("Caller is not the owner of the representative stake token");
-    //     }
-    //     _;
-    // }
-
     constructor(
 		string memory name,
 		string memory symbol,
 		Types.PoolConfig memory _config
-	) ERC721NonTransferable(name, symbol) {
+	) ERC721NonTransferable(name, symbol) { // todo even need snft for this?
         _createPool(_config); // TODO do we need concept of pools anymore??
         config = _config;
 	}
@@ -68,41 +77,26 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
      * @param amount The amount to stake
      */
     function stake(uint256 amount) external {
-        // Accrue rewards from existing stakes
-        // This will be zero if they are staking for the first time
-        pendingRewards[msg.sender] += _calculateRewards(
-            block.timestamp - stakedOrClaimedAt[msg.sender],
-            staked[msg.sender],
-            config
-        );
 
-        // how to do individual lock periods
-        // so stake rewards for a stake at A can be claimed
-        // at time(A+timeLockPeriod), even if we stake B before timeLockPeriod
-        // B would be claimable at (B+timelockPeriod), and total for A+B at 
+        Stake memory _stake = stakes[msg.sender];
 
-        /**
-         * timeLockPeriod = 10 days
-         * accrualPeriod = 5 days
-         * stakedAmount = 10
-         * 
-         * T = 1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18-19-20
-         * ------A---------|-----------||--|-------------------||-
-         * --------------B-----------|-------------|||------------
-         * T---------W------------X------O----Y---------Z---------
+        if (staked[msg.sender] == 0) {
+            stakes[msg.sender].stakeTimestamp = block.timestamp;
+        } else {
+            uint256 accessTime = _stake.claimTimestamp == 0 ? _stake.stakeTimestamp : _stake.claimTimestamp;
 
-         * 
-         * need claimedOrStakedAt for every instance of a stake, I think
-         * view partial rewards?
-         * e.g. at C what should we show? D?
-         * should 
-         */
+            // We snapshot existing rewards up to the present
+            // Future rewards are calculated from here
+            pendingRewards[msg.sender] += _calculateRewards(
+                block.timestamp - accessTime,
+                staked[msg.sender],
+                config
+            );
+            stakes[msg.sender].claimTimestamp = block.timestamp;
+        }
 
-        // Add to user's staked amount
+        // Update with new stake
         staked[msg.sender] += amount;
-
-        // Update time of stake
-        stakedOrClaimedAt[msg.sender] = block.timestamp;
 
         IERC20(config.stakingToken).transferFrom(
             msg.sender,
@@ -110,37 +104,50 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
             amount
         );
 
-        // Mint user SNFT
-        // TODO st: even need a thing like this here? whats the point
-        // why mint sNFT? can we just track on claim with msg.sender in mapping?
-        // _mint(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender, amount))));
-
         emit Staked(0, amount, 0, config.stakingToken);
     }
 
     function claim() external {
         uint256 rewards;
-        uint256 stakedAmount;
-        (stakedAmount, rewards) = _claimOrUnstake(false);
+        (, rewards) = _claimOrUnstake(false);
 
         emit Claimed(rewards, config.stakingToken);
     }
 
     function unstake() external {
+        // Stake memory _stake = stakes[msg.sender][stakeNonce];
         uint256 stakeAmount;
         uint256 rewards;
-        (stakeAmount, rewards) = _claimOrUnstake(true);
 
+        (stakeAmount, rewards)= _claimOrUnstake(true);
+
+        // but also, do we care about showing the orginal amount in the unstaked event?
         emit Unstaked(0, stakeAmount, 0, rewards, config.stakingToken);
     }
 
+    // could keep track of `stakedAmount` total in mapping
+    // but that makes other interactions more expensive for this niche use case
+    // is there a case where `removeStake` just removes a single stake?
     function removeStake() external {
-        IERC20(config.stakingToken).transfer(
-            msg.sender,
-            staked[msg.sender]
-        );
+        // uint256 currentNonce = currentStakeNonce[msg.sender];
 
-        // emit Unstaked(0, stakeAmount, 0, rewards, config.stakingToken);
+        // uint256 i;
+        // uint256 totalStaked;
+        // for (i; i < currentNonce;) {
+        //     Stake memory _stake = stakes[msg.sender][i];
+
+        //     if (_stake.stakeAmount > 0) {
+        //         totalStaked += _stake.stakeAmount;
+        //         _stake.stakeAmount = 0;
+        //     }
+        // }
+
+        // IERC20(config.stakingToken).transfer(
+        //     msg.sender,
+        //     totalStaked
+        // );
+
+        // emit StakeRemoved(0, stakeAmount, 0, rewards, config.stakingToken);
     }
 
     /**
@@ -164,17 +171,33 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
     //     );
     // }
 
+    // view the total amount of rewards for a user
+
+    // function viewPendingRewardsTotal() external view returns (uint256) {
+    // function viewClaimableRewards, viewClaimableRewardsTotal
+    // TODO maybe should default to total, singularis option
     // shows pending total, not what is claimable
+
     function viewPendingRewards() external view returns (uint256) {
+        Stake memory _stake = stakes[msg.sender];
+
+        uint256 accessTime = _stake.claimTimestamp == 0 ? _stake.stakeTimestamp : _stake.claimTimestamp;
+
         return _calculateRewards(
-            block.timestamp - stakedOrClaimedAt[msg.sender],
+            block.timestamp - accessTime,
             staked[msg.sender],
             config
         ) + pendingRewards[msg.sender];
     }
-
+    function returnTimePassed() external view returns (uint256) {
+        return block.timestamp - stakes[msg.sender].stakeTimestamp;
+    }
     function viewRemainingLockTime() external view returns (uint256) {
-        return config.timeLockPeriod - (block.timestamp - stakedOrClaimedAt[msg.sender]);
+        uint256 timePassed = block.timestamp - stakes[msg.sender].stakeTimestamp;
+        if (timePassed > config.timeLockPeriod) {
+            return 0;
+        }
+        return config.timeLockPeriod - timePassed;
     }
 
     ////////////////////////////////////
@@ -182,40 +205,49 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
     ////////////////////////////////////
 
     function _claimOrUnstake(bool isUnstake) public returns (uint256, uint256) {
-        require(
-            staked[msg.sender] > 0,
-            "Staking20: Cannot claim or unstake"
-        );
+        if (staked[msg.sender] == 0) {
+            revert InvalidStake("Staking20: Cannot claim or unstake an empty stake");
+        }
 
+        Stake memory _stake = stakes[msg.sender];
+
+        if(block.timestamp <= _stake.stakeTimestamp + config.timeLockPeriod) {
+            revert InvalidClaim("Staking20: Cannot claim or unstake before time lock period");
+        }
+
+        uint256 accessTime = _stake.claimTimestamp == 0 ? _stake.stakeTimestamp : _stake.claimTimestamp;
+
+        // would be 0 on reentrancy
         uint256 rewards = _calculateRewards(
-            block.timestamp - stakedOrClaimedAt[msg.sender],
+            block.timestamp - accessTime,
             staked[msg.sender],
             config
         ) + pendingRewards[msg.sender];
 
-        pendingRewards[msg.sender] = 0;
-
-        uint256 stakedAmount = staked[msg.sender];
+        uint256 stakeAmount = staked[msg.sender];
 
         if (isUnstake) {
             // Mark time of unstake and remove user staked amount
-            stakedOrClaimedAt[msg.sender] = 0;
+            _stake.stakeTimestamp = 0;
+            _stake.claimTimestamp = 0;
             staked[msg.sender] = 0;
 
             // Transfer stake back to user
             IERC20(config.stakingToken).transfer(
                 msg.sender,
-                stakedAmount
+                stakeAmount
             );
         } else {
             // Mark time of claim
-            stakedOrClaimedAt[msg.sender] = block.timestamp;
+            _stake.claimTimestamp = block.timestamp;
+            pendingRewards[msg.sender] = 0;
         }
 
+        // TODO should we check require(!0) rewards first?
         // Transfer rewards to user
         config.rewardsToken.transfer(msg.sender, rewards);
 
         // Return for event emission
-        return (stakedAmount, rewards);
+        return (stakeAmount, rewards);
     }
 }
