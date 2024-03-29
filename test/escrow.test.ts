@@ -81,12 +81,12 @@ describe("Escrow Contract", function () {
         it("Should fail for unauthorized payment execution", async function () {
             const paymentAmount = ethers.parseEther("10");
             await expect(escrow.connect(addr1).executePayment(addr2.address, paymentAmount))
-                .to.be.revertedWith("Caller is not the owner"); // Adjust error message based on your contract's requirements
+                .to.be.revertedWith("Ownable: caller is not the owner"); // Adjust error message based on your contract's requirements
         });
 
         it("Should fail for unauthorized refund", async function () {
             await expect(escrow.connect(addr1).refund(addr2.address))
-                .to.be.revertedWith("Caller is not the owner"); // Adjust error message based on your contract's requirements
+                .to.be.revertedWith("Ownable: caller is not the owner"); // Adjust error message based on your contract's requirements
         });
     });
 });
