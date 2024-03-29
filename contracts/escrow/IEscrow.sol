@@ -9,13 +9,6 @@ interface IEscrow {
     function deposit(uint256 _amount) external;
 
     /**
-     * @dev Checks the balance of tokens a user has in the escrow.
-     * @param _client The address of the user.
-     * @return The balance of tokens the user has in the escrow.
-     */
-    function getBalance(address _client) external view returns (uint256);
-
-    /**
      * @dev Executes a payment from the escrow to a winner.
      * @param _to The address to receive tokens.
      * @param _amount The amount of tokens they receive.

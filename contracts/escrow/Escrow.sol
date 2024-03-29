@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 contract Escrow {
     address public owner; ///Owner of the contract
     IERC20 public token; ///Token contract operates on
@@ -43,10 +42,6 @@ contract Escrow {
         balance[client] = 0;
 
         emit Refunded(client, _balance); 
-    }
-
-    function getBalance(address client) external view returns(uint256){
-        return balance[client];
     }
 
     event Deposited(address client, uint256 amount);

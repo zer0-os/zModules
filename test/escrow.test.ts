@@ -47,7 +47,7 @@ describe("Escrow Contract", function () {
                 .to.emit(escrow, "Deposited")
                 .withArgs(addr1.address, depositAmount);
 
-            expect(await escrow.getBalance(addr1.address)).to.equal(depositAmount);
+            expect(await escrow.balance(addr1.address)).to.equal(depositAmount);
         });
 
         it("Should execute payments", async function () {
@@ -57,7 +57,7 @@ describe("Escrow Contract", function () {
                 .to.emit(escrow, "PaymentExecuted")
                 .withArgs(addr1.address, paymentAmount);
 
-            const finalBalance = await escrow.getBalance(addr1.address);
+            const finalBalance = await escrow.balance(addr1.address);
             expect(finalBalance).to.equal(ethers.parseEther("50"));
             expect(await mockERC20.balanceOf(addr1.address)).to.equal(ethers.parseEther("950"));
         });
@@ -67,7 +67,7 @@ describe("Escrow Contract", function () {
                 .to.emit(escrow, "Refunded")
                 .withArgs(addr1.address, ethers.parseEther("50")); // Adjust amount based on previous test state
 
-            expect(await escrow.getBalance(addr1.address)).to.equal(ethers.parseEther("0"));
+            expect(await escrow.balance(addr1.address)).to.equal(ethers.parseEther("0"));
             expect(await mockERC20.balanceOf(addr1.address)).to.equal(ethers.parseEther("1000"));
         });
     });
