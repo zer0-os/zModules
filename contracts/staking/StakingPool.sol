@@ -67,7 +67,6 @@ contract StakingPool is IStakingPool {
         uint256 timePassed,
         uint256 stakeAmount,
         PoolConfig memory config
-        // flag for view?
     ) internal pure returns (uint256) {
         return 10**18 * config.poolWeight * stakeAmount * (timePassed / config.periodLength) / 10**18;
     }

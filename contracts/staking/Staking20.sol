@@ -48,21 +48,6 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
     // mapping(address staker => mapping(uint256 stakeNonce => Stake stake)) public stakes; // TODO st: do we need this? (for multiple stakes)
     mapping(address staker => uint256 currentStakeNonce) public currentStakeNonce; // TODO st: do we need this? (for multiple stakes)
 
-    /**
-     * @notice Throw when the caller is not the owner of the given token
-     */
-    error InvalidStake(string message);
-
-    /**
-     * @notice Throw when caller is unable to claim rewards
-     */
-    error InvalidClaim(string message);
-
-    /**
-     * @dev Throw when caller is unable to unstake
-     */
-    error InvalidUnstake(string message);
-
     constructor(
 		string memory name,
 		string memory symbol,
@@ -206,13 +191,13 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
 
     function _claimOrUnstake(bool isUnstake) public returns (uint256, uint256) {
         if (staked[msg.sender] == 0) {
-            revert InvalidStake("Staking20: Cannot claim or unstake an empty stake");
+            revert InvalidStake();
         }
 
         Stake memory _stake = stakes[msg.sender];
 
         if(block.timestamp <= _stake.stakeTimestamp + config.timeLockPeriod) {
-            revert InvalidClaim("Staking20: Cannot claim or unstake before time lock period");
+            revert InvalidClaim();
         }
 
         uint256 accessTime = _stake.claimTimestamp == 0 ? _stake.stakeTimestamp : _stake.claimTimestamp;

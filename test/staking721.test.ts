@@ -2,6 +2,7 @@ import * as hre from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
+  GasTests,
   MockERC20,
   MockERC721,
   StakingERC721,
@@ -80,6 +81,7 @@ describe("StakingERC721", () => {
   // Cases:
   // can stake more than once
   // can claim rewards after multiple stakes and get the appropriate amount of rewards
+  // cant unstake already unstaked NFT
   describe("#viewRewardsInPool", () => {
     it("Allows a user to see the total rewards in a pool", async () => {
       const rewardsInPool = await stakingERC721.viewRewardsInPool();
@@ -203,6 +205,10 @@ describe("StakingERC721", () => {
       // One period has passed, expect that rewards for one period were given
       expect(balanceAfter).to.eq(balanceBefore + expectedRewards);
     });
+
+    // TODO cases
+    // cant double claim rewards
+    // cant double claim on multiple already claimed tokens
 
     it("Can claim rewards on multiple staked tokens", async () => {
       // Move forward in time one period to be able to claim

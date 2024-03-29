@@ -102,4 +102,24 @@ interface IStaking {
         uint256[] indexed indexes,
         address stakingToken
     );
+
+    /**
+     * @dev Throw when caller is unable to stake
+     */
+    error InvalidStake();
+
+    /**
+	 * @dev Throw when caller is unable to claim rewards
+	 */
+    error InvalidClaim();
+
+    /**
+     * @dev Throw when caller is unable to unstake
+     */
+    error InvalidUnstake();
+
+    /**
+     * @dev Throw when the lock period has not passed
+     */
+    error TimeLockNotPassed();
 }
