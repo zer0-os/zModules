@@ -9,7 +9,7 @@ import {
 } from "../typechain";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
-  PoolConfig,
+  PoolConfig, StakedOrClaimedAt,
 } from "./helpers/staking/types";
 import { INVALID_TOKEN_ID, ONLY_NFT_OWNER } from "./helpers/staking/errors";
 import { createDefaultConfigs } from "./helpers/staking/defaults";
@@ -34,9 +34,9 @@ describe("StakingERC721", () => {
   const nonStakedTokenId = 4; // Never used in `stake`
   const nonMintedTokenId = 5; // Never minted
 
-  let stakedOrClaimedAtA : bigint;
-  let stakedOrClaimedAtB : bigint;
-  let stakedOrClaimedAtC : bigint;
+  let stakedOrClaimedAtA : StakedOrClaimedAt;
+  let stakedOrClaimedAtB : StakedOrClaimedAt;
+  let stakedOrClaimedAtC : StakedOrClaimedAt;
 
   let timestamp;
 
@@ -84,7 +84,7 @@ describe("StakingERC721", () => {
   // cant unstake already unstaked NFT
   describe("#viewRewardsInPool", () => {
     it("Allows a user to see the total rewards in a pool", async () => {
-      const rewardsInPool = await stakingERC721.viewRewardsInPool();
+      const rewardsInPool = await stakingERC721.getContractRewardsBalance()
       expect(rewardsInPool).to.eq(await mockERC20.balanceOf(await stakingERC721.getAddress()));
     });
   });
@@ -135,7 +135,7 @@ describe("StakingERC721", () => {
     });
   });
 
-  describe("#viewRemainingTimeLock", () => {
+  describe("#viewRemainingLockTime", () => {
     it("Allows the user to view the remaining time lock period for a stake", async () => {
       const remainingTimeLock = await stakingERC721.viewRemainingLockTime(tokenIdA);
       const latest = await time.latest();

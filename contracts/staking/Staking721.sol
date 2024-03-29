@@ -93,33 +93,11 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 	 * @dev Will revert if the time lock period has not been met
 	 * @param tokenId The tokenId of the ERC721 staking token contract
 	 */
-    function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
-        Stake memory stake_ = stakedOrClaimedAt[tokenId];
+    // todo rework use internal func
+    function claim(uint256 tokenId) external {
+        uint256 rewards = _claimOrUnstake(tokenId, false);
 
-        // TODO this can be a modifier, it is checked in several places
-        if (block.timestamp - stake_.stakeTimestamp < config.timeLockPeriod) {
-            revert InvalidClaim();
-        }
-
-        uint256 accessTime = stake_.claimTimestamp == 0 ? stake_.stakeTimestamp : stake_.claimTimestamp;
-
-        uint256 rewards = _calculateRewards(
-            block.timestamp - accessTime,
-            1,
-            config
-        ) + pendingRewards[msg.sender];
-
-        // Update timestamp before transfer
-		stakedOrClaimedAt[tokenId].claimTimestamp = block.timestamp;
-        pendingRewards[msg.sender] = 0;
-
-		// Rewards are valid, transfer to user
-        config.rewardsToken.transfer(
-            msg.sender,
-            rewards
-        );
-
-        emit Claimed(rewards, config.stakingToken);
+        emit Claimed(rewards, config.rewardsToken);
     }
 
 	/**
@@ -129,10 +107,8 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 	 */
     function claimBulk(uint256[] calldata tokenIds) external {
         uint256 rewards = _claimOrUnstakeBulk(tokenIds, false);
-        // TODO does this need rework too?
 
-        // Emit event for bulk claim
-        emit Claimed(rewards, config.stakingToken);
+        emit Claimed(rewards, config.rewardsToken);
     }
 
     /**
@@ -141,6 +117,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
      * @param tokenId The tokenId of the ERC721 staking token contract
      */
     function unstake(uint256 tokenId) external onlySNFTOwner(tokenId) {
+        // rework use internal func
         Stake memory stake_ = stakedOrClaimedAt[tokenId];
         if (block.timestamp - stake_.stakeTimestamp < config.timeLockPeriod) {
             revert InvalidUnstake();
@@ -326,52 +303,81 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         emit Staked(tokenId, 1, 0, config.stakingToken);
     }
 
-    // TODO claimOrUnstake single
+    function _claimOrUnstake(uint256 tokenId, bool isUnstake) public onlySNFTOwner(tokenId) onlyUnlocked(tokenId) returns (uint256) {
+        Stake memory stake_ = stakedOrClaimedAt[tokenId];
+
+        uint256 accessTime = stake_.claimTimestamp == 0 ? stake_.stakeTimestamp : stake_.claimTimestamp;
+
+        uint256 rewards = _calculateRewards(
+            block.timestamp - accessTime,
+            1,
+            config
+        ) + pendingRewards[msg.sender];
+
+        pendingRewards[msg.sender] = 0;
+
+        if (isUnstake) {
+            // Update timestamp to unstaked
+            stakedOrClaimedAt[tokenId].stakeTimestamp = 0;
+
+            // Burn the sNFT
+            _burn(tokenId);
+
+            // Return NFT to staker
+            IERC721(config.stakingToken).safeTransferFrom(
+                address(this),
+                msg.sender,
+                tokenId
+            );
+        } else {
+            // Mark the most recent claim timestamp
+            stakedOrClaimedAt[tokenId].claimTimestamp = block.timestamp;
+        }
+
+        config.rewardsToken.transfer(
+            msg.sender,
+            rewards
+        );
+
+        // For event emission
+        return rewards;
+    }
 
     function _claimOrUnstakeBulk(uint256[] calldata tokenIds, bool isUnstake) public returns (uint256) {
+        // Start rewards count to include any pendingRewards already accrued
+        uint256 rewards = pendingRewards[msg.sender];
+
         uint i;
-        uint256 rewards;
         uint len = tokenIds.length;
         for (i; i < len;) {
-            // If they are not the owner of the sNFT, revert
-            if (ownerOf(tokenIds[i]) != msg.sender) {
-                revert InvalidOwner();
-            }
+            Stake memory stake_ = stakedOrClaimedAt[tokenIds[i]];
 
-            Stake memory _stake = stakedOrClaimedAt[tokenIds[i]];
+            uint256 accessTime = stake_.claimTimestamp == 0 ? stake_.stakeTimestamp : stake_.claimTimestamp;
 
-            uint256 accessTime = _stake.claimTimestamp == 0 ? _stake.stakeTimestamp : _stake.claimTimestamp;
-
-            uint256 tempRewards = _calculateRewards(
+            rewards += _calculateRewards(
                 block.timestamp - accessTime,
                 1,
                 config
-            ) + pendingRewards[msg.sender];
+            );
 
-            
-            // If there are rewards to be claimed
-            if (tempRewards > 0) {
-                rewards += tempRewards;
+            // If we are unstaking, burn the sNFT and return the NFT as well
+            if (isUnstake) {                    
+                // Update timestamp to unstaked
+                stakedOrClaimedAt[tokenIds[i]].stakeTimestamp = 0;
 
-                // If we are unstaking, burn the sNFT and return the NFT as well
-                if (isUnstake) {                    
-                    // Update timestamp to unstaked
-                    stakedOrClaimedAt[tokenIds[i]].stakeTimestamp = 0;
+                // Burn the sNFT
+                _burn(tokenIds[i]);
 
-                    // Burn the sNFT
-                    _burn(tokenIds[i]);
-
-                    // Return NFT to staker
-                    // TODO can we bulk these transfers at all?
-                    IERC721(config.stakingToken).safeTransferFrom(
-                        address(this),
-                        msg.sender,
-                        tokenIds[i]
-                    );
-                } else {
-                    // Mark the most recent claim timestamp
-                    stakedOrClaimedAt[tokenIds[i]].claimTimestamp = block.timestamp;
-                }
+                // Return NFT to staker
+                // TODO can we bulk these transfers at all?
+                IERC721(config.stakingToken).safeTransferFrom(
+                    address(this),
+                    msg.sender,
+                    tokenIds[i]
+                );
+            } else {
+                // Mark the most recent claim timestamp
+                stakedOrClaimedAt[tokenIds[i]].claimTimestamp = block.timestamp;
             }
 
             unchecked {
@@ -381,7 +387,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 		
 		// This will also cover if all tokens are not owned by the caller
         if (rewards == 0) {
-            revert InvalidClaim();
+            revert NoRewards();
         }
 
         // Transfer all rewards at once

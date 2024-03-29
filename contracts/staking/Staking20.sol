@@ -96,7 +96,7 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
         uint256 rewards;
         (, rewards) = _claimOrUnstake(false);
 
-        emit Claimed(rewards, config.stakingToken);
+        emit Claimed(rewards, config.rewardsToken);
     }
 
     function unstake() external {

@@ -25,21 +25,12 @@ interface IStaking {
 
     /**
      * @notice Emit when a user claims rewards
-     * @dev We don't need an individuak `ClaimBulk` event here because
-     * we don't have an array of values like `tokenids` or `amounts`
      * @param rewards The amount of rewards the user received
-     * @param stakingToken The address of the staking token
+     * @param rewardsToken The address of the staking token
      */
-
-    //  * @param tokenId The token ID of the staked token
-    //  * @param amount The amount of the reward token that was claimed
-    //  * @param index The index of the staked asset
-            // uint256 indexed tokenId,
-        // uint256 indexed amount,
-        // uint256 indexed index,
     event Claimed(
         uint256 rewards,
-        address stakingToken
+        IERC20 rewardsToken
     );
 
     // /**
@@ -122,4 +113,9 @@ interface IStaking {
      * @dev Throw when the lock period has not passed
      */
     error TimeLockNotPassed();
+
+    /**
+     * @dev Throw when there are no rewards to transfer
+     */
+    error NoRewards();
 }

@@ -31,6 +31,8 @@ export interface RewardsConfig {
 // Simplify the Ethers V6 contract type
 export type ContractV6 = BaseContract & Omit<ContractInterface, keyof BaseContract>;
 
+export type StakedOrClaimedAt = [bigint, bigint] & { stakeTimestamp: bigint; claimTimestamp: bigint; };
+
 export type Maybe<T> = T | null | undefined;
 // For typing hardhat upgrades with Ethers v6
 // export type MultiStakingV6 = MultiStaking & ContractV6;
