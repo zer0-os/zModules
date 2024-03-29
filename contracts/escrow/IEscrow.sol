@@ -7,7 +7,12 @@ interface IEscrow {
      * @param _amount The amount of tokens to deposit.
      */
     function deposit(uint256 _amount) external;
-
+    
+    /**
+     * @dev Transfers balance to user.
+     */
+    function withdraw() external;
+    
     /**
      * @dev Executes a payment from the escrow to a winner.
      * @param _to The address to receive tokens.

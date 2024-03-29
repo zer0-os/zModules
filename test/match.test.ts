@@ -19,7 +19,7 @@ describe("Match Contract", function () {
     let mockERC20Address: string;
     let escrowAddress: string;
     let matchAddress: string;
-
+    const ownerMintAmount = ethers.parseEther("100000000000000000000");
 
     before(async function () {
         [owner, addr1, addr2] = await hre.ethers.getSigners();
@@ -32,15 +32,20 @@ describe("Match Contract", function () {
         mockERC20Address = await mockERC20.getAddress();
 
         const EscrowFactory = await hre.ethers.getContractFactory("Escrow");
-        escrow = (await EscrowFactory.deploy(mockERC20Address, ownerAddress)) as Escrow;
+        escrow = (await EscrowFactory.deploy(mockERC20Address, ownerAddress, ownerAddress)) as Escrow;
         escrowAddress = await escrow.getAddress();
 
         const MatchFactory = await hre.ethers.getContractFactory("Match");
         match = (await MatchFactory.deploy(ownerAddress, escrowAddress)) as Match;
         matchAddress = await match.getAddress();
 
+        await escrow.transferOwnership(matchAddress);
+
         await mockERC20.mint(addr1Address, ethers.parseEther("1000"));
         await mockERC20.mint(addr2Address, ethers.parseEther("500"));
+        //await mockERC20.mint(escrowAddress, ethers.parseEther("1000000"));
+        await mockERC20.mint(owner, ownerMintAmount);
+        await mockERC20.connect(owner).increaseAllowance(escrowAddress, ownerMintAmount);
     });
 
     describe("Match Operations", function () {
@@ -60,25 +65,28 @@ describe("Match Contract", function () {
 
         it("Should pay all winners equally and emit Payment event for each", async function () {
             const amount = ethers.parseEther("50");
-            await match.payAllEqual(amount, [addr1Address, addr2Address]);
+            const finalBal1 = ethers.parseEther("150");
+            await match.connect(owner).payAllEqual(amount, [addr1Address, addr2Address]);
 
-            const addr1Balance = await escrow.getBalance(addr1Address);
-            const addr2Balance = await escrow.getBalance(addr2Address);
-            expect(addr1Balance).to.equal(ethers.parseEther("50"));
-            expect(addr2Balance).to.equal(ethers.parseEther("50"));
+            const addr1Balance = await escrow.balance(addr1Address);
+            const addr2Balance = await escrow.balance(addr2Address);
+            expect(addr1Balance).to.equal(finalBal1);
+            expect(addr2Balance).to.equal(finalBal1);
         });
 
         it("Should pay winners variable amounts and emit Payment event for each", async function () {
             const amounts = [ethers.parseEther("25"), ethers.parseEther("75")];
             const winners = [addr1Address, addr2Address];
+            const finalBal1 = ethers.parseEther("175");
+            const finalBal2 = ethers.parseEther("225");
 
             await match.connect(owner).payAllAmounts(amounts, winners);
 
             // Check final balances
-            const addr1FinalBalance = await escrow.getBalance(addr1Address);
-            const addr2FinalBalance = await escrow.getBalance(addr2Address);
-            expect(addr1FinalBalance).to.equal(ethers.parseEther("25")); // Assuming previous tests influence state
-            expect(addr2FinalBalance).to.equal(ethers.parseEther("25")); // Adjust according to previous test's state and logic
+            const addr1FinalBalance = await escrow.balance(addr1Address);
+            const addr2FinalBalance = await escrow.balance(addr2Address);
+            expect(addr1FinalBalance).to.equal(finalBal1);
+            expect(addr2FinalBalance).to.equal(finalBal2);
         });
     });
 
