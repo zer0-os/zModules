@@ -92,13 +92,48 @@ describe("Match Contract", function () {
 
     describe("Negative Tests", function () {
         it("Non-owner cannot call payAllEqual", async function () {
-            await expect(match.connect(addr1).payAllEqual(ethers.parseEther("10"), [addr2Address]))
+            await expect(match.connect(addr2).payAllEqual(ethers.parseEther("10"), [addr2Address]))
                 .to.be.revertedWith("Ownable: caller is not the owner");
         });
 
         it("Non-owner cannot call payAllAmounts", async function () {
-            await expect(match.connect(addr1).payAllAmounts([ethers.parseEther("10")], [addr2Address]))
+            await expect(match.connect(addr2).payAllAmounts([ethers.parseEther("10")], [addr2Address]))
                 .to.be.revertedWith("Ownable: caller is not the owner");
         });
+
+        it("Non-owner cannot set a new escrow address", async function () {
+            const newEscrowAddress = "0x000000000000000000000000000000000000dEaD"; // Example new escrow address
+            await expect(match.connect(addr2).setEscrow(newEscrowAddress))
+                .to.be.revertedWith("Ownable: caller is not the owner");
+        });
+
+        it("payAllEqual fails when trying to pay to an empty array of winners", async function () {
+            const amount = ethers.parseEther("10");
+            await expect(match.payAllEqual(amount, []))
+                .to.be.revertedWith("Winners array empty");
+        });
+
+        it("payAllAmounts fails when amounts and winners array lengths do not match", async function () {
+            const amounts = [ethers.parseEther("10")];
+            const winners = [addr1Address, addr2Address]; // Assuming addr1Address and addr2Address are initialized
+            await expect(match.payAllAmounts(amounts, winners))
+                .to.be.revertedWith("Amounts and winners length mismatch");
+        });
+
+        it("Reverts payAllEqual with insufficient paymentAccount balance", async function () {
+            // Assuming the escrow balance for addr2Address is less than 100 ether for this example
+            const highAmount = ethers.parseEther("1000000000000000000000000");
+            await expect(match.payAllEqual(highAmount, [addr2Address]))
+                .to.be.revertedWith("ERC20: insufficient allowance");
+        });
+
+        it("Reverts payAllAmounts with insufficient paymentAccount balance", async function () {
+            // Assuming the escrow balance for addr2Address is less than 50 ether for this example
+            const amounts = [ethers.parseEther("50000000000000000000000")];
+            const winners = [addr2Address];
+            await expect(match.payAllAmounts(amounts, winners))
+                .to.be.revertedWith("ERC20: insufficient allowance");
+        });
     });
+
 });

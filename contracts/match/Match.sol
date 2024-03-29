@@ -15,6 +15,7 @@ contract Match is Ownable, IMatch {
     }
 
     function payAllEqual(uint256 amount, address[] memory winners) external override onlyOwner {
+        require(winners.length > 0, "Winners array empty");
         for(uint i = 0; i < winners.length; i++) {
             escrow.executePayment(winners[i], amount);
             emit PaymentExecuted(winners[i], amount);
