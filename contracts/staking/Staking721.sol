@@ -23,7 +23,6 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 	 * @dev Track for each stake when it was most recently accessed
 	 */
     mapping(uint256 tokenId => Stake stakeData) public stakedOrClaimedAt;
-    // TODO can likely be single var not struct
 
     /**
 	 * @dev Throw when the caller is not the owner of the given token
@@ -40,6 +39,9 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         _;
     }
 
+    /**
+     * @dev Require that calls to claim or unstake have passed the time lock period
+     */
     modifier onlyUnlocked(uint256 tokenId) {
         // If we use a single value for `stakedOrClaimedAt`, when the timestamp is updated it's possible this
         // throws, we need to compare original stake timestamp only
