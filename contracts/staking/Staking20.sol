@@ -96,7 +96,8 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
         uint256 rewards;
         (, rewards) = _claimOrUnstake(false);
 
-        emit Claimed(rewards, config.rewardsToken);
+        // No tokenId
+        emit Claimed(0, rewards, config.rewardsToken);
     }
 
     function unstake() external {
@@ -163,7 +164,7 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
     // TODO maybe should default to total, singularis option
     // shows pending total, not what is claimable
 
-    function viewPendingRewards() external view returns (uint256) {
+    function viewPendingRewards() external returns (uint256) {
         Stake memory _stake = stakes[msg.sender];
 
         uint256 accessTime = _stake.claimTimestamp == 0 ? _stake.stakeTimestamp : _stake.claimTimestamp;

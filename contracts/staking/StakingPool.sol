@@ -56,6 +56,13 @@ contract StakingPool is IStakingPool {
         );
     }
 
+    event Debug(
+        uint256 val1,
+        uint256 val2,
+        uint256 val3,
+        uint256 val4
+    );
+
     /**
      * @notice Calculate rewards for a staker
      * @dev Returns 0 if time lock period is not passed
@@ -67,7 +74,15 @@ contract StakingPool is IStakingPool {
         uint256 timePassed,
         uint256 stakeAmount,
         PoolConfig memory config
-    ) internal pure returns (uint256) {
-        return 10**18 * config.poolWeight * stakeAmount * (timePassed / config.periodLength) / 10**18;
+    ) internal pure returns (uint256) { // TODO make pure
+        // emit Debug(
+        //     config.poolWeight,
+        //     stakeAmount,
+        //     timePassed,
+        //     config.periodLength
+        // );
+
+        // use safemath?
+        return config.poolWeight * stakeAmount * (timePassed / config.periodLength);
     }
 }
