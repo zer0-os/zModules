@@ -350,6 +350,20 @@ describe("StakingERC721", () => {
   });
 
   describe("#removeStake | #removeStakeBulk", () => {
+    // fails if user doesnt own the SNFT
+    // fails if snft is invalid
+    it("Fails if the caller does not own the sNFT", async () => {
+      await expect(stakingERC721.connect(notStaker).exitWithoutRewards(tokenIdA))
+      .to.be.revertedWithCustomError(stakingERC721, "InvalidOwner");
+    });
+
+    it("Fails if the sNFT is invalid", async () => {
+      // Because we `burn` on exit, the token would be invalid and it is the same test
+      // as if the owner has already exited
+      await expect(stakingERC721.connect(notStaker).exitWithoutRewards(nonMintedTokenId))
+      .to.be.revertedWith(INVALID_TOKEN_ID);
+    });
+
     it("Allows the user to remove their stake within the timelock period without rewards", async () => {
       // User has staked their NFT and gained an SNFT
       expect(await mockERC721.balanceOf(staker.address)).to.eq(2); // tokenIdB and TokenIdC

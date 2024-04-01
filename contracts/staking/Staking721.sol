@@ -267,7 +267,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
                 tokenId,
                 1,
                 0,
-                rewards, // TODO will be bulk value
+                rewards,
                 config.stakingToken
             );
         } else {
@@ -278,7 +278,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 
         // This will cover if all tokens are not owned by the caller
         if (rewards == 0) {
-            // TODO test this case somehow
+            // TODO test this case somehow??
             revert NoRewards();
         }
 
@@ -287,8 +287,6 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
             rewards
         );
     }
-
-    // todo function should be guarded
     function _claimOrUnstakeBulk(
         uint256[] calldata tokenIds,
         bool isUnstake
@@ -300,7 +298,14 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         uint len = tokenIds.length;
         for (i; i < len;) {
             // onlySNFTOwner(tokenId) onlyUnlocked(tokenId)
-            // TODO add these guards here manually
+            if (ownerOf(tokenIds[i]) != msg.sender) {
+                revert InvalidOwner();
+            }
+
+            if (config.timeLockPeriod > block.timestamp - stakedOrClaimedAt[tokenIds[i]].stakeTimestamp) {
+                revert TimeLockNotPassed();
+            }
+
             Stake memory stake_ = stakedOrClaimedAt[tokenIds[i]];
 
             uint256 accessTime = stake_.claimTimestamp == 0 ? stake_.stakeTimestamp : stake_.claimTimestamp;
