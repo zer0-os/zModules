@@ -35,17 +35,12 @@ interface Types {
 		uint256 timeLockPeriod; // number of time periods required to pass to be able to claim or unstake
 	}
 
-    // struct Stake {
-    //     // address staker; /// probably dont need this
-    //     uint256 stakeAmount;
-    //     uint256 stakeTimestamp;
-    //     uint256 claimTimestamp;
-    //     uint256 stakeNonce;
-    // }
-
     struct Stake{
-        uint256 stakeTimestamp;
-        uint256 claimTimestamp;    
+        // amount = tokenIds.length
+        uint256 unlockTimestamp;
+        uint256 pendingRewards;
+        uint256 lastUpdatedTimestamp;
+        uint256[] tokenIds;
     }
 
     // TODO stakingTokenType, try without until 1155 and see what's necessary

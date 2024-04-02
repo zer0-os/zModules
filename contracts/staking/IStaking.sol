@@ -25,12 +25,10 @@ interface IStaking {
 
     /**
      * @notice Emit when a user claims rewards
-     * @param tokenId The token ID of the staked token (0 in ERC20 case)
      * @param rewards The amount of rewards the user received
      * @param rewardsToken The address of the staking token
      */
     event Claimed(
-        uint256 tokenId,
         uint256 rewards,
         IERC20 rewardsToken
     );
@@ -40,23 +38,19 @@ interface IStaking {
      * @param tokenId The token ID of the staked token
      * @param amount The amount of the token that was unstaked
      * @param index The index of the staked asset
-     * @param rewards The amount of rewards the user received
      * @param stakingToken The address of the staking token
      */
     event Unstaked(
         uint256 indexed tokenId,
         uint256 indexed amount,
         uint256 indexed index,
-        uint256 rewards,
         address stakingToken
     );
 
-    event RemovedStake(
-        uint256 indexed tokenId,
-        uint256 indexed amount,
-        uint256 indexed index,
-        address stakingToken
-    );
+    /**
+     * @dev Throw when caller is not the sNFT owner
+     */
+    error InvalidOwner();
 
     /**
      * @dev Throw when caller is unable to stake

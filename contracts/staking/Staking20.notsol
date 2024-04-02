@@ -61,36 +61,36 @@ contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
      * @notice Stake an amount of the ERC20 staking token specified
      * @param amount The amount to stake
      */
-    function stake(uint256 amount) external {
+    // function stake(uint256 amount) external {
 
-        Stake memory _stake = stakes[msg.sender];
+    //     Stake memory _stake = stakes[msg.sender];
 
-        if (staked[msg.sender] == 0) {
-            stakes[msg.sender].stakeTimestamp = block.timestamp;
-        } else {
-            uint256 accessTime = _stake.claimTimestamp == 0 ? _stake.stakeTimestamp : _stake.claimTimestamp;
+    //     if (staked[msg.sender] == 0) {
+    //         stakes[msg.sender].unlockTimestamp = block.timestamp;
+    //     } else {
+    //         uint256 accessTime = _stake.claimTimestamp == 0 ? _stake.stakeTimestamp : _stake.claimTimestamp;
 
-            // We snapshot existing rewards up to the present
-            // Future rewards are calculated from here
-            pendingRewards[msg.sender] += _calculateRewards(
-                block.timestamp - accessTime,
-                staked[msg.sender],
-                config
-            );
-            stakes[msg.sender].claimTimestamp = block.timestamp;
-        }
+    //         // We snapshot existing rewards up to the present
+    //         // Future rewards are calculated from here
+    //         pendingRewards[msg.sender] += _calculateRewards(
+    //             block.timestamp - accessTime,
+    //             staked[msg.sender],
+    //             config
+    //         );
+    //         stakes[msg.sender].claimTimestamp = block.timestamp;
+    //     }
 
-        // Update with new stake
-        staked[msg.sender] += amount;
+    //     // Update with new stake
+    //     staked[msg.sender] += amount;
 
-        IERC20(config.stakingToken).transferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
+    //     IERC20(config.stakingToken).transferFrom(
+    //         msg.sender,
+    //         address(this),
+    //         amount
+    //     );
 
-        emit Staked(0, amount, 0, config.stakingToken);
-    }
+    //     emit Staked(0, amount, 0, config.stakingToken);
+    // }
 
     function claim() external {
         uint256 rewards;
