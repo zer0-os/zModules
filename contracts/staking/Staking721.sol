@@ -87,6 +87,8 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
                 ++i;
             }
         }
+
+        staker.lastUpdatedTimestamp = block.timestamp;
     }
 
 	/**

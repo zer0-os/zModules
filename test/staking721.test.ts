@@ -27,6 +27,17 @@ describe("StakingERC721", () => {
   let mockERC721 : MockERC721;
 
   let config : PoolConfig;
+
+  let stakedOrClaimedAtA : bigint;
+  let stakedOrClaimedAtB : bigint;
+  let stakedOrClaimedAtC : bigint;
+
+  let balanceAtStakeOne : bigint;
+  let balanceAtStakeTwo : bigint;
+  let balanceAtStakeThree : bigint;
+
+  // Value to add expected rewards as we move through the flow
+  let rewards : bigint = 0n
   
   // Default token ids
   const tokenIdA = 1;
@@ -37,7 +48,6 @@ describe("StakingERC721", () => {
   const nonMintedTokenId = 6; // Never minted
 
   // let stakeData : StakedOrClaimedAt;
-
 
   before(async () => {
     [
@@ -87,6 +97,8 @@ describe("StakingERC721", () => {
   describe("#stake | #stakeBulk", () => {
     it("Can stake an NFT", async () => {
       await stakingERC721.connect(staker).stake(tokenIdA);
+      stakedOrClaimedAtA = await (await stakingERC721.stakes(staker.address)).lastUpdatedTimestamp;
+      balanceAtStakeOne = await stakingERC721.balanceOf(staker.address);
 
       // User has staked their NFT and gained an SNFT
       expect(await mockERC721.balanceOf(staker.address)).to.eq(2); // still has tokenIdB and tokenIdC
@@ -95,7 +107,27 @@ describe("StakingERC721", () => {
 
     it("Can stake multiple NFTs", async () => {
       // Stake multiple 
+      // const pendingRewardsBefore = await stakingERC721.connect(staker).getPendingRewards();
+      rewards += await stakingERC721.connect(staker).getPendingRewards();
+
       await stakingERC721.connect(staker).stakeBulk([tokenIdB, tokenIdC]);
+      stakedOrClaimedAtB = await (await stakingERC721.stakes(staker.address)).lastUpdatedTimestamp
+      stakedOrClaimedAtC = stakedOrClaimedAtB;
+
+      balanceAtStakeTwo = await stakingERC721.balanceOf(staker.address);
+
+      rewards += await stakingERC721.connect(staker).getPendingRewards(); // not sure about this
+
+
+      // await time.increase(config.timeLockPeriod / 2n);
+
+      const pendingRewards = await stakingERC721.connect(staker).getPendingRewards();
+      const timestamp = await time.latest()
+      const stakeData = await stakingERC721.stakes(staker.address);
+      const remainingLockTime = await stakingERC721.connect(staker).getRemainingLockTime();
+
+      const timePassed = BigInt(timestamp) - (stakeData.unlockTimestamp - config.timeLockPeriod);
+      const stakeTime = stakeData.unlockTimestamp - config.timeLockPeriod;
 
       // User has staked their remaining NFTs and gained two SNFTs
       expect(await mockERC721.balanceOf(staker.address)).to.eq(0);
@@ -123,53 +155,43 @@ describe("StakingERC721", () => {
 
   describe("#getRemainingLockTime", () => {
     it("Allows the user to view the remaining time lock period for a stake", async () => {
-      const remainingTimeLock = await stakingERC721.connect(staker).getRemainingLockTime();
+      const remainingLockTime = await stakingERC721.connect(staker).getRemainingLockTime();
       const latest = await time.latest();
 
       const stakeData = await stakingERC721.stakes(staker.address);
 
       // Original lock period and remaining lock period time difference should be the same as 
       // the difference between the latest timestamp and that token's stake timestamp 
-      expect(remainingTimeLock).to.eq((stakeData.unlockTimestamp - BigInt(latest)));
+      expect(remainingLockTime).to.eq((stakeData.unlockTimestamp - BigInt(latest)));
     });
   });
 
   describe("#getPendingRewards | #getPendingRewardsBulk", () => {
-    it("Can view pending rewards for a staked token", async () => {
+    it("Can view pending rewards for a user", async () => {
       // Move timestamp forward to accrue rewards
-      await time.increase(config.timeLockPeriod / 2n);
+      // await time.increase(config.timeLockPeriod / 2n);
 
-      const pendingRewards = await stakingERC721.getPendingRewards(tokenIdA);
+      const stakeData = await stakingERC721.stakes(staker.address);
+
+
+      // have to have multiple calls to calc function
+      const durationOne = stakedOrClaimedAtB - stakedOrClaimedAtA;
+      const rewardsDuringDurationOne = calcRewardsAmount(durationOne, balanceAtStakeOne, config);
+      
       const timestamp = await time.latest()
+      const durationTwo = BigInt(timestamp) - stakedOrClaimedAtB;
+      const rewardsDuringDurationTwo = calcRewardsAmount(durationTwo, balanceAtStakeTwo, config);
 
-      const expectedRewards = calcRewardsAmount(
-        BigInt(timestamp) - stakeData.stakeTimestamp,
-        BigInt(1),
-        config,
-      );
+      const totalRewards = rewardsDuringDurationOne + rewardsDuringDurationTwo;
+
+      const pendingRewards = await stakingERC721.connect(staker).getPendingRewards();
+      const remainingLockTime = await stakingERC721.connect(staker).getRemainingLockTime();
+
+      const timePassed = BigInt(timestamp) - (stakeData.unlockTimestamp - config.timeLockPeriod);
+      const stakeTime = stakeData.unlockTimestamp - config.timeLockPeriod;
 
       // Accurate calculation before the lock period
-      expect(pendingRewards).to.eq(expectedRewards);
-    });
-
-    it("Can view pending rewards for multiple staked tokens", async () => {
-      const pendingRewards = await stakingERC721.getPendingRewardsBulk([tokenIdB, tokenIdC]);
-
-      const timestamp = await time.latest()
-
-      const expectedRewardsB = calcRewardsAmount(
-        BigInt(timestamp!) - stakedOrClaimedAtB.stakeTimestamp,
-        BigInt(1),
-        config,
-      );
-
-      const expectedRewardsC = calcRewardsAmount(
-        BigInt(timestamp!) - stakedOrClaimedAtC.stakeTimestamp,
-        BigInt(1),
-        config,
-      );
-
-      expect(pendingRewards).to.eq(expectedRewardsB + expectedRewardsC);
+      expect(pendingRewards).to.eq(totalRewards);
     });
   });
 
