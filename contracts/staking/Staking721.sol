@@ -119,6 +119,10 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         _unstake(tokenId, staker);
     }
 
+    function showAll() external view returns (uint256[] memory) {
+        return stakes[msg.sender].tokenIds;
+    }
+
     function unstakeAll(bool exit) external {
         Stake storage staker = stakes[msg.sender];
 
@@ -129,7 +133,12 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         uint256 i;
         uint256 len = staker.tokenIds.length;
         for (i; i < len;) {
-            _unstake(staker.tokenIds[i], staker);
+            uint256 tokenId = staker.tokenIds[i];
+
+            // Token might be 0x0 if they already unstaked it individually
+            if (tokenId != 0) {
+                _unstake(tokenId, staker);
+            }
 
             unchecked {
                 ++i;
@@ -226,11 +235,13 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 
         // Mark as removed
         // TODO will this shrink memory accordingly or just mark as 0?
+        // off by one, stake of token "1" is at 0, etc.
         delete staker.tokenIds[tokenId];
+        // this matches on index, not on tokenId value
 
         // Burn the sNFT
         // need SNFT still? maybe let them keep it like uniswap?
-        _burn(tokenId);
+        // _burn(tokenId);
 
         // Return NFT to staker
         IERC721(config.stakingToken).safeTransferFrom(
@@ -256,7 +267,8 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
     // }
 
     function _onlyUnlocked(uint256 unlockTimestamp) internal view {
-        if (unlockTimestamp > block.timestamp) {
+        // User is not staked or has not passed the time lock
+        if (unlockTimestamp == 0 || unlockTimestamp > block.timestamp) {
             revert TimeLockNotPassed();
         }
     }

@@ -1,6 +1,19 @@
 import { PoolConfig, RewardsConfig } from "./types";
 
-// if we do math with ETH values it will truncate?
+
+export const calcTotalRewards = (
+  durations : Array<bigint>,
+  balances : Array<bigint>,
+  config : PoolConfig
+) => {
+  let totalRewards = BigInt(0);
+
+  for (let i = 0; i < durations.length; i++) {
+    totalRewards += calcRewardsAmount(durations[i], balances[i], config);
+  }
+
+  return totalRewards;
+}
 
 export const calcRewardsAmount = (
   timePassed : bigint,
