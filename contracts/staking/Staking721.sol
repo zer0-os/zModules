@@ -42,7 +42,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         Stake storage staker = stakes[msg.sender];
 
         // Not their first stake, snapshot pending rewards
-        if (staker.tokenIds.length > 0) { 
+        if (staker.numStaked > 0) { 
             // Update pending rewards with new calculated amount + already existing pending rewards
             staker.pendingRewards = _getPendingRewards(staker);
         } else {
@@ -52,6 +52,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         }
 
         // Append to staker's tokenIds array
+        staker.numStaked += 1;
         staker.tokenIds.push(tokenId);
 
         _stake(tokenId);
@@ -67,7 +68,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         Stake storage staker = stakes[msg.sender];
 
         // Not their first stake, snapshot pending rewards
-        if (staker.tokenIds.length > 0) { 
+        if (staker.numStaked > 0) { 
             // Update pending rewards with new calculated amount + already existing pending rewards
             staker.pendingRewards = _getPendingRewards(staker);
         } else {
@@ -80,14 +81,15 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         uint256 len = tokenIds.length;
         for (i ; i < len;) {
             // Append to staker's tokenIds array
-            staker.tokenIds.push(tokenIds[i]);
             _stake(tokenIds[i]);
+            staker.tokenIds.push(tokenIds[i]);
 
             unchecked {
                 ++i;
             }
         }
 
+        staker.numStaked += len;
         staker.lastUpdatedTimestamp = block.timestamp;
     }
 
@@ -119,8 +121,8 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         _unstake(tokenId, staker);
     }
 
-    function showAll() external view returns (uint256[] memory) {
-        return stakes[msg.sender].tokenIds;
+    function showAll() external view returns (uint256) {
+        return stakes[msg.sender].numStaked;
     }
 
     function unstakeAll(bool exit) external {
@@ -131,11 +133,17 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         }
 
         uint256 i;
-        uint256 len = staker.tokenIds.length;
+        uint256 len = staker.numStaked;
         for (i; i < len;) {
             uint256 tokenId = staker.tokenIds[i];
 
             // Token might be 0x0 if they already unstaked it individually
+
+            // TODO we might have to keep stake data as { tokenId, index } pairs
+            // to be able to assure we always unstake the correct one
+            // and if they call unstakeAll after previously doing a regular unstake, we can
+            // skip it and not try to unstake a duplicative one
+            // we still need correct token ids for transfer backward, have to have this
             if (tokenId != 0) {
                 _unstake(tokenId, staker);
             }
@@ -236,12 +244,13 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         // Mark as removed
         // TODO will this shrink memory accordingly or just mark as 0?
         // off by one, stake of token "1" is at 0, etc.
-        delete staker.tokenIds[tokenId];
+        // delete staker.tokenIds[tokenId]; // uses tokenId as index not value here
         // this matches on index, not on tokenId value
+        staker.numStaked -= 1;
 
         // Burn the sNFT
         // need SNFT still? maybe let them keep it like uniswap?
-        // _burn(tokenId);
+        _burn(tokenId);
 
         // Return NFT to staker
         IERC721(config.stakingToken).safeTransferFrom(

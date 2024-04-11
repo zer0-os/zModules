@@ -40,6 +40,7 @@ interface Types {
         uint256 unlockTimestamp;
         uint256 pendingRewards;
         uint256 lastUpdatedTimestamp;
+        uint256 numStaked; // maybe just be numStakes or balanceStaked, etc.
         uint256[] tokenIds;
     }
 
