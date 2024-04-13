@@ -18,4 +18,5 @@ export const ONLY_ADMIN = "Caller is not the admin";
 // Custom Errors
 
 // StakingERC721
-export const TIME_LOCK_NOT_PASSED = "TimeLockNotPassed"
+export const TIME_LOCK_NOT_PASSED = "TimeLockNotPassed";
+export const INVALID_OWNER = "InvalidOwner";
