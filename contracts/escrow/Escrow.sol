@@ -16,12 +16,14 @@ contract Escrow is Ownable{
     }
 
     function deposit(uint256 amount) external {
+        require(amount > 0, "Zero deposit amount");
         balance[msg.sender] += amount;
         token.transferFrom(msg.sender, address(this), amount);
         emit Deposited(msg.sender, amount); 
     }
 
     function withdraw() external {
+        require(balance[msg.sender] > 0, "No balance to withdraw");
         uint balanceStore = balance[msg.sender];
         balance[msg.sender] = 0;
         token.transfer(msg.sender, balanceStore);
@@ -37,8 +39,8 @@ contract Escrow is Ownable{
     }
 
     function refund(address client) external onlyOwner {
+        require(balance[client] > 0, "No balance to refund");
         uint256 _balance = balance[client];
-        require(_balance > 0, "No balance to refund");
         balance[client] = 0;
         token.transfer(client, _balance);
         

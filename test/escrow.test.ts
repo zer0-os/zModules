@@ -102,7 +102,45 @@ describe("Escrow Contract", function () {
       await expect(escrow.connect(owner).refund(addr1.address))
         .to.be.revertedWith("No balance to refund");
     });
+    it("Should correctly handle deposits of zero amount", async function () {
+      await expect(escrow.connect(addr1).deposit(0))
+        .to.be.revertedWith("Zero deposit amount");
+    });
 
+    it("Should reject withdrawals when balance is zero", async function () {
+      await expect(escrow.connect(addr2).withdraw())
+        .to.be.revertedWith("No balance to withdraw");
+    });
+
+    it("Should handle multiple consecutive deposits and withdrawals correctly", async function () {
+      const currentBalanceStore = await mockERC20.balanceOf(addr1.address);
+      const depositAmount = ethers.parseEther("100");
+      const anotherDepositAmount = ethers.parseEther("200");
+      await mockERC20.connect(addr1).approve(await escrow.getAddress(), depositAmount + anotherDepositAmount);
+      await escrow.connect(addr1).deposit(depositAmount);
+      await escrow.connect(addr1).deposit(anotherDepositAmount);
+
+      // Check combined balance
+      expect(await escrow.balance(addr1.address)).to.equal(depositAmount + anotherDepositAmount);
+
+      // Withdraw all
+      await escrow.connect(addr1).withdraw();
+      expect(await escrow.balance(addr1.address)).to.equal(0);
+      expect(await mockERC20.balanceOf(addr1.address)).to.equal(currentBalanceStore);
+    });
+
+    it("Should emit the correct events and update balances on multiple refunds", async function () {
+
+      const depositAmount = ethers.parseEther("50");
+      await mockERC20.connect(addr1).approve(await escrow.getAddress(), depositAmount + depositAmount);
+      await escrow.connect(addr1).deposit(depositAmount);
+      await escrow.connect(addr1).deposit(depositAmount);
+
+      await expect(escrow.connect(owner).refund(addr1.address))
+        .to.emit(escrow, "Refunded")
+        .withArgs(addr1.address, depositAmount + depositAmount);
+      expect(await escrow.balance(addr1.address)).to.equal(0);
+    });
   });
 
   describe("Escrow, Negative Tests", function () {
