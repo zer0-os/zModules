@@ -110,7 +110,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
      * @notice View the rewards balance in this pool
      */
     function getContractRewardsBalance() external view returns (uint256) {
-        return config.rewardsToken.balanceOf(address(this));
+        return _getContractRewardsBalance();
     }
 
     /**
@@ -174,6 +174,11 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         staker.lastUpdatedTimestamp = block.timestamp;
         staker.pendingRewards = 0;
 
+        // Disallow rewards when balance is 0
+        if (_getContractRewardsBalance() == 0) {
+            revert NoRewards();
+        }
+
         config.rewardsToken.transfer(
             msg.sender,
             rewards
@@ -200,6 +205,10 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
             0,
             config.stakingToken
         );
+    }
+
+    function _getContractRewardsBalance() internal view returns (uint256) {
+        return config.rewardsToken.balanceOf(address(this));
     }
 
     function _onlyUnlocked(uint256 unlockTimestamp) internal view {

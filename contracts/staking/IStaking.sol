@@ -29,8 +29,8 @@ interface IStaking {
      * @param rewardsToken The address of the staking token
      */
     event Claimed(
-        uint256 rewards,
-        IERC20 rewardsToken
+        uint256 indexed rewards,
+        IERC20 indexed rewardsToken
     );
 
     /**
