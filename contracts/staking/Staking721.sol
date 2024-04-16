@@ -19,15 +19,13 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 	 */
 	Types.PoolConfig public config;
 
-    // TODO make struct a set of single variables instead 
-
+    // TODO turn struct into a set of single variables instead 
     // TODO destructors?
     // immutable constant endDate so company commits to certain amount of rewards
 
     /**
 	 * @dev Track for each stake when it was most recently accessed
 	 */
-    // mapping(uint256 tokenId => Staker stake) public stakes;
     mapping(address staker => Staker stakerData) public stakers;
 
     modifier onlySNFTOwner(uint256 tokenId) {
@@ -36,12 +34,6 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         }
         _;
     }
-
-    // mapping(uint256 tokenId => address staker) public stakerOf;
-
-    // We need to be able to get all token Ids for a user
-    // we also need to be able to get the total number of tokens staked for balances
-    // if we can reliably keep a array that can be modified without a gap, then it could be okay
 
     constructor(
 		string memory name,
@@ -54,15 +46,13 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 
 	/**
 	 * @notice Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in return
-	 * @param tokenIds The tokenIds of the ERC721 staking token contracts
+	 * @param tokenIds Array of tokenIds to be staked by the caller
 	 */
     function stake(uint256[] calldata tokenIds) external {
         Staker storage staker = stakers[msg.sender];
 
-        // TODO form as `_ifRewards` func to make DRY
-        // Not their first stake, snapshot pending rewards
         if (staker.numStaked > 0) {
-            // Update pending rewards with new calculated amount + already existing pending rewards
+	        // It isn't their first stake, snapshot pending rewards
             staker.pendingRewards = _getPendingRewards(staker);
         } else {
             // Log the time at which this stake becomes claimable or unstakable
@@ -73,7 +63,6 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         uint256 i;
         uint256 len = tokenIds.length;
         for (i ; i < len;) {
-            // Append to staker's tokenIds array
             _stake(tokenIds[i]);
 
             unchecked {
@@ -102,10 +91,8 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 
         uint256 i;
         uint256 len = tokenIds.length;
-
         for (i; i < len;) {
             uint256 tokenId = tokenIds[i];
-            // TokenId will already be 0 if it was unstaked individually
             _unstake(tokenId, staker);
 
             unchecked {

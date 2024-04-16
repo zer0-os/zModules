@@ -27,6 +27,7 @@ contract StakingPool is IStakingPool {
         }
 
         // TODO st: Figure out if we need this for erc1155 or not
+		// would be a safer way to test what type contract the staking token is
         // if (uint256(_config.stakingTokenType) > uint256(type(TokenType).max)) {
         //     // Enum for token types is
         //     // 0 - ERC721
