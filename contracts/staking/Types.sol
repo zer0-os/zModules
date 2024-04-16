@@ -35,13 +35,15 @@ interface Types {
 		uint256 timeLockPeriod; // number of time periods required to pass to be able to claim or unstake
 	}
 
-    struct Staker{
+    struct Staker {
         // amount = tokenIds.length
         uint256 unlockTimestamp;
         uint256 pendingRewards;
         uint256 lastUpdatedTimestamp;
-		uint256 numStaked; // cant rely on tokenIds.length in funcs because we cant change length
 		// uint256[] tokenIds;
+        uint256 numStaked; // maybe just be numStakes or balanceStaked, etc.
+        // uint256[] tokenIds;
+        // mapping(uint256 tokenId => uint256 arrayIndex) indexes;
     }
 
     // TODO stakingTokenType, try without until 1155 and see what's necessary
