@@ -9,6 +9,10 @@ interface IStakingPool is Types {
      */
     event PoolCreated(
         bytes32 indexed poolId,
-        PoolConfig config
+        address indexed stakingToken,
+        address indexed rewardsToken,
+        uint256 poolWeight,
+        uint256 periodLength,
+        uint256 timeLockPeriod
     );
 }

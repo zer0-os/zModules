@@ -16,17 +16,23 @@ contract StakingPool is IStakingPool {
         /* Internal Functions */
     ////////////////////////////////////
 
-    function _createPool(PoolConfig memory _config) internal {
-        if (address(_config.stakingToken) == address(0)) {
+    function _createPool(
+        address _stakingToken,
+        address _rewardsToken,
+        uint256 _poolWeight,
+        uint256 _periodLength,
+        uint256 _timeLockPeriod
+    ) internal {
+        if (address(_stakingToken) == address(0)) {
             revert InvalidStaking("Pool: Staking token cannot be zero");
         }
 
         // Rewards configuration must be specified
-        if (address(_config.rewardsToken) == address(0)) {
+        if (address(_rewardsToken) == address(0)) {
             revert InvalidRewards("Pool: Invalid rewards configuration");
         }
 
-        // TODO st: Figure out if we need this for erc1155 or not
+        // TODO st: Figure out if we need type testing for erc1155 or not
 		// would be a safer way to test what type contract the staking token is
         // if (uint256(_config.stakingTokenType) > uint256(type(TokenType).max)) {
         //     // Enum for token types is
@@ -38,52 +44,54 @@ contract StakingPool is IStakingPool {
         // TODO st: need supportsInterface check to more certainly verify staking token being used
         // more of a problem when zero uses this, not WW
 
-        bytes32 poolId = _getPoolId(_config);
+        bytes32 poolId = _getPoolId(
+            _stakingToken,
+            _rewardsToken,
+            _poolWeight,
+            _timeLockPeriod
+        );
 
-        emit PoolCreated(poolId, _config);
+        emit PoolCreated(
+            poolId,
+            _stakingToken,
+            _rewardsToken,
+            _poolWeight,
+            _periodLength,
+            _timeLockPeriod
+        );
     }
 
     function _getPoolId(
-        PoolConfig memory _config
+        address _stakingToken,
+        address _rewardsToken,
+        uint256 _poolWeight,
+        uint256 _timeLockPeriod
     ) internal pure returns (bytes32) {
         return
             keccak256(
             abi.encodePacked(
-                _config.stakingToken,
-                _config.rewardsToken,
-                _config.poolWeight,
-                _config.timeLockPeriod
+                _stakingToken,
+                _rewardsToken,
+                _poolWeight,
+                _timeLockPeriod
             )
         );
     }
-
-    event Debug(
-        uint256 val1,
-        uint256 val2,
-        uint256 val3,
-        uint256 val4
-    );
 
     /**
      * @notice Calculate rewards for a staker
      * @dev Returns 0 if time lock period is not passed
      * @param timePassed Time passed since last stake or claim, in seconds
      * @param stakeAmount Amount of staking token staked
-     * @param config Pool configuration
+     * @param poolWeight Weight of the pool
+     * @param periodLength Length of the reward period, in seconds
      */
     function _calculateRewards(
         uint256 timePassed,
         uint256 stakeAmount,
-        PoolConfig memory config
+        uint256 poolWeight,
+        uint256 periodLength
     ) internal pure returns (uint256) { // TODO make pure
-        // emit Debug(
-        //     config.poolWeight,
-        //     stakeAmount,
-        //     timePassed,
-        //     config.periodLength
-        // );
-
-        // use safemath?
-        return config.poolWeight * stakeAmount * (timePassed / config.periodLength);
+        return poolWeight * stakeAmount * (timePassed / periodLength);
     }
 }

@@ -15,13 +15,29 @@ import { IStaking } from "./IStaking.sol";
  */
 contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
     /**
-	 * @dev The configuration of this staking pool
-	 */
-	Types.PoolConfig public config;
+     * @dev The staking token for this pool
+     */
+    IERC721 stakingToken;
 
-    // TODO turn struct into a set of single variables instead 
-    // TODO destructors?
-    // immutable constant endDate so company commits to certain amount of rewards
+    /**
+     * @dev The rewards token for this pool
+     */
+    IERC20 rewardsToken;
+
+    /**
+     * @dev The weight of the pool in the rewards calculation
+     */
+    uint256 poolWeight;
+
+    /**
+     * @dev The length of a time period
+     */
+    uint256 periodLength;
+
+    /**
+     * @dev The amount of time required to pass to be able to claim or unstake
+     */
+    uint256 timeLockPeriod;
 
     /**
 	 * @dev Track for each stake when it was most recently accessed
@@ -38,10 +54,19 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
     constructor(
 		string memory name,
 		string memory symbol,
-		Types.PoolConfig memory _config
+        IERC721 _stakingToken,
+        IERC20 _rewardsToken,
+        uint256 _poolWeight,
+        uint256 _periodLength,
+        uint256 _timeLockPeriod
 	) ERC721NonTransferable(name, symbol) {
-        _createPool(_config);
-        config = _config;
+        // _createPool(_config);
+        stakingToken = _stakingToken;
+        rewardsToken = _rewardsToken;
+        poolWeight = _poolWeight;
+        periodLength = _periodLength;
+        timeLockPeriod = _timeLockPeriod;
+        // config = _config;
 	}
 
 	/**
