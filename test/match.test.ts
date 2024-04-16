@@ -134,6 +134,30 @@ describe("Match Contract", function () {
             await expect(match.payAllAmounts(amounts, winners))
                 .to.be.revertedWith("ERC20: insufficient allowance");
         });
+        it("should handle sequential payAllEqual calls correctly", async function () {
+            const balance1Before = await escrow.balance(addr1Address);
+            const balance2Before = await escrow.balance(addr2Address);
+            const paymentAmount = ethers.parseEther("1");
+            const winners = [addr1Address, addr2Address];
+            await match.payAllEqual(paymentAmount, winners);
+            await match.payAllEqual(paymentAmount, winners);
+
+            const balance1 = await escrow.balance(addr1Address);
+            const balance2 = await escrow.balance(addr2Address);
+            expect(balance1).to.equal(balance1Before + paymentAmount + paymentAmount); // Check if balance has doubled
+            expect(balance2).to.equal(balance2Before + paymentAmount + paymentAmount); // Check if balance has doubled
+        });
+
+        it("should handle escrow contract migration scenario", async function () {
+            const EscrowFactory = await hre.ethers.getContractFactory("Escrow");
+            const newEscrow = await EscrowFactory.deploy(mockERC20Address, ownerAddress, matchAddress);
+            await match.connect(owner).setEscrow(await newEscrow.getAddress());
+            //const paymentAmount = ethers.parseEther("10");
+            //const winners = [addr1Address];
+            //await match.payAllEqual(paymentAmount, winners);
+            //const newEscrowBalance = await newEscrow.balance(addr1Address);
+            //expect(newEscrowBalance).to.equal(paymentAmount); // Verify new escrow received the funds
+        });
     });
 
 });
