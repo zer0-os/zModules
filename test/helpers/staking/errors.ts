@@ -6,7 +6,7 @@ export const ONLY_NFT_OWNER = "ERC721: caller is not token owner or approved";
 // StakingERC721
 
 // StakingERC20
-export const TIME_LOCK_DURATION = "Staking20: Cannot claim or unstake before time lock period"
+export const TIME_LOCK_DURATION = "Staking20: Cannot claim or unstake before time lock period";
 
 export const POOL_NOT_EXIST = "Staking pool does not exist";
 export const INVALID_POOL = "Staking token must not be zero";

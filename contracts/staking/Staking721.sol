@@ -82,7 +82,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         } else {
             // Log the time at which this stake becomes claimable or unstakable
             // This is only done once per user
-            staker.unlockTimestamp = block.timestamp + config.timeLockPeriod;
+            staker.unlockTimestamp = block.timestamp + timeLockPeriod;
         }
 
         uint256 i;
@@ -167,7 +167,8 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         return _calculateRewards(
             block.timestamp - staker.lastUpdatedTimestamp,
             staker.numStaked, 
-            config
+            poolWeight,
+            periodLength
         ) + staker.pendingRewards;
     }
 
@@ -175,7 +176,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 		uint256 tokenId
 	) internal {
         // Transfer their NFT to this contract
-        IERC721(config.stakingToken).safeTransferFrom(
+        IERC721(stakingToken).safeTransferFrom(
             msg.sender,
             address(this),
             tokenId
@@ -184,7 +185,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         // Mint user sNFT
         _mint(msg.sender, tokenId);
 
-        emit Staked(tokenId, 1, 0, config.stakingToken);
+        emit Staked(tokenId, 1, 0, address(stakingToken));
     }
 
     function _claim(
@@ -204,12 +205,12 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
             revert NoRewards();
         }
 
-        config.rewardsToken.transfer(
+        rewardsToken.transfer(
             msg.sender,
             rewards
         );
 
-        emit Claimed(rewards, config.rewardsToken);
+        emit Claimed(rewards, rewardsToken);
     }
 
     function _unstake(uint256 tokenId, Staker storage staker) internal onlySNFTOwner(tokenId) {
@@ -218,7 +219,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         _burn(tokenId);
 
         // Return NFT to staker
-        IERC721(config.stakingToken).safeTransferFrom(
+        IERC721(stakingToken).safeTransferFrom(
             address(this),
             msg.sender,
             tokenId
@@ -228,12 +229,12 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
             tokenId,
             1,
             0,
-            config.stakingToken
+            address(stakingToken)
         );
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {
-        return config.rewardsToken.balanceOf(address(this));
+        return rewardsToken.balanceOf(address(this));
     }
 
     function _onlyUnlocked(uint256 unlockTimestamp) internal view {

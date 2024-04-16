@@ -27,8 +27,7 @@ describe("StakingERC20", () => {
 
   let config : PoolConfig;
 
-  // let stakedOrClaimedAt : bigint;
-  let pendingRewards : bigint = 0n;
+  const pendingRewards  = 0n;
 
   // Function for default stake
   let defaultStake : (amount ?: bigint) => Promise<void>;
@@ -37,7 +36,7 @@ describe("StakingERC20", () => {
     [
       deployer,
       staker,
-      notStaker
+      notStaker,
     ] = await hre.ethers.getSigners();
 
     const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
@@ -65,7 +64,7 @@ describe("StakingERC20", () => {
       hre.ethers.parseEther("9000000000000")
     );
 
-    defaultStake = async (amount ?: bigint) => {      
+    defaultStake = async (amount ?: bigint) => {
       await mockStakeToken.connect(staker).approve(
         await stakingERC20.getAddress(),
         DEFAULT_STAKE_ERC20
@@ -74,7 +73,7 @@ describe("StakingERC20", () => {
       const stakeAmount = amount || DEFAULT_STAKE_ERC20;
 
       await stakingERC20.connect(staker).stake(stakeAmount);
-    }
+    };
   });
 
   describe("#stake", () => {
@@ -89,7 +88,6 @@ describe("StakingERC20", () => {
     //   hre.ethers.parseEther("9000000000000")
     // );
 
-    
 
     //   const config = {
     //     stakingToken: await mockStakeToken.getAddress(),
@@ -129,7 +127,7 @@ describe("StakingERC20", () => {
 
     //   pendingRewards = await contract.connect(staker).viewPendingRewards();
     //   remainingWait = await contract.connect(staker).viewRemainingLockTime();
-      
+
     //   await time.increase(1);
 
     //   pendingRewards = await contract.connect(staker).viewPendingRewards();
@@ -140,13 +138,13 @@ describe("StakingERC20", () => {
     //   pendingRewards = await contract.connect(staker).viewPendingRewards();
     //   remainingWait = await contract.connect(staker).viewRemainingLockTime();
 
-      
+
     //   // await contract.connect(staker).claim();
-      
+
     //   // const balanceAfter = await mockRewardsToken.balanceOf(await staker.getAddress());
-      
+
     //   console.log(1);
-      
+
     // });
 
     it("Allows the user to stake when they haven't staked before", async () => {
@@ -190,8 +188,8 @@ describe("StakingERC20", () => {
         config,
         DEFAULT_STAKE_ERC20,
         config.timeLockPeriod
-        );
-        
+      );
+
       // TODO shouldn't show fractional amounts, right now it does
       // expect(rewards).to.eq(expectedRewards);
     });
@@ -223,7 +221,7 @@ describe("StakingERC20", () => {
 
       const balanceAfter = await mockRewardsToken.balanceOf(await staker.getAddress());
 
-      //TODO this returns the wrong value, fix this calculation
+      // TODO this returns the wrong value, fix this calculation
       const expectedRewards = calcRewardsAmount(
         config,
         DEFAULT_STAKE_ERC20,
@@ -234,18 +232,18 @@ describe("StakingERC20", () => {
     });
   });
 
-    // event emitter tests
-    // TODO failure tests    
-    // fails to stake when the user has no balance
-    // fails to stake when the user has no allowance
+  // event emitter tests
+  // TODO failure tests
+  // fails to stake when the user has no balance
+  // fails to stake when the user has no allowance
 
-    // confirm stakes reflect rewards properly
-    // e.g. stake X at time A and Z at time B, claim at time C
-    // rewards should be rewards(X) then rewards(X+Z)
-    // can view rewards in pool
-    // fails to claim if no rewards
-    // fails to unstake if no rewards
-    // allows removeStake if no rewards
+  // confirm stakes reflect rewards properly
+  // e.g. stake X at time A and Z at time B, claim at time C
+  // rewards should be rewards(X) then rewards(X+Z)
+  // can view rewards in pool
+  // fails to claim if no rewards
+  // fails to unstake if no rewards
+  // allows removeStake if no rewards
 
-    // viewRemainingLockTime returns 0 when more than enough time has passed to claim or unstake a stake
+  // viewRemainingLockTime returns 0 when more than enough time has passed to claim or unstake a stake
 });
