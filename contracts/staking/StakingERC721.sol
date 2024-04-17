@@ -1,43 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ERC721NonTransferrable } from "../tokens/ERC721NonTransferrable.sol";
-import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { StakingPool } from "./StakingPool.sol";
-import { IStakingERC721 } from "./IStakingERC721.sol";
+import {ERC721NonTransferrable} from "../tokens/ERC721NonTransferrable.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AStakingBase} from "./AStakingBase.sol";
+import {IStakingERC721} from "./IStakingERC721.sol";
 
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
  * non-transferable ERC721 token in return as representation of the deposit.
  */
-contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
-    /**
-     * @dev The staking token for this pool
-     */
-    IERC721 public stakingToken;
-
-    /**
-     * @dev The rewards token for this pool
-     */
-    IERC20 public rewardsToken;
-
-    /**
-     * @dev The rewards of the pool per period length
-     */
-    uint256 public rewardsPerPeriod;
-
-    /**
-     * @dev The length of a time period
-     */
-    uint256 public periodLength;
-
-    /**
-     * @dev The amount of time required to pass to be able to claim or unstake
-     */
-    uint256 public timeLockPeriod;
-
+contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
     /**
      * @dev Track for each stake when it was most recently accessed
      */
@@ -53,7 +28,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
     constructor(
         string memory name,
         string memory symbol,
-        IERC721 _stakingToken,
+        address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
@@ -173,14 +148,14 @@ contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
     function _getPendingRewards(
         Staker storage staker
     ) internal view returns (uint256) {
-        // Mark when the token was staked
+        // Return any existing pending rewards value plus the
+        // calculated rewards based on the last updated timestamp
         return
+            staker.pendingRewards +
             _calculateRewards(
                 block.timestamp - staker.lastUpdatedTimestamp,
-                staker.numStaked,
-                rewardsPerPeriod,
-                periodLength
-            ) + staker.pendingRewards;
+                staker.numStaked
+            );
     }
 
     function _stake(uint256 tokenId) internal {
@@ -194,7 +169,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
         // Mint user sNFT
         _mint(msg.sender, tokenId);
 
-        emit Staked(tokenId, 1, 0, address(stakingToken));
+        emit Staked(tokenId, stakingToken);
     }
 
     function _claim(Staker storage staker) internal {
@@ -232,7 +207,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
             tokenId
         );
 
-        emit Unstaked(tokenId, 1, 0, address(stakingToken));
+        emit Unstaked(tokenId, stakingToken);
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

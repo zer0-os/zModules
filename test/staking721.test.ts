@@ -20,11 +20,11 @@ import {
   NO_REWARDS_ERR,
   ONLY_NFT_OWNER_ERR,
   TIME_LOCK_NOT_PASSED_ERR,
-  NO_TRANSFER_ERR,
   PoolConfig,
+  UNTRANSFERRABLE_ERR,
 } from "./helpers/staking";
 
-describe("StakingERC721", () => {
+describe.only("StakingERC721", () => {
   let deployer : SignerWithAddress;
   let stakerA : SignerWithAddress;
   let stakerB : SignerWithAddress;
@@ -141,7 +141,7 @@ describe("StakingERC721", () => {
           stakerA.address,
           stakerB.address,
           tokenIdA
-        )).to.be.revertedWithCustomError(stakingERC721, NO_TRANSFER_ERR);
+        )).to.be.revertedWithCustomError(stakingERC721, UNTRANSFERRABLE_ERR);
     });
 
     it("Fails to stake when the token id is invalid", async () => {
@@ -201,7 +201,7 @@ describe("StakingERC721", () => {
       const timestamp = BigInt(await time.latest());
 
       durationOne = stakedAtB - stakedAtA;
-      durationTwo = timestamp - (stakedAtB);
+      durationTwo = timestamp - stakedAtB;
 
       const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
 
@@ -491,7 +491,7 @@ describe("StakingERC721", () => {
 
       await expect(stakingERC721.connect(stakerA).stake([tokenIdA]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdA, 1n, 0n, config.stakingToken);
+        .withArgs(tokenIdA, config.stakingToken);
 
       stakedAtA = BigInt(await time.latest());
       balanceAtStakeOne = await stakingERC721.balanceOf(stakerA.address);
@@ -504,7 +504,9 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).stake([tokenIdB, tokenIdC]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdB, 1n, 0n, config.stakingToken);
+        .withArgs(tokenIdB, config.stakingToken)
+        .to.emit(stakingERC721, STAKED_EVENT)
+        .withArgs(tokenIdC, config.stakingToken);
 
       stakedAtB = BigInt(await time.latest());
 
@@ -540,7 +542,7 @@ describe("StakingERC721", () => {
       await expect(
         await stakingERC721.connect(stakerA).unstake([tokenIdA], false)
       ).to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdA, 1n, 0n, config.stakingToken)
+        .withArgs(tokenIdA, config.stakingToken)
         .to.emit(stakingERC721, CLAIMED_EVENT);
 
       // Can't use `.withArgs` helper when testing claim event as we can't adjust the
@@ -576,9 +578,9 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).unstake([tokenIdB, tokenIdC], false))
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdB, 1n, 0n, config.stakingToken)
+        .withArgs(tokenIdB, config.stakingToken)
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdC, 1n, 0n, config.stakingToken)
+        .withArgs(tokenIdC, config.stakingToken)
         .to.emit(stakingERC721, CLAIMED_EVENT);
 
       // Cannot verify 'CLAIMED_EVENT' using '.withArgs' because we can't manipulate the
