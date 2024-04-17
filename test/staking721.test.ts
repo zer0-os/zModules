@@ -24,7 +24,7 @@ import {
   UNTRANSFERRABLE_ERR,
 } from "./helpers/staking";
 
-describe.only("StakingERC721", () => {
+describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
   let stakerA : SignerWithAddress;
   let stakerB : SignerWithAddress;
