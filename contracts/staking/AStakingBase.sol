@@ -3,31 +3,31 @@ pragma solidity ^0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-abstract contract AStakingBase {
+contract AStakingBase {
     /**
      * @dev The staking token for this pool
      */
-    address public stakingToken;
+    address immutable stakingToken;
 
     /**
      * @dev The rewards token for this pool
      */
-    IERC20 public rewardsToken;
+    IERC20 immutable rewardsToken;
 
     /**
      * @dev The rewards of the pool per period length
      */
-    uint256 public rewardsPerPeriod;
+    uint256 immutable rewardsPerPeriod;
 
     /**
      * @dev The length of a time period
      */
-    uint256 public periodLength;
+    uint256 immutable periodLength;
 
     /**
      * @dev The amount of time required to pass to be able to claim or unstake
      */
-    uint256 public timeLockPeriod;
+    uint256 immutable timeLockPeriod;
 
     // TODO evaluate where these are all used
     /**
@@ -59,6 +59,20 @@ abstract contract AStakingBase {
      * @dev Throw when there are no rewards to transfer
      */
     error NoRewards();
+
+	constructor(
+		address _stakingToken,
+		IERC20 _rewardsToken,
+		uint256 _rewardsPerPeriod,
+		uint256 _periodLength,
+		uint256 _timeLockPeriod
+	) {
+		stakingToken = _stakingToken;
+		rewardsToken = _rewardsToken;
+		rewardsPerPeriod = _rewardsPerPeriod;
+		periodLength = _periodLength;
+		timeLockPeriod = _timeLockPeriod;
+	}
 
     /**
      * @notice Calculate rewards for a staker

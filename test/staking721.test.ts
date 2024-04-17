@@ -20,7 +20,7 @@ import {
   NO_REWARDS_ERR,
   ONLY_NFT_OWNER_ERR,
   TIME_LOCK_NOT_PASSED_ERR,
-  PoolConfig,
+  BaseConfig,
   UNTRANSFERRABLE_ERR,
 } from "./helpers/staking";
 
@@ -38,7 +38,7 @@ describe.only("StakingERC721", () => {
 
   // We don't use `PoolConfig` anymore on the contracts but for convenience in testing
   // we can leave this type where it is
-  let config : PoolConfig;
+  let config : BaseConfig;
 
   let stakedAtA : bigint;
   let stakedAtB : bigint;
@@ -84,7 +84,7 @@ describe.only("StakingERC721", () => {
       "SNFT",
       config.stakingToken,
       config.rewardsToken,
-      config.poolWeight,
+      config.rewardsPerPeriod,
       config.periodLength,
       config.timeLockPeriod
     ) as StakingERC721;
@@ -208,7 +208,7 @@ describe.only("StakingERC721", () => {
       const totalRewards = calcTotalRewards(
         [durationOne, durationTwo],
         [balanceAtStakeOne, balanceAtStakeTwo],
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -250,14 +250,14 @@ describe.only("StakingERC721", () => {
       const extraSecondRewards = calcRewardsAmount(
         1n,
         balanceAtStakeTwo,
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
       const expectedRewards = calcTotalRewards(
         [durationOne, claimedAt - stakedAtB],
         [balanceAtStakeOne, balanceAtStakeTwo],
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -280,7 +280,7 @@ describe.only("StakingERC721", () => {
       const expectedRewardsClaim2 = calcTotalRewards(
         [timestamp - claimedAt],
         [balanceAtStakeTwo],
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -326,7 +326,7 @@ describe.only("StakingERC721", () => {
       const extraSecondRewards = calcRewardsAmount(
         1n,
         balanceAtStakeTwo,
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -334,7 +334,7 @@ describe.only("StakingERC721", () => {
       const expectedRewards = calcTotalRewards(
         [unstakedAt - claimedAt],
         [balanceAtStakeTwo],
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -362,7 +362,7 @@ describe.only("StakingERC721", () => {
       const extraSecondRewards = calcRewardsAmount(
         1n,
         balanceAtStakeTwo - 1n,
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -370,7 +370,7 @@ describe.only("StakingERC721", () => {
       const expectedRewards = calcTotalRewards(
         [secondUnstakedAt - unstakedAt],
         [balanceAtStakeTwo - 1n],
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -521,7 +521,7 @@ describe.only("StakingERC721", () => {
       const extraSecondRewards = calcRewardsAmount(
         1n,
         balanceAtStakeTwo,
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -554,14 +554,14 @@ describe.only("StakingERC721", () => {
       const extraSecondRewards = calcRewardsAmount(
         1n,
         balanceAtStakeTwo,
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
       const expectedRewards = calcTotalRewards(
         [unstakedAt - claimedAt],
         [balanceAtStakeTwo],
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -592,14 +592,14 @@ describe.only("StakingERC721", () => {
       const extraSecondRewards = calcRewardsAmount(
         1n,
         balanceAtStakeTwo - 1n,
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
       const expectedRewards = calcTotalRewards(
         [timestamp - unstakedAt],
         [balanceAtStakeTwo - 1n],
-        config.poolWeight,
+        config.rewardsPerPeriod,
         config.periodLength
       );
 
@@ -615,10 +615,10 @@ describe.only("StakingERC721", () => {
       const localConfig = {
         stakingToken: await mockERC721.getAddress(),
         rewardsToken: await mockERC20.getAddress(),
-        poolWeight: BigInt(1),
+        rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
-      } as PoolConfig;
+      } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
       const localStakingERC721 = await stakingFactory.deploy(
@@ -626,7 +626,7 @@ describe.only("StakingERC721", () => {
         "SNFT",
         localConfig.stakingToken,
         localConfig.rewardsToken,
-        localConfig.poolWeight,
+        localConfig.rewardsPerPeriod,
         localConfig.periodLength,
         localConfig.timeLockPeriod
       ) as StakingERC721;

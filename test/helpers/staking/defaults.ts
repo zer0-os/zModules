@@ -5,7 +5,7 @@ import {
 } from "../../../typechain";
 
 import {
-  PoolConfig,
+  BaseConfig,
 } from "./types";
 
 import {
@@ -24,26 +24,26 @@ export const createDefaultConfigs = async (
     return {
       stakingToken: await erc721.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
-      poolWeight: DEFAULT_REWARDS_PER_PERIOD,
+      rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
-    } as PoolConfig;
+    } as BaseConfig;
   } else if (stakeERC20) {
     return {
       stakingToken: await stakeERC20.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
-      poolWeight: DEFAULT_REWARDS_PER_PERIOD,
+      rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
-    } as PoolConfig;
+    } as BaseConfig;
   } else if (erc1155) {
     return {
       stakingToken: await erc1155.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
-      poolWeight: DEFAULT_REWARDS_PER_PERIOD,
+      rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
-    } as PoolConfig;
+    } as BaseConfig;
   }
 
   throw new Error("No valid staking token provided");

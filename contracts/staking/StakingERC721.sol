@@ -33,19 +33,23 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
         uint256 _timeLockPeriod
-    ) ERC721NonTransferrable(name, symbol) {
-        stakingToken = _stakingToken;
-        rewardsToken = _rewardsToken;
-        rewardsPerPeriod = _rewardsPerPeriod;
-        periodLength = _periodLength;
-        timeLockPeriod = _timeLockPeriod;
-    }
+    )
+        ERC721NonTransferrable(name, symbol)
+        AStakingBase(
+            _stakingToken,
+            _rewardsToken,
+            _rewardsPerPeriod,
+            _periodLength,
+            _timeLockPeriod
+        )
+    {}
 
     /**
      * @notice Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in return
      * @param tokenIds Array of tokenIds to be staked by the caller
      */
     function stake(uint256[] calldata tokenIds) external override {
+		// TODO see if gas optimization exists by making this 'memory' instead
         Staker storage staker = stakers[msg.sender];
 
         if (staker.numStaked > 0) {
