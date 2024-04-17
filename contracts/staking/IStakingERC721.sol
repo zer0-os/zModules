@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IStaking } from "./IStaking.sol";
+import {IStaking} from "./IStaking.sol";
 
+/**
+ * @notice Interface for ERC721 staking contract
+ */
 interface IStakingERC721 is IStaking {
-
     function stake(uint256[] calldata tokenIds) external;
 
     function claim() external;

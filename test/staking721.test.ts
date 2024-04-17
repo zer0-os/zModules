@@ -543,7 +543,7 @@ describe("StakingERC721", () => {
         .withArgs(tokenIdA, 1n, 0n, config.stakingToken)
         .to.emit(stakingERC721, CLAIMED_EVENT);
 
-      // Can't use `.withArgs` helper when testing claim event as we can't adjust the 
+      // Can't use `.withArgs` helper when testing claim event as we can't adjust the
       // timestamp required for calculating the proper rewards amount
       unstakedAt = BigInt(await time.latest());
 

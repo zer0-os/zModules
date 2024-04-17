@@ -15,7 +15,7 @@ interface IStaking {
      * @param index The index of the staked asset (1155s only)
      * @param stakingToken The address of the staking token
      */
-    event Staked (
+    event Staked(
         uint256 indexed tokenId,
         uint256 indexed amount,
         uint256 indexed index,
@@ -27,10 +27,7 @@ interface IStaking {
      * @param rewards The amount of rewards the user received
      * @param rewardsToken The address of the staking token
      */
-    event Claimed (
-        uint256 indexed rewards,
-        IERC20 indexed rewardsToken
-    );
+    event Claimed(uint256 indexed rewards, IERC20 indexed rewardsToken);
 
     /**
      * @notice Emit when a user unstakes
@@ -39,7 +36,7 @@ interface IStaking {
      * @param index The index of the staked asset
      * @param stakingToken The address of the staking token
      */
-    event Unstaked (
+    event Unstaked(
         uint256 indexed tokenId,
         uint256 indexed amount,
         uint256 indexed index,
@@ -57,8 +54,8 @@ interface IStaking {
     error InvalidStake();
 
     /**
-	 * @dev Throw when caller is unable to claim rewards
-	 */
+     * @dev Throw when caller is unable to claim rewards
+     */
     error InvalidClaim();
 
     /**

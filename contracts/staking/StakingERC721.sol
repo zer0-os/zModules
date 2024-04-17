@@ -24,9 +24,9 @@ contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
     IERC20 public rewardsToken;
 
     /**
-     * @dev The weight of the pool in the rewards calculation
+     * @dev The rewards of the pool per period length
      */
-    uint256 public poolWeight;
+    uint256 public rewardsPerPeriod;
 
     /**
      * @dev The length of a time period
@@ -55,17 +55,15 @@ contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
         string memory symbol,
         IERC721 _stakingToken,
         IERC20 _rewardsToken,
-        uint256 _poolWeight,
+        uint256 _rewardsPerPeriod,
         uint256 _periodLength,
         uint256 _timeLockPeriod
     ) ERC721NonTransferrable(name, symbol) {
-        // _createPool(_config);
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
-        poolWeight = _poolWeight;
+        rewardsPerPeriod = _rewardsPerPeriod;
         periodLength = _periodLength;
         timeLockPeriod = _timeLockPeriod;
-        // config = _config;
     }
 
     /**
@@ -180,7 +178,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
             _calculateRewards(
                 block.timestamp - staker.lastUpdatedTimestamp,
                 staker.numStaked,
-                poolWeight,
+                rewardsPerPeriod,
                 periodLength
             ) + staker.pendingRewards;
     }

@@ -10,7 +10,7 @@ contract ERC721NonTransferrable is ERC721, IERC721Receiver {
 		string memory symbol
 	) ERC721(name, symbol) {}
 
-    error NoTransfer();
+    error Untransferrable();
 
     function onERC721Received(
         address,
@@ -29,7 +29,7 @@ contract ERC721NonTransferrable is ERC721, IERC721Receiver {
         uint256
 	) internal override pure {
         if (from != address(0) && to != address(0)) {
-            revert NoTransfer();
+            revert Untransferrable();
         }
 	}
 }

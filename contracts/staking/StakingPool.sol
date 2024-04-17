@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IStakingPool } from "./IStakingPool.sol";
+import {IStakingPool} from "./IStakingPool.sol";
 
 contract StakingPool is IStakingPool {
-
     // Throw if staking configuration is invalid or already exists
-    error InvalidStaking(string message);
+    error InvalidStaking();
 
     // Throw if the rewards configuration is non-zero and invalid
-    error InvalidRewards(string message);
+    error InvalidRewards();
 
-	////////////////////////////////////
-        /* Internal Functions */
+    ////////////////////////////////////
+    /* Internal Functions */
     ////////////////////////////////////
 
     function _createPool(
@@ -23,16 +22,16 @@ contract StakingPool is IStakingPool {
         uint256 _timeLockPeriod
     ) internal {
         if (address(_stakingToken) == address(0)) {
-            revert InvalidStaking("Pool: Staking token cannot be zero");
+            revert InvalidStaking();
         }
 
         // Rewards configuration must be specified
         if (address(_rewardsToken) == address(0)) {
-            revert InvalidRewards("Pool: Invalid rewards configuration");
+            revert InvalidRewards();
         }
 
         // TODO st: Figure out if we need type testing for erc1155 or not
-		// would be a safer way to test what type contract the staking token is
+        // would be a safer way to test what type contract the staking token is
         // if (uint256(_config.stakingTokenType) > uint256(type(TokenType).max)) {
         //     // Enum for token types is
         //     // 0 - ERC721
@@ -68,13 +67,13 @@ contract StakingPool is IStakingPool {
     ) internal pure returns (bytes32) {
         return
             keccak256(
-            abi.encodePacked(
-                _stakingToken,
-                _rewardsToken,
-                _poolWeight,
-                _timeLockPeriod
-            )
-        );
+                abi.encodePacked(
+                    _stakingToken,
+                    _rewardsToken,
+                    _poolWeight,
+                    _timeLockPeriod
+                )
+            );
     }
 
     /**
@@ -90,7 +89,7 @@ contract StakingPool is IStakingPool {
         uint256 stakeAmount,
         uint256 poolWeight,
         uint256 periodLength
-    ) internal pure returns (uint256) { // TODO make pure
+    ) internal pure returns (uint256) {
         return poolWeight * stakeAmount * (timePassed / periodLength);
     }
 }
