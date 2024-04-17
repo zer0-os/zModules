@@ -20,6 +20,7 @@ import {
   NO_REWARDS_ERR,
   ONLY_NFT_OWNER_ERR,
   TIME_LOCK_NOT_PASSED_ERR,
+  NO_TRANSFER_ERR,
   PoolConfig,
 } from "./helpers/staking";
 
@@ -135,7 +136,12 @@ describe("StakingERC721", () => {
     });
 
     it("Fails when the user tries to transfer the SNFT", async () => {
-      // TODO implement
+      await expect(
+        stakingERC721.connect(stakerA).transferFrom(
+          stakerA.address,
+          stakerB.address,
+          tokenIdA
+        )).to.be.revertedWithCustomError(stakingERC721, NO_TRANSFER_ERR);
     });
 
     it("Fails to stake when the token id is invalid", async () => {
@@ -509,9 +515,17 @@ describe("StakingERC721", () => {
       await time.increase(config.timeLockPeriod);
 
       const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
+
+      const extraSecondRewards = calcRewardsAmount(
+        1n,
+        balanceAtStakeTwo,
+        config.poolWeight,
+        config.periodLength
+      );
+
       await expect(await stakingERC721.connect(stakerA).claim())
         .to.emit(stakingERC721, CLAIMED_EVENT)
-        .withArgs(tokenIdA, pendingRewards + 1n, config.rewardsToken);
+        .withArgs(pendingRewards + extraSecondRewards, config.rewardsToken);
 
       claimedAt = BigInt(await time.latest());
     });
@@ -523,14 +537,14 @@ describe("StakingERC721", () => {
 
       const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
 
-      // await stakingERC721.connect(stakerA).unstake([tokenIdA], false);
-      await expect(stakingERC721.connect(stakerA).unstake([tokenIdA], false))
-        .to.emit(stakingERC721, UNSTAKED_EVENT)
+      await expect(
+        await stakingERC721.connect(stakerA).unstake([tokenIdA], false)
+      ).to.emit(stakingERC721, UNSTAKED_EVENT)
         .withArgs(tokenIdA, 1n, 0n, config.stakingToken)
         .to.emit(stakingERC721, CLAIMED_EVENT);
 
-      // Can't use `.emit` helper when testing Claim as we can't adjust the timestamp the tx
-      // use event filter instead
+      // Can't use `.withArgs` helper when testing claim event as we can't adjust the 
+      // timestamp required for calculating the proper rewards amount
       unstakedAt = BigInt(await time.latest());
 
       const balanceAfter = await mockERC20.balanceOf(stakerA.address);
@@ -562,7 +576,9 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).unstake([tokenIdB, tokenIdC], false))
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdA, 1n, 0n, config.stakingToken)
+        .withArgs(tokenIdB, 1n, 0n, config.stakingToken)
+        .to.emit(stakingERC721, UNSTAKED_EVENT)
+        .withArgs(tokenIdC, 1n, 0n, config.stakingToken)
         .to.emit(stakingERC721, CLAIMED_EVENT);
 
       // Cannot verify 'CLAIMED_EVENT' using '.withArgs' because we can't manipulate the

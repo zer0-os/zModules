@@ -25,8 +25,9 @@ contract ERC721NonTransferrable is ERC721, IERC721Receiver {
 	function _beforeTokenTransfer(
 		address from,
 		address to,
-		uint256
-	) internal pure {
+		uint256,
+        uint256
+	) internal override pure {
         if (from != address(0) && to != address(0)) {
             revert NoTransfer();
         }
