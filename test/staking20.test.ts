@@ -9,7 +9,7 @@ import {
 import {
   PoolConfig,
 } from "./helpers/staking/types";
-import { INVALID_TOKEN_ID, ONLY_NFT_OWNER } from "./helpers/staking/errors";
+import { INVALID_TOKEN_ID_ERR, ONLY_NFT_OWNER_ERR } from "./helpers/staking/errors";
 import { createDefaultConfigs } from "./helpers/staking/defaults";
 import { calcRewardsAmount } from "./helpers/staking/rewards";
 import { DEFAULT_STAKE_ERC20 } from "./helpers/staking/constants";

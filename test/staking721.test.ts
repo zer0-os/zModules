@@ -1,19 +1,27 @@
 import * as hre from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
   MockERC20,
   MockERC721,
   StakingERC721,
 } from "../typechain";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
+  createDefaultConfigs,
+  calcRewardsAmount,
+  calcTotalRewards,
+  STAKED_EVENT,
+  CLAIMED_EVENT,
+  UNSTAKED_EVENT,
+  INCORRECT_OWNER_TRANSFER_ERR,
+  INVALID_OWNER_ERR,
+  INVALID_TOKEN_ID_ERR,
+  NO_REWARDS_ERR,
+  ONLY_NFT_OWNER_ERR,
+  TIME_LOCK_NOT_PASSED_ERR,
   PoolConfig,
-} from "./helpers/staking/types";
-import { INCORRECT_OWNER_TRANSFER, INVALID_OWNER, INVALID_TOKEN_ID, NO_REWARDS, ONLY_NFT_OWNER, TIME_LOCK_NOT_PASSED } from "./helpers/staking/errors";
-import { createDefaultConfigs } from "./helpers/staking/defaults";
-import { calcRewardsAmount, calcTotalRewards } from "./helpers/staking/rewards";
-import { CLAIMED_EVENT, STAKED_EVENT, UNSTAKED_EVENT } from "./helpers/staking/constants";
+} from "./helpers/staking";
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
@@ -33,8 +41,6 @@ describe("StakingERC721", () => {
 
   let stakedAtA : bigint;
   let stakedAtB : bigint;
-  let stakedAtC : bigint;
-  let stakedAtD : bigint;
 
   let claimedAt : bigint;
   let unstakedAt : bigint;
@@ -120,7 +126,6 @@ describe("StakingERC721", () => {
     it("Can stake multiple NFTs", async () => {
       await stakingERC721.connect(stakerA).stake([tokenIdB, tokenIdC]);
       stakedAtB = await (await stakingERC721.stakers(stakerA.address)).lastUpdatedTimestamp;
-      stakedAtC = stakedAtB;
 
       balanceAtStakeTwo = await stakingERC721.balanceOf(stakerA.address);
 
@@ -129,25 +134,29 @@ describe("StakingERC721", () => {
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(3);
     });
 
+    it("Fails when the user tries to transfer the SNFT", async () => {
+      // TODO implement
+    });
+
     it("Fails to stake when the token id is invalid", async () => {
       // Token is not minted, and so is invalid
       await expect(
         stakingERC721.connect(stakerA).stake([unmintedTokenId])
-      ).to.be.revertedWith(INVALID_TOKEN_ID);
+      ).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
     });
 
     it("Fails to stake when the token is already staked", async () => {
       // If the token is staked, the owner will be the staking contract not the original owner
       await expect(
         stakingERC721.connect(stakerA).stake([tokenIdA])
-      ).to.be.revertedWith(INCORRECT_OWNER_TRANSFER);
+      ).to.be.revertedWith(INCORRECT_OWNER_TRANSFER_ERR);
     });
 
     it("Fails to stake when the caller is not the owner of the NFT", async () => {
       // Staker does not own the token and cannot stake it
       await expect(
         stakingERC721.connect(stakerA).stake([nonStakedTokenId])
-      ).to.be.revertedWith(ONLY_NFT_OWNER);
+      ).to.be.revertedWith(ONLY_NFT_OWNER_ERR);
     });
   });
 
@@ -284,14 +293,14 @@ describe("StakingERC721", () => {
       // The user cannot claim as not enough time has passed
       await expect(
         stakingERC721.connect(stakerC).claim()
-      ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED);
+      ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED_ERR);
     });
 
     it("Fails to claim when the caller has no stakes", async () => {
       // Will fail when we check `onlyUnlocked` modifier first
       await expect(
         stakingERC721.connect(notStaker).claim()
-      ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED);
+      ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED_ERR);
     });
   });
 
@@ -331,7 +340,7 @@ describe("StakingERC721", () => {
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(2);
       await expect(
         stakingERC721.ownerOf(tokenIdA)
-      ).to.be.revertedWith(INVALID_TOKEN_ID);
+      ).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
     });
 
     it("Can unstake multiple staked tokens", async () => {
@@ -367,8 +376,8 @@ describe("StakingERC721", () => {
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(0);
       expect((await stakingERC721.stakers(stakerA.address)).numStaked).to.eq(0);
 
-      await expect(stakingERC721.ownerOf(tokenIdB)).to.be.revertedWith(INVALID_TOKEN_ID);
-      await expect(stakingERC721.ownerOf(tokenIdC)).to.be.revertedWith(INVALID_TOKEN_ID);
+      await expect(stakingERC721.ownerOf(tokenIdB)).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
+      await expect(stakingERC721.ownerOf(tokenIdC)).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
     });
 
     it("Fails to unstake when not enough time has passed", async () => {
@@ -378,7 +387,7 @@ describe("StakingERC721", () => {
 
       await expect(
         stakingERC721.connect(stakerA).unstake([tokenIdA], false)
-      ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED);
+      ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED_ERR);
     });
 
     it("Fails to unstake when token id is invalid", async () => {
@@ -386,7 +395,7 @@ describe("StakingERC721", () => {
       await time.increase(config.timeLockPeriod);
       await expect(
         stakingERC721.connect(stakerA).unstake([unmintedTokenId], false)
-      ).to.be.revertedWith(INVALID_TOKEN_ID);
+      ).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
     });
 
     it("Fails to unstake when caller is not the owner of the SNFT", async () => {
@@ -399,7 +408,7 @@ describe("StakingERC721", () => {
 
       await expect(
         stakingERC721.connect(stakerB).unstake([tokenIdA], false)
-      ).to.be.revertedWithCustomError(stakingERC721, INVALID_OWNER);
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_OWNER_ERR);
 
       // Reset
       await stakingERC721.connect(stakerB).unstake([tokenIdB], false);
@@ -409,7 +418,7 @@ describe("StakingERC721", () => {
       // If the a token is not staked, the relevant SNFT does not exist and so we can't unstake it
       await expect(
         stakingERC721.connect(stakerA).unstake([nonStakedTokenId], false)
-      ).to.be.revertedWith(INVALID_TOKEN_ID);
+      ).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
     });
   });
 
@@ -417,7 +426,7 @@ describe("StakingERC721", () => {
     it("Fails if the caller does not own the sNFT", async () => {
       await expect(
         stakingERC721.connect(notStaker).unstake([tokenIdA], true)
-      ).to.be.revertedWithCustomError(stakingERC721, INVALID_OWNER);
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_OWNER_ERR);
     });
 
     it("Fails if the sNFT is invalid", async () => {
@@ -425,7 +434,7 @@ describe("StakingERC721", () => {
       // as if the owner has already exited
       await expect(
         stakingERC721.connect(notStaker).unstake([unmintedTokenId], true)
-      ).to.be.revertedWith(INVALID_TOKEN_ID);
+      ).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
     });
 
     it("Allows the user to remove their stake within the timelock period without rewards", async () => {
@@ -474,7 +483,6 @@ describe("StakingERC721", () => {
       // Transfer back to staker so they can trigger the `Staked` event
       await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
 
-
       await expect(stakingERC721.connect(stakerA).stake([tokenIdA]))
         .to.emit(stakingERC721, STAKED_EVENT)
         .withArgs(tokenIdA, 1n, 0n, config.stakingToken);
@@ -488,14 +496,11 @@ describe("StakingERC721", () => {
       await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
       await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
 
-      expect(await stakingERC721.connect(stakerA).stake([tokenIdB, tokenIdC]))
+      await expect(await stakingERC721.connect(stakerA).stake([tokenIdB, tokenIdC]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdB, 1n, 0n, config.stakingToken)
-        .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdC, 1n, 0n, config.stakingToken);
+        .withArgs(tokenIdB, 1n, 0n, config.stakingToken);
 
       stakedAtB = BigInt(await time.latest());
-      stakedAtC = stakedAtB;
 
       balanceAtStakeTwo = await stakingERC721.balanceOf(stakerA.address);
     });
@@ -504,7 +509,7 @@ describe("StakingERC721", () => {
       await time.increase(config.timeLockPeriod);
 
       const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
-      expect(await stakingERC721.connect(stakerA).claim())
+      await expect(await stakingERC721.connect(stakerA).claim())
         .to.emit(stakingERC721, CLAIMED_EVENT)
         .withArgs(tokenIdA, pendingRewards + 1n, config.rewardsToken);
 
@@ -555,11 +560,13 @@ describe("StakingERC721", () => {
 
       const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
 
-      expect(await stakingERC721.connect(stakerA).unstake([tokenIdB, tokenIdC], false))
+      await expect(await stakingERC721.connect(stakerA).unstake([tokenIdB, tokenIdC], false))
         .to.emit(stakingERC721, UNSTAKED_EVENT)
         .withArgs(tokenIdA, 1n, 0n, config.stakingToken)
         .to.emit(stakingERC721, CLAIMED_EVENT);
 
+      // Cannot verify 'CLAIMED_EVENT' using '.withArgs' because we can't manipulate the
+      // timestamp to calculate the expected rewards until after the tx
       const timestamp = BigInt(await time.latest());
 
       const balanceAfter = await mockERC20.balanceOf(stakerA.address);
@@ -587,7 +594,7 @@ describe("StakingERC721", () => {
   });
   describe("Other configs", () => {
     it("Can't transfer rewards when no balance", async () => {
-      const config = {
+      const localConfig = {
         stakingToken: await mockERC721.getAddress(),
         rewardsToken: await mockERC20.getAddress(),
         poolWeight: BigInt(1),
@@ -599,25 +606,25 @@ describe("StakingERC721", () => {
       const localStakingERC721 = await stakingFactory.deploy(
         "StakingNFT",
         "SNFT",
-        config.stakingToken,
-        config.rewardsToken,
-        config.poolWeight,
-        config.periodLength,
-        config.timeLockPeriod
+        localConfig.stakingToken,
+        localConfig.rewardsToken,
+        localConfig.poolWeight,
+        localConfig.periodLength,
+        localConfig.timeLockPeriod
       ) as StakingERC721;
 
       await mockERC721.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
 
       await localStakingERC721.connect(stakerA).stake([tokenIdA]);
 
-      await time.increase(config.timeLockPeriod);
+      await time.increase(localConfig.timeLockPeriod);
 
       const rewardsInPool = await localStakingERC721.getContractRewardsBalance();
       expect(rewardsInPool).to.eq(0);
 
       await expect(
         localStakingERC721.connect(stakerA).claim()
-      ).to.be.revertedWithCustomError(stakingERC721, NO_REWARDS);
+      ).to.be.revertedWithCustomError(stakingERC721, NO_REWARDS_ERR);
     });
   });
 });

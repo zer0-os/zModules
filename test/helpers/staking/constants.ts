@@ -1,5 +1,3 @@
-import { ethers } from "hardhat";
-
 export const dayInSeconds = 86400n;
 
 export const DEFAULT_STAKE_ERC721 = 1;

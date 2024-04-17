@@ -22,6 +22,6 @@
     "named-parameters-mapping": "error",
     "comprehensive-interface": "error",
     "max-line-length": ["error", 120],
-    "custom-errors": "off"
+    "gas-custom-errors": "off"
   }
 }

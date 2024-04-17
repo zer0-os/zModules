@@ -1,43 +1,42 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ERC721NonTransferable } from "../tokens/ERC721NonTransferable.sol";
+import { ERC721NonTransferrable } from "../tokens/ERC721NonTransferrable.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Types } from "./Types.sol";
 import { StakingPool } from "./StakingPool.sol";
-import { IStaking } from "./IStaking.sol";
+import { IStakingERC721 } from "./IStakingERC721.sol";
 
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a 
  * non-transferable ERC721 token in return as representation of the deposit. 
  */
-contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
+contract StakingERC721 is ERC721NonTransferrable, StakingPool, IStakingERC721 {
     /**
      * @dev The staking token for this pool
      */
-    IERC721 stakingToken;
+    IERC721 public stakingToken;
 
     /**
      * @dev The rewards token for this pool
      */
-    IERC20 rewardsToken;
+    IERC20 public rewardsToken;
 
     /**
      * @dev The weight of the pool in the rewards calculation
      */
-    uint256 poolWeight;
+    uint256 public poolWeight;
 
     /**
      * @dev The length of a time period
      */
-    uint256 periodLength;
+    uint256 public periodLength;
 
     /**
      * @dev The amount of time required to pass to be able to claim or unstake
      */
-    uint256 timeLockPeriod;
+    uint256 public timeLockPeriod;
 
     /**
 	 * @dev Track for each stake when it was most recently accessed
@@ -59,7 +58,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
         uint256 _poolWeight,
         uint256 _periodLength,
         uint256 _timeLockPeriod
-	) ERC721NonTransferable(name, symbol) {
+	) ERC721NonTransferrable(name, symbol) {
         // _createPool(_config);
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
@@ -73,7 +72,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 	 * @notice Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in return
 	 * @param tokenIds Array of tokenIds to be staked by the caller
 	 */
-    function stake(uint256[] calldata tokenIds) external {
+    function stake(uint256[] calldata tokenIds) external override {
         Staker storage staker = stakers[msg.sender];
 
         if (staker.numStaked > 0) {
@@ -94,6 +93,7 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
                 ++i;
             }
         }
+
 		staker.numStaked += len;
         staker.lastUpdatedTimestamp = block.timestamp;
     }
@@ -102,12 +102,17 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
 	 * @notice Claim rewards for all staked ERC721 tokens
      * @dev Will revert if the time lock period has not been met
 	 */
-    function claim() external {
+    function claim() external override {
         Staker storage staker = stakers[msg.sender];
         _claim(staker);
     }
 
-    function unstake(uint256[] memory tokenIds, bool exit) external {
+    /**
+     * @notice Unstake one or more ERC721 tokens
+     * @param tokenIds Array of tokenIds to be unstaked by the caller
+     * @param exit Flag for if the user would like to exit without rewards
+     */
+    function unstake(uint256[] memory tokenIds, bool exit) external override {
         Staker storage staker = stakers[msg.sender];
 
         if (!exit) {
@@ -134,21 +139,21 @@ contract StakingERC721 is ERC721NonTransferable, StakingPool, IStaking {
     /**
      * @notice View the rewards balance in this pool
      */
-    function getContractRewardsBalance() external view returns (uint256) {
+    function getContractRewardsBalance() external override view returns (uint256) {
         return _getContractRewardsBalance();
     }
 
     /**
      * @notice View the pending rewards balance for a user
      */
-    function getPendingRewards() external view returns (uint256) { // TODO make view
+    function getPendingRewards() external override view returns (uint256) {
         return _getPendingRewards(stakers[msg.sender]);
     }
 
     /**
      * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
      */
-    function getRemainingLockTime() external view returns (uint256) {
+    function getRemainingLockTime() external override view returns (uint256) {
         // Return the time remaining for the stake to be claimed or unstaked
         Staker storage staker = stakers[msg.sender];
         if (block.timestamp > staker.unlockTimestamp) {

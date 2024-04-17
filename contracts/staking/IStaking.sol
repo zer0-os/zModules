@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -16,7 +15,7 @@ interface IStaking {
      * @param index The index of the staked asset (1155s only)
      * @param stakingToken The address of the staking token
      */
-    event Staked(
+    event Staked (
         uint256 indexed tokenId,
         uint256 indexed amount,
         uint256 indexed index,
@@ -28,7 +27,7 @@ interface IStaking {
      * @param rewards The amount of rewards the user received
      * @param rewardsToken The address of the staking token
      */
-    event Claimed(
+    event Claimed (
         uint256 indexed rewards,
         IERC20 indexed rewardsToken
     );
@@ -40,7 +39,7 @@ interface IStaking {
      * @param index The index of the staked asset
      * @param stakingToken The address of the staking token
      */
-    event Unstaked(
+    event Unstaked (
         uint256 indexed tokenId,
         uint256 indexed amount,
         uint256 indexed index,
