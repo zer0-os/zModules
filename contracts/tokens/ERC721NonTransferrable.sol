@@ -6,7 +6,8 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
 
 
 /**
- * @title A non-transferrable ERC721 token 
+ * @title ERC721NonTransferrable
+ * @notice A non-transferrable ERC721 token
  */
 contract ERC721NonTransferrable is ERC721, IERC721Receiver {
     constructor(

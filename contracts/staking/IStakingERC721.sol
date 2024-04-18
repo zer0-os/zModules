@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 
 /**
+ * @title IStakingERC721
  * @notice Interface for the ERC721 staking contract
  */
 interface IStakingERC721 {

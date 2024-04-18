@@ -110,7 +110,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
         }
 
         // if `numStaked < tokenIds.length` it will have already failed above
-        // don't need to check here
+        // so we don't need to check that here
         staker.numStaked -= tokenIds.length;
 
         if (staker.numStaked == 0) {
