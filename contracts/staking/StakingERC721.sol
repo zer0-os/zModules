@@ -123,12 +123,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
     /**
      * @notice View the rewards balance in this pool
      */
-    function getContractRewardsBalance()
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getContractRewardsBalance() external view override returns (uint256) {
         return _getContractRewardsBalance();
     }
 
