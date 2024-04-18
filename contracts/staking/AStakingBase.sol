@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 contract AStakingBase {
     /**
@@ -56,23 +57,24 @@ contract AStakingBase {
     error TimeLockNotPassed();
 
     /**
-     * @dev Throw when there are no rewards to transfer
+     * @dev Throw when there are no rewards remaining in the pool
+	 * to give to stakers
      */
-    error NoRewards();
+    error NoRewardsLeftInContract();
 
-	constructor(
-		address _stakingToken,
-		IERC20 _rewardsToken,
-		uint256 _rewardsPerPeriod,
-		uint256 _periodLength,
-		uint256 _timeLockPeriod
-	) {
-		stakingToken = _stakingToken;
-		rewardsToken = _rewardsToken;
-		rewardsPerPeriod = _rewardsPerPeriod;
-		periodLength = _periodLength;
-		timeLockPeriod = _timeLockPeriod;
-	}
+    constructor(
+        address _stakingToken,
+        IERC20 _rewardsToken,
+        uint256 _rewardsPerPeriod,
+        uint256 _periodLength,
+        uint256 _timeLockPeriod
+    ) {
+        stakingToken = _stakingToken;
+        rewardsToken = _rewardsToken;
+        rewardsPerPeriod = _rewardsPerPeriod;
+        periodLength = _periodLength;
+        timeLockPeriod = _timeLockPeriod;
+    }
 
     /**
      * @notice Calculate rewards for a staker

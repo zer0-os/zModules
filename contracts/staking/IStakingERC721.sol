@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 /**
  * @notice Interface for ERC721 staking contract
@@ -27,7 +28,7 @@ interface IStakingERC721 {
      * @param tokenId The token ID of the staked token
      * @param stakingToken The address of the staking token
      */
-    event Unstaked(uint256 indexed tokenId, address stakingToken);
+    event Unstaked(uint256 indexed tokenId, address indexed stakingToken);
 
     /**
      * @notice Struct to track a set of data for each staker

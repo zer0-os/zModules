@@ -13,5 +13,5 @@ export const ONLY_ADMIN_ERR = "Caller is not the admin";
 // StakingERC721
 export const TIME_LOCK_NOT_PASSED_ERR = "TimeLockNotPassed";
 export const INVALID_OWNER_ERR = "InvalidOwner";
-export const NO_REWARDS_ERR = "NoRewards";
+export const NO_REWARDS_ERR = "NoRewardsLeftInContract";
 export const UNTRANSFERRABLE_ERR = "Untransferrable";

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {ERC721NonTransferrable} from "../tokens/ERC721NonTransferrable.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AStakingBase} from "./AStakingBase.sol";
-import {IStakingERC721} from "./IStakingERC721.sol";
+import { ERC721NonTransferrable } from "../tokens/ERC721NonTransferrable.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { AStakingBase } from "./AStakingBase.sol";
+import { IStakingERC721 } from "./IStakingERC721.sol";
+
 
 /**
  * @title Staking721
@@ -62,8 +63,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
         }
 
         uint256 i;
-        uint256 len = tokenIds.length;
-        for (i; i < len; ) {
+        for (i; i < tokenIds.length; ) {
             _stake(tokenIds[i]);
 
             unchecked {
@@ -71,7 +71,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
             }
         }
 
-        staker.numStaked += len;
+        staker.numStaked += tokenIds.length;
         staker.lastUpdatedTimestamp = block.timestamp;
     }
 
@@ -80,8 +80,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
      * @dev Will revert if the time lock period has not been met
      */
     function claim() external override {
-        Staker storage staker = stakers[msg.sender];
-        _claim(staker);
+        _claim(stakers[msg.sender]);
     }
 
     /**
@@ -92,25 +91,30 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
     function unstake(uint256[] memory tokenIds, bool exit) external override {
         Staker storage staker = stakers[msg.sender];
 
-        if (!exit) {
-            _claim(staker);
-        }
+        _onlyUnlocked(staker.unlockTimestamp);
 
         uint256 i;
-        uint256 len = tokenIds.length;
-        for (i; i < len; ) {
-            uint256 tokenId = tokenIds[i];
-            _unstake(tokenId, staker);
+        for (i; i < tokenIds.length;) {
+            _unstake(tokenIds[i]);
 
             unchecked {
                 ++i;
             }
         }
 
-        // if `len > numStaked` it will have already failed above
+		if (!exit) {
+            _claim(staker);
+        }
+
+        // if `numStaked < tokenIds.length` it will have already failed above
         // don't need to check here
-        staker.numStaked -= len;
-        staker.lastUpdatedTimestamp = block.timestamp;
+        staker.numStaked -= tokenIds.length;
+
+		if (staker.numStaked == 0) {
+			delete stakers[msg.sender];
+		} else {
+			staker.lastUpdatedTimestamp = block.timestamp;
+		}
     }
 
     /**
@@ -154,9 +158,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
     ) internal view returns (uint256) {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
-        return
-            staker.pendingRewards +
-            _calculateRewards(
+        return staker.pendingRewards + _calculateRewards(
                 block.timestamp - staker.lastUpdatedTimestamp,
                 staker.numStaked
             );
@@ -188,7 +190,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
 
         // Disallow rewards when balance is 0
         if (_getContractRewardsBalance() == 0) {
-            revert NoRewards();
+            revert NoRewardsLeftInContract();
         }
 
         rewardsToken.transfer(msg.sender, rewards);
@@ -197,10 +199,8 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
     }
 
     function _unstake(
-        uint256 tokenId,
-        Staker storage staker
+        uint256 tokenId
     ) internal onlySNFTOwner(tokenId) {
-        _onlyUnlocked(staker.unlockTimestamp);
 
         _burn(tokenId);
 
