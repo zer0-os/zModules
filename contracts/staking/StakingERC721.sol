@@ -19,9 +19,9 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
      */
     mapping(address staker => Staker stakerData) public stakers;
 
-	/**
-	 * @dev Revert if a call is not from the SNFT owner
-	 */
+    /**
+     * @dev Revert if a call is not from the SNFT owner
+     */
     modifier onlySNFTOwner(uint256 tokenId) {
         if (ownerOf(tokenId) != msg.sender) {
             revert InvalidOwner();
@@ -65,7 +65,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
         }
 
         uint256 i;
-        for (i; i < tokenIds.length; ) {
+        for (i; i < tokenIds.length;) {
             _stake(tokenIds[i]);
 
             unchecked {
@@ -79,8 +79,8 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
 
     /**
      * @notice Claim rewards for all staked ERC721 tokens
-     * @dev Will revert if the time lock period has not been met or if 
-	 * the user has not staked any tokens
+     * @dev Will revert if the time lock period has not been met or if
+     * the user has not staked any tokens
      */
     function claim() external override {
         _claim(stakers[msg.sender]);
@@ -105,7 +105,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
             }
         }
 
-		if (!exit) {
+        if (!exit) {
             _claim(staker);
         }
 
@@ -113,11 +113,11 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
         // don't need to check here
         staker.numStaked -= tokenIds.length;
 
-		if (staker.numStaked == 0) {
-			delete stakers[msg.sender];
-		} else {
-			staker.lastUpdatedTimestamp = block.timestamp;
-		}
+        if (staker.numStaked == 0) {
+            delete stakers[msg.sender];
+        } else {
+            staker.lastUpdatedTimestamp = block.timestamp;
+        }
     }
 
     /**
@@ -161,7 +161,9 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
     ) internal view returns (uint256) {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
-        return staker.pendingRewards + _calculateRewards(
+        return
+            staker.pendingRewards +
+            _calculateRewards(
                 block.timestamp - staker.lastUpdatedTimestamp,
                 staker.numStaked
             );
@@ -201,10 +203,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
         emit Claimed(rewards, address(rewardsToken));
     }
 
-    function _unstake(
-        uint256 tokenId
-    ) internal onlySNFTOwner(tokenId) {
-
+    function _unstake(uint256 tokenId) internal onlySNFTOwner(tokenId) {
         _burn(tokenId);
 
         // Return NFT to staker

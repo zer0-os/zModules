@@ -46,7 +46,7 @@ contract AStakingBase {
 
     /**
      * @dev Throw when there are no rewards remaining in the pool
-	 * to give to stakers
+     * to give to stakers
      */
     error NoRewardsLeftInContract();
 

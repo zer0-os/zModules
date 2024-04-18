@@ -2,26 +2,11 @@
 
 pragma solidity ^0.8.19;
 
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+
 
 /* solhint-disable */
-
-/**
- * @dev {ERC721} token, including:
- *
- *  - ability for holders to burn (destroy) their tokens
- *  - a minter role that allows for token minting (creation)
- *  - a pauser role that allows to stop all token transfers
- *  - token ID and URI autogeneration
- *
- * This contract uses {AccessControl} to lock permissioned functions using the
- * different roles - head to its documentation for details.
- *
- * The account that deploys the contract will be granted the minter and pauser
- * roles, as well as the default admin role, which will let it grant both minter
- * and pauser roles to other accounts.
- */
 contract MockERC721 is ERC721, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
