@@ -15,10 +15,13 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
  */
 contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
     /**
-     * @dev Track for each stake when it was most recently accessed
+     * @dev Mapping of each staker to that staker's data in the `Staker` struct
      */
     mapping(address staker => Staker stakerData) public stakers;
 
+	/**
+	 * @dev Revert if a call is not from the SNFT owner
+	 */
     modifier onlySNFTOwner(uint256 tokenId) {
         if (ownerOf(tokenId) != msg.sender) {
             revert InvalidOwner();
@@ -50,7 +53,6 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
      * @param tokenIds Array of tokenIds to be staked by the caller
      */
     function stake(uint256[] calldata tokenIds) external override {
-		// TODO see if gas optimization exists by making this 'memory' instead
         Staker storage staker = stakers[msg.sender];
 
         if (staker.numStaked > 0) {
@@ -77,7 +79,8 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
 
     /**
      * @notice Claim rewards for all staked ERC721 tokens
-     * @dev Will revert if the time lock period has not been met
+     * @dev Will revert if the time lock period has not been met or if 
+	 * the user has not staked any tokens
      */
     function claim() external override {
         _claim(stakers[msg.sender]);
@@ -141,7 +144,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
      */
     function getRemainingLockTime() external view override returns (uint256) {
         // Return the time remaining for the stake to be claimed or unstaked
-        Staker storage staker = stakers[msg.sender];
+        Staker memory staker = stakers[msg.sender];
         if (block.timestamp > staker.unlockTimestamp) {
             return 0;
         }
@@ -195,7 +198,7 @@ contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
 
         rewardsToken.transfer(msg.sender, rewards);
 
-        emit Claimed(rewards, rewardsToken);
+        emit Claimed(rewards, address(rewardsToken));
     }
 
     function _unstake(

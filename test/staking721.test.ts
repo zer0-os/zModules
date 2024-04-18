@@ -9,7 +9,6 @@ import {
 } from "../typechain";
 import {
   createDefaultConfigs,
-  calcRewardsAmount,
   calcTotalRewards,
   STAKED_EVENT,
   CLAIMED_EVENT,
@@ -25,33 +24,33 @@ import {
 } from "./helpers/staking";
 
 describe("StakingERC721", () => {
-  let deployer: SignerWithAddress;
-  let stakerA: SignerWithAddress;
-  let stakerB: SignerWithAddress;
-  let stakerC: SignerWithAddress;
-  let notStaker: SignerWithAddress;
+  let deployer : SignerWithAddress;
+  let stakerA : SignerWithAddress;
+  let stakerB : SignerWithAddress;
+  let stakerC : SignerWithAddress;
+  let notStaker : SignerWithAddress;
 
-  let stakingERC721: StakingERC721;
+  let stakingERC721 : StakingERC721;
 
-  let mockERC20: MockERC20;
-  let mockERC721: MockERC721;
+  let mockERC20 : MockERC20;
+  let mockERC721 : MockERC721;
 
   // We don't use `PoolConfig` anymore on the contracts but for convenience in testing
   // we can leave this type where it is
-  let config: BaseConfig;
+  let config : BaseConfig;
 
-  let stakedAtA: bigint;
-  let stakedAtB: bigint;
+  let stakedAtA : bigint;
+  let stakedAtB : bigint;
 
-  let claimedAt: bigint;
-  let unstakedAt: bigint;
-  let secondUnstakedAt: bigint;
+  let claimedAt : bigint;
+  let unstakedAt : bigint;
+  let secondUnstakedAt : bigint;
 
-  let balanceAtStakeOne: bigint;
-  let balanceAtStakeTwo: bigint;
+  let balanceAtStakeOne : bigint;
+  let balanceAtStakeTwo : bigint;
 
-  let durationOne: bigint;
-  let durationTwo: bigint;
+  let durationOne : bigint;
+  let durationTwo : bigint;
 
   // Default token ids
   const tokenIdA = 1;
@@ -716,7 +715,7 @@ describe("StakingERC721", () => {
 
       await localStakingERC721.connect(stakerA).stake([tokenIdA, tokenIdB, tokenIdC]);
       let origStakedAtA = BigInt(await time.latest());
-      let stakedAtA = origStakedAtA;
+      stakedAtA = origStakedAtA;
       let balanceAtStakeOneA = await localStakingERC721.balanceOf(stakerA.address);
 
       stakerAData = await localStakingERC721.stakers(stakerA.address);
@@ -739,13 +738,13 @@ describe("StakingERC721", () => {
       expect(await mockERC721.ownerOf(tokenIdC)).to.eq(await localStakingERC721.getAddress());
 
       // Arbitrary value to represent delay between when stakerA and stakerB stake
-      const delayOne = 41n
+      const delayOne = 41n;
       await time.increase(delayOne);
 
       // Stake 3 of the 4 that stakerB has
       await localStakingERC721.connect(stakerB).stake([tokenIdD, tokenIdE, tokenIdF]);
       const origStakeAtB = BigInt(await time.latest());
-      let stakedAtB = origStakeAtB;
+      stakedAtB = origStakeAtB;
       let balanceAtStakeOneB = await localStakingERC721.balanceOf(stakerB.address);
 
       stakerBData = await localStakingERC721.stakers(stakerB.address);
@@ -759,8 +758,12 @@ describe("StakingERC721", () => {
       expect(stakerBData.unlockTimestamp).to.eq(stakedAtB + localConfig.timeLockPeriod);
 
       // Verify balance changes
-      expect(await mockERC721.balanceOf(stakerB.address)).to.eq(1); // was minted 4 tokens, only staked 3 so far
-      expect(await mockERC721.balanceOf(await localStakingERC721.getAddress())).to.eq(6); // 3 from stakerA, 3 from stakerB
+      expect(
+        await mockERC721.balanceOf(stakerB.address)
+      ).to.eq(1); // was minted 4 tokens, only staked 3 so far
+      expect(
+        await mockERC721.balanceOf(await localStakingERC721.getAddress())
+      ).to.eq(6); // 3 from stakerA, 3 from stakerB
 
       // Verify ownership changes
       expect(await mockERC721.ownerOf(tokenIdD)).to.eq(await localStakingERC721.getAddress());
@@ -792,8 +795,8 @@ describe("StakingERC721", () => {
 
       // stakerA can successfully claim
       await localStakingERC721.connect(stakerA).claim();
-      let claimedAtA = BigInt(await time.latest());
-      
+      const claimedAtA = BigInt(await time.latest());
+
       // Verify we only transferred the exact amount necessary
       expect(await newMockERC20.balanceOf(await localStakingERC721.getAddress())).to.eq(0);
 
@@ -831,13 +834,17 @@ describe("StakingERC721", () => {
 
       // stakerC corrects mistake and calls to stake using only their tokens
       await localStakingERC721.connect(stakerC).stake([tokenIdH, tokenIdI]);
-      let origStakedAtC = BigInt(await time.latest());
-      let stakedAtC = origStakedAtC;
-      let balanceAtStakeOneC = await localStakingERC721.balanceOf(stakerC.address);
+      const origStakedAtC = BigInt(await time.latest());
+      const stakedAtC = origStakedAtC;
+      const balanceAtStakeOneC = await localStakingERC721.balanceOf(stakerC.address);
 
       // Verify balance and ownership change
-      expect(await mockERC721.balanceOf(stakerC.address)).to.eq(0);
-      expect(await mockERC721.balanceOf(await localStakingERC721.getAddress())).to.eq(8); // 3 from stakerA, 3 from stakerB, 2 from stakerC
+      expect(
+        await mockERC721.balanceOf(stakerC.address)
+      ).to.eq(0);
+      expect(
+        await mockERC721.balanceOf(await localStakingERC721.getAddress())
+      ).to.eq(8); // 3 from stakerA, 3 from stakerB, 2 from stakerC
 
       stakerCData = await localStakingERC721.stakers(stakerC.address);
 
@@ -858,7 +865,7 @@ describe("StakingERC721", () => {
 
       await localStakingERC721.connect(stakerB).unstake([tokenIdD], false);
       let unstakedAtB = BigInt(await time.latest());
-      let claimedAtB = unstakedAtB;
+      const claimedAtB = unstakedAtB;
 
       expect(await newMockERC20.balanceOf(await localStakingERC721.getAddress())).to.eq(0);
 
@@ -877,8 +884,12 @@ describe("StakingERC721", () => {
       expect(rewardsBalanceAfterB).to.eq(rewardsBalanceBeforeB + expectedRewardsB);
 
       // Verify balance and ownership change
-      expect(await mockERC721.balanceOf(stakerB.address)).to.eq(2); // staked 3 / 4 tokens, then unstaked 1, now owns 2 and has staked 2
-      expect(await mockERC721.balanceOf(await localStakingERC721.getAddress())).to.eq(7);
+      expect(
+        await mockERC721.balanceOf(stakerB.address)
+      ).to.eq(2); // staked 3 / 4 tokens, then unstaked 1, now owns 2 and has staked 2
+      expect(
+        await mockERC721.balanceOf(await localStakingERC721.getAddress())
+      ).to.eq(7);
 
       stakerBData = await localStakingERC721.stakers(stakerB.address);
 
@@ -898,7 +909,7 @@ describe("StakingERC721", () => {
       await localStakingERC721.connect(stakerB).stake([tokenIdG]);
       rewardsBalanceAfterB = await newMockERC20.balanceOf(stakerB.address);
       stakedAtB = BigInt(await time.latest());
-      let balanceAtStakeTwoB = await localStakingERC721.balanceOf(stakerB.address);
+      const balanceAtStakeTwoB = await localStakingERC721.balanceOf(stakerB.address);
 
       expect(await mockERC721.balanceOf(stakerB.address)).to.eq(1);
       expect(await mockERC721.balanceOf(await localStakingERC721.getAddress())).to.eq(8);
@@ -936,11 +947,10 @@ describe("StakingERC721", () => {
         pendingRewardsA
       );
 
-      
 
       // Completely exit the staking contract
       await localStakingERC721.connect(stakerA).unstake([tokenIdA, tokenIdB, tokenIdC], false);
-      let unstakedAtA = BigInt(await time.latest());
+      const unstakedAtA = BigInt(await time.latest());
 
       expect(await newMockERC20.balanceOf(await localStakingERC721.getAddress())).to.eq(0);
 
@@ -1130,9 +1140,9 @@ describe("StakingERC721", () => {
       pendingRewardsA = await localStakingERC721.connect(stakerA).getPendingRewards();
 
       await localStakingERC721.connect(stakerA).stake([tokenIdC, tokenIdD]);
-      
+
       rewardsBalanceAfterA = await newMockERC20.balanceOf(stakerA.address);
-      
+
       expectedRewardsA = calcTotalRewards(
         [BigInt(await time.latest()) - stakedAtA],
         [balanceAtStakeOneA],
@@ -1190,7 +1200,7 @@ describe("StakingERC721", () => {
       );
 
       await localStakingERC721.connect(stakerC).unstake([tokenIdH, tokenIdI], false);
-      let unstakedAtC = BigInt(await time.latest());
+      const unstakedAtC = BigInt(await time.latest());
       rewardsBalanceAfterC = await newMockERC20.balanceOf(stakerC.address);
 
       // Be sure we only transferred what we need

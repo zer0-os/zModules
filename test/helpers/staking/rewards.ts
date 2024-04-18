@@ -1,11 +1,11 @@
 
 
 export const calcTotalRewards = (
-  durations: Array<bigint>,
-  balances: Array<bigint>,
-  rewardsPerPeriod: bigint,
-  periodLength: bigint
-): bigint => {
+  durations : Array<bigint>,
+  balances : Array<bigint>,
+  rewardsPerPeriod : bigint,
+  periodLength : bigint
+) : bigint => {
   let totalRewards = 0n;
 
   for (let i = 0; i < durations.length; i++) {
@@ -16,10 +16,8 @@ export const calcTotalRewards = (
 };
 
 export const calcRewardsAmount = (
-  timePassed: bigint,
-  stakeAmount: bigint,
-  rewardsPerPeriod: bigint,
-  periodLength: bigint
-): bigint => {
-  return rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
-}
+  timePassed : bigint,
+  stakeAmount : bigint,
+  rewardsPerPeriod : bigint,
+  periodLength : bigint
+) : bigint => rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
