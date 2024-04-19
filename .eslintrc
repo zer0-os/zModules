@@ -8,8 +8,12 @@
         "no-unused-expressions": "off",
         "no-console": "off",
         "no-shadow": "warn",
+        "no-invalid-this": "off",
         "@typescript-eslint/no-shadow": "warn",
-        "no-invalid-this": "off"
+		"@typescript-eslint/type-annotation-spacing": {
+			"before": true,
+			"after": true
+		},
         // "@typescript-eslint/no-unused-vars": "off" // For debugging
       }
     }
