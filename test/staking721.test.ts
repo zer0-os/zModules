@@ -21,7 +21,10 @@ import {
   TIME_LOCK_NOT_PASSED_ERR,
   BaseConfig,
   UNTRANSFERRABLE_ERR,
+  FUNCTION_SELECTOR_ERR,
+  DIV_BY_ZERO_ERR,
 } from "./helpers/staking";
+import { mock } from "node:test";
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
@@ -91,7 +94,7 @@ describe("StakingERC721", () => {
     // Give staking contract balance to pay rewards
     await mockERC20.connect(deployer).transfer(
       await stakingERC721.getAddress(),
-      hre.ethers.parseEther("9000000000000")
+      hre.ethers.parseEther("8000000000000")
     );
 
     await mockERC721.connect(deployer).mint(stakerA.address, tokenIdA);
@@ -599,6 +602,128 @@ describe("StakingERC721", () => {
     });
   });
   describe("Other configs", () => {
+    it ("Can't use the StakingERC721 contract when an IERC20 is the staking token", async () => {
+      const localConfig = {
+        stakingToken: await mockERC20.getAddress(),
+        rewardsToken: await mockERC721.getAddress(),
+        rewardsPerPeriod: BigInt(1),
+        periodLength: BigInt(1),
+        timeLockPeriod: BigInt(1),
+      } as BaseConfig;
+
+      const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+      const localStakingERC721 = await stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        localConfig.stakingToken,
+        localConfig.rewardsToken,
+        localConfig.rewardsPerPeriod,
+        localConfig.periodLength,
+        localConfig.timeLockPeriod
+      ) as StakingERC721;
+
+      // Realistically they should never approve the contract for erc20 spending
+      await mockERC20.connect(stakerA).approve(await localStakingERC721.getAddress(), hre.ethers.MaxUint256);
+      await mockERC721.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
+
+      // Can't catch this using `await expect(...)` so must try/catch instead
+      try {
+        await localStakingERC721.connect(stakerA).stake([tokenIdA]);
+      } catch (e : any) {
+        console.log(e.message)
+        expect(e.message).to.include(FUNCTION_SELECTOR_ERR);
+      }
+    });
+
+    it("Can't use the StakngERC721 contract when an IERC721 is the rewards token", async () => {
+      const localConfig = {
+        stakingToken: await mockERC721.getAddress(),
+        rewardsToken: await mockERC721.getAddress(),
+        rewardsPerPeriod: BigInt(1),
+        periodLength: BigInt(1),
+        timeLockPeriod: BigInt(1),
+      } as BaseConfig;
+
+      const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+      const localStakingERC721 = await stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        localConfig.stakingToken,
+        localConfig.rewardsToken,
+        localConfig.rewardsPerPeriod,
+        localConfig.periodLength,
+        localConfig.timeLockPeriod
+      ) as StakingERC721;
+
+      await mockERC721.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
+
+      await localStakingERC721.connect(stakerA).stake([tokenIdA]);
+
+      await time.increase(localConfig.timeLockPeriod);
+
+      try {
+        await localStakingERC721.connect(stakerA).claim()
+      } catch (e : any) {
+        expect(e.message).to.include(FUNCTION_SELECTOR_ERR);
+      }
+
+      try {
+        // In this flow balance is checked before trying to transfer, and so this will
+        // fail first
+        await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
+      } catch (e : any) {
+        expect(e.message).to.include(NO_REWARDS_ERR);
+      }
+
+      try {
+        // After providing balance to the contract, we see it now fails correctly as it can't recognize 
+        // the function selector being called in unstake
+        await mockERC721.connect(deployer).mint(await localStakingERC721.getAddress(), 1010101);
+        await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
+      } catch (e : any) {
+        expect(e.message).to.include(FUNCTION_SELECTOR_ERR);
+      }
+
+      expect(await localStakingERC721.connect(stakerA).unstake([tokenIdA], true)).to.not.be.reverted;
+    });
+
+    it("Can't use 0 as the period length", async () => {
+      const localConfig = {
+        stakingToken: await mockERC721.getAddress(),
+        rewardsToken: await mockERC721.getAddress(),
+        rewardsPerPeriod: BigInt(3),
+        periodLength: BigInt(0),
+        timeLockPeriod: BigInt(50),
+      } as BaseConfig;
+
+      const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+      const localStakingERC721 = await stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        localConfig.stakingToken,
+        localConfig.rewardsToken,
+        localConfig.rewardsPerPeriod,
+        localConfig.periodLength,
+        localConfig.timeLockPeriod
+      ) as StakingERC721;
+
+      await mockERC721.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
+
+      await localStakingERC721.connect(stakerA).stake([tokenIdA]);
+
+      await time.increase(localConfig.timeLockPeriod);
+
+      try {
+        await localStakingERC721.connect(stakerA).claim();
+      } catch (e : any) {
+        console.log(e.message);
+        expect(e.message).to.include(DIV_BY_ZERO_ERR);
+      }
+
+      // Reset
+      expect(await localStakingERC721.connect(stakerA).unstake([tokenIdA], true)).to.not.be.reverted;
+    });
+
     it("Can't transfer rewards when there is no rewards balance", async () => {
       const localConfig = {
         stakingToken: await mockERC721.getAddress(),
