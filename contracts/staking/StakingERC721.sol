@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import { ERC721NonTransferrable } from "../tokens/ERC721NonTransferrable.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { AStakingBase } from "./AStakingBase.sol";
+import { StakingBase } from "./StakingBase.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
 
 
@@ -13,7 +13,7 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
  * non-transferable ERC721 token in return as representation of the deposit.
  */
-contract StakingERC721 is ERC721NonTransferrable, AStakingBase, IStakingERC721 {
+contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
     /**
      * @dev Mapping of each staker to that staker's data in the `Staker` struct
      */
