@@ -39,7 +39,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
         uint256 _timeLockPeriod
     )
         ERC721NonTransferrable(name, symbol)
-        AStakingBase(
+        StakingBase(
             _stakingToken,
             _rewardsToken,
             _rewardsPerPeriod,
