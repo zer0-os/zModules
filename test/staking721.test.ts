@@ -630,7 +630,6 @@ describe("StakingERC721", () => {
       try {
         await localStakingERC721.connect(stakerA).stake([tokenIdA]);
       } catch (e : any) {
-        console.log(e.message)
         expect(e.message).to.include(FUNCTION_SELECTOR_ERR);
       }
     });
@@ -716,7 +715,6 @@ describe("StakingERC721", () => {
       try {
         await localStakingERC721.connect(stakerA).claim();
       } catch (e : any) {
-        console.log(e.message);
         expect(e.message).to.include(DIV_BY_ZERO_ERR);
       }
 
