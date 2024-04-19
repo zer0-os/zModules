@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-TODO move to own branch
 
 import { ERC721NonTransferable } from "../tokens/ERC721NonTransferable.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Shared things
-import { StakingPool } from "./StakingPool.sol";
-import { IStaking } from "./IStaking.sol";
+import { StakingBase } from "../StakingBase.sol";
 
-contract StakingERC20 is ERC721NonTransferable, StakingPool, IStaking {
+contract StakingERC20 is ERC721NonTransferable, StakingBase {
     /**
 	 * @dev The configuration of this staking pool
 	 */

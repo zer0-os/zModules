@@ -5,10 +5,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 /**
- * @title AStakingBase
+ * @title StakingBase
  * @notice A set of common elements that comprise any Staking contract
  */
-contract AStakingBase {
+contract StakingBase {
     /**
      * @dev The staking token for this pool
      */
