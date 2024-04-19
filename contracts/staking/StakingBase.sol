@@ -105,9 +105,6 @@ abstract contract StakingBase is IStakingBase {
 	}
 
 	function _baseClaim(Staker storage staker) internal virtual returns(uint256) {
-		// TODO evaluate gas efficiency here, passing around between funcs
-		// vs reading stakers[msg.sender]
-
 		// Require the time lock to have passed
         _onlyUnlocked(staker.unlockTimestamp);
 

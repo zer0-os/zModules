@@ -106,7 +106,7 @@ describe("StakingERC721", () => {
     await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
   });
 
-  describe("#viewRewardsInPool", () => {
+  describe("#getContractRewardsBalance", () => {
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await stakingERC721.getContractRewardsBalance();
       const poolBalance = await mockERC20.balanceOf(await stakingERC721.getAddress());

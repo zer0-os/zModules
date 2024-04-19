@@ -7,7 +7,16 @@ pragma solidity ^0.8.19;
  * @notice Interface for the ERC20 staking contract
  */
 interface IStakingERC20 {
+	/**
+	 * Revert when the user tries to unstake more than the initial stake amount
+	 */
 	error UnstakeMoreThanStake();
+
+	/**
+	 * Revert when the user tries to stake 0 tokens
+	 */
+	error ZeroStake();
+
     /**
      * @notice Emit when a user stakes a token
      * @param amount The amount of the staked token

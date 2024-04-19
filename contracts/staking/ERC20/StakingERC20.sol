@@ -12,27 +12,14 @@ import { StakingBase } from "../StakingBase.sol";
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
  */
-contract StakingERC20 is ERC721NonTransferrable, StakingBase, IStakingERC20 {
-	/**
-     * @dev Revert if a call is not from the SNFT owner
-     */
-	modifier onlySNFTOwner(uint256 tokenId) {
-        if (ownerOf(tokenId) != msg.sender) {
-            revert InvalidOwner();
-        }
-        _;
-    }
-
+contract StakingERC20 is StakingBase, IStakingERC20 {
     constructor(
-		string memory name,
-		string memory symbol,
 		address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
         uint256 _timeLockPeriod
 	)
-        ERC721NonTransferrable(name, symbol)
         StakingBase(
             _stakingToken,
             _rewardsToken,
@@ -49,6 +36,14 @@ contract StakingERC20 is ERC721NonTransferrable, StakingBase, IStakingERC20 {
     function stake(uint256 amount) external override {
         Staker storage staker = stakers[msg.sender];
 	
+		// TODO do we want this?
+		// every staker pays gas for this niche check
+		// and if staker does transfer 0 nothing happens
+		// they just wasted their own funds paying the gas =s
+		if (amount == 0) {
+			revert ZeroStake();
+		}
+
 		_ifRewards(staker);
 
 		IERC20(stakingToken).transferFrom(
@@ -56,6 +51,9 @@ contract StakingERC20 is ERC721NonTransferrable, StakingBase, IStakingERC20 {
             address(this),
             amount
         );
+
+		staker.amountStaked += amount;
+		staker.lastUpdatedTimestamp = block.timestamp;
 
 		emit Staked(amount, stakingToken);
 	}
