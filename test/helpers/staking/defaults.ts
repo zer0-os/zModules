@@ -1,7 +1,6 @@
 import {
   MockERC721,
   MockERC20,
-  MockERC1155,
 } from "../../../typechain";
 
 import {
