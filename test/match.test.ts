@@ -3,12 +3,10 @@ import { ethers } from "ethers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { Match } from "../typechain"; // Adjust the import path according to your project structure
-import { Escrow } from "../typechain"; // Adjust assuming you have the escrow for testing
 import { ERC20TestToken } from "../typechain"; // Adjust assuming you have a mock ERC20 for testing
 
 describe("Match Contract", function () {
     let mockERC20: ERC20TestToken;
-    let escrow: Escrow;
     let match: Match;
     let owner: SignerWithAddress;
     let addr1: SignerWithAddress;
@@ -17,7 +15,6 @@ describe("Match Contract", function () {
     let addr1Address: string;
     let addr2Address: string;
     let mockERC20Address: string;
-    let escrowAddress: string;
     let matchAddress: string;
     const ownerMintAmount = ethers.parseEther("100000000000000000000");
 
@@ -31,34 +28,36 @@ describe("Match Contract", function () {
         mockERC20 = (await MockERC20Factory.deploy("MockToken", "MTK")) as ERC20TestToken;
         mockERC20Address = await mockERC20.getAddress();
 
-        const EscrowFactory = await hre.ethers.getContractFactory("Escrow");
-        escrow = (await EscrowFactory.deploy(mockERC20Address, ownerAddress, ownerAddress)) as Escrow;
-        escrowAddress = await escrow.getAddress();
+        const matchFactory = await hre.ethers.getContractFactory("match");
 
-        const MatchFactory = await hre.ethers.getContractFactory("Match");
-        match = (await MatchFactory.deploy(ownerAddress, escrowAddress)) as Match;
+
+        match = (await matchFactory.deploy(mockERC20Address, ownerAddress, ownerAddress)) as match;
         matchAddress = await match.getAddress();
 
-        await escrow.transferOwnership(matchAddress);
+        const MatchFactory = await hre.ethers.getContractFactory("Match");
+        match = (await MatchFactory.deploy(ownerAddress, matchAddress)) as Match;
+        matchAddress = await match.getAddress();
+
+        await match.transferOwnership(matchAddress);
 
         await mockERC20.mint(addr1Address, ethers.parseEther("1000"));
         await mockERC20.mint(addr2Address, ethers.parseEther("500"));
-        //await mockERC20.mint(escrowAddress, ethers.parseEther("1000000"));
+        //await mockERC20.mint(matchAddress, ethers.parseEther("1000000"));
         await mockERC20.mint(owner, ownerMintAmount);
-        await mockERC20.connect(owner).increaseAllowance(escrowAddress, ownerMintAmount);
+        await mockERC20.connect(owner).increaseAllowance(matchAddress, ownerMintAmount);
     });
 
     describe("Match Operations", function () {
-        it("Should correctly determine if players can match based on escrow balance", async function () {
+        it("Should correctly determine if players can match based on match balance", async function () {
             let depositAmount = ethers.parseEther("100");
-            await mockERC20.connect(addr1).approve(escrowAddress, depositAmount);
-            await escrow.connect(addr1).deposit(depositAmount);
+            await mockERC20.connect(addr1).approve(matchAddress, depositAmount);
+            await match.connect(addr1).deposit(depositAmount);
 
             const canMatchBefore = await match.canMatch([addr1Address, addr2Address], depositAmount);
             expect(canMatchBefore).to.be.false;
 
-            await mockERC20.connect(addr2).approve(escrowAddress, depositAmount);
-            await escrow.connect(addr2).deposit(depositAmount);
+            await mockERC20.connect(addr2).approve(matchAddress, depositAmount);
+            await match.connect(addr2).deposit(depositAmount);
             const canMatchAfter = await match.canMatch([addr1Address, addr2Address], depositAmount);
             expect(canMatchAfter).to.be.true;
         });
@@ -68,8 +67,8 @@ describe("Match Contract", function () {
             const finalBal1 = ethers.parseEther("150");
             await match.connect(owner).payAllEqual(amount, [addr1Address, addr2Address]);
 
-            const addr1Balance = await escrow.balance(addr1Address);
-            const addr2Balance = await escrow.balance(addr2Address);
+            const addr1Balance = await match.balance(addr1Address);
+            const addr2Balance = await match.balance(addr2Address);
             expect(addr1Balance).to.equal(finalBal1);
             expect(addr2Balance).to.equal(finalBal1);
         });
@@ -83,8 +82,8 @@ describe("Match Contract", function () {
             await match.connect(owner).payAllAmounts(amounts, winners);
 
             // Check final balances
-            const addr1FinalBalance = await escrow.balance(addr1Address);
-            const addr2FinalBalance = await escrow.balance(addr2Address);
+            const addr1FinalBalance = await match.balance(addr1Address);
+            const addr2FinalBalance = await match.balance(addr2Address);
             expect(addr1FinalBalance).to.equal(finalBal1);
             expect(addr2FinalBalance).to.equal(finalBal2);
         });
@@ -101,9 +100,9 @@ describe("Match Contract", function () {
                 .to.be.revertedWith("Ownable: caller is not the owner");
         });
 
-        it("Non-owner cannot set a new escrow address", async function () {
-            const newEscrowAddress = "0x000000000000000000000000000000000000dEaD"; // Example new escrow address
-            await expect(match.connect(addr2).setEscrow(newEscrowAddress))
+        it("Non-owner cannot set a new match address", async function () {
+            const newmatchAddress = "0x000000000000000000000000000000000000dEaD"; // Example new match address
+            await expect(match.connect(addr2).setmatch(newmatchAddress))
                 .to.be.revertedWith("Ownable: caller is not the owner");
         });
 
@@ -121,43 +120,31 @@ describe("Match Contract", function () {
         });
 
         it("Reverts payAllEqual with insufficient paymentAccount balance", async function () {
-            // Assuming the escrow balance for addr2Address is less than 100 ether for this example
+            // Assuming the match balance for addr2Address is less than 100 ether for this example
             const highAmount = ethers.parseEther("1000000000000000000000000");
             await expect(match.payAllEqual(highAmount, [addr2Address]))
                 .to.be.revertedWith("ERC20: insufficient allowance");
         });
 
         it("Reverts payAllAmounts with insufficient paymentAccount balance", async function () {
-            // Assuming the escrow balance for addr2Address is less than 50 ether for this example
+            // Assuming the match balance for addr2Address is less than 50 ether for this example
             const amounts = [ethers.parseEther("50000000000000000000000")];
             const winners = [addr2Address];
             await expect(match.payAllAmounts(amounts, winners))
                 .to.be.revertedWith("ERC20: insufficient allowance");
         });
         it("should handle sequential payAllEqual calls correctly", async function () {
-            const balance1Before = await escrow.balance(addr1Address);
-            const balance2Before = await escrow.balance(addr2Address);
+            const balance1Before = await match.balance(addr1Address);
+            const balance2Before = await match.balance(addr2Address);
             const paymentAmount = ethers.parseEther("1");
             const winners = [addr1Address, addr2Address];
             await match.payAllEqual(paymentAmount, winners);
             await match.payAllEqual(paymentAmount, winners);
 
-            const balance1 = await escrow.balance(addr1Address);
-            const balance2 = await escrow.balance(addr2Address);
+            const balance1 = await match.balance(addr1Address);
+            const balance2 = await match.balance(addr2Address);
             expect(balance1).to.equal(balance1Before + paymentAmount + paymentAmount); // Check if balance has doubled
             expect(balance2).to.equal(balance2Before + paymentAmount + paymentAmount); // Check if balance has doubled
         });
-
-        it("should handle escrow contract migration scenario", async function () {
-            const EscrowFactory = await hre.ethers.getContractFactory("Escrow");
-            const newEscrow = await EscrowFactory.deploy(mockERC20Address, ownerAddress, matchAddress);
-            await match.connect(owner).setEscrow(await newEscrow.getAddress());
-            //const paymentAmount = ethers.parseEther("10");
-            //const winners = [addr1Address];
-            //await match.payAllEqual(paymentAmount, winners);
-            //const newEscrowBalance = await newEscrow.balance(addr1Address);
-            //expect(newEscrowBalance).to.equal(paymentAmount); // Verify new escrow received the funds
-        });
     });
-
 });

@@ -1,50 +1,56 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol"; // Correct import is Ownable, not Owned
-import "../escrow/Escrow.sol";
-import "./IMatch.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol"; // Correct import is Ownable, not Owned
+import {Escrow} from "../escrow/Escrow.sol";
+import {IMatch} from "./IMatch.sol";
 
-contract Match is Ownable, IMatch {
-    Escrow public escrow;
 
-    constructor(address _owner, Escrow _escrow) {
-        Ownable(_owner);
-        escrow = _escrow;
+contract Match is Ownable, IMatch, Escrow {
+    struct MatchData {
+        uint id;
+        uint startTime;
+        uint endTime;
+        address[] players;
     }
 
-    function payAllEqual(uint256 amount, address[] memory winners) external override onlyOwner {
-        require(winners.length > 0, "Winners array empty");
-        for(uint i = 0; i < winners.length; i++) {
-            escrow.executePayment(winners[i], amount);
-            emit PaymentExecuted(winners[i], amount);
-        }
-    }
+    mapping(uint => MatchData) public matches;
+    uint nextMatchID;
 
-    function payAllAmounts(uint256[] memory amounts, address[] memory winners) external override onlyOwner {
-        require(amounts.length == winners.length, "Amounts and winners length mismatch");
-        
-        for(uint i = 0; i < winners.length; i++) {
-            escrow.executePayment(winners[i], amounts[i]);
-            emit PaymentExecuted(winners[i], amounts[i]);
-        }
-    }
-    
-    function setEscrow(Escrow newEscrow) external override onlyOwner {
-        escrow = newEscrow;
-    }
+    constructor(IERC20 token, address _owner, Escrow _escrow) Ownable(_owner) Escrow(token, _owner) {}
 
-    function canMatch(address[] memory players, uint256 escrowRequired) external override view returns(bool) {
+    function startMatch(address[] calldata players, uint entryFee) external override {
+        require(canMatch(players))
+        MatchData storage match = matches[nextMatchId];
+        match.id = nextMatchId;
+        match.startTime = block.timestamp;
+        match.players = players;
+        nextMatchId++;
         for(uint i = 0; i < players.length; i++) {
-            if(escrow.balance(players[i]) < escrowRequired) {
+            executeCharge(players[i], entryFee);
+        }
+    }
+
+    function endMatch(uint matchId, address[] calldata winners, uint winAmount) external override {
+        require(matches[matchId].startTime != 0, "Match does not exist");
+        matches[matchId].endTime = block.timestamp;
+        for(uint i = 0; i < winners.length; i++) {
+            executePayment(winners[i], winAmount);
+        }   
+    }
+
+    function canMatch(address[] calldata players, uint escrowRequired) external override view returns(bool) {
+        for(uint i = 0; i < players.length; i++) {
+            if(balance[players[i]] < escrowRequired) {
                 return false;
             }
         }
         return true;
     }
 
-    event Matched(bool canMatch);
-    event PaymentExecuted(address winners, uint256 amount);
-    event EscrowSet(address escrow);
+    function getMatchID(uint id) external view override returns (uint, uint, uint, address[] memory) {
+        MatchData memory match = matches[id];
+        return (match.id, match.startTime, match.endTime, match.players);
+    }
 }
