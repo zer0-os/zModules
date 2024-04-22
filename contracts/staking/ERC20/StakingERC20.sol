@@ -67,8 +67,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 			revert UnstakeMoreThanStake();
 		}
 
-		IERC20(stakingToken).transferFrom(
-            address(this),
+		IERC20(stakingToken).transfer(
             msg.sender,
             amount
         );
