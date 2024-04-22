@@ -759,6 +759,41 @@ describe("StakingERC721", () => {
       await localStakingERC721.connect(stakerA).unstake([tokenIdA], true);
     });
     it("More complex use case involving multiple stakes and stakers", async () => {
+
+      /** Script
+       * mint stakerB tokens D, E, F, G
+       * mint stakerC tokens H, I
+       * approvals for all stakers and tokens
+       * stakerA stakes A, B, C
+       * stakerB stakes D, E, F
+       * stakerA tries to claim, fails
+       * stakerB tries to claim, fails
+       * time passes
+       * stakerA claims rewards
+       * stakerB tries to claim, fails
+       * stakerC tries to stake H and G, fails as doesnt own G
+       * stakerC stakes H and I
+       * stakerB unstakes D
+       * stakerB stakes G
+       * stakerA unstakes all tokens, A, B, and C
+       * stakerC tries to claim, fails
+       * time passes
+       * stakerC claims rewards
+       * stakerB unstakes E and F
+       * stakerB transfers D to stakerA
+       * stakerB transfers E to stakerC
+       * stakerB tries to transfer sNFT of G to stakerC, fails
+       * stakerC claims rewards
+       * stakerA stakes A, B
+       * stakerA tries to unstake A, fails
+       * stakerA stakes C and D
+       * stakerB exits with G
+       * stakerC unstakes H and I
+       * stakerA tries to claim, fails
+       * time passes
+       * stakerA tries to claim, no rewards left in contract
+       * stakerA exits with A, B, C, and D
+       */
       const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
       const newMockERC20 = await mockERC20Factory.deploy("WILD", "WilderWorld");
 
@@ -780,8 +815,6 @@ describe("StakingERC721", () => {
         localConfig.periodLength,
         localConfig.timeLockPeriod
       ) as StakingERC721;
-
-      // const contractBalance = await newMockERC20.balanceOf(await localStakingERC721.getAddress());
 
       // New tokenIds
       const tokenIdD = 10;
@@ -1141,7 +1174,6 @@ describe("StakingERC721", () => {
       expect(stakerCData.pendingRewards).to.eq(0n);
       // unlock timestamp has not changed
       expect(stakerCData.unlockTimestamp).to.eq(origStakedAtC + localConfig.timeLockPeriod);
-
 
       pendingRewardsB = await localStakingERC721.connect(stakerB).getPendingRewards();
       rewardsBalanceBeforeB = await newMockERC20.balanceOf(stakerB.address);
