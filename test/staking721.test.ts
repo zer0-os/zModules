@@ -22,7 +22,7 @@ import {
   BaseConfig,
   UNTRANSFERRABLE_ERR,
   FUNCTION_SELECTOR_ERR,
-  DIV_BY_ZERO_ERR, ZERO_ADDRESS_ERR,
+  DIV_BY_ZERO_ERR, ZERO_INIT_ERR,
 } from "./helpers/staking";
 import { mock } from "node:test";
 
@@ -107,7 +107,7 @@ describe("StakingERC721", () => {
     await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
   });
 
-  it("Should NOT deploy with zero addresses passed as tokens", async () => {
+  it("Should NOT deploy with zero values passed", async () => {
     const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
 
     await expect(
@@ -120,7 +120,7 @@ describe("StakingERC721", () => {
         config.periodLength,
         config.timeLockPeriod
       )
-    ).to.be.revertedWithCustomError(stakingERC721, ZERO_ADDRESS_ERR);
+    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
 
     await expect(
       stakingFactory.deploy(
@@ -132,7 +132,31 @@ describe("StakingERC721", () => {
         config.periodLength,
         config.timeLockPeriod
       )
-    ).to.be.revertedWithCustomError(stakingERC721, ZERO_ADDRESS_ERR);
+    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+
+    await expect(
+      stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        mockERC721.target,
+        mockERC20.target,
+        0,
+        config.periodLength,
+        config.timeLockPeriod
+      )
+    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+
+    await expect(
+      stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        mockERC721.target,
+        mockERC20.target,
+        config.rewardsPerPeriod,
+        0,
+        config.timeLockPeriod
+      )
+    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
   });
 
   describe("#viewRewardsInPool", () => {
@@ -629,6 +653,7 @@ describe("StakingERC721", () => {
       expect(balanceAfter).to.eq(balanceBefore + expectedRewards);
     });
   });
+
   describe("Other configs", () => {
     it ("Can't use the StakingERC721 contract when an IERC20 is the staking token", async () => {
       const localConfig = {
@@ -650,15 +675,15 @@ describe("StakingERC721", () => {
         localConfig.timeLockPeriod
       ) as StakingERC721;
 
-      // Realistically they should never approve the contract for erc20 spending
+      // Realistically, they should never approve the contract for erc20 spending
       await mockERC20.connect(stakerA).approve(await localStakingERC721.getAddress(), hre.ethers.MaxUint256);
       await mockERC721.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
 
       // Can't catch this using `await expect(...)` so must try/catch instead
       try {
         await localStakingERC721.connect(stakerA).stake([tokenIdA]);
-      } catch (e : any) {
-        expect(e.message).to.include(FUNCTION_SELECTOR_ERR);
+      } catch (e : unknown) {
+        expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
       }
     });
 
@@ -690,16 +715,16 @@ describe("StakingERC721", () => {
 
       try {
         await localStakingERC721.connect(stakerA).claim();
-      } catch (e : any) {
-        expect(e.message).to.include(FUNCTION_SELECTOR_ERR);
+      } catch (e : unknown) {
+        expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
       }
 
       try {
         // In this flow balance is checked before trying to transfer, and so this will
         // fail first
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
-      } catch (e : any) {
-        expect(e.message).to.include(NO_REWARDS_ERR);
+      } catch (e : unknown) {
+        expect((e as Error).message).to.include(NO_REWARDS_ERR);
       }
 
       try {
@@ -707,47 +732,11 @@ describe("StakingERC721", () => {
         // the function selector being called in unstake
         await mockERC721.connect(deployer).mint(await localStakingERC721.getAddress(), 1010101);
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
-      } catch (e : any) {
-        expect(e.message).to.include(FUNCTION_SELECTOR_ERR);
+      } catch (e : unknown) {
+        expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
       }
 
-      expect(await localStakingERC721.connect(stakerA).unstake([tokenIdA], true)).to.not.be.reverted;
-    });
-
-    it("Can't use 0 as the period length", async () => {
-      const localConfig = {
-        stakingToken: await mockERC721.getAddress(),
-        rewardsToken: await mockERC721.getAddress(),
-        rewardsPerPeriod: BigInt(3),
-        periodLength: BigInt(0),
-        timeLockPeriod: BigInt(50),
-      } as BaseConfig;
-
-      const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
-      const localStakingERC721 = await stakingFactory.deploy(
-        "StakingNFT",
-        "SNFT",
-        localConfig.stakingToken,
-        localConfig.rewardsToken,
-        localConfig.rewardsPerPeriod,
-        localConfig.periodLength,
-        localConfig.timeLockPeriod
-      ) as StakingERC721;
-
-      await mockERC721.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
-
-      await localStakingERC721.connect(stakerA).stake([tokenIdA]);
-
-      await time.increase(localConfig.timeLockPeriod);
-
-      try {
-        await localStakingERC721.connect(stakerA).claim();
-      } catch (e : any) {
-        expect(e.message).to.include(DIV_BY_ZERO_ERR);
-      }
-
-      // Reset
-      expect(await localStakingERC721.connect(stakerA).unstake([tokenIdA], true)).to.not.be.reverted;
+      await expect(localStakingERC721.connect(stakerA).unstake([tokenIdA], true)).to.not.be.reverted;
     });
 
     it("Can't transfer rewards when there is no rewards balance", async () => {
@@ -786,6 +775,7 @@ describe("StakingERC721", () => {
       // Reset
       await localStakingERC721.connect(stakerA).unstake([tokenIdA], true);
     });
+
     it("More complex use case involving multiple stakes and stakers", async () => {
 
       /** Script
