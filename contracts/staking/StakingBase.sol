@@ -3,13 +3,22 @@
 pragma solidity ^0.8.19;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 
 /**
  * @title AStakingBase
  * @notice A set of common elements that comprise any Staking contract
  */
-contract StakingBase {
+contract StakingBase is Ownable {
+    /**
+     * @dev Emitted when the contract owner withdraws leftover rewards
+     */
+    event RewardLeftoverWithdrawal(
+        address indexed owner,
+        uint256 indexed amount
+    );
+
     /**
      * @dev The staking token for this pool
      */
@@ -46,7 +55,7 @@ contract StakingBase {
     error TimeLockNotPassed();
 
     /**
-     * @dev Throw when there are no rewards remaining in the pool
+     * @dev Throw when there are no rewards remaining in the contract
      * to give to stakers
      */
     error NoRewardsLeftInContract();
@@ -76,6 +85,20 @@ contract StakingBase {
         rewardsPerPeriod = _rewardsPerPeriod;
         periodLength = _periodLength;
         timeLockPeriod = _timeLockPeriod;
+    }
+
+    /**
+     * @notice Emergency function for the contract owner to withdraw leftover rewards
+     * in case of an abandoned contract.
+     * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
+     */
+    function withdrawLeftoverRewards() external onlyOwner {
+        uint256 balance = rewardsToken.balanceOf(address(this));
+        if (balance == 0) revert NoRewardsLeftInContract();
+
+        rewardsToken.transfer(owner(), balance);
+
+        emit RewardLeftoverWithdrawal(owner(), balance);
     }
 
     /**
