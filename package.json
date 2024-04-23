@@ -5,6 +5,7 @@
   "scripts": {
     "typechain": "hardhat typechain",
     "compile": "hardhat compile",
+    "build": "yarn run clean && yarn run compile",
     "clean": "hardhat clean",
     "test": "hardhat test",
     "coverage": "hardhat coverage",
@@ -15,7 +16,7 @@
     "lint": "yarn lint-sol & yarn lint-ts --no-error-on-unmatched-pattern"
   },
   "keywords": [],
-  "author": "",
+  "author": "Zero CPT",
   "license": "MIT",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
