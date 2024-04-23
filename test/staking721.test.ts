@@ -22,9 +22,9 @@ import {
   BaseConfig,
   UNTRANSFERRABLE_ERR,
   FUNCTION_SELECTOR_ERR,
-  DIV_BY_ZERO_ERR, ZERO_INIT_ERR,
+  ZERO_INIT_ERR,
 } from "./helpers/staking";
-import { mock } from "node:test";
+
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;

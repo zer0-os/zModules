@@ -17,5 +17,6 @@ export const NO_REWARDS_ERR = "NoRewardsLeftInContract";
 export const UNTRANSFERRABLE_ERR = "NonTransferrableToken";
 export const ZERO_INIT_ERR = "InitializedWithZero";
 
+// eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";
 export const DIV_BY_ZERO_ERR = "reverted with panic code 0x12 (Division or modulo division by zero)";

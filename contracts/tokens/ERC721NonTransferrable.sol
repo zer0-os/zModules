@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { IERC721NonTransferrable } from "./IERC721NonTransferrable.sol";
 
 
