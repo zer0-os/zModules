@@ -50,6 +50,11 @@ contract StakingBase {
      */
     error NoRewardsLeftInContract();
 
+    /**
+     * @dev Throw when passing zero address to set a state var
+     */
+    error ZeroAddressPassed();
+
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
@@ -57,6 +62,9 @@ contract StakingBase {
         uint256 _periodLength,
         uint256 _timeLockPeriod
     ) {
+        if (_stakingToken == address(0) || address(_rewardsToken) == address(0))
+            revert ZeroAddressPassed();
+
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;

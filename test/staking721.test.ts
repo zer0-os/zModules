@@ -22,7 +22,7 @@ import {
   BaseConfig,
   UNTRANSFERRABLE_ERR,
   FUNCTION_SELECTOR_ERR,
-  DIV_BY_ZERO_ERR,
+  DIV_BY_ZERO_ERR, ZERO_ADDRESS_ERR,
 } from "./helpers/staking";
 import { mock } from "node:test";
 
@@ -105,6 +105,34 @@ describe("StakingERC721", () => {
     await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
     await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
     await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
+  });
+
+  it("Should NOT deploy with zero addresses passed as tokens", async () => {
+    const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+
+    await expect(
+      stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        hre.ethers.ZeroAddress,
+        mockERC20.target,
+        config.rewardsPerPeriod,
+        config.periodLength,
+        config.timeLockPeriod
+      )
+    ).to.be.revertedWithCustomError(stakingERC721, ZERO_ADDRESS_ERR);
+
+    await expect(
+      stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        mockERC721.target,
+        hre.ethers.ZeroAddress,
+        config.rewardsPerPeriod,
+        config.periodLength,
+        config.timeLockPeriod
+      )
+    ).to.be.revertedWithCustomError(stakingERC721, ZERO_ADDRESS_ERR);
   });
 
   describe("#viewRewardsInPool", () => {
@@ -661,7 +689,7 @@ describe("StakingERC721", () => {
       await time.increase(localConfig.timeLockPeriod);
 
       try {
-        await localStakingERC721.connect(stakerA).claim()
+        await localStakingERC721.connect(stakerA).claim();
       } catch (e : any) {
         expect(e.message).to.include(FUNCTION_SELECTOR_ERR);
       }
@@ -675,7 +703,7 @@ describe("StakingERC721", () => {
       }
 
       try {
-        // After providing balance to the contract, we see it now fails correctly as it can't recognize 
+        // After providing balance to the contract, we see it now fails correctly as it can't recognize
         // the function selector being called in unstake
         await mockERC721.connect(deployer).mint(await localStakingERC721.getAddress(), 1010101);
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
