@@ -36,7 +36,6 @@ contract Escrow is Ownable{
         emit PaymentExecuted(client, amount);
     }
 
-    
     function executeCharge(address client, uint256 amount) external override onlyOwner{
         balance[to] -= amount;
         emit ChargeExecuted(client, amount);
