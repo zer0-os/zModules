@@ -32,13 +32,14 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
     constructor(
         string memory name,
         string memory symbol,
+        string memory baseUri,
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
         uint256 _timeLockPeriod
     )
-        ERC721NonTransferrable(name, symbol)
+        ERC721NonTransferrable(name, symbol, baseUri)
         StakingBase(
             _stakingToken,
             _rewardsToken,
@@ -51,8 +52,9 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
     /**
      * @notice Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in return
      * @param tokenIds Array of tokenIds to be staked by the caller
+     * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. Send 0 if baseUri is used!
      */
-    function stake(uint256[] calldata tokenIds) external override {
+    function stake(uint256[] calldata tokenIds, string[] calldata tokenUris) external override {
         Staker storage staker = stakers[msg.sender];
 
         if (staker.numStaked > 0) {
@@ -66,7 +68,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
 
         uint256 i;
         for (i; i < tokenIds.length;) {
-            _stake(tokenIds[i]);
+            _stake(tokenIds[i], tokenUris[i]);
 
             unchecked {
                 ++i;
@@ -164,7 +166,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
             );
     }
 
-    function _stake(uint256 tokenId) internal {
+    function _stake(uint256 tokenId, string memory tokenUri) internal {
         // Transfer their NFT to this contract
         IERC721(stakingToken).safeTransferFrom(
             msg.sender,
@@ -173,7 +175,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
         );
 
         // Mint user sNFT
-        _mint(msg.sender, tokenId);
+        _safeMint(msg.sender, tokenId, tokenUri);
 
         emit Staked(tokenId, stakingToken);
     }

@@ -6,5 +6,7 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
 
 
 interface IERC721NonTransferrable is IERC721, IERC721Receiver {
+    event BaseURIUpdated(string baseURI);
+
     error NonTransferrableToken();
 }

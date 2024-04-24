@@ -42,7 +42,7 @@ interface IStakingERC721 {
         uint256 numStaked;
     }
 
-    function stake(uint256[] calldata tokenIds) external;
+    function stake(uint256[] calldata tokenIds, string[] calldata tokenURIs) external;
 
     function claim() external;
 
