@@ -2,7 +2,7 @@ import * as hre from "hardhat";
 import { ethers } from "ethers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { Match } from "../typechain"; // Adjust the import path according to your project structure
+import { Escrow, Match } from "../typechain"; // Adjust the import path according to your project structure
 import { ERC20TestToken } from "../typechain"; // Adjust assuming you have a mock ERC20 for testing
 
 describe("Match Contract", function () {
@@ -28,14 +28,8 @@ describe("Match Contract", function () {
         mockERC20 = (await MockERC20Factory.deploy("MockToken", "MTK")) as ERC20TestToken;
         mockERC20Address = await mockERC20.getAddress();
 
-        const matchFactory = await hre.ethers.getContractFactory("match");
-
-
-        match = (await matchFactory.deploy(mockERC20Address, ownerAddress, ownerAddress)) as match;
-        matchAddress = await match.getAddress();
-
         const MatchFactory = await hre.ethers.getContractFactory("Match");
-        match = (await MatchFactory.deploy(ownerAddress, matchAddress)) as Match;
+        match = (await MatchFactory.deploy(mockERC20Address, ownerAddress)) as Match;
         matchAddress = await match.getAddress();
 
         await match.transferOwnership(matchAddress);
@@ -62,17 +56,6 @@ describe("Match Contract", function () {
             expect(canMatchAfter).to.be.true;
         });
 
-        it("Should pay all winners equally and emit Payment event for each", async function () {
-            const amount = ethers.parseEther("50");
-            const finalBal1 = ethers.parseEther("150");
-            await match.connect(owner).payAllEqual(amount, [addr1Address, addr2Address]);
-
-            const addr1Balance = await match.balance(addr1Address);
-            const addr2Balance = await match.balance(addr2Address);
-            expect(addr1Balance).to.equal(finalBal1);
-            expect(addr2Balance).to.equal(finalBal1);
-        });
-
         it("Should pay winners variable amounts and emit Payment event for each", async function () {
             const amounts = [ethers.parseEther("25"), ethers.parseEther("75")];
             const winners = [addr1Address, addr2Address];
@@ -90,26 +73,9 @@ describe("Match Contract", function () {
     });
 
     describe("Negative Tests", function () {
-        it("Non-owner cannot call payAllEqual", async function () {
-            await expect(match.connect(addr2).payAllEqual(ethers.parseEther("10"), [addr2Address]))
-                .to.be.revertedWith("Ownable: caller is not the owner");
-        });
-
         it("Non-owner cannot call payAllAmounts", async function () {
             await expect(match.connect(addr2).payAllAmounts([ethers.parseEther("10")], [addr2Address]))
                 .to.be.revertedWith("Ownable: caller is not the owner");
-        });
-
-        it("Non-owner cannot set a new match address", async function () {
-            const newmatchAddress = "0x000000000000000000000000000000000000dEaD"; // Example new match address
-            await expect(match.connect(addr2).setmatch(newmatchAddress))
-                .to.be.revertedWith("Ownable: caller is not the owner");
-        });
-
-        it("payAllEqual fails when trying to pay to an empty array of winners", async function () {
-            const amount = ethers.parseEther("10");
-            await expect(match.payAllEqual(amount, []))
-                .to.be.revertedWith("Winners array empty");
         });
 
         it("payAllAmounts fails when amounts and winners array lengths do not match", async function () {
@@ -119,12 +85,6 @@ describe("Match Contract", function () {
                 .to.be.revertedWith("Amounts and winners length mismatch");
         });
 
-        it("Reverts payAllEqual with insufficient paymentAccount balance", async function () {
-            // Assuming the match balance for addr2Address is less than 100 ether for this example
-            const highAmount = ethers.parseEther("1000000000000000000000000");
-            await expect(match.payAllEqual(highAmount, [addr2Address]))
-                .to.be.revertedWith("ERC20: insufficient allowance");
-        });
 
         it("Reverts payAllAmounts with insufficient paymentAccount balance", async function () {
             // Assuming the match balance for addr2Address is less than 50 ether for this example
@@ -133,18 +93,18 @@ describe("Match Contract", function () {
             await expect(match.payAllAmounts(amounts, winners))
                 .to.be.revertedWith("ERC20: insufficient allowance");
         });
-        it("should handle sequential payAllEqual calls correctly", async function () {
+        it("should handle sequential payAllAmounts calls correctly", async function () {
             const balance1Before = await match.balance(addr1Address);
             const balance2Before = await match.balance(addr2Address);
-            const paymentAmount = ethers.parseEther("1");
+            const paymentAmounts = [ethers.parseEther("1"), ethers.parseEther("9")];
             const winners = [addr1Address, addr2Address];
-            await match.payAllEqual(paymentAmount, winners);
-            await match.payAllEqual(paymentAmount, winners);
+            await match.payAllAmounts(paymentAmounts, winners);
+            await match.payAllAmounts(paymentAmounts, winners);
 
             const balance1 = await match.balance(addr1Address);
             const balance2 = await match.balance(addr2Address);
-            expect(balance1).to.equal(balance1Before + paymentAmount + paymentAmount); // Check if balance has doubled
-            expect(balance2).to.equal(balance2Before + paymentAmount + paymentAmount); // Check if balance has doubled
+            expect(balance1).to.equal(balance1Before + paymentAmounts[0] + paymentAmounts[1]);
+            expect(balance2).to.equal(balance2Before + paymentAmounts[0] + paymentAmounts[1]);
         });
     });
 });

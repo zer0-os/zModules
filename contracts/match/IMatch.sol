@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../escrow/Escrow.sol";
 
 interface IMatch {
     /** 
@@ -12,24 +11,10 @@ interface IMatch {
      */
     function canMatch(address[] memory players, uint256 escrowRequired) external view returns(bool);
 
-    /** 
-     * @notice Pays an equal amount from the escrow to each winner
-     * @param amount The amount to pay to each winner
-     * @param winners Array of winner addresses
-     */
-    function payAllEqual(uint256 amount, address[] memory winners) external;
+    function startMatch(address[] calldata players, uint entryFee) external;
 
-    /** 
-     * @notice Pays varying amounts from the escrow to each winner
-     * @param amounts Array of amounts to pay to each winner
-     * @param winners Array of winner addresses
-     */
-    function payAllAmounts(uint256[] memory amounts, address[] memory winners) external;
+    function endMatch(uint matchId, address[] calldata winners, uint winAmount) external;
 
-    /**
-     * @notice Sets a new escrow contract address
-     * @param newEscrow The address of the new escrow contract
-     */
-    function setEscrow(Escrow newEscrow) external;
+    function getMatchData(uint id) external view returns (uint, uint, uint, address[] memory);
 }
 

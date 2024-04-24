@@ -3,14 +3,15 @@ pragma solidity ^0.8.19;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IEscrow} from "./IEscrow.sol";
 
 
-contract Escrow is Ownable{
+contract Escrow is IEscrow, Ownable{
     IERC20 public token; ///Token contract operates on
-    address paymentAccount; //Account that tokens are transfered from on executePayment
+    address paymentAccount; ///Account that tokens are transfered from on executePayment
     mapping(address client => uint256 amount) public balance; ///Balance of given client
 
-    constructor(address _token, address _owner) {
+    constructor(IERC20 _token, address _owner) {
         token = IERC20(_token);
         Ownable(_owner);
     }
@@ -31,29 +32,29 @@ contract Escrow is Ownable{
         emit Withdrawal(msg.sender, balanceStore);
     }
 
-    function executePayment(address client, uint256 amount) external override onlyOwner {
+    function pay(address client, uint256 amount) public override onlyOwner {
         balance[client] += amount;
-        emit PaymentExecuted(client, amount);
+        emit Payment(client, amount);
     }
 
-    
-    function executeCharge(address client, uint256 amount) external override onlyOwner{
-        balance[to] -= amount;
-        emit ChargeExecuted(client, amount);
-    }
-    
-    function payAllEqual(uint256 amount, address[] memory winners) external override onlyOwner {
-        require(winners.length > 0, "Winners array empty");
-        for(uint i = 0; i < winners.length; i++) {
-            executePayment(winners[i], amount);
-       }
+    function charge(address client, uint256 amount) public override onlyOwner {
+        balance[client] -= amount;
+        emit Charge(client, amount);
     }
 
     function payAllAmounts(uint256[] memory amounts, address[] memory winners) external override onlyOwner {
         require(amounts.length == winners.length, "Amounts and winners length mismatch");
         
         for(uint i = 0; i < winners.length; i++) {
-            executePayment(winners[i], amounts[i]);
+            pay(winners[i], amounts[i]);
+        }
+    }
+
+    function chargeAllAmounts(uint256[] memory amounts, address[] memory winners) external override onlyOwner {
+        require(amounts.length == winners.length, "Amounts and winners length mismatch");
+        
+        for(uint i = 0; i < winners.length; i++) {
+            charge(winners[i], amounts[i]);
         }
     }
 
@@ -63,6 +64,6 @@ contract Escrow is Ownable{
         balance[client] = 0;
         token.transfer(client, _balance);
         
-        emit Refunded(client, _balance); //should these really be emitted? there are events in the transfer emitted already
+        emit Refund(client, _balance); //should these really be emitted? there are events in the transfer emitted already
     }
 }

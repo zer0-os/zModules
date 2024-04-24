@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+
 interface IEscrow {
     /**
      * @notice Emit when tokens are deposited into the contract
@@ -21,28 +22,21 @@ interface IEscrow {
      * @param client The address of the client who received the payment
      * @param amount The amount of tokens paid to the client
      */
-    event PaymentExecuted(address indexed client, uint256 amount);
-    
+    event Payment(address indexed client, uint256 amount);
+
     /**
-     * @notice Emit when a tokens are locked for a client
-     * @param client The address of the client who received the lock
-     * @param amount The amount of tokens locked
+     * @notice Emit when a payment is executed to a client
+     * @param client The address of the client who received the payment
+     * @param amount The amount of tokens paid to the client
      */
-    event Locked(address indexed client, uint256 amount);
-    
-    /**
-     * @notice Emit when tokens are unlocked for a client
-     * @param client The address of the client who received the unlock
-     * @param amount The amount of tokens unlocked
-     */
-    event Unlocked(address indexed client, uint256 amount);
+    event Charge(address indexed client, uint256 amount);
 
     /**
      * @notice Emit when tokens are refunded to a client
      * @param client The address of the client to whom the tokens were refunded
      * @param amount The amount of tokens refunded
      */
-    event Refunded(address indexed client, uint256 amount);
+    event Refund(address indexed client, uint256 amount);
     
     /**
      * @dev Allows a user to deposit tokens into the escrow contract.
@@ -57,17 +51,17 @@ interface IEscrow {
     
     /**
      * @dev Executes a payment from the escrow to a winner.
-     * @param _to The address to receive tokens.
-     * @param _amount The amount of tokens they receive.
+     * @param client The address to receive tokens.
+     * @param amount The amount of tokens they receive.
      */
-    function executePayment(address _to, uint256 _amount) external;
+    function pay(address client, uint256 amount) external;
 
-    /** 
-     * @notice Pays an equal amount from the escrow to each winner
-     * @param amount The amount to pay to each winner
-     * @param winners Array of winner addresses
+    /**
+     * @dev Executes a payment from the escrow to a winner.
+     * @param client The address to receive tokens.
+     * @param amount The amount of tokens they receive.
      */
-    function payAllEqual(uint256 amount, address[] memory winners) external;
+    function charge(address client, uint256 amount) external;
 
     /** 
      * @notice Pays varying amounts from the escrow to each winner
@@ -76,9 +70,16 @@ interface IEscrow {
      */
     function payAllAmounts(uint256[] memory amounts, address[] memory winners) external;
 
+    /** 
+     * @notice Charges varying amounts from the escrow to each winner
+     * @param amounts Array of amounts to charge to each winner
+     * @param winners Array of player addresses
+     */
+    function chargeAllAmounts(uint256[] memory amounts, address[] memory winners) external;
+
     /**
      * @dev Refunds tokens from the escrow back to a user.
-     * @param _client The address of the user to refund tokens to.
+     * @param client The address of the user to refund tokens to.
      */
-    function refund(address _client) external;
+    function refund(address client) external;
 }
