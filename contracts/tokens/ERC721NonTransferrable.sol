@@ -11,11 +11,11 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
  * @title ERC721NonTransferrable
  * @notice A non-transferrable ERC721 token
  */
-contract ERC721NonTransferrable is ERC721, ERC721URIStorage, IERC721NonTransferrable {
+abstract contract ERC721NonTransferrable is ERC721, ERC721URIStorage, IERC721NonTransferrable {
     // TODO stake: - add both options for URI and baseURI - TEST THIS!!!
     //  - add admin withdraw function +
     //  - fix and make proper inheritance with interfaces !!!
-    //  - does it have to be non-transferrable?!?! what if a user lost his wallet?
+    //  - does it have to be non-transferrable?!?! what if a user lost his wallet? change name!
     //  - should we add totalSupply?!?!
 
     /**
@@ -38,20 +38,13 @@ contract ERC721NonTransferrable is ERC721, ERC721URIStorage, IERC721NonTransferr
         }
     }
 
-    // TODO stake: add AC
-    function setBaseURI(string memory baseUri) external {
-        baseURI = baseUri;
-        emit BaseURIUpdated(baseUri);
-    }
-
-    // TODO stake: add AC
-    function setTokenURI(uint256 tokenId, string memory tokenUri) external {
-        _setTokenURI(tokenId, tokenUri);
-    }
-
     function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
+
+    function setBaseURI(string memory baseUri) external virtual;
+
+    function setTokenURI(uint256 tokenId, string memory tokenUri) external virtual;
 
     function onERC721Received(
         address,

@@ -6,6 +6,7 @@ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { StakingBase } from "./StakingBase.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 
 /**
@@ -13,7 +14,7 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
  * non-transferable ERC721 token in return as representation of the deposit.
  */
-contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
+contract StakingERC721 is ERC721NonTransferrable, StakingBase, Ownable, IStakingERC721 {
     /**
      * @dev Mapping of each staker to that staker's data in the `Staker` struct
      */
@@ -147,6 +148,32 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, IStakingERC721 {
         }
 
         return staker.unlockTimestamp - block.timestamp;
+    }
+
+    /**
+     * @notice Emergency function for the contract owner to withdraw leftover rewards
+     * in case of an abandoned contract.
+     * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
+     */
+    function withdrawLeftoverRewards() external onlyOwner {
+        uint256 balance = rewardsToken.balanceOf(address(this));
+        if (balance == 0) revert NoRewardsLeftInContract();
+
+        rewardsToken.transfer(owner(), balance);
+
+        emit RewardLeftoverWithdrawal(owner(), balance);
+    }
+
+    ////////////////////////////////////
+    /* Token Functions */
+    ////////////////////////////////////
+    function setBaseURI(string memory baseUri) external override onlyOwner {
+        baseURI = baseUri;
+        emit BaseURIUpdated(baseUri);
+    }
+
+    function setTokenURI(uint256 tokenId, string memory tokenUri) external override onlyOwner {
+        _setTokenURI(tokenId, tokenUri);
     }
 
     ////////////////////////////////////

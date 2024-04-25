@@ -29,6 +29,19 @@ interface IStakingERC721 {
     event Unstaked(uint256 indexed tokenId, address indexed stakingToken);
 
     /**
+     * @dev Emitted when the contract owner withdraws leftover rewards
+     * @param owner The address of the contract owner
+     * @param amount The amount of rewards withdrawn
+     */
+    event RewardLeftoverWithdrawal(address indexed owner, uint256 indexed amount);
+
+    /**
+     * @dev Emitted when the base URI is updated
+     * @param baseURI The new base URI
+     */
+    event BaseURIUpdated(string baseURI);
+
+    /**
      * @notice Struct to track a set of data for each staker
      * @param unlockTimestamp The timestamp at which the stake can be unstaked
      * @param pendingRewards The amount of rewards that have not been claimed
