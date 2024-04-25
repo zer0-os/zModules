@@ -33,6 +33,7 @@ contract Escrow is IEscrow, Ownable{
     }
 
     function pay(address client, uint256 amount) public override onlyOwner {
+        require(token.balanceOf(address(this)) >= amount, "Contract not funded");
         balance[client] += amount;
         emit Payment(client, amount);
     }

@@ -32,8 +32,6 @@ describe("Match Contract", function () {
         match = (await MatchFactory.deploy(mockERC20Address, ownerAddress)) as Match;
         matchAddress = await match.getAddress();
 
-        await match.transferOwnership(matchAddress);
-
         await mockERC20.mint(addr1Address, ethers.parseEther("1000"));
         await mockERC20.mint(addr2Address, ethers.parseEther("500"));
         //await mockERC20.mint(matchAddress, ethers.parseEther("1000000"));
@@ -47,28 +45,41 @@ describe("Match Contract", function () {
             await mockERC20.connect(addr1).approve(matchAddress, depositAmount);
             await match.connect(addr1).deposit(depositAmount);
 
-            const canMatchBefore = await match.canMatch([addr1Address, addr2Address], depositAmount);
-            expect(canMatchBefore).to.be.false;
+            await expect(match.canMatch([addr1Address, addr2Address], depositAmount)).to.be.revertedWithCustomError(match, "PlayersNotFunded");
 
             await mockERC20.connect(addr2).approve(matchAddress, depositAmount);
             await match.connect(addr2).deposit(depositAmount);
-            const canMatchAfter = await match.canMatch([addr1Address, addr2Address], depositAmount);
-            expect(canMatchAfter).to.be.true;
+            await match.canMatch([addr1Address, addr2Address], depositAmount);
         });
 
         it("Should pay winners variable amounts and emit Payment event for each", async function () {
-            const amounts = [ethers.parseEther("25"), ethers.parseEther("75")];
+            const balance1Before = await match.balance(addr1Address);
+            const balance2Before = await match.balance(addr2Address);
+            const amt1 = ethers.parseEther("25");
+            const amt2 = ethers.parseEther("75");
+            const amounts = [amt1, amt2];
             const winners = [addr1Address, addr2Address];
-            const finalBal1 = ethers.parseEther("175");
-            const finalBal2 = ethers.parseEther("225");
 
             await match.connect(owner).payAllAmounts(amounts, winners);
 
             // Check final balances
             const addr1FinalBalance = await match.balance(addr1Address);
             const addr2FinalBalance = await match.balance(addr2Address);
-            expect(addr1FinalBalance).to.equal(finalBal1);
-            expect(addr2FinalBalance).to.equal(finalBal2);
+            expect(addr1FinalBalance).to.equal(balance1Before + amt1);
+            expect(addr2FinalBalance).to.equal(balance2Before + amt2);
+        });
+        it("should handle sequential payAllAmounts calls correctly", async function () {
+            const balance1Before = await match.balance(addr1Address);
+            const balance2Before = await match.balance(addr2Address);
+            const paymentAmounts = [ethers.parseEther("1"), ethers.parseEther("9")];
+            const winners = [addr1Address, addr2Address];
+            await match.payAllAmounts(paymentAmounts, winners);
+            await match.payAllAmounts(paymentAmounts, winners);
+
+            const balance1 = await match.balance(addr1Address);
+            const balance2 = await match.balance(addr2Address);
+            expect(balance1).to.equal(balance1Before + paymentAmounts[0] + paymentAmounts[0]);
+            expect(balance2).to.equal(balance2Before + paymentAmounts[1] + paymentAmounts[1]);
         });
     });
 
@@ -88,23 +99,11 @@ describe("Match Contract", function () {
 
         it("Reverts payAllAmounts with insufficient paymentAccount balance", async function () {
             // Assuming the match balance for addr2Address is less than 50 ether for this example
-            const amounts = [ethers.parseEther("50000000000000000000000")];
+            const amounts = [ethers.parseEther("5000000000000000000000000000000000000000")];
             const winners = [addr2Address];
             await expect(match.payAllAmounts(amounts, winners))
-                .to.be.revertedWith("ERC20: insufficient allowance");
+                .to.be.revertedWith("Contract not funded");
         });
-        it("should handle sequential payAllAmounts calls correctly", async function () {
-            const balance1Before = await match.balance(addr1Address);
-            const balance2Before = await match.balance(addr2Address);
-            const paymentAmounts = [ethers.parseEther("1"), ethers.parseEther("9")];
-            const winners = [addr1Address, addr2Address];
-            await match.payAllAmounts(paymentAmounts, winners);
-            await match.payAllAmounts(paymentAmounts, winners);
 
-            const balance1 = await match.balance(addr1Address);
-            const balance2 = await match.balance(addr2Address);
-            expect(balance1).to.equal(balance1Before + paymentAmounts[0] + paymentAmounts[1]);
-            expect(balance2).to.equal(balance2Before + paymentAmounts[0] + paymentAmounts[1]);
-        });
     });
 });
