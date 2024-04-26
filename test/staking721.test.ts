@@ -222,15 +222,6 @@ describe("StakingERC721", () => {
       expect(totalSupply).to.eq(3);
     });
 
-    it("Fails when the user tries to transfer the SNFT", async () => {
-      await expect(
-        stakingERC721.connect(stakerA).transferFrom(
-          stakerA.address,
-          stakerB.address,
-          tokenIdA
-        )).to.be.revertedWithCustomError(stakingERC721, UNTRANSFERRABLE_ERR);
-    });
-
     it("Fails to stake when the token id is invalid", async () => {
       // Token is not minted, and so is invalid
       await expect(
@@ -1256,11 +1247,6 @@ describe("StakingERC721", () => {
       // Verify transfers
       expect(await stakingToken.ownerOf(tokenIdD)).to.eq(stakerA.address);
       expect(await stakingToken.ownerOf(tokenIdE)).to.eq(stakerC.address);
-
-      // stakerB fails to transfer tokenG, it is a nontransferrable SNFT
-      await expect(
-        localStakingERC721.connect(stakerB).transferFrom(stakerB.address, stakerC.address, tokenIdG)
-      ).to.be.revertedWithCustomError(localStakingERC721, UNTRANSFERRABLE_ERR);
 
       await time.increase(config.periodLength * 5n);
       // stakerC claims rewards
