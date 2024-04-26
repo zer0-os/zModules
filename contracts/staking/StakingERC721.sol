@@ -3,10 +3,13 @@ pragma solidity ^0.8.19;
 
 import { ERC721NonTransferrable } from "../tokens/ERC721NonTransferrable.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { StakingBase } from "./StakingBase.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 
 /**
@@ -97,7 +100,8 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, Ownable, IStaking
     function unstake(uint256[] memory tokenIds, bool exit) external override {
         Staker storage staker = stakers[msg.sender];
 
-        _onlyUnlocked(staker.unlockTimestamp);
+        // TODO stake: how do we optimize this to not have 2 of the same ifs?
+        if (!exit) _onlyUnlocked(staker.unlockTimestamp);
 
         uint256 i;
         for (i; i < tokenIds.length;) {
@@ -148,6 +152,20 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, Ownable, IStaking
         }
 
         return staker.unlockTimestamp - block.timestamp;
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+    public
+    view
+    virtual
+    override
+    returns (bool) {
+        return interfaceId == type(IStakingERC721).interfaceId
+            || super.supportsInterface(interfaceId);
+    }
+
+    function getInterfaceId() external pure returns (bytes4) {
+        return type(IStakingERC721).interfaceId;
     }
 
     /**

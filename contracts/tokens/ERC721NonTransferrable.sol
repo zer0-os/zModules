@@ -12,11 +12,8 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
  * @notice A non-transferrable ERC721 token
  */
 abstract contract ERC721NonTransferrable is ERC721, ERC721URIStorage, IERC721NonTransferrable {
-    // TODO stake: - add both options for URI and baseURI - TEST THIS!!!
-    //  - add admin withdraw function +
-    //  - fix and make proper inheritance with interfaces !!!
+    // TODO stake: - fix and make proper inheritance with interfaces !!!
     //  - does it have to be non-transferrable?!?! what if a user lost his wallet? change name!
-    //  - should we add totalSupply?!?!
 
     /**
      * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
@@ -77,7 +74,8 @@ abstract contract ERC721NonTransferrable is ERC721, ERC721URIStorage, IERC721Non
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721URIStorage, ERC721, IERC165) returns (bool) {
-        return super.supportsInterface(interfaceId);
+        return interfaceId == type(IERC721NonTransferrable).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     function tokenURI(uint256 tokenId) public view override(ERC721URIStorage, ERC721) returns (string memory) {
