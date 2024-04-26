@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IERC721NonTransferrable } from "./IERC721NonTransferrable.sol";
+import { IStakeToken } from "./IStakeToken.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 
 /**
- * @title ERC721NonTransferrable
- * @notice A non-transferrable ERC721 token
+ * @title StakeToken
+ * @notice A modified version of ERC721 which is issued to the user as a representation of staked asset.
+ * @dev Ownership of tokens minted by this contract is used for Access Control in the child staking contract.
  */
-abstract contract ERC721NonTransferrable is ERC721, ERC721URIStorage, IERC721NonTransferrable {
+abstract contract StakeToken is ERC721, ERC721URIStorage, IStakeToken {
     // TODO stake: - fix and make proper inheritance with interfaces !!!
     //  - does it have to be non-transferrable?!?! what if a user lost his wallet? change name!
 
@@ -52,6 +53,15 @@ abstract contract ERC721NonTransferrable is ERC721, ERC721URIStorage, IERC721Non
         return this.onERC721Received.selector;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721URIStorage, ERC721, IERC165) returns (bool) {
+        return interfaceId == type(IStakeToken).interfaceId
+            || super.supportsInterface(interfaceId);
+    }
+
+    function tokenURI(uint256 tokenId) public view override(ERC721URIStorage, ERC721) returns (string memory) {
+        return super.tokenURI(tokenId);
+    }
+
     function _safeMint(address to, uint256 tokenId, string memory tokenUri) internal {
         ++_totalSupply;
         super._safeMint(to, tokenId);
@@ -71,26 +81,5 @@ abstract contract ERC721NonTransferrable is ERC721, ERC721URIStorage, IERC721Non
 
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721URIStorage, ERC721, IERC165) returns (bool) {
-        return interfaceId == type(IERC721NonTransferrable).interfaceId
-            || super.supportsInterface(interfaceId);
-    }
-
-    function tokenURI(uint256 tokenId) public view override(ERC721URIStorage, ERC721) returns (string memory) {
-        return super.tokenURI(tokenId);
-    }
-
-    // Disallow all transfers, only `_mint` and `_burn` are allowed
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256,
-        uint256
-    ) internal pure override {
-        if (from != address(0) && to != address(0)) {
-            revert NonTransferrableToken();
-        }
     }
 }

@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ERC721NonTransferrable } from "../tokens/ERC721NonTransferrable.sol";
+import { StakeToken } from "../tokens/StakeToken.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { StakingBase } from "./StakingBase.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 
 /**
@@ -17,7 +14,7 @@ import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extension
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
  * non-transferable ERC721 token in return as representation of the deposit.
  */
-contract StakingERC721 is ERC721NonTransferrable, StakingBase, Ownable, IStakingERC721 {
+contract StakingERC721 is StakeToken, StakingBase, Ownable, IStakingERC721 {
     /**
      * @dev Mapping of each staker to that staker's data in the `Staker` struct
      */
@@ -43,7 +40,7 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, Ownable, IStaking
         uint256 _periodLength,
         uint256 _timeLockPeriod
     )
-        ERC721NonTransferrable(name, symbol, baseUri)
+        StakeToken(name, symbol, baseUri)
         StakingBase(
             _stakingToken,
             _rewardsToken,
@@ -56,9 +53,12 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, Ownable, IStaking
     /**
      * @notice Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in return
      * @param tokenIds Array of tokenIds to be staked by the caller
-     * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. Send 0 if baseUri is used!
+     * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used!
      */
-    function stake(uint256[] calldata tokenIds, string[] calldata tokenUris) external override {
+    function stake(
+        uint256[] calldata tokenIds,
+        string[] calldata tokenUris
+    ) external override {
         Staker storage staker = stakers[msg.sender];
 
         if (staker.numStaked > 0) {
@@ -154,18 +154,18 @@ contract StakingERC721 is ERC721NonTransferrable, StakingBase, Ownable, IStaking
         return staker.unlockTimestamp - block.timestamp;
     }
 
+    function getInterfaceId() external pure returns (bytes4) {
+        return type(IStakingERC721).interfaceId;
+    }
+
     function supportsInterface(bytes4 interfaceId)
-    public
+    external
     view
     virtual
     override
     returns (bool) {
         return interfaceId == type(IStakingERC721).interfaceId
             || super.supportsInterface(interfaceId);
-    }
-
-    function getInterfaceId() external pure returns (bytes4) {
-        return type(IStakingERC721).interfaceId;
     }
 
     /**

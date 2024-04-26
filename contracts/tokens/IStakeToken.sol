@@ -5,6 +5,4 @@ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 
-interface IERC721NonTransferrable is IERC721, IERC721Receiver {
-    error NonTransferrableToken();
-}
+interface IStakeToken is IERC721, IERC721Receiver {}
