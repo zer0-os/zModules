@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IStakeToken } from "./IStakeToken.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -12,10 +11,7 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
  * @notice A modified version of ERC721 which is issued to the user as a representation of staked asset.
  * @dev Ownership of tokens minted by this contract is used for Access Control in the child staking contract.
  */
-abstract contract StakeToken is ERC721, ERC721URIStorage, IStakeToken {
-    // TODO stake: - fix and make proper inheritance with interfaces !!!
-    //  - does it have to be non-transferrable?!?! what if a user lost his wallet? change name!
-
+abstract contract StakeTokenBase is ERC721, ERC721URIStorage {
     /**
      * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
      */
@@ -36,7 +32,7 @@ abstract contract StakeToken is ERC721, ERC721URIStorage, IStakeToken {
         }
     }
 
-    function totalSupply() external view returns (uint256) {
+    function totalSupply() public view returns (uint256) {
         return _totalSupply;
     }
 
@@ -49,13 +45,10 @@ abstract contract StakeToken is ERC721, ERC721URIStorage, IStakeToken {
         address,
         uint256,
         bytes calldata
-    ) external pure override returns (bytes4) {
-        return this.onERC721Received.selector;
-    }
+    ) external pure virtual returns (bytes4);
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721URIStorage, ERC721, IERC165) returns (bool) {
-        return interfaceId == type(IStakeToken).interfaceId
-            || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721URIStorage, ERC721) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 
     function tokenURI(uint256 tokenId) public view override(ERC721URIStorage, ERC721) returns (string memory) {

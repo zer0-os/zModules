@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+
 
 /**
  * @title IStakingERC721
  * @notice Interface for the ERC721 staking contract
  */
-interface IStakingERC721 {
+interface IStakingERC721 is IERC721, IERC721Receiver {
     /**
      * @notice Struct to track a set of data for each staker
      * @param unlockTimestamp The timestamp at which the stake can be unstaked
@@ -66,4 +69,16 @@ interface IStakingERC721 {
     function getPendingRewards() external view returns (uint256);
 
     function getRemainingLockTime() external view returns (uint256);
+
+    function totalSupply() external view returns (uint256);
+
+    function setBaseURI(string memory baseUri) external;
+
+    function setTokenURI(uint256 tokenId, string memory tokenUri) external;
+
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+
+    function getInterfaceId() external pure returns (bytes4);
+
+    function withdrawLeftoverRewards() external;
 }
