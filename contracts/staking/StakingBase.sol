@@ -11,8 +11,7 @@ import { IStakingBase } from "./IStakingBase.sol";
  * @notice A set of common elements that are used in any Staking contract
  */
 contract StakingBase is Ownable, IStakingBase {
-
-	/**
+    /**
      * @dev Mapping of each staker to that staker's data in the `Staker` struct
      */
     mapping(address staker => Staker stakerData) public stakers;
@@ -50,12 +49,11 @@ contract StakingBase is Ownable, IStakingBase {
         uint256 _timeLockPeriod
     ) {
         if (
-            _stakingToken == address(0)
-            || address(_rewardsToken) == address(0)
-            || _rewardsPerPeriod == 0
-            || _periodLength == 0
-        )
-            revert InitializedWithZero();
+            _stakingToken == address(0) ||
+            address(_rewardsToken) == address(0) ||
+            _rewardsPerPeriod == 0 ||
+            _periodLength == 0
+        ) revert InitializedWithZero();
 
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
@@ -64,16 +62,17 @@ contract StakingBase is Ownable, IStakingBase {
         timeLockPeriod = _timeLockPeriod;
     }
 
-	/**
-	 * @notice Claim rewards for the calling user based on their staked amount
-	 */
-	// TODO this is two reads of `stakers` mapping in the `unstake` flow
-	function claim() public override {
-		uint256 rewards = _baseClaim(stakers[msg.sender]);
+    /**
+     * @notice Claim rewards for the calling user based on their staked amount
+     */
+    // TODO this is two reads of `stakers` mapping in the `unstake` flow
+	// TODO make this accept staker as param instead?
+    function claim() public override {
+        uint256 rewards = _baseClaim(stakers[msg.sender]);
         emit Claimed(rewards, address(rewardsToken));
-	}
+    }
 
-	/**
+    /**
      * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
      */
     function getRemainingLockTime() external view override returns (uint256) {
@@ -86,22 +85,27 @@ contract StakingBase is Ownable, IStakingBase {
         return staker.unlockTimestamp - block.timestamp;
     }
 
-	/**
+    /**
      * @notice View the pending rewards balance for a user
      */
     function getPendingRewards() external view override returns (uint256) {
         return _getPendingRewards(stakers[msg.sender]);
     }
 
-	/**
+    /**
      * @notice View the rewards balance in this pool
      */
-    function getContractRewardsBalance() external view override returns (uint256) {
+    function getContractRewardsBalance()
+        external
+        view
+        override
+        returns (uint256)
+    {
         return _getContractRewardsBalance();
     }
 
-	/**
-	 * @notice Emergency function for the contract owner to withdraw leftover rewards
+    /**
+     * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
@@ -114,15 +118,17 @@ contract StakingBase is Ownable, IStakingBase {
         emit RewardLeftoverWithdrawal(owner(), balance);
     }
 
-	// TODO (make nicer) INTERNAL
+    // TODO (make nicer) INTERNAL
 
-	function _baseClaim(Staker storage staker) internal virtual returns(uint256) {
-		// Require the time lock to have passed
+    function _baseClaim(
+        Staker storage staker
+    ) internal virtual returns (uint256) {
+        // Require the time lock to have passed
         _onlyUnlocked(staker.unlockTimestamp);
 
         uint256 rewards = _getPendingRewards(staker);
 
-		staker.lastUpdatedTimestamp = block.timestamp;
+        staker.lastUpdatedTimestamp = block.timestamp;
         staker.pendingRewards = 0;
 
         // Disallow rewards when balance is 0
@@ -131,40 +137,29 @@ contract StakingBase is Ownable, IStakingBase {
         }
 
         rewardsToken.transfer(msg.sender, rewards);
-		
-		// For events
-		return rewards;
-	}
 
-    /**
-     * @notice Calculate rewards for a staker
-     * @dev Returns 0 if time lock period is not passed
-     * @param timePassed Time passed since last stake or claim, in seconds
-     * @param stakeAmount Amount of staking token staked
-     */
-    function _calculateRewards(
-        uint256 timePassed,
-        uint256 stakeAmount
-    ) internal view returns (uint256) {
-        return rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+        // For events
+        return rewards;
     }
 
-		function _getPendingRewards(
+    function _getPendingRewards(
         Staker storage staker
     ) internal view returns (uint256) {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
-        return staker.pendingRewards +
-			(rewardsPerPeriod * staker.amountStaked * (
-					(block.timestamp - staker.lastUpdatedTimestamp) / periodLength)
-				);
+        return
+            staker.pendingRewards +
+            (rewardsPerPeriod *
+                staker.amountStaked *
+                ((block.timestamp - staker.lastUpdatedTimestamp) /
+                    periodLength));
     }
 
-	function _getContractRewardsBalance() internal view returns (uint256) {
+    function _getContractRewardsBalance() internal view returns (uint256) {
         return rewardsToken.balanceOf(address(this));
     }
 
-	function _onlyUnlocked(uint256 unlockTimestamp) internal view {
+    function _onlyUnlocked(uint256 unlockTimestamp) internal view {
         // User is not staked or has not passed the time lock
         if (unlockTimestamp == 0 || block.timestamp < unlockTimestamp) {
             revert TimeLockNotPassed();

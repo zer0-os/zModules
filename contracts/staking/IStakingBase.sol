@@ -29,11 +29,6 @@ interface IStakingBase {
      */
     error InitializedWithZero();
 
-	/**
-	 * @dev Throw when trying to transfer the representative sNFT
-	 */
-	error NonTransferrableToken();
-
     /**
      * @dev Emitted when the contract owner withdraws leftover rewards
      * @param owner The address of the contract owner

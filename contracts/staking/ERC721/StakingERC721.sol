@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-// import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-// import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
 
 // TODO rename so not similar to StakingBase
@@ -87,15 +85,6 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
     }
 
     /**
-     * @notice Claim rewards for all staked ERC721 tokens
-     * @dev Will revert if the time lock period has not been met or if
-     * the user has not staked any tokens
-     */
-    // function claim() external override {
-    //     _claim(stakers[msg.sender]);
-    // }
-
-    /**
      * @notice Unstake one or more ERC721 tokens
      * @param tokenIds Array of tokenIds to be unstaked by the caller
      * @param exit Flag for if the user would like to exit without rewards
@@ -115,7 +104,7 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
         }
 
         if (!exit) {
-            _claim(staker);
+            claim();
         }
 
         // if `numStaked < tokenIds.length` it will have already failed above
@@ -129,79 +118,6 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
         }
     }
 
-    /**
-     * @notice View the rewards balance in this pool
-     */
-    // function getContractRewardsBalance() external view override returns (uint256) {
-    //     return _getContractRewardsBalance();
-    // }
-
-    // /**
-    //  * @notice View the pending rewards balance for a user
-    //  */
-    // function getPendingRewards() external view override returns (uint256) {
-    //     return _getPendingRewards(stakers[msg.sender]);
-    // }
-
-    // /**
-    //  * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
-    //  */
-    // function getRemainingLockTime() external view override returns (uint256) {
-    //     // Return the time remaining for the stake to be claimed or unstaked
-    //     Staker memory staker = stakers[msg.sender];
-    //     if (block.timestamp > staker.unlockTimestamp) {
-    //         return 0;
-    //     }
-
-    //     return staker.unlockTimestamp - block.timestamp;
-    // }
-
-    ////////////////////////////////////
-    /* ERC-165 */
-    ////////////////////////////////////
-
-    // function supportsInterface(bytes4 interfaceId)
-    // public
-    // view
-    // virtual
-    // override(ERC721)
-    // returns (bool) {
-    //     return interfaceId == type(IStakingERC721).interfaceId
-    //         || super.supportsInterface(interfaceId);
-    // }
-
-    // function getInterfaceId() external pure override returns (bytes4) {
-    //     return type(IStakingERC721).interfaceId;
-    // }
-
-    ////////////////////////////////////
-    /* Token Functions */
-    ////////////////////////////////////
-
-    // function totalSupply() external view override returns (uint256) {
-    //     return _totalSupply;
-    // }
-
-    function setBaseURI(string memory baseUri) external override onlyOwner {
-        baseURI = baseUri;
-        emit BaseURIUpdated(baseUri);
-    }
-
-    function setTokenURI(
-        uint256 tokenId,
-        string memory tokenUri
-    ) external override onlyOwner {
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    // function tokenURI(uint256 tokenId)
-	// public 
-	// view 
-	// override
-	// returns (string memory) {
-    //     return super.tokenURI(tokenId);
-    // }
-
     function onERC721Received(
         address,
         address,
@@ -214,19 +130,6 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
     ////////////////////////////////////
     /* Internal Functions Staking */
     ////////////////////////////////////
-
-    // function _getPendingRewards(
-    //     Staker storage staker
-    // ) internal view returns (uint256) {
-    //     // Return any existing pending rewards value plus the
-    //     // calculated rewards based on the last updated timestamp
-    //     return
-    //         staker.pendingRewards +
-    //         _calculateRewards(
-    //             block.timestamp - staker.lastUpdatedTimestamp,
-    //             staker.amountStaked
-    //         );
-    // }
 
     function _stake(uint256 tokenId, string memory tokenUri) internal {
         // Transfer their NFT to this contract
@@ -242,26 +145,6 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
         emit Staked(tokenId, stakingToken);
     }
 
-    function _claim(Staker storage staker) internal {
-        // Require the time lock to have passed
-        _onlyUnlocked(staker.unlockTimestamp);
-
-        // Returns the calculated rewards since the last time stamp + pending rewards
-        uint256 rewards = _getPendingRewards(staker);
-
-        staker.lastUpdatedTimestamp = block.timestamp;
-        staker.pendingRewards = 0;
-
-        // Disallow rewards when balance is 0
-        if (_getContractRewardsBalance() == 0) {
-            revert NoRewardsLeftInContract();
-        }
-
-        rewardsToken.transfer(msg.sender, rewards);
-
-        emit Claimed(rewards, address(rewardsToken));
-    }
-
     function _unstake(uint256 tokenId) internal onlySNFTOwner(tokenId) {
         _burn(tokenId);
 
@@ -273,55 +156,5 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
         );
 
         emit Unstaked(tokenId, stakingToken);
-    }
-
-    // function _getContractRewardsBalance() internal view returns (uint256) {
-    //     return rewardsToken.balanceOf(address(this));
-    // }
-
-    // function _onlyUnlocked(uint256 unlockTimestamp) internal view {
-    //     // User is not staked or has not passed the time lock
-    //     if (unlockTimestamp == 0 || block.timestamp < unlockTimestamp) {
-    //         revert TimeLockNotPassed();
-    //     }
-    // }
-
-    ////////////////////////////////////
-    /* Internal Functions Token */
-    ////////////////////////////////////
-
-    // function _safeMint(address to, uint256 tokenId, string memory tokenUri) internal {
-    //     ++_totalSupply;
-    //     super._safeMint(to, tokenId);
-    //     _setTokenURI(tokenId, tokenUri);
-    // }
-
-    // function _mint(address to, uint256 tokenId, string memory tokenUri) internal {
-    //     ++_totalSupply;
-    //     super._mint(to, tokenId);
-    //     _setTokenURI(tokenId, tokenUri);
-    // }
-
-    // function _burn(uint256 tokenId) internal override {
-    //     super._burn(tokenId);
-    //     --_totalSupply;
-    // }
-
-    // function _baseURI() internal view override returns (string memory) {
-    //     return baseURI;
-    // }
-
-	/**
-	 * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
-	 */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256,
-        uint256
-    ) internal pure override {
-        if (from != address(0) && to != address(0)) {
-            revert NonTransferrableToken();
-        }
     }
 }
