@@ -64,6 +64,12 @@ interface IStakingERC721 is IERC721, IERC721Receiver {
 
     function unstake(uint256[] memory tokenIds, bool exit) external;
 
+    function setBaseURI(string memory baseUri) external;
+
+    function setTokenURI(uint256 tokenId, string memory tokenUri) external;
+
+    function withdrawLeftoverRewards() external;
+
     function getContractRewardsBalance() external view returns (uint256);
 
     function getPendingRewards() external view returns (uint256);
@@ -72,13 +78,7 @@ interface IStakingERC721 is IERC721, IERC721Receiver {
 
     function totalSupply() external view returns (uint256);
 
-    function setBaseURI(string memory baseUri) external;
-
-    function setTokenURI(uint256 tokenId, string memory tokenUri) external;
-
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 
     function getInterfaceId() external pure returns (bytes4);
-
-    function withdrawLeftoverRewards() external;
 }

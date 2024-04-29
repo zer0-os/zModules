@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { StakeTokenBase } from "../tokens/StakeTokenBase.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { StakingBase } from "./StakingBase.sol";
@@ -144,6 +143,20 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
     }
 
     /**
+* @notice Emergency function for the contract owner to withdraw leftover rewards
+     * in case of an abandoned contract.
+     * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
+     */
+    function withdrawLeftoverRewards() external override onlyOwner {
+        uint256 balance = rewardsToken.balanceOf(address(this));
+        if (balance == 0) revert NoRewardsLeftInContract();
+
+        rewardsToken.transfer(owner(), balance);
+
+        emit RewardLeftoverWithdrawal(owner(), balance);
+    }
+
+    /**
      * @notice View the rewards balance in this pool
      */
     function getContractRewardsBalance() external view override returns (uint256) {
@@ -168,20 +181,6 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         }
 
         return staker.unlockTimestamp - block.timestamp;
-    }
-
-    /**
- * @notice Emergency function for the contract owner to withdraw leftover rewards
-     * in case of an abandoned contract.
-     * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
-     */
-    function withdrawLeftoverRewards() external override onlyOwner {
-        uint256 balance = rewardsToken.balanceOf(address(this));
-        if (balance == 0) revert NoRewardsLeftInContract();
-
-        rewardsToken.transfer(owner(), balance);
-
-        emit RewardLeftoverWithdrawal(owner(), balance);
     }
 
     ////////////////////////////////////
@@ -233,7 +232,7 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         address,
         uint256,
         bytes calldata
-    ) external pure returns (bytes4) {
+    ) external pure override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 

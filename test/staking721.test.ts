@@ -20,12 +20,12 @@ import {
   ONLY_NFT_OWNER_ERR,
   TIME_LOCK_NOT_PASSED_ERR,
   BaseConfig,
-  UNTRANSFERRABLE_ERR,
   FUNCTION_SELECTOR_ERR,
   ZERO_INIT_ERR, NOT_OWNER_ERR,
 } from "./helpers/staking";
 
-
+// TODO stake: test token transfers with unstake and claim. Make sure a user after transferring a token
+//  can still claim rewards and unstake. Also test that the user can't claim rewards for a token they no longer own
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
   let stakerA : SignerWithAddress;
