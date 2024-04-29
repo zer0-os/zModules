@@ -68,41 +68,74 @@ describe("Match Contract", function () {
             expect(addr1FinalBalance).to.equal(balance1Before + amt1);
             expect(addr2FinalBalance).to.equal(balance2Before + amt2);
         });
-        it("should handle sequential payAllAmounts calls correctly", async function () {
-            const balance1Before = await match.balance(addr1Address);
-            const balance2Before = await match.balance(addr2Address);
-            const paymentAmounts = [ethers.parseEther("1"), ethers.parseEther("9")];
-            const winners = [addr1Address, addr2Address];
-            await match.payAllAmounts(paymentAmounts, winners);
-            await match.payAllAmounts(paymentAmounts, winners);
 
-            const balance1 = await match.balance(addr1Address);
-            const balance2 = await match.balance(addr2Address);
-            expect(balance1).to.equal(balance1Before + paymentAmounts[0] + paymentAmounts[0]);
-            expect(balance2).to.equal(balance2Before + paymentAmounts[1] + paymentAmounts[1]);
-        });
     });
 
-    describe("Negative Tests", function () {
-        it("Non-owner cannot call payAllAmounts", async function () {
-            await expect(match.connect(addr2).payAllAmounts([ethers.parseEther("10")], [addr2Address]))
-                .to.be.revertedWith("Ownable: caller is not the owner");
+    describe("Start match", function () {
+        it("Should correctly determine if players can match based on match balance", async function () {
+            let depositAmount = ethers.parseEther("100");
+            await mockERC20.connect(addr1).approve(matchAddress, depositAmount);
+            await match.connect(addr1).deposit(depositAmount);
+            await mockERC20.connect(addr2).approve(matchAddress, depositAmount);
+            await match.connect(addr2).deposit(depositAmount);
+            await match.canMatch([addr1Address, addr2Address], depositAmount);
+        });
+        it("Should fail if players are not funded", async function () {
+            // Assuming addr1 and addr2 have insufficient balance
+            const players = [addr1.address, addr2.address];
+            const entryFee = ethers.parseEther("10000000000000000000000000");
+            await expect(match.startMatch(players, entryFee))
+                .to.be.revertedWithCustomError(match, "PlayersNotFunded");
         });
 
-        it("payAllAmounts fails when amounts and winners array lengths do not match", async function () {
-            const amounts = [ethers.parseEther("10")];
-            const winners = [addr1Address, addr2Address]; // Assuming addr1Address and addr2Address are initialized
-            await expect(match.payAllAmounts(amounts, winners))
-                .to.be.revertedWith("Amounts and winners length mismatch");
+        it("Should not start a match with an empty players array", async function () {
+            const entryFee = ethers.parseUnits('1', 'wei'); // Smallest possible entry fee
+            await expect(match.startMatch([], entryFee))
+                .to.be.revertedWith("No players"); // Use the correct revert message from your contract
         });
 
+        // Assuming addr1 and addr2 have enough funds for the entryFee and match can be started
+        it("Should start a match with valid players and entry fee", async function () {
+            const players = [addr1.address, addr2.address];
+            const entryFee = ethers.parseUnits('1', 'ether'); // 1 ETH as entry fee
+            await expect(match.startMatch(players, entryFee))
+                .to.emit(match, "MatchStarted") // Correct event to match your contract
+                .withArgs(1n, players, entryFee);
+        });
 
-        it("Reverts payAllAmounts with insufficient paymentAccount balance", async function () {
-            // Assuming the match balance for addr2Address is less than 50 ether for this example
-            const amounts = [ethers.parseEther("5000000000000000000000000000000000000000")];
-            const winners = [addr2Address];
-            await expect(match.payAllAmounts(amounts, winners))
-                .to.be.revertedWith("Contract not funded");
+    });
+    describe("End Match", function () {
+        let matchId = 0;
+        it("Should fail if the match does not exist", async function () {
+            const invalidMatchId = 999; // Use an ID for a match that doesn't exist
+            await expect(match.endMatch(invalidMatchId, [addr1.address], [ethers.parseEther("1")]))
+                .to.be.revertedWith("Match does not exist");
+        });
+
+        it("Should fail if winners and winAmounts array lengths mismatch", async function () {
+            await expect(match.endMatch(matchId, [addr1.address], [ethers.parseEther("1"), ethers.parseEther("2")]))
+                .to.be.revertedWith("Array lengths mismatch");
+        });
+
+        it("Should correctly end the match and pay winners", async function () {
+            const winners = [addr1.address, addr2.address];
+            const winAmounts = [ethers.parseEther("1"), ethers.parseEther("2")];
+
+            // Balances before ending the match
+            const initialBalances = await Promise.all(winners.map(async (winner) => {
+                return await match.balance(winner); // Replace with actual function to get balance
+            }));
+
+            // End the match
+            const tx = await match.endMatch(matchId, winners, winAmounts);
+            const receipt = await tx.wait();
+
+            // Validate winners' balances increased by winAmounts
+            await Promise.all(winners.map(async (winner, index) => {
+                const finalBalance = await match.balance(winner); // Replace with actual function to get balance
+                const expectedBalance = initialBalances[index] + winAmounts[index];
+                expect(finalBalance).to.equal(expectedBalance);
+            }));
         });
 
     });

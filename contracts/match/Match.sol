@@ -38,6 +38,7 @@ contract Match is IMatch, Escrow {
     }
 
     function startMatch(address[] calldata players, uint entryFee) external override {
+        require(players.length > 0, "No players");
         canMatch(players, entryFee);
         
         MatchData storage matchData = matches[nextMatchId];
@@ -49,15 +50,21 @@ contract Match is IMatch, Escrow {
         for(uint i = 0; i < players.length; i++) {
             charge(players[i], entryFee);
         }
+
+        emit MatchStarted(nextMatchId, players, entryFee);
     }
 
-    function endMatch(uint matchId, address[] calldata winners, uint winAmount) external override {
+    function endMatch(uint matchId, address[] calldata winners, uint[] calldata winAmounts) external override {
         require(matches[matchId].startTime != 0, "Match does not exist");
+        require(winners.length == winAmounts.length, "Array lengths mismatch");
+
         matches[matchId].endTime = block.timestamp;
 
         for(uint i = 0; i < winners.length; i++) {
-            pay(winners[i], winAmount);
+            pay(winners[i], winAmounts[i]);
         }   
+
+        emit MatchEnded(matchId, block.timestamp, winners, winAmounts);
     }
 
     function getMatchData(uint id) external view override returns (uint, uint, uint, address[] memory) {
