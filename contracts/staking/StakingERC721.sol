@@ -115,7 +115,6 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
     function unstake(uint256[] memory tokenIds, bool exit) external override {
         Staker storage staker = stakers[msg.sender];
 
-        // TODO stake: how do we optimize this to not have 2 of the same ifs?
         if (!exit) _onlyUnlocked(staker.unlockTimestamp);
 
         uint256 i;
@@ -186,6 +185,7 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
     ////////////////////////////////////
     /* ERC-165 */
     ////////////////////////////////////
+
     function supportsInterface(bytes4 interfaceId)
     public
     view
@@ -208,10 +208,7 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         return _totalSupply;
     }
 
-    function setBaseURI(string memory baseUri)
-    external
-    override
-    onlyOwner {
+    function setBaseURI(string memory baseUri) external override onlyOwner {
         baseURI = baseUri;
         emit BaseURIUpdated(baseUri);
     }
@@ -223,7 +220,11 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function tokenURI(uint256 tokenId) public view override(ERC721URIStorage, ERC721) returns (string memory) {
+    function tokenURI(uint256 tokenId)
+	public 
+	view 
+	override(ERC721URIStorage, ERC721)
+	returns (string memory) {
         return super.tokenURI(tokenId);
     }
 
@@ -334,5 +335,19 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
 
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
+    }
+
+	/**
+	 * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
+	 */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256,
+        uint256
+    ) internal pure override {
+        if (from != address(0) && to != address(0)) {
+            revert NonTransferrableToken();
+        }
     }
 }

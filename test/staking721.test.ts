@@ -22,6 +22,7 @@ import {
   BaseConfig,
   FUNCTION_SELECTOR_ERR,
   ZERO_INIT_ERR, NOT_OWNER_ERR,
+  NON_TRANSFERRABLE_ERR,
 } from "./helpers/staking";
 
 // TODO stake: test token transfers with unstake and claim. Make sure a user after transferring a token
@@ -220,6 +221,15 @@ describe("StakingERC721", () => {
 
       const totalSupply = await stakingERC721.totalSupply();
       expect(totalSupply).to.eq(3);
+    });
+
+    it("Fails when the user tries to transfer the SNFT", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).transferFrom(
+          stakerA.address,
+          stakerB.address,
+          tokenIdA
+        )).to.be.revertedWithCustomError(stakingERC721, NON_TRANSFERRABLE_ERR);
     });
 
     it("Fails to stake when the token id is invalid", async () => {
@@ -1247,6 +1257,11 @@ describe("StakingERC721", () => {
       // Verify transfers
       expect(await stakingToken.ownerOf(tokenIdD)).to.eq(stakerA.address);
       expect(await stakingToken.ownerOf(tokenIdE)).to.eq(stakerC.address);
+
+      // stakerB fails to transfer tokenG, it is a nontransferrable SNFT
+      await expect(
+        localStakingERC721.connect(stakerB).transferFrom(stakerB.address, stakerC.address, tokenIdG)
+      ).to.be.revertedWithCustomError(localStakingERC721, NON_TRANSFERRABLE_ERR);
 
       await time.increase(config.periodLength * 5n);
       // stakerC claims rewards
