@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ERC721NonTransferrable } from "../../tokens/ERC721NonTransferrable.sol";
+// import { ERC721NonTransferrable } from "../../tokens/ERC721NonTransferrable.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStakingERC20 } from "./IStakingERC20.sol";
@@ -12,7 +12,7 @@ import { StakingBase } from "../StakingBase.sol";
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
  */
-contract StakingERC20 is StakingBase, IStakingERC20 {
+contract StakingERC20 is IStakingERC20 {
     constructor(
 		address _stakingToken,
         IERC20 _rewardsToken,
@@ -75,7 +75,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 		if (!exit) {
 			// TODO reads `stakers` mapping twice
 			// cant do storage param though?
-			claim();
+			// claim();
 		}
 
         staker.amountStaked -= amount;

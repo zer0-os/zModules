@@ -1,14 +1,22 @@
 // SPDX-License-Identifier: MIT
+// eslint-disable immutable-vars-naming
 pragma solidity ^0.8.19;
 
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStakingBase } from "./IStakingBase.sol";
 
 /**
  * @title StakingBase
- * @notice A set of common elements that comprise any Staking contract
+ * @notice A set of common elements that are used in any Staking contract
  */
-abstract contract StakingBase is IStakingBase {
+contract StakingBase is Ownable, IStakingBase {
+
+	/**
+     * @dev Mapping of each staker to that staker's data in the `Staker` struct
+     */
+    mapping(address staker => Staker stakerData) public stakers;
+
     /**
      * @dev The staking token for this pool
      */
@@ -34,11 +42,6 @@ abstract contract StakingBase is IStakingBase {
      */
     uint256 public immutable timeLockPeriod;
 
-	/**
-     * @dev Mapping of each staker to that staker's data in the `Staker` struct
-     */
-    mapping(address staker => Staker stakerData) public stakers;
-
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
@@ -46,6 +49,14 @@ abstract contract StakingBase is IStakingBase {
         uint256 _periodLength,
         uint256 _timeLockPeriod
     ) {
+        if (
+            _stakingToken == address(0)
+            || address(_rewardsToken) == address(0)
+            || _rewardsPerPeriod == 0
+            || _periodLength == 0
+        )
+            revert InitializedWithZero();
+
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
@@ -89,20 +100,21 @@ abstract contract StakingBase is IStakingBase {
         return _getContractRewardsBalance();
     }
 
-	////////////////////////////////////
-    /* Internal Functions */
-    ////////////////////////////////////
+	/**
+	 * @notice Emergency function for the contract owner to withdraw leftover rewards
+     * in case of an abandoned contract.
+     * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
+     */
+    function withdrawLeftoverRewards() external override onlyOwner {
+        uint256 balance = rewardsToken.balanceOf(address(this));
+        if (balance == 0) revert NoRewardsLeftInContract();
 
-	function _ifRewards(Staker storage staker) internal {
-		if (staker.amountStaked > 0) {
-            // It isn't their first stake, snapshot pending rewards
-            staker.pendingRewards = _getPendingRewards(staker);
-        } else {
-            // Log the time at which this stake becomes claimable or unstakable
-            // This is only done once per user
-            staker.unlockTimestamp = block.timestamp + timeLockPeriod;
-        }
-	}
+        rewardsToken.transfer(owner(), balance);
+
+        emit RewardLeftoverWithdrawal(owner(), balance);
+    }
+
+	// TODO (make nicer) INTERNAL
 
 	function _baseClaim(Staker storage staker) internal virtual returns(uint256) {
 		// Require the time lock to have passed
@@ -124,7 +136,20 @@ abstract contract StakingBase is IStakingBase {
 		return rewards;
 	}
 
-	function _getPendingRewards(
+    /**
+     * @notice Calculate rewards for a staker
+     * @dev Returns 0 if time lock period is not passed
+     * @param timePassed Time passed since last stake or claim, in seconds
+     * @param stakeAmount Amount of staking token staked
+     */
+    function _calculateRewards(
+        uint256 timePassed,
+        uint256 stakeAmount
+    ) internal view returns (uint256) {
+        return rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+    }
+
+		function _getPendingRewards(
         Staker storage staker
     ) internal view returns (uint256) {
         // Return any existing pending rewards value plus the
