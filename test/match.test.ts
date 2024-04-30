@@ -68,7 +68,6 @@ describe("Match Contract", function () {
             expect(addr1FinalBalance).to.equal(balance1Before + amt1);
             expect(addr2FinalBalance).to.equal(balance2Before + amt2);
         });
-
     });
 
     describe("Start match", function () {
@@ -87,23 +86,20 @@ describe("Match Contract", function () {
             await expect(match.startMatch(players, entryFee))
                 .to.be.revertedWithCustomError(match, "PlayersNotFunded");
         });
-
         it("Should not start a match with an empty players array", async function () {
             const entryFee = ethers.parseUnits('1', 'wei'); // Smallest possible entry fee
             await expect(match.startMatch([], entryFee))
                 .to.be.revertedWith("No players"); // Use the correct revert message from your contract
         });
-
-        // Assuming addr1 and addr2 have enough funds for the entryFee and match can be started
         it("Should start a match with valid players and entry fee", async function () {
             const players = [addr1.address, addr2.address];
-            const entryFee = ethers.parseUnits('1', 'ether'); // 1 ETH as entry fee
+            const entryFee = ethers.parseEther('1');
             await expect(match.startMatch(players, entryFee))
-                .to.emit(match, "MatchStarted") // Correct event to match your contract
+                .to.emit(match, "MatchStarted")
                 .withArgs(1n, players, entryFee);
         });
-
     });
+
     describe("End Match", function () {
         let matchId = 0;
         it("Should fail if the match does not exist", async function () {
@@ -123,16 +119,16 @@ describe("Match Contract", function () {
 
             // Balances before ending the match
             const initialBalances = await Promise.all(winners.map(async (winner) => {
-                return await match.balance(winner); // Replace with actual function to get balance
+                return await match.balance(winner);
             }));
 
             // End the match
             const tx = await match.endMatch(matchId, winners, winAmounts);
-            const receipt = await tx.wait();
+            await tx.wait();
 
             // Validate winners' balances increased by winAmounts
             await Promise.all(winners.map(async (winner, index) => {
-                const finalBalance = await match.balance(winner); // Replace with actual function to get balance
+                const finalBalance = await match.balance(winner);
                 const expectedBalance = initialBalances[index] + winAmounts[index];
                 expect(finalBalance).to.equal(expectedBalance);
             }));

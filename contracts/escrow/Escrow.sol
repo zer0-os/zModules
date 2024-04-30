@@ -51,11 +51,11 @@ contract Escrow is IEscrow, Ownable{
         }
     }
 
-    function chargeAllAmounts(uint256[] memory amounts, address[] memory winners) external override onlyOwner {
-        require(amounts.length == winners.length, "Amounts and winners length mismatch");
+    function chargeAllAmounts(uint256[] memory amounts, address[] memory clients) external override onlyOwner {
+        require(amounts.length == clients.length, "Amounts and clients length mismatch");
         
-        for(uint i = 0; i < winners.length; i++) {
-            charge(winners[i], amounts[i]);
+        for(uint i = 0; i < clients.length; i++) {
+            charge(clients[i], amounts[i]);
         }
     }
 

@@ -35,9 +35,8 @@ describe("Escrow Contract", function () {
     const escrowFactory = await hre.ethers.getContractFactory("Escrow");
     escrow = (await escrowFactory.deploy(await mockERC20.getAddress(), ownerAddress)) as Escrow;
     escrowAddress = await escrow.getAddress();
-    // Mint some tokens to test accounts
+
     await mockERC20.mint(owner, initialMintAmountOwner);
-    //await mockERC20.increaseAllowance(escrowAddress, initialMintAmountOwner);
     await mockERC20.transfer(escrowAddress, "1000000000000000000000")
     await mockERC20.mint(addr1.address, initialMintAmountAddr1);
     await mockERC20.mint(addr2.address, initialMintAmountAddr2);
@@ -58,7 +57,6 @@ describe("Escrow Contract", function () {
   describe("Escrow", function () {
     const depositAmount = ethers.parseEther("100");
     const paymentAmount = ethers.parseEther("50");
-    const finalBalanceExpected = ethers.parseEther("150");
     const addr1FinalTokenBalance = ethers.parseEther("1050");
 
     it("Should allow deposits", async function () {
@@ -89,12 +87,25 @@ describe("Escrow Contract", function () {
     });
 
     it("Should execute payments", async function () {
+      const finalBalanceExpected = ethers.parseEther("150");
       await expect(escrow.connect(owner).pay(addr1.address, paymentAmount))
         .to.emit(escrow, "Payment")
         .withArgs(addr1.address, paymentAmount);
 
       const finalBalance = await escrow.balance(addr1.address);
       expect(finalBalance).to.equal(finalBalanceExpected);
+    });
+
+    it("Should execute charges", async function () {
+      const finalBalanceExpected = ethers.parseEther("149");
+      const chargeAmount = ethers.parseEther("1");
+      await expect(escrow.connect(owner).charge(addr1.address, chargeAmount))
+        .to.emit(escrow, "Charge")
+        .withArgs(addr1.address, chargeAmount);
+
+      const finalBalance = await escrow.balance(addr1.address);
+      expect(finalBalance).to.equal(finalBalanceExpected);
+      await expect(escrow.connect(owner).pay(addr1.address, chargeAmount));
     });
 
     it("Should allow withdrawal", async function () {
@@ -105,6 +116,7 @@ describe("Escrow Contract", function () {
       const balNow = await mockERC20.balanceOf(addr1.address);
       expect(balNow).to.equal(addr1FinalTokenBalance);
     });
+
     it("Should handle withdrawal after multiple deposits", async function () {
       const prevBalance = await escrow.balance(addr1Address);
       const depositAmounts = ["1000000000000000000", "2000000000000000000"];
@@ -128,10 +140,12 @@ describe("Escrow Contract", function () {
       await expect(escrow.connect(addr2).withdraw())
         .to.be.revertedWith("No balance to withdraw");
     });
+
     it("Should revert on 0 balance to refund", async function () {
       await expect(escrow.connect(owner).refund(addr1.address))
         .to.be.revertedWith("No balance to refund");
     });
+
     it("Should correctly handle deposits of zero amount", async function () {
       await expect(escrow.connect(addr1).deposit(0))
         .to.be.revertedWith("Zero deposit amount");
@@ -150,10 +164,8 @@ describe("Escrow Contract", function () {
       await escrow.connect(addr1).deposit(depositAmount);
       await escrow.connect(addr1).deposit(anotherDepositAmount);
 
-      // Check combined balance
       expect(await escrow.balance(addr1.address)).to.equal(depositAmount + anotherDepositAmount);
 
-      // Withdraw all
       await escrow.connect(addr1).withdraw();
       expect(await escrow.balance(addr1.address)).to.equal(0);
       expect(await mockERC20.balanceOf(addr1.address)).to.equal(currentBalanceStore);
@@ -173,13 +185,22 @@ describe("Escrow Contract", function () {
       const finalBal2 = balance2Before + paymentAmounts[1] + paymentAmounts[1];
       expect(balance1).to.equal(finalBal1);
       expect(balance2).to.equal(finalBal2);
+    });
 
-      await expect(escrow.connect(addr1).withdraw())
-        .to.emit(escrow, "Withdrawal")
-        .withArgs(addr1.address, finalBal1);
-      await expect(escrow.connect(addr2).withdraw())
-        .to.emit(escrow, "Withdrawal")
-        .withArgs(addr2.address, finalBal2);
+    it("should handle sequential chargeAllAmounts calls correctly", async function () {
+      const balance1Before = await escrow.balance(addr1Address);
+      const balance2Before = await escrow.balance(addr2Address);
+      const chargeAmounts = [ethers.parseEther("1"), ethers.parseEther("9")];
+      const winners = [addr1Address, addr2Address];
+      await escrow.chargeAllAmounts(chargeAmounts, winners);
+      await escrow.chargeAllAmounts(chargeAmounts, winners);
+
+      const balance1 = await escrow.balance(addr1Address);
+      const balance2 = await escrow.balance(addr2Address);
+      const finalBal1 = balance1Before - chargeAmounts[0] - chargeAmounts[0];
+      const finalBal2 = balance2Before - chargeAmounts[1] - chargeAmounts[1];
+      expect(balance1).to.equal(finalBal1);
+      expect(balance2).to.equal(finalBal2);
     });
 
     it("Should emit the correct events and update balances on multiple refunds", async function () {
@@ -206,6 +227,13 @@ describe("Escrow Contract", function () {
         .to.be.revertedWith("Amounts and winners length mismatch");
     });
 
+    it("chargeAllAmounts fails when amounts and clients array lengths do not match", async function () {
+      const amounts = [ethers.parseEther("10")];
+      const clients = [addr1Address, addr2Address];
+      await expect(escrow.chargeAllAmounts(amounts, clients))
+        .to.be.revertedWith("Amounts and clients length mismatch");
+    });
+
     it("Reverts payAllAmounts with insufficient paymentAccount balance", async function () {
       const amounts = [ethers.parseEther("5000000000000000000000000000000000000000")];
       const winners = [addr2Address];
@@ -218,8 +246,18 @@ describe("Escrow Contract", function () {
         .to.be.revertedWith("Contract not funded");
     });
 
+    it("Should fail for balance underflow on charge", async function () {
+      await expect(escrow.connect(owner).charge(addr1.address, excessiveAmount))
+        .to.be.reverted;
+    });
+
     it("Should fail for unauthorized payment execution", async function () {
       await expect(escrow.connect(addr1).pay(addr2.address, unauthorizedPaymentAmount))
+        .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should fail for unauthorized charge execution", async function () {
+      await expect(escrow.connect(addr1).charge(addr2.address, unauthorizedPaymentAmount))
         .to.be.revertedWith("Ownable: caller is not the owner");
     });
 
