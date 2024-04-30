@@ -12,7 +12,7 @@ import { StakingBase } from "../StakingBase.sol";
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
  */
-contract StakingERC20 is IStakingERC20 {
+contract StakingERC20 is StakingBase, IStakingERC20 {
     constructor(
 		address _stakingToken,
         IERC20 _rewardsToken,

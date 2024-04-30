@@ -62,14 +62,7 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
     ) external override {
         Staker storage staker = stakers[msg.sender];
 
-        if (staker.amountStaked > 0) {
-            // It isn't their first stake, snapshot pending rewards
-            staker.pendingRewards = _getPendingRewards(staker);
-        } else {
-            // Log the time at which this stake becomes claimable or unstakable
-            // This is only done once per user
-            staker.unlockTimestamp = block.timestamp + timeLockPeriod;
-        }
+        _ifRewards(staker);
 
         uint256 i;
         for (i; i < tokenIds.length;) {

@@ -120,6 +120,17 @@ contract StakingBase is Ownable, IStakingBase {
 
     // TODO (make nicer) INTERNAL
 
+	function _ifRewards(Staker memory staker) internal view {
+		if (staker.amountStaked > 0) {
+            // It isn't their first stake, snapshot pending rewards
+            staker.pendingRewards = _getPendingRewards(staker);
+        } else {
+            // Log the time at which this stake becomes claimable or unstakable
+            // This is only done once per user
+            staker.unlockTimestamp = block.timestamp + timeLockPeriod;
+        }
+	}
+
     function _baseClaim(
         Staker storage staker
     ) internal virtual returns (uint256) {
@@ -143,7 +154,7 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     function _getPendingRewards(
-        Staker storage staker
+        Staker memory staker
     ) internal view returns (uint256) {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
