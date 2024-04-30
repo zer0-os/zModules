@@ -159,11 +159,9 @@ contract StakingBase is Ownable, IStakingBase {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
         return
-            staker.pendingRewards +
-            (rewardsPerPeriod *
-                staker.amountStaked *
-                ((block.timestamp - staker.lastUpdatedTimestamp) /
-                    periodLength));
+			// TODO note, removed extra parens, be SURE this returns the same still
+            staker.pendingRewards + (rewardsPerPeriod * staker.amountStaked
+				* ((block.timestamp - staker.lastUpdatedTimestamp) / periodLength));
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

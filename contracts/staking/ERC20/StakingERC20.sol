@@ -44,6 +44,9 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 			revert ZeroStake();
 		}
 
+		// TODO mint on first stake, burn on full withdrawal?
+		// burn at all?
+		// mint at all?
 		_ifRewards(staker);
 
 		IERC20(stakingToken).transferFrom(
