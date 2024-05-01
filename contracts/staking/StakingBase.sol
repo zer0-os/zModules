@@ -65,11 +65,11 @@ contract StakingBase is Ownable, IStakingBase {
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claim() public override {
+    function claim() external override {
 		// Require the time lock to have passed
 		Staker storage staker = stakers[msg.sender];
-        _onlyUnlocked(staker.unlockTimestamp);
 
+        _onlyUnlocked(staker.unlockTimestamp);
         _baseClaim(staker);
     }
 
@@ -114,6 +114,7 @@ contract StakingBase is Ownable, IStakingBase {
         uint256 balance = rewardsToken.balanceOf(address(this));
         if (balance == 0) revert NoRewardsLeftInContract();
 
+		// TODO make safe transfer
         rewardsToken.transfer(owner(), balance);
 
         emit RewardLeftoverWithdrawal(owner(), balance);
@@ -147,6 +148,7 @@ contract StakingBase is Ownable, IStakingBase {
             revert NoRewardsLeftInContract();
         }
 
+		// TODO make safe transfer
         rewardsToken.transfer(msg.sender, rewards);
 
         emit Claimed(rewards, address(rewardsToken));

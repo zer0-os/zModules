@@ -14,6 +14,7 @@ export const INVALID_POOL_ERR = "Staking token must not be zero";
 export const ONLY_SNFT_OWNER_ERR = "Caller is not the owner of the representative stake token";
 export const ONLY_ADMIN_ERR = "Caller is not the admin";
 export const ZERO_STAKE_ERR = "ZeroStake";
+export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake"
 
 // StakingERC721
 export const TIME_LOCK_NOT_PASSED_ERR = "TimeLockNotPassed";

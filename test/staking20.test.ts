@@ -23,9 +23,10 @@ import {
   INSUFFICIENT_ALLOWANCE_ERR,
   INSUFFICIENT_BALANCE_ERR,
   ZERO_STAKE_ERR,
+  UNEQUAL_UNSTAKE_ERR,
 } from "./helpers/staking";
 
-describe("StakingERC20", () => {
+describe.only("StakingERC20", () => {
 
   let deployer : SignerWithAddress;
   let stakerA : SignerWithAddress;
@@ -99,6 +100,7 @@ describe("StakingERC20", () => {
     config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
 
     const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+
     contract = await stakingFactory.deploy(
       config.stakingToken,
       config.rewardsToken,
@@ -106,12 +108,6 @@ describe("StakingERC20", () => {
       config.periodLength,
       config.timeLockPeriod
     ) as StakingERC20;
-
-    // Give staking contract balance to pay rewards
-    await rewardsToken.connect(deployer).transfer(
-      await contract.getAddress(),
-      hre.ethers.parseEther("8000000000000")
-    );
 
     // Give each user funds to stake
     await stakeToken.connect(deployer).transfer(
@@ -135,10 +131,10 @@ describe("StakingERC20", () => {
     );
 
     // Approve staking contract to spend staker funds
-    await stakeToken.connect(stakerA).approve(await contract.getAddress(), initBalance);
-    await stakeToken.connect(stakerB).approve(await contract.getAddress(), initBalance);
-    await stakeToken.connect(stakerC).approve(await contract.getAddress(), initBalance);
-    await stakeToken.connect(stakerD).approve(await contract.getAddress(), initBalance);
+    await stakeToken.connect(stakerA).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    await stakeToken.connect(stakerB).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    await stakeToken.connect(stakerC).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    await stakeToken.connect(stakerD).approve(await contract.getAddress(), hre.ethers.MaxUint256);
   });
 
   describe("#getContractRewardsBalance", () => {
@@ -163,7 +159,6 @@ describe("StakingERC20", () => {
 
       const stakerData = await contract.stakers(stakerA.address);
 
-      // const staked = await contract.getStakedBalance(stakerA.address);
       expect(stakeBalanceAfterA).to.eq(stakeBalanceBeforeA - defaultStakedAmount);
 
       expect(stakerData.amountStaked).to.eq(defaultStakedAmount);
@@ -268,8 +263,6 @@ describe("StakingERC20", () => {
 
   describe("#getRemainingLockTime", () => {
     it("Allows the user to view the remaining time lock period for a stake", async () => {
-      // await time.increase(config.timeLockPeriod / 5n);
-
       const remainingLockTime = await contract.connect(stakerA).getRemainingLockTime();
       const latest = await time.latest();
 
@@ -337,6 +330,12 @@ describe("StakingERC20", () => {
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
 
+      // Give staking contract balance to pay rewards
+      await rewardsToken.connect(deployer).transfer(
+        await contract.getAddress(),
+        pendingRewards
+      );
+
       await contract.connect(stakerA).claim();
       claimedAtA = BigInt(await time.latest());
 
@@ -363,6 +362,13 @@ describe("StakingERC20", () => {
         contract.connect(notStaker).claim()
       ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
     });
+
+    it("Fails when the contract has no rewards", async () => {
+      // call to claim without first transferring rewards to the contract
+      await expect(
+        contract.connect(stakerA).claim()
+      ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
+    });
   });
 
   describe("#unstake", () => {
@@ -375,6 +381,12 @@ describe("StakingERC20", () => {
       const stakeTokenBalanceBefore = await stakeToken.balanceOf(stakerA.address);
 
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
+
+      // Give staking contract balance to pay rewards
+      await rewardsToken.connect(deployer).transfer(
+        await contract.getAddress(),
+        pendingRewards
+      );
 
       await stakeToken.connect(stakerA).approve(await contract.getAddress(), amount);
 
@@ -413,6 +425,12 @@ describe("StakingERC20", () => {
 
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
 
+      // Give staking contract balance to pay rewards
+      await rewardsToken.connect(deployer).transfer(
+        await contract.getAddress(),
+        pendingRewards
+      );
+
       await contract.connect(stakerA).unstake(amountStakedA, false);
       
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
@@ -448,14 +466,13 @@ describe("StakingERC20", () => {
 
     it("Fails when the user has not passed their lock time", async () => {
       await contract.connect(stakerC).stake(defaultStakedAmount);
-      stakedAtC = BigInt(await time.latest());
-      origStakedAtC = stakedAtC;
+      origStakedAtC = BigInt(await time.latest());
+      stakedAtC = origStakedAtC;
 
       const pendingRewards = await contract.connect(stakerC).getPendingRewards();
 
-      const balanceAtStakeOne = defaultStakedAmount;
-
-      amountStakedC += defaultStakedAmount;
+      // Restaking for the first time, do not add to old value
+      amountStakedC = defaultStakedAmount;
 
       const stakerData = await contract.stakers(stakerC.address);
 
@@ -468,7 +485,16 @@ describe("StakingERC20", () => {
       await expect(
         contract.connect(stakerC).unstake(defaultStakedAmount, false)
       ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
-    })
+    });
+
+    it("Fails when the user tries to unstake more than they have staked", async () => {
+      // Avoid erroring for time lock period
+      await time.increase(config.timeLockPeriod);
+
+      await expect(
+        contract.connect(stakerC).unstake(amountStakedC + 1n, false)
+      ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
+    });
   });
 
   describe("#unstake with 'exit'", () => {
@@ -505,7 +531,7 @@ describe("StakingERC20", () => {
 
       expect(stakerData.amountStaked).to.eq(amount);
       expect(stakerData.lastUpdatedTimestamp).to.eq(unstakedAtC);
-      expect(stakerData.unlockTimestamp).to.eq(stakedAtC + config.timeLockPeriod);
+      expect(stakerData.unlockTimestamp).to.eq(origStakedAtC + config.timeLockPeriod);
       expect(stakerData.pendingRewards).to.eq(pendingRewards);
     });
 
@@ -544,16 +570,41 @@ describe("StakingERC20", () => {
       expect(stakerData.unlockTimestamp).to.eq(0n);
       expect(stakerData.pendingRewards).to.eq(0n);
     });
+
+    it("Fails when the user has never staked", async () => {
+      await expect(
+        contract.connect(notStaker).unstake(1, true)
+      ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
+    });
+
+    it("Succeeds when the user has not passed their lock time", async () => {
+      await contract.connect(stakerC).stake(defaultStakedAmount);
+      stakedAtC = BigInt(await time.latest());
+
+      // Fully withdrew stake previously, so expect a new unlock time
+      origStakedAtC = stakedAtC;
+      amountStakedC = defaultStakedAmount;
+
+      // unstake without rewards when not passed time lock period
+      await contract.connect(stakerC).unstake(defaultStakedAmount, true);
+
+      const stakerData = await contract.stakers(stakerC.address);
+
+      expect(stakerData.unlockTimestamp).to.eq(0n);
+      expect(stakerData.amountStaked).to.eq(0n);
+      expect(stakerData.pendingRewards).to.eq(0n);
+      expect(stakerData.lastUpdatedTimestamp).to.eq(0n);
+    });
+
+    it("Fails when the user tries to unstake more than they have staked", async () => {
+      await expect(
+        contract.connect(stakerC).unstake(amountStakedC + 1n, true)
+      ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
+    });
   })
 
-
-
   /**
-   * TODO cases
-   * stake first time when other user already staked
-   * 
-   * claim fails when the pool has no rewards
-   * 
+   * TODO cases    * 
    * unstake with 'exit'
    * fails exit when more than initial stake
    * fails unstake when ore than intial stake
