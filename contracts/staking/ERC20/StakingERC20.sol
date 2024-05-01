@@ -81,21 +81,16 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         );
 
 		if (!exit) {
-			// TODO reads `stakers` mapping twice
-			// cant do storage param though?
-			claim();
+			_baseClaim(staker);
 		} else {
-			// we still have to update their pending rewards
-			// because otherwise we adjust the balance but skip adjusting the rewards
-			// so they do not earn the rewards they should earn
+			// Snapshot their pending rewards
 			staker.pendingRewards = _getPendingRewards(staker);
 		}
 
-        staker.amountStaked -= amount;
-
-		if (staker.amountStaked == 0) {
+		if (staker.amountStaked == amount) {
             delete stakers[msg.sender];
         } else {
+			staker.amountStaked -= amount;
             staker.lastUpdatedTimestamp = block.timestamp;
         }
 

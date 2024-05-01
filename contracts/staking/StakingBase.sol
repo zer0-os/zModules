@@ -65,16 +65,12 @@ contract StakingBase is Ownable, IStakingBase {
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    // TODO this is two reads of `stakers` mapping in the `unstake` flow
-	// TODO make this accept staker as param instead?
     function claim() public override {
 		// Require the time lock to have passed
-		// TODO make var instead of two storage reads?
+		Staker storage staker = stakers[msg.sender];
+        _onlyUnlocked(staker.unlockTimestamp);
 
-        _onlyUnlocked(stakers[msg.sender].unlockTimestamp);
-
-        uint256 rewards = _baseClaim(stakers[msg.sender]);
-        emit Claimed(rewards, address(rewardsToken));
+        _baseClaim(staker);
     }
 
     /**
@@ -140,8 +136,7 @@ contract StakingBase is Ownable, IStakingBase {
 
     function _baseClaim(
         Staker storage staker
-    ) internal virtual returns (uint256) {
-
+    ) internal {
         uint256 rewards = _getPendingRewards(staker);
 
         staker.lastUpdatedTimestamp = block.timestamp;
@@ -154,8 +149,7 @@ contract StakingBase is Ownable, IStakingBase {
 
         rewardsToken.transfer(msg.sender, rewards);
 
-        // For events
-        return rewards;
+        emit Claimed(rewards, address(rewardsToken));
     }
 
     function _getPendingRewards(
