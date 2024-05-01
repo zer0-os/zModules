@@ -98,7 +98,14 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
 
         if (!exit) {
             claim();
-        }
+        } else {
+			// TODO verify this is the same case as ERC20
+			// if we don't update their pending rewards it is inaccurate
+			// i.e. we are adjusting their balance and pendingrewards going forward
+			// will be calculated differently, but we aren't snapshotting the rewards
+			// up to this point
+			staker.pendingRewards = _getPendingRewards(staker);
+		}
 
         // if `numStaked < tokenIds.length` it will have already failed above
         // so we don't need to check that here

@@ -61,10 +61,15 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 		emit Staked(amount, stakingToken);
 	}
 
+	// TODO create 'unstakeAll' helper so `amount` is not a required param
+
     function unstake(uint256 amount, bool exit) external override {
         Staker storage staker = stakers[msg.sender];
 
-        _onlyUnlocked(staker.unlockTimestamp);
+		// TODO claim does its own _onluUnlocked check
+		// remove check here? or remove in claim?
+		// maybe make internal _baseClaim without it, and public claim with it?
+        if (!exit) _onlyUnlocked(staker.unlockTimestamp);
 
 		if (amount > staker.amountStaked) {
 			revert UnstakeMoreThanStake();
@@ -78,7 +83,12 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 		if (!exit) {
 			// TODO reads `stakers` mapping twice
 			// cant do storage param though?
-			// claim();
+			claim();
+		} else {
+			// we still have to update their pending rewards
+			// because otherwise we adjust the balance but skip adjusting the rewards
+			// so they do not earn the rewards they should earn
+			staker.pendingRewards = _getPendingRewards(staker);
 		}
 
         staker.amountStaked -= amount;

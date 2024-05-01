@@ -68,6 +68,11 @@ contract StakingBase is Ownable, IStakingBase {
     // TODO this is two reads of `stakers` mapping in the `unstake` flow
 	// TODO make this accept staker as param instead?
     function claim() public override {
+		// Require the time lock to have passed
+		// TODO make var instead of two storage reads?
+
+        _onlyUnlocked(stakers[msg.sender].unlockTimestamp);
+
         uint256 rewards = _baseClaim(stakers[msg.sender]);
         emit Claimed(rewards, address(rewardsToken));
     }
@@ -118,9 +123,11 @@ contract StakingBase is Ownable, IStakingBase {
         emit RewardLeftoverWithdrawal(owner(), balance);
     }
 
-    // TODO (make nicer) INTERNAL
+	////////////////////////////////////
+    /* Internal Functions */
+    ////////////////////////////////////
 
-	function _ifRewards(Staker memory staker) internal view {
+	function _ifRewards(Staker storage staker) internal {
 		if (staker.amountStaked > 0) {
             // It isn't their first stake, snapshot pending rewards
             staker.pendingRewards = _getPendingRewards(staker);
@@ -134,8 +141,6 @@ contract StakingBase is Ownable, IStakingBase {
     function _baseClaim(
         Staker storage staker
     ) internal virtual returns (uint256) {
-        // Require the time lock to have passed
-        _onlyUnlocked(staker.unlockTimestamp);
 
         uint256 rewards = _getPendingRewards(staker);
 
