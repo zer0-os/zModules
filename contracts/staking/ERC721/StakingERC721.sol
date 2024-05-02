@@ -127,6 +127,8 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
     /* Internal Functions Staking */
     ////////////////////////////////////
 
+	// TODO bring over `AStakeToken` functionality maybe
+
     function _stake(uint256 tokenId, string memory tokenUri) internal {
         // Transfer their NFT to this contract
         IERC721(stakingToken).safeTransferFrom(
