@@ -7,6 +7,7 @@ import { IEscrow } from "./IEscrow.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 
+// TODO esc: should we rename this into "Wallet"?
 contract Escrow is Ownable, IEscrow {
     using SafeERC20 for IERC20;
 
@@ -14,12 +15,6 @@ contract Escrow is Ownable, IEscrow {
      * @notice Token contract operates on
      */
     IERC20 public token;
-
-    // TODO esc: what is this and do we need it?
-    /**
-     * @notice Account that tokens are transferred from on executePayment
-     */
-    address paymentAccount;
 
     /**
      * @notice Mapping for balances for every user of this escrow
