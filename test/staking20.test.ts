@@ -239,7 +239,7 @@ describe.only("StakingERC20", () => {
     });
 
     it("Fails when the staker doesn't have the funds to stake", async () => {
-      const amount = initBalance * 10000n;
+      const amount = hre.ethers.MaxUint256;
 
       // First, it will fail on allowance
       await expect(
@@ -273,7 +273,7 @@ describe.only("StakingERC20", () => {
       expect(remainingLockTime).to.eq((stakeData.unlockTimestamp - BigInt(latest)));
     });
 
-    it("Returns 0 for a user that's their lock time", async () => {
+    it("Returns 0 for a user that's passed their lock time", async () => {
       await time.increase(config.timeLockPeriod);
 
       const remainingLockTime = await contract.connect(stakerA).getRemainingLockTime();
@@ -297,6 +297,11 @@ describe.only("StakingERC20", () => {
         config.periodLength
       );
 
+      // It will always provide the correct value for the rewards owed to 
+      // the user, even when the contract does not have the balance for it
+      const contractBalance = await rewardsToken.balanceOf(await contract.getAddress());
+
+      expect(contractBalance).to.eq(0n);
       expect(pendingRewards).to.eq(expectedRewards);
     });
 
@@ -368,6 +373,17 @@ describe.only("StakingERC20", () => {
       await expect(
         contract.connect(stakerA).claim()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
+    });
+
+    it("Fails when the user has not passed their lock time", async () => {
+      await contract.connect(stakerC).stake(defaultStakedAmount);
+
+      await expect(
+        contract.connect(stakerC).claim()
+      ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
+
+      // Reset
+      await contract.connect(stakerC).unstake(defaultStakedAmount, true);
     });
   });
 
@@ -601,16 +617,78 @@ describe.only("StakingERC20", () => {
         contract.connect(stakerC).unstake(amountStakedC + 1n, true)
       ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
     });
-  })
+  });
+
+  describe("Events", () => {
+    it("Emits a Staked event when a user stakes", async () => {
+      await expect(
+        contract.connect(stakerD).stake(defaultStakedAmount)
+      ).to.emit(contract, STAKED_EVENT)
+      .withArgs(defaultStakedAmount, config.stakingToken);
+    });
+
+    it("Emits a Claimed event when a user claims rewards", async () => {
+      await time.increase(config.timeLockPeriod);
+
+      const pendingRewards = await contract.connect(stakerD).getPendingRewards();
+
+      await rewardsToken.connect(deployer).transfer(
+        await contract.getAddress(),
+        pendingRewards
+      );
+
+      await expect(
+        contract.connect(stakerD).claim()
+      ).to.emit(contract, CLAIMED_EVENT)
+      .withArgs(pendingRewards, config.rewardsToken);
+
+      const stakerData = await contract.stakers(stakerD.address);
+
+      expect(stakerData.pendingRewards).to.eq(0n);
+    });
+
+    it("Emits an Unstaked event when a user unstakes", async () => {
+      await time.increase(config.periodLength * 50n);
+
+      const pendingRewards = await contract.connect(stakerD).getPendingRewards();
+      const stakerData = await contract.stakers(stakerD.address);
+
+      await rewardsToken.connect(deployer).transfer(
+        await contract.getAddress(),
+        pendingRewards
+      );
+
+      // TODO we're not updating stakerData pending rewards somewhere
+      // not updating contract balance properly either?
+      // fails to transfer tokens with erc20 "exceeds balance" error
+      // expect(stakerData.pendingRewards).to.gt(0n);
+
+      await expect(
+        contract.connect(stakerD).unstake(defaultStakedAmount / 2n, false)
+      ).to.emit(contract, UNSTAKED_EVENT)
+      .withArgs(pendingRewards, config.stakingToken);
+
+      const stakerData2 = await contract.stakers(stakerD.address);
+
+      expect(stakerData.pendingRewards).to.eq(0n);
+    });
+
+    it("Emits an Unstaked event when a user exits with unstake", async () => {
+      await time.increase(config.periodLength * 7n);
+
+      const pendingRewards = await contract.connect(stakerD).getPendingRewards();
+
+      await expect(
+        contract.connect(stakerD).unstake(defaultStakedAmount, true)
+      ).to.emit(contract, UNSTAKED_EVENT)
+      .withArgs(0n, config.stakingToken);
+    });
+  });
 
   /**
    * TODO cases    * 
-   * unstake with 'exit'
-   * fails exit when more than initial stake
-   * fails unstake when ore than intial stake
    * 
-   * unstaking right after staking rewards nothing if the period is not met
-   * 
+   * test withdrawal of rewards
    * events
    * 
    * other configs

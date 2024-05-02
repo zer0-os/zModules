@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-// import { ERC721NonTransferrable } from "../../tokens/ERC721NonTransferrable.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStakingERC20 } from "./IStakingERC20.sol";
@@ -36,17 +35,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     function stake(uint256 amount) external override {
         Staker storage staker = stakers[msg.sender];
 	
-		// TODO do we want this?
-		// every staker pays gas for this niche check
-		// and if staker does transfer 0 nothing happens
-		// they just wasted their own funds paying the gas =s
 		if (amount == 0) {
 			revert ZeroStake();
 		}
 
-		// TODO mint on first stake, burn on full withdrawal?
-		// burn at all?
-		// mint at all?
 		_ifRewards(staker);
 
 		IERC20(stakingToken).transferFrom(
@@ -61,14 +53,9 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 		emit Staked(amount, stakingToken);
 	}
 
-	// TODO create 'unstakeAll' helper so `amount` is not a required param
-
     function unstake(uint256 amount, bool exit) external override {
         Staker storage staker = stakers[msg.sender];
 
-		// TODO claim does its own _onluUnlocked check
-		// remove check here? or remove in claim?
-		// maybe make internal _baseClaim without it, and public claim with it?
         if (!exit) _onlyUnlocked(staker.unlockTimestamp);
 
 		if (amount > staker.amountStaked) {
@@ -89,11 +76,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
 		if (staker.amountStaked == amount) {
             delete stakers[msg.sender];
+			emit Unstaked(0, stakingToken);
         } else {
 			staker.amountStaked -= amount;
             staker.lastUpdatedTimestamp = block.timestamp;
+			emit Unstaked(amount, stakingToken);
         }
-
-		emit Unstaked(amount, stakingToken);
 	}
 }
