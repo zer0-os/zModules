@@ -47,13 +47,13 @@ interface IStakingBase {
     /**
      * @notice Struct to track a set of data for each staker
      * @param unlockTimestamp The timestamp at which the stake can be unstaked
-     * @param pendingRewards The amount of rewards that have not been claimed
+     * @param owedRewards The amount of rewards snapshotted and not yet paid to the user
      * @param lastUpdatedTimestamp The timestamp at which the staker last interacted with the contract
      * @param amountStaked The amount of token(s) staked by the user
      */
     struct Staker {
         uint256 unlockTimestamp;
-        uint256 pendingRewards;
+        uint256 owedRewards;
         uint256 lastUpdatedTimestamp;
         uint256 amountStaked;
     }

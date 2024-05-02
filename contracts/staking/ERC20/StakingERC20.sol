@@ -71,7 +71,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 			_baseClaim(staker);
 		} else {
 			// Snapshot their pending rewards
-			staker.pendingRewards = _getPendingRewards(staker);
+			staker.owedRewards = _getPendingRewards(staker);
 		}
 
 		if (staker.amountStaked == amount) {

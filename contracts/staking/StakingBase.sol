@@ -127,7 +127,7 @@ contract StakingBase is Ownable, IStakingBase {
 	function _ifRewards(Staker storage staker) internal {
 		if (staker.amountStaked > 0) {
             // It isn't their first stake, snapshot pending rewards
-            staker.pendingRewards = _getPendingRewards(staker);
+            staker.owedRewards = _getPendingRewards(staker);
         } else {
             // Log the time at which this stake becomes claimable or unstakable
             // This is only done once per user
@@ -141,7 +141,7 @@ contract StakingBase is Ownable, IStakingBase {
         uint256 rewards = _getPendingRewards(staker);
 
         staker.lastUpdatedTimestamp = block.timestamp;
-        staker.pendingRewards = 0;
+        staker.owedRewards = 0;
 
         // Disallow rewards when balance is 0
         if (_getContractRewardsBalance() == 0) {
@@ -161,7 +161,7 @@ contract StakingBase is Ownable, IStakingBase {
         // calculated rewards based on the last updated timestamp
         return
 			// TODO note, removed extra parens, be SURE this returns the same still
-            staker.pendingRewards + (rewardsPerPeriod * staker.amountStaked
+            staker.owedRewards + (rewardsPerPeriod * staker.amountStaked
 				* ((block.timestamp - staker.lastUpdatedTimestamp) / periodLength));
     }
 

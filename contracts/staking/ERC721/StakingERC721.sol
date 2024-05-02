@@ -100,7 +100,7 @@ contract StakingERC721 is StakingBase, AStakeToken, IStakingERC721 {
             _baseClaim(staker);
         } else {
 			// Snapshot their pending rewards
-			staker.pendingRewards = _getPendingRewards(staker);
+			staker.owedRewards = _getPendingRewards(staker);
 		}
 
         // if `numStaked < tokenIds.length` it will have already failed above
