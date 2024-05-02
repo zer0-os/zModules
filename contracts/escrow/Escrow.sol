@@ -26,9 +26,9 @@ contract Escrow is Ownable, IEscrow {
      */
     mapping(address client => uint256 amount) public balances;
 
-    constructor(IERC20 _token, address _owner) {
+    constructor(address _token, address _owner) {
         // TODO esc: make custom errors
-        require(address(_token) != address(0), "Token address cannot be 0");
+        require(_token.code.length > 0, "Address passed is not a token contract");
         require(_owner != address(0), "Owner address cannot be 0");
 
         token = IERC20(_token);
@@ -55,9 +55,9 @@ contract Escrow is Ownable, IEscrow {
         }
 
         balances[msg.sender] -= toWithdraw;
-        token.safeTransfer(msg.sender, balanceStore);
+        token.safeTransfer(msg.sender, toWithdraw);
 
-        emit Withdrawal(msg.sender, balanceStore);
+        emit Withdrawal(msg.sender, toWithdraw);
     }
 
     // TODO esc: how do we make this flow better and less risky?

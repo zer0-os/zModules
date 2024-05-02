@@ -18,14 +18,14 @@ contract Match is IMatch, Escrow {
     mapping(uint => MatchData) public matches;
     uint nextMatchId;
 
-    constructor(IERC20 token, address _owner) Escrow(token, _owner) {}
-    
+    constructor(address token, address _owner) Escrow(token, _owner) {}
+
     function canMatch(address[] calldata players, uint escrowRequired) public override view returns(bool) {
         address[] memory erroredPlayers = new address[](players.length);
         bool errored;
 
         for(uint i = 0; i < players.length; i++) {
-            if(balance[players[i]] < escrowRequired) {
+            if(balances[players[i]] < escrowRequired) {
                 erroredPlayers[i] = players[i];
                 errored = true;
             }
@@ -40,7 +40,7 @@ contract Match is IMatch, Escrow {
     function startMatch(address[] calldata players, uint entryFee) external override {
         require(players.length > 0, "No players");
         canMatch(players, entryFee);
-        
+
         MatchData storage matchData = matches[nextMatchId];
         matchData.id = nextMatchId;
         matchData.startTime = block.timestamp;
@@ -62,7 +62,7 @@ contract Match is IMatch, Escrow {
 
         for(uint i = 0; i < winners.length; i++) {
             pay(winners[i], winAmounts[i]);
-        }   
+        }
 
         emit MatchEnded(matchId, block.timestamp, winners, winAmounts);
     }
