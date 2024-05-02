@@ -15,7 +15,13 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
  * non-transferable ERC721 token in return as representation of the deposit.
  */
-contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStakingERC721 {
+contract StakingERC721 is
+    ERC721,
+    ERC721URIStorage,
+    StakingBase,
+    Ownable,
+    IStakingERC721
+{
     /**
      * @dev Mapping of each staker to that staker's data in the `Staker` struct
      */
@@ -51,7 +57,7 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         uint256 _periodLength,
         uint256 _timeLockPeriod
     )
-		Ownable()
+        Ownable()
         ERC721(name, symbol)
         StakingBase(
             _stakingToken,
@@ -87,7 +93,7 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         }
 
         uint256 i;
-        for (i; i < tokenIds.length;) {
+        for (i; i < tokenIds.length; ) {
             _stake(tokenIds[i], tokenUris[i]);
 
             unchecked {
@@ -119,7 +125,7 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         if (!exit) _onlyUnlocked(staker.unlockTimestamp);
 
         uint256 i;
-        for (i; i < tokenIds.length;) {
+        for (i; i < tokenIds.length; ) {
             _unstake(tokenIds[i]);
 
             unchecked {
@@ -143,7 +149,7 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
     }
 
     /**
-* @notice Emergency function for the contract owner to withdraw leftover rewards
+     * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
@@ -159,7 +165,12 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
     /**
      * @notice View the rewards balance in this pool
      */
-    function getContractRewardsBalance() external view override returns (uint256) {
+    function getContractRewardsBalance()
+        external
+        view
+        override
+        returns (uint256)
+    {
         return _getContractRewardsBalance();
     }
 
@@ -187,14 +198,18 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
     /* ERC-165 */
     ////////////////////////////////////
 
-    function supportsInterface(bytes4 interfaceId)
-    public
-    view
-    virtual
-    override(ERC721, ERC721URIStorage, IStakingERC721)
-    returns (bool) {
-        return interfaceId == type(IStakingERC721).interfaceId
-            || super.supportsInterface(interfaceId);
+    function supportsInterface(
+        bytes4 interfaceId
+    )
+        public
+        view
+        virtual
+        override(ERC721, ERC721URIStorage, IStakingERC721)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IStakingERC721).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function getInterfaceId() external pure override returns (bytes4) {
@@ -221,11 +236,9 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function tokenURI(uint256 tokenId)
-	public 
-	view 
-	override(ERC721URIStorage, ERC721)
-	returns (string memory) {
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721URIStorage, ERC721) returns (string memory) {
         return super.tokenURI(tokenId);
     }
 
@@ -317,19 +330,29 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
     /* Internal Functions Token */
     ////////////////////////////////////
 
-    function _safeMint(address to, uint256 tokenId, string memory tokenUri) internal {
+    function _safeMint(
+        address to,
+        uint256 tokenId,
+        string memory tokenUri
+    ) internal {
         ++_totalSupply;
         super._safeMint(to, tokenId);
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function _mint(address to, uint256 tokenId, string memory tokenUri) internal {
+    function _mint(
+        address to,
+        uint256 tokenId,
+        string memory tokenUri
+    ) internal {
         ++_totalSupply;
         super._mint(to, tokenId);
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function _burn(uint256 tokenId) internal override(ERC721URIStorage, ERC721) {
+    function _burn(
+        uint256 tokenId
+    ) internal override(ERC721URIStorage, ERC721) {
         super._burn(tokenId);
         --_totalSupply;
     }
@@ -338,9 +361,6 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         return baseURI;
     }
 
-	/**
-	 * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
-	 */
     function _beforeTokenTransfer(
         address from,
         address to,
