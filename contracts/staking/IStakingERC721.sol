@@ -24,6 +24,11 @@ interface IStakingERC721 is IERC721, IERC721Receiver {
         uint256 numStaked;
     }
 
+	/**
+	 * @dev Throw when trying to transfer the representative sNFT
+	 */
+	error NonTransferrableToken();
+
     /**
      * @notice Emit when a user stakes a token
      * @param tokenId The token ID of the staked token

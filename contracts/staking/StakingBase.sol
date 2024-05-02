@@ -56,11 +56,6 @@ contract StakingBase {
      */
     error InitializedWithZero();
 
-	/**
-	 * @dev Throw when trying to transfer the representative sNFT
-	 */
-	error NonTransferrableToken();
-
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
