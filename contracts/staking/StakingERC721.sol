@@ -51,6 +51,7 @@ contract StakingERC721 is ERC721, ERC721URIStorage, StakingBase, Ownable, IStaki
         uint256 _periodLength,
         uint256 _timeLockPeriod
     )
+		Ownable()
         ERC721(name, symbol)
         StakingBase(
             _stakingToken,
