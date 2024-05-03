@@ -24,6 +24,7 @@ import {
   ZERO_INIT_ERR, NOT_OWNER_ERR,
   NON_TRANSFERRABLE_ERR,
   WITHDRAW_EVENT,
+  LOW_LEVEL_CALL_ERR,
 } from "./helpers/staking";
 
 describe("StakingERC721", () => {
@@ -708,7 +709,7 @@ describe("StakingERC721", () => {
       }
     });
 
-    it("Can't use the StakngERC721 contract when an IERC721 is the rewards token", async () => {
+    it("Can't use the StakingERC721 contract when an IERC721 is the rewards token", async () => {
       const localConfig = {
         stakingToken: await stakingToken.getAddress(),
         rewardsToken: await stakingToken.getAddress(),
@@ -738,7 +739,7 @@ describe("StakingERC721", () => {
       try {
         await localStakingERC721.connect(stakerA).claim();
       } catch (e : unknown) {
-        expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
+        expect((e as Error).message).to.include(LOW_LEVEL_CALL_ERR);
       }
 
       try {
@@ -755,7 +756,7 @@ describe("StakingERC721", () => {
         await stakingToken.connect(deployer).mint(await localStakingERC721.getAddress(), 1010101);
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
       } catch (e : unknown) {
-        expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
+        expect((e as Error).message).to.include(LOW_LEVEL_CALL_ERR);
       }
 
       await expect(localStakingERC721.connect(stakerA).unstake([tokenIdA], true)).to.not.be.reverted;
