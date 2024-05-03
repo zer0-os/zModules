@@ -7,6 +7,9 @@ export const ONLY_NFT_OWNER_ERR = "ERC721: caller is not token owner or approved
 export const INSUFFICIENT_ALLOWANCE_ERR = "ERC20: insufficient allowance";
 export const INSUFFICIENT_BALANCE_ERR = "ERC20: transfer amount exceeds balance";
 
+// Ownable
+export const ONLY_OWNER_ERR = "Ownable: caller is not the owner";
+
 // StakingERC20
 export const TIME_LOCK_DURATION_ERR = "Staking20: Cannot claim or unstake before time lock period";
 export const POOL_NOT_EXIST_ERR = "Staking pool does not exist";

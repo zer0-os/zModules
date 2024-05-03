@@ -23,10 +23,9 @@ import {
   FUNCTION_SELECTOR_ERR,
   ZERO_INIT_ERR, NOT_OWNER_ERR,
   NON_TRANSFERRABLE_ERR,
+  WITHDRAW_EVENT,
 } from "./helpers/staking";
 
-// TODO stake: test token transfers with unstake and claim. Make sure a user after transferring a token
-//  can still claim rewards and unstake. Also test that the user can't claim rewards for a token they no longer own
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
   let stakerA : SignerWithAddress;
@@ -1539,7 +1538,7 @@ describe("StakingERC721", () => {
 
       await expect(
         stakingERC721.connect(deployer).withdrawLeftoverRewards()
-      ).to.emit(stakingERC721, "RewardLeftoverWithdrawal")
+      ).to.emit(stakingERC721, WITHDRAW_EVENT)
         .withArgs(deployer.address, contractBalBefore);
 
       const contractBalAfter = await rewardToken.balanceOf(stakingERC721.target);
@@ -1558,16 +1557,15 @@ describe("StakingERC721", () => {
       ).to.be.revertedWith(NOT_OWNER_ERR);
     });
 
-    // TODO need this anymore?
-    // it("#supportsInterface() should return true for ERC721 interface or interface of staking contract", async () => {
-    //   // get the interface ids programmatically
-    //   const erc721InterfaceId = "0x80ac58cd";
+    it("#supportsInterface() should return true for ERC721 interface or interface of staking contract", async () => {
+      // get the interface ids programmatically
+      const erc721InterfaceId = "0x80ac58cd";
 
-    //   const stakingInterface = await stakingERC721.getInterfaceId();
+      const stakingInterface = await stakingERC721.getInterfaceId();
 
-    //   expect(await stakingERC721.supportsInterface(erc721InterfaceId)).to.eq(true);
-    //   expect(await stakingERC721.supportsInterface(stakingInterface)).to.eq(true);
-    // });
+      expect(await stakingERC721.supportsInterface(erc721InterfaceId)).to.eq(true);
+      expect(await stakingERC721.supportsInterface(stakingInterface)).to.eq(true);
+    });
 
     it("Should allow to change ownership", async () => {
       await stakingERC721.connect(deployer).transferOwnership(notStaker.address);

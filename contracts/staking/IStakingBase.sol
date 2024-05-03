@@ -29,7 +29,7 @@ interface IStakingBase {
      * @param owner The address of the contract owner
      * @param amount The amount of rewards withdrawn
      */
-    event RewardLeftoverWithdrawal(address indexed owner, uint256 indexed amount);
+    event LeftoverRewardsWithdrawn(address indexed owner, uint256 indexed amount);
 
     /**
      * @notice Emit when a user claims rewards

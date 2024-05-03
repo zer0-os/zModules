@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 
@@ -12,6 +13,8 @@ import { StakingBase } from "../StakingBase.sol";
  * @notice A staking contract for ERC20 tokens
  */
 contract StakingERC20 is StakingBase, IStakingERC20 {
+	using SafeERC20 for IERC20;
+
     constructor(
 		address _stakingToken,
         IERC20 _rewardsToken,
@@ -41,7 +44,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
 		_ifRewards(staker);
 
-		IERC20(stakingToken).transferFrom(
+		IERC20(stakingToken).safeTransferFrom(
             msg.sender,
             address(this),
             amount
@@ -62,7 +65,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 			revert UnstakeMoreThanStake();
 		}
 
-		IERC20(stakingToken).transfer(
+		IERC20(stakingToken).safeTransfer(
             msg.sender,
             amount
         );
@@ -77,15 +80,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 		if (staker.amountStaked - amount == 0) {
             delete stakers[msg.sender];
         } else {
-			// should we update their rewards amount owed here?
 			staker.amountStaked -= amount;
             staker.lastUpdatedTimestamp = block.timestamp;
         }
 
 		emit Unstaked(amount, stakingToken);
-	}
-
-	function helpful(Staker memory staker, uint256 amount) external view returns (uint256, uint256) {
-		return (staker.amountStaked, amount);
 	}
 }

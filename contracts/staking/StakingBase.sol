@@ -117,10 +117,12 @@ contract StakingBase is Ownable, IStakingBase {
         uint256 balance = rewardsToken.balanceOf(address(this));
         if (balance == 0) revert NoRewardsLeftInContract();
 
-		// TODO make safe transfer
-        rewardsToken.transfer(owner(), balance);
+        rewardsToken.safeTransfer(
+			owner(),
+			balance
+		);
 
-        emit RewardLeftoverWithdrawal(owner(), balance);
+        emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
 	////////////////////////////////////
@@ -151,8 +153,7 @@ contract StakingBase is Ownable, IStakingBase {
             revert NoRewardsLeftInContract();
         }
 
-		// TODO make safe transfer
-        rewardsToken.transfer(msg.sender, rewards);
+        rewardsToken.safeTransfer(msg.sender, rewards);
 
         emit Claimed(rewards, address(rewardsToken));
     }
