@@ -76,6 +76,23 @@ contract StakingBase is Ownable, IStakingBase {
         _baseClaim(staker);
     }
 
+	/**
+     * @notice Emergency function for the contract owner to withdraw leftover rewards
+     * in case of an abandoned contract.
+     * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
+     */
+    function withdrawLeftoverRewards() external override onlyOwner {
+        uint256 balance = rewardsToken.balanceOf(address(this));
+        if (balance == 0) revert NoRewardsLeftInContract();
+
+        rewardsToken.safeTransfer(
+			owner(),
+			balance
+		);
+
+        emit LeftoverRewardsWithdrawn(owner(), balance);
+    }
+
     /**
      * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
      */
@@ -106,23 +123,6 @@ contract StakingBase is Ownable, IStakingBase {
         returns (uint256)
     {
         return _getContractRewardsBalance();
-    }
-
-    /**
-     * @notice Emergency function for the contract owner to withdraw leftover rewards
-     * in case of an abandoned contract.
-     * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
-     */
-    function withdrawLeftoverRewards() external override onlyOwner {
-        uint256 balance = rewardsToken.balanceOf(address(this));
-        if (balance == 0) revert NoRewardsLeftInContract();
-
-        rewardsToken.safeTransfer(
-			owner(),
-			balance
-		);
-
-        emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
 	////////////////////////////////////

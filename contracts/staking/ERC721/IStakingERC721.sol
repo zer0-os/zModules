@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 
@@ -10,16 +9,6 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
  * @notice Interface for the StakingERC721 contract
  */
 interface IStakingERC721 is IERC721Receiver {
-	/**
-     * @dev Throw when caller is not the sNFT owner
-     */
-    error InvalidOwner();
-
-	/**
-	 * @dev Throw when trying to transfer the representative sNFT
-	 */
-	error NonTransferrableToken();
-
 	/**
      * @dev Emitted when the base URI is updated
      * @param baseURI The new base URI
@@ -40,13 +29,25 @@ interface IStakingERC721 is IERC721Receiver {
      */
     event Unstaked(uint256 indexed tokenId, address indexed stakingToken);
 
+	/**
+     * @dev Throw when caller is not the sNFT owner
+     */
+    error InvalidOwner();
+
+	/**
+	 * @dev Throw when trying to transfer the representative sNFT
+	 */
+	error NonTransferrableToken();
+
     function stake(uint256[] calldata tokenIds, string[] calldata tokenURIs) external;
 
     function unstake(uint256[] memory tokenIds, bool exit) external;
 
-	function totalSupply() external view returns (uint256);
-
 	function setBaseURI(string memory baseUri) external;
+
+	function setTokenURI(uint256 tokenId, string memory tokenUri) external;
+
+	function totalSupply() external view returns (uint256);
 
 	function getInterfaceId() external pure returns (bytes4);
 }

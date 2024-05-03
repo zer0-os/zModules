@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { IStakingERC721 } from "./IStakingERC721.sol";
-
-import { StakingBase } from "../StakingBase.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import { IStakingERC721 } from "./IStakingERC721.sol";
+import { StakingBase } from "../StakingBase.sol";
 
 
 /**
@@ -123,7 +121,24 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
     }
 
-    function onERC721Received(
+	////////////////////////////////////
+    /* Token Functions */
+    ////////////////////////////////////
+
+	function setBaseURI(string memory baseUri) external override onlyOwner {
+        baseURI = baseUri;
+        emit BaseURIUpdated(baseUri);
+    }
+
+	function setTokenURI(uint256 tokenId, string memory tokenUri) external override virtual onlyOwner {
+		_setTokenURI(tokenId, tokenUri);
+	}
+
+	function getInterfaceId() external pure override returns (bytes4) {
+        return type(IStakingERC721).interfaceId;
+    }
+
+	function onERC721Received(
         address,
         address,
         uint256,
@@ -132,76 +147,22 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         return this.onERC721Received.selector;
     }
 
-	////////////////////////////////////
-    /* Token Functions */
-    ////////////////////////////////////
-
-	function totalSupply() public view returns (uint256) {
+	function totalSupply() public view override returns (uint256) {
         return _totalSupply;
-    }
-
-	function setBaseURI(string memory baseUri) external onlyOwner {
-        baseURI = baseUri;
-        emit BaseURIUpdated(baseUri);
-    }
-
-	function setTokenURI(uint256 tokenId, string memory tokenUri) external virtual onlyOwner {
-		_setTokenURI(tokenId, tokenUri);
-	}
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IStakingERC721).interfaceId
-            || super.supportsInterface(interfaceId);
-    }
-
-	function getInterfaceId() external pure returns (bytes4) {
-        return type(IStakingERC721).interfaceId;
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         return super.tokenURI(tokenId);
     }
 
-	/**
-	 * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
-	 */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256,
-        uint256
-    ) internal pure override {
-        if (from != address(0) && to != address(0)) {
-            revert NonTransferrableToken();
-        }
-    }
-
-	function _safeMint(address to, uint256 tokenId, string memory tokenUri) internal {
-        ++_totalSupply;
-        super._safeMint(to, tokenId);
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    function _mint(address to, uint256 tokenId, string memory tokenUri) internal {
-        ++_totalSupply;
-        super._mint(to, tokenId);
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    function _burn(uint256 tokenId) internal override {
-        super._burn(tokenId);
-        --_totalSupply;
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
+	function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IStakingERC721).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     ////////////////////////////////////
     /* Internal Staking Functions */
     ////////////////////////////////////
-
-	// TODO bring over `AStakeToken` functionality maybe
 
     function _stake(uint256 tokenId, string memory tokenUri) internal {
         // Transfer their NFT to this contract
@@ -228,5 +189,40 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         );
 
         emit Unstaked(tokenId, stakingToken);
+    }
+
+	function _safeMint(address to, uint256 tokenId, string memory tokenUri) internal {
+        ++_totalSupply;
+        super._safeMint(to, tokenId);
+        _setTokenURI(tokenId, tokenUri);
+    }
+
+    function _mint(address to, uint256 tokenId, string memory tokenUri) internal {
+        ++_totalSupply;
+        super._mint(to, tokenId);
+        _setTokenURI(tokenId, tokenUri);
+    }
+
+    function _burn(uint256 tokenId) internal override {
+        super._burn(tokenId);
+        --_totalSupply;
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
+	/**
+	 * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
+	 */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256,
+        uint256
+    ) internal pure override {
+        if (from != address(0) && to != address(0)) {
+            revert NonTransferrableToken();
+        }
     }
 }

@@ -38,14 +38,14 @@ describe("StakingERC20", () => {
 
   let stakeToken : MockERC20;
   let rewardsToken : MockERC20;
-  
+
   // We don't use `PoolConfig` anymore on the contracts but for convenience in testing
   // we can leave this type where it is
   let config : BaseConfig;
-  
+
   // Track first stake and most recent stake times
   let origStakedAtA : bigint;
-  let stakedAtA:  bigint;
+  let stakedAtA :  bigint;
 
   let origStakedAtB : bigint;
   let stakedAtB : bigint;
@@ -57,10 +57,8 @@ describe("StakingERC20", () => {
   let stakedAtD : bigint;
 
   // Set initial values for stakers
-  let amountStakedA : bigint = 0n;
-  let amountStakedB : bigint = 0n;
-  let amountStakedC : bigint = 0n;
-  let amountStakedD : bigint = 0n;
+  let amountStakedA = 0n;
+  let amountStakedC = 0n;
 
   let claimedAtA : bigint;
 
@@ -205,7 +203,6 @@ describe("StakingERC20", () => {
       await contract.connect(stakerB).stake(DEFAULT_STAKED_AMOUNT);
       stakedAtB = BigInt(await time.latest());
       origStakedAtB = stakedAtB;
-      amountStakedB += DEFAULT_STAKED_AMOUNT;
 
       const expectedRewards = calcTotalRewards(
         [stakedAtB - origStakedAtB], // Will be 0
@@ -270,7 +267,7 @@ describe("StakingERC20", () => {
 
       const remainingLockTime = await contract.connect(stakerA).getRemainingLockTime();
       expect(remainingLockTime).to.eq(0n);
-    })
+    });
 
     it("Returns 0 for a user that has not staked", async () => {
       const remainingLockTime = await contract.connect(notStaker).getRemainingLockTime();
@@ -289,7 +286,7 @@ describe("StakingERC20", () => {
         config.periodLength
       );
 
-      // It will always provide the correct value for the rewards owed to 
+      // It will always provide the correct value for the rewards owed to
       // the user, even when the contract does not have the balance for it
       const contractBalance = await rewardsToken.balanceOf(await contract.getAddress());
 
@@ -307,7 +304,6 @@ describe("StakingERC20", () => {
 
       stakedAtD = BigInt(await time.latest());
       origStakedAtD = stakedAtD;
-      amountStakedD += DEFAULT_STAKED_AMOUNT;
 
       const stakerData = await contract.stakers(stakerD.address);
 
@@ -463,7 +459,7 @@ describe("StakingERC20", () => {
       expect(stakerData.lastUpdatedTimestamp).to.eq(0n);
       expect(stakerData.unlockTimestamp).to.eq(0n);
       expect(stakerData.owedRewards).to.eq(0n);
-    })
+    });
 
     it("Fails when the user has never staked", async () => {
       await expect(
@@ -713,7 +709,7 @@ describe("StakingERC20", () => {
       expect(stakerDataAfter.owedRewards).to.eq(0n);
     });
 
-    it("emits 'LeftoverRewardsWithdrawn' event when the admin withdraws", async () => {
+    it("Emits 'LeftoverRewardsWithdrawn' event when the admin withdraws", async () => {
       const amount = 1000n;
       await rewardsToken.connect(deployer).transfer(
         await contract.getAddress(),
@@ -724,18 +720,6 @@ describe("StakingERC20", () => {
         contract.connect(deployer).withdrawLeftoverRewards()
       ).to.emit(contract, WITHDRAW_EVENT)
         .withArgs(deployer.address, amount);
-    })
+    });
   });
-
-  /**
-   * TODO cases    * 
-   * 
-   * test withdrawal of rewards
-   * admin funcs
-   * withdraw
-   * 
-   * other configs
-   * 
-   * long more advanced test similar to erc721
-   */
 });

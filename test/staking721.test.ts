@@ -782,7 +782,7 @@ describe("StakingERC721", () => {
           localConfig.rewardsPerPeriod,
           localConfig.periodLength,
           localConfig.timeLockPeriod
-        )
+        );
       } catch (e : unknown) {
         expect((e as Error).message).to.include(ZERO_INIT_ERR);
       }
