@@ -15,7 +15,7 @@ import { StakingBase } from "../StakingBase.sol";
  * non-transferable ERC721 token in return as representation of the deposit.
  */
 contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
-	/**
+    /**
      * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
      */
     string internal baseURI;
@@ -24,7 +24,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Total supply of all tokens
      */
     uint256 internal _totalSupply;
-	/**
+    /**
      * @dev Revert if a call is not from the SNFT owner
      */
     modifier onlySNFTOwner(uint256 tokenId) {
@@ -44,14 +44,14 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256 _periodLength,
         uint256 _timeLockPeriod
     )
-	ERC721(name, symbol)
-	StakingBase(
-		_stakingToken,
-		_rewardsToken,
-		_rewardsPerPeriod,
-		_periodLength,
-		_timeLockPeriod
-	)
+        ERC721(name, symbol)
+        StakingBase(
+            _stakingToken,
+            _rewardsToken,
+            _rewardsPerPeriod,
+            _periodLength,
+            _timeLockPeriod
+        )
     {
         if (bytes(baseUri).length > 0) {
             baseURI = baseUri;
@@ -72,7 +72,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _ifRewards(staker);
 
         uint256 i;
-        for (i; i < tokenIds.length;) {
+        for (i; i < tokenIds.length; ) {
             _stake(tokenIds[i], tokenUris[i]);
 
             unchecked {
@@ -95,7 +95,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         if (!exit) _onlyUnlocked(staker.unlockTimestamp);
 
         uint256 i;
-        for (i; i < tokenIds.length;) {
+        for (i; i < tokenIds.length; ) {
             _unstake(tokenIds[i]);
 
             unchecked {
@@ -106,9 +106,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         if (!exit) {
             _baseClaim(staker);
         } else {
-			// Snapshot their pending rewards
-			staker.owedRewards = _getPendingRewards(staker);
-		}
+            // Snapshot their pending rewards
+            staker.owedRewards = _getPendingRewards(staker);
+        }
 
         // if `numStaked < tokenIds.length` it will have already failed above
         // so we don't need to check that here
@@ -121,24 +121,27 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
     }
 
-	////////////////////////////////////
+    ////////////////////////////////////
     /* Token Functions */
     ////////////////////////////////////
 
-	function setBaseURI(string memory baseUri) external override onlyOwner {
+    function setBaseURI(string memory baseUri) external override onlyOwner {
         baseURI = baseUri;
         emit BaseURIUpdated(baseUri);
     }
 
-	function setTokenURI(uint256 tokenId, string memory tokenUri) external override virtual onlyOwner {
-		_setTokenURI(tokenId, tokenUri);
-	}
+    function setTokenURI(
+        uint256 tokenId,
+        string memory tokenUri
+    ) external virtual override onlyOwner {
+        _setTokenURI(tokenId, tokenUri);
+    }
 
-	function getInterfaceId() external pure override returns (bytes4) {
+    function getInterfaceId() external pure override returns (bytes4) {
         return type(IStakingERC721).interfaceId;
     }
 
-	function onERC721Received(
+    function onERC721Received(
         address,
         address,
         uint256,
@@ -147,17 +150,22 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         return this.onERC721Received.selector;
     }
 
-	function totalSupply() public view override returns (uint256) {
+    function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    function tokenURI(
+        uint256 tokenId
+    ) public view override returns (string memory) {
         return super.tokenURI(tokenId);
     }
 
-	function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IStakingERC721).interfaceId
-            || super.supportsInterface(interfaceId);
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override returns (bool) {
+        return
+            interfaceId == type(IStakingERC721).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     ////////////////////////////////////
@@ -191,13 +199,21 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         emit Unstaked(tokenId, stakingToken);
     }
 
-	function _safeMint(address to, uint256 tokenId, string memory tokenUri) internal {
+    function _safeMint(
+        address to,
+        uint256 tokenId,
+        string memory tokenUri
+    ) internal {
         ++_totalSupply;
         super._safeMint(to, tokenId);
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function _mint(address to, uint256 tokenId, string memory tokenUri) internal {
+    function _mint(
+        address to,
+        uint256 tokenId,
+        string memory tokenUri
+    ) internal {
         ++_totalSupply;
         super._mint(to, tokenId);
         _setTokenURI(tokenId, tokenUri);
@@ -212,9 +228,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         return baseURI;
     }
 
-	/**
-	 * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
-	 */
+    /**
+     * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
+     */
     function _beforeTokenTransfer(
         address from,
         address to,

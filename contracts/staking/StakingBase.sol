@@ -7,12 +7,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingBase } from "./IStakingBase.sol";
 
+
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
  */
 contract StakingBase is Ownable, IStakingBase {
-	using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20;
 
     /**
      * @dev Mapping of each staker to that staker's data in the `Staker` struct
@@ -69,14 +70,14 @@ contract StakingBase is Ownable, IStakingBase {
      * @notice Claim rewards for the calling user based on their staked amount
      */
     function claim() external override {
-		// Require the time lock to have passed
-		Staker storage staker = stakers[msg.sender];
+        // Require the time lock to have passed
+        Staker storage staker = stakers[msg.sender];
 
         _onlyUnlocked(staker.unlockTimestamp);
         _baseClaim(staker);
     }
 
-	/**
+    /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
@@ -85,10 +86,7 @@ contract StakingBase is Ownable, IStakingBase {
         uint256 balance = rewardsToken.balanceOf(address(this));
         if (balance == 0) revert NoRewardsLeftInContract();
 
-        rewardsToken.safeTransfer(
-			owner(),
-			balance
-		);
+        rewardsToken.safeTransfer(owner(), balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
@@ -125,12 +123,12 @@ contract StakingBase is Ownable, IStakingBase {
         return _getContractRewardsBalance();
     }
 
-	////////////////////////////////////
+    ////////////////////////////////////
     /* Internal Functions */
     ////////////////////////////////////
 
-	function _ifRewards(Staker storage staker) internal {
-		if (staker.amountStaked > 0) {
+    function _ifRewards(Staker storage staker) internal {
+        if (staker.amountStaked > 0) {
             // It isn't their first stake, snapshot pending rewards
             staker.owedRewards = _getPendingRewards(staker);
         } else {
@@ -138,11 +136,9 @@ contract StakingBase is Ownable, IStakingBase {
             // This is only done once per user
             staker.unlockTimestamp = block.timestamp + timeLockPeriod;
         }
-	}
+    }
 
-    function _baseClaim(
-        Staker storage staker
-    ) internal {
+    function _baseClaim(Staker storage staker) internal {
         uint256 rewards = _getPendingRewards(staker);
 
         staker.lastUpdatedTimestamp = block.timestamp;
@@ -164,9 +160,12 @@ contract StakingBase is Ownable, IStakingBase {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
         return
-			// TODO note, removed extra parens, be SURE this returns the same still
-            staker.owedRewards + (rewardsPerPeriod * staker.amountStaked
-				* ((block.timestamp - staker.lastUpdatedTimestamp) / periodLength));
+            // TODO note, removed extra parens, be SURE this returns the same still
+            staker.owedRewards +
+            (rewardsPerPeriod *
+                staker.amountStaked *
+                ((block.timestamp - staker.lastUpdatedTimestamp) /
+                    periodLength));
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

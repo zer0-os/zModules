@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 /**
  * @title IStakingBase
  * @notice Interface for the base staking contract
  */
 interface IStakingBase {
-	/**
+    /**
      * @notice Struct to track a set of data for each staker
      * @param unlockTimestamp The timestamp at which the stake can be unstaked
      * @param owedRewards The amount of rewards snapshotted and not yet paid to the user
@@ -22,12 +23,15 @@ interface IStakingBase {
         uint256 amountStaked;
     }
 
-	/**
+    /**
      * @dev Emitted when the contract owner withdraws leftover rewards
      * @param owner The address of the contract owner
      * @param amount The amount of rewards withdrawn
      */
-    event LeftoverRewardsWithdrawn(address indexed owner, uint256 indexed amount);
+    event LeftoverRewardsWithdrawn(
+        address indexed owner,
+        uint256 indexed amount
+    );
 
     /**
      * @notice Emit when a user claims rewards
@@ -48,7 +52,7 @@ interface IStakingBase {
      */
     error NoRewardsLeftInContract();
 
-	/**
+    /**
      * @dev Throw when passing zero values to set a state var
      */
     error InitializedWithZero();
