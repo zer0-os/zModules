@@ -7,11 +7,8 @@ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
 
-// TODO rename so not similar to StakingBase
 import { StakingBase } from "../StakingBase.sol";
-
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-// import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 
 /**
@@ -20,8 +17,6 @@ import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extension
  * non-transferable ERC721 token in return as representation of the deposit.
  */
 contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
-	// TODO move some things to interface from here
-
 	/**
      * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
      */
@@ -31,23 +26,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Total supply of all tokens
      */
     uint256 internal _totalSupply;
-
-	/**
-     * @dev Throw when caller is not the sNFT owner
-     */
-    error InvalidOwner();
-
-	/**
-	 * @dev Throw when trying to transfer the representative sNFT
-	 */
-	error NonTransferrableToken();
-
-	/**
-     * @dev Emitted when the base URI is updated
-     * @param baseURI The new base URI
-     */
-    event BaseURIUpdated(string baseURI);
-
 	/**
      * @dev Revert if a call is not from the SNFT owner
      */
