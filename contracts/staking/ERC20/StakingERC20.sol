@@ -74,13 +74,18 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 			staker.owedRewards = _getPendingRewards(staker);
 		}
 
-		if (staker.amountStaked == amount) {
+		if (staker.amountStaked - amount == 0) {
             delete stakers[msg.sender];
-			emit Unstaked(0, stakingToken);
         } else {
+			// should we update their rewards amount owed here?
 			staker.amountStaked -= amount;
             staker.lastUpdatedTimestamp = block.timestamp;
-			emit Unstaked(amount, stakingToken);
         }
+
+		emit Unstaked(amount, stakingToken);
+	}
+
+	function helpful(Staker memory staker, uint256 amount) external view returns (uint256, uint256) {
+		return (staker.amountStaked, amount);
 	}
 }

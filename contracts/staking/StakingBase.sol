@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingBase } from "./IStakingBase.sol";
 
 /**
@@ -11,6 +12,8 @@ import { IStakingBase } from "./IStakingBase.sol";
  * @notice A set of common elements that are used in any Staking contract
  */
 contract StakingBase is Ownable, IStakingBase {
+	using SafeERC20 for IERC20;
+
     /**
      * @dev Mapping of each staker to that staker's data in the `Staker` struct
      */
@@ -47,7 +50,7 @@ contract StakingBase is Ownable, IStakingBase {
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
         uint256 _timeLockPeriod
-    ) {
+    ) Ownable() {
         if (
             _stakingToken == address(0) ||
             address(_rewardsToken) == address(0) ||

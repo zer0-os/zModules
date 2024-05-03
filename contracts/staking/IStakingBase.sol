@@ -9,11 +9,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface IStakingBase {
     /**
-     * @dev Throw when caller is not the sNFT owner
-     */
-    error InvalidOwner();
-
-    /**
      * @dev Throw when the lock period has not passed
      */
     error TimeLockNotPassed();

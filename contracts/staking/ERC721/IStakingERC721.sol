@@ -9,7 +9,7 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
  * @title IStakingERC721
  * @notice Interface for the StakingERC721 contract
  */
-interface IStakingERC721 is IERC721, IERC721Receiver {
+interface IStakingERC721 is IERC721Receiver {
 	/**
      * @notice Emit when a user stakes a token
      * @param tokenId The token ID of the staked token
