@@ -160,7 +160,6 @@ contract StakingBase is Ownable, IStakingBase {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
         return
-            // TODO note, removed extra parens, be SURE this returns the same still
             staker.owedRewards +
             (rewardsPerPeriod *
                 staker.amountStaked *
