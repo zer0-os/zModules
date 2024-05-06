@@ -68,6 +68,7 @@ contract Match is IMatch, Escrow {
             charge(players[i], entryFee);
         }
 
+        // TODO esc: fix incorrect nextMatchId
         emit MatchStarted(nextMatchId, players, entryFee);
     }
 
