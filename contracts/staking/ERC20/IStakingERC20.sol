@@ -9,17 +9,26 @@ pragma solidity ^0.8.19;
 interface IStakingERC20 {
     /**
      * @notice Emit when a user stakes a token
+     * @param staker The address of the account which staked
      * @param amount The amount of the staked token
      * @param stakingToken The address of the staking token contract
      */
-    event Staked(uint256 indexed amount, address indexed stakingToken);
+    event Staked(
+        address indexed staker,
+        uint256 indexed amount,
+        address indexed stakingToken
+    );
 
     /**
      * @notice Emit when a user unstakes
      * @param amount The amount of the staked token
      * @param stakingToken The address of the staking token contract
      */
-    event Unstaked(uint256 indexed amount, address indexed stakingToken);
+    event Unstaked(
+        address indexed staker,
+        uint256 indexed amount,
+        address indexed stakingToken
+    );
 
     /**
      * Revert when the user tries to unstake more than the initial stake amount

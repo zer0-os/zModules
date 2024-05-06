@@ -69,7 +69,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     ) external override {
         Staker storage staker = stakers[msg.sender];
 
-        _ifRewards(staker);
+        _checkRewards(staker);
 
         uint256 i;
         for (i; i < tokenIds.length; ) {

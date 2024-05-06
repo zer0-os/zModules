@@ -127,7 +127,7 @@ contract StakingBase is Ownable, IStakingBase {
     /* Internal Functions */
     ////////////////////////////////////
 
-    function _ifRewards(Staker storage staker) internal {
+    function _checkRewards(Staker storage staker) internal {
         if (staker.amountStaked > 0) {
             // It isn't their first stake, snapshot pending rewards
             staker.owedRewards = _getPendingRewards(staker);

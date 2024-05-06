@@ -645,7 +645,7 @@ describe("StakingERC20", () => {
       await expect(
         contract.connect(stakerF).stake(DEFAULT_STAKED_AMOUNT)
       ).to.emit(contract, STAKED_EVENT)
-        .withArgs(DEFAULT_STAKED_AMOUNT, config.stakingToken);
+        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakingToken);
     });
 
     it("Emits a Claimed event when a user claims rewards", async () => {
@@ -679,7 +679,7 @@ describe("StakingERC20", () => {
       await expect(
         contract.connect(stakerF).unstake(stakerData.amountStaked / 2n, false)
       ).to.emit(contract, UNSTAKED_EVENT)
-        .withArgs(stakerData.amountStaked / 2n, config.stakingToken);
+        .withArgs(stakerF.address, stakerData.amountStaked / 2n, config.stakingToken);
     });
 
     it("Emits an Unstaked event when a user exits with unstake", async () => {
@@ -693,7 +693,7 @@ describe("StakingERC20", () => {
       await expect(
         contract.connect(stakerF).unstake(stakerData.amountStaked, true)
       ).to.emit(contract, UNSTAKED_EVENT)
-        .withArgs(stakerData.amountStaked, config.stakingToken);
+        .withArgs(stakerF.address, stakerData.amountStaked, config.stakingToken);
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerF.address);
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerF.address);

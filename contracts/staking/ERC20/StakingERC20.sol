@@ -40,7 +40,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             revert ZeroStake();
         }
 
-        _ifRewards(staker);
+        _checkRewards(staker);
 
         IERC20(stakingToken).safeTransferFrom(
             msg.sender,
@@ -51,7 +51,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         staker.amountStaked += amount;
         staker.lastUpdatedTimestamp = block.timestamp;
 
-        emit Staked(amount, stakingToken);
+        emit Staked(msg.sender, amount, stakingToken);
     }
 
     function unstake(uint256 amount, bool exit) external override {
@@ -79,6 +79,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             staker.lastUpdatedTimestamp = block.timestamp;
         }
 
-        emit Unstaked(amount, stakingToken);
+        emit Unstaked(msg.sender, amount, stakingToken);
     }
 }
