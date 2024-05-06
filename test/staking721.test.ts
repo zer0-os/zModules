@@ -604,7 +604,7 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).claim())
         .to.emit(stakingERC721, CLAIMED_EVENT)
-        .withArgs(pendingRewards, config.rewardsToken);
+        .withArgs(stakerA.address, pendingRewards, config.rewardsToken);
 
       claimedAt = BigInt(await time.latest());
     });
