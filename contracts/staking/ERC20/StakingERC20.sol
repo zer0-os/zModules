@@ -63,8 +63,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             revert UnstakeMoreThanStake();
         }
 
-        IERC20(stakingToken).safeTransfer(msg.sender, amount);
-
         if (!exit) {
             _baseClaim(staker);
         } else {
@@ -78,6 +76,9 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             staker.amountStaked -= amount;
             staker.lastUpdatedTimestamp = block.timestamp;
         }
+
+        // Return the user's initial stake
+        IERC20(stakingToken).safeTransfer(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount, stakingToken);
     }
