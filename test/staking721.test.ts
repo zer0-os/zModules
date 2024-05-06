@@ -575,7 +575,7 @@ describe("StakingERC721", () => {
 
       await expect(stakingERC721.connect(stakerA).stake([tokenIdA], [emptyUri]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdA, config.stakingToken);
+        .withArgs(stakerA.address, tokenIdA, config.stakingToken);
 
       stakedAtA = BigInt(await time.latest());
       balanceAtStakeOne = await stakingERC721.balanceOf(stakerA.address);
@@ -588,9 +588,9 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).stake([tokenIdB, tokenIdC], [emptyUri, emptyUri]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdB, config.stakingToken)
+        .withArgs(stakerA.address, tokenIdB, config.stakingToken)
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdC, config.stakingToken);
+        .withArgs(stakerA.address, tokenIdC, config.stakingToken);
 
       stakedAtB = BigInt(await time.latest());
 
@@ -619,8 +619,9 @@ describe("StakingERC721", () => {
       await expect(
         await stakingERC721.connect(stakerA).unstake([tokenIdA], false)
       ).to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdA, config.stakingToken)
-        .to.emit(stakingERC721, CLAIMED_EVENT);
+        .withArgs(stakerA.address, tokenIdA, config.stakingToken)
+        .to.emit(stakingERC721, CLAIMED_EVENT)
+        .withArgs(stakerA.address, pendingRewards, config.rewardsToken);
 
       // Can't use `.withArgs` helper when testing claim event as we can't adjust the
       // timestamp required for calculating the proper rewards amount
@@ -648,10 +649,11 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).unstake([tokenIdB, tokenIdC], false))
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdB, config.stakingToken)
+        .withArgs(stakerA.address, tokenIdB, config.stakingToken)
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdC, config.stakingToken)
-        .to.emit(stakingERC721, CLAIMED_EVENT);
+        .withArgs(stakerA.address, tokenIdC, config.stakingToken)
+        .to.emit(stakingERC721, CLAIMED_EVENT)
+        .withArgs(stakerA.address, pendingRewards, config.rewardsToken);
 
       // Cannot verify 'CLAIMED_EVENT' using '.withArgs' because we can't manipulate the
       // timestamp to calculate the expected rewards until after the tx

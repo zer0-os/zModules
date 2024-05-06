@@ -17,17 +17,27 @@ interface IStakingERC721 is IERC721Receiver {
 
     /**
      * @notice Emit when a user stakes a token
+     * @param staker The address of the user staking
      * @param tokenId The token ID of the staked token
      * @param stakingToken The address of the staking token contract
      */
-    event Staked(uint256 indexed tokenId, address indexed stakingToken);
+    event Staked(
+        address indexed staker,
+        uint256 indexed tokenId,
+        address indexed stakingToken
+    );
 
     /**
      * @notice Emit when a user unstakes
+     * @param staker The address of the user unstaking
      * @param tokenId The token ID of the staked token
      * @param stakingToken The address of the staking token contract
      */
-    event Unstaked(uint256 indexed tokenId, address indexed stakingToken);
+    event Unstaked(
+        address indexed staker,
+        uint256 indexed tokenId,
+        address indexed stakingToken
+    );
 
     /**
      * @dev Throw when caller is not the sNFT owner

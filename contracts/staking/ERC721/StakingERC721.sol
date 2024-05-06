@@ -183,7 +183,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         // Mint user sNFT
         _safeMint(msg.sender, tokenId, tokenUri);
 
-        emit Staked(tokenId, stakingToken);
+        emit Staked(msg.sender, tokenId, stakingToken);
     }
 
     function _unstake(uint256 tokenId) internal onlySNFTOwner(tokenId) {
@@ -196,7 +196,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             tokenId
         );
 
-        emit Unstaked(tokenId, stakingToken);
+        emit Unstaked(msg.sender, tokenId, stakingToken);
     }
 
     function _safeMint(
