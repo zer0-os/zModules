@@ -1,7 +1,7 @@
 {
   "name": "zmodules",
-  "version": "0.1.0",
-  "description": "A collection of simple, modular contracts that can be optionally grouped together",
+  "version": "0.2.0",
+  "description": "A collection of simple, modular contracts for different use cases",
   "scripts": {
     "typechain": "hardhat typechain",
     "compile": "hardhat compile",
