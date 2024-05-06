@@ -1,15 +1,25 @@
 // SPDX-License-Identifier: MIT
-// eslint-disable immutable-vars-naming
+// solhint-disable immutable-vars-naming
 pragma solidity ^0.8.19;
 
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IStakingBase } from "./IStakingBase.sol";
 
 
 /**
- * @title AStakingBase
- * @notice A set of common elements that comprise any Staking contract
+ * @title StakingBase
+ * @notice A set of common elements that are used in any Staking contract
  */
-contract StakingBase {
+contract StakingBase is Ownable, IStakingBase {
+    using SafeERC20 for IERC20;
+
+    /**
+     * @dev Mapping of each staker to that staker's data in the `Staker` struct
+     */
+    mapping(address staker => Staker stakerData) public stakers;
+
     /**
      * @dev The staking token for this pool
      */
@@ -35,41 +45,19 @@ contract StakingBase {
      */
     uint256 public immutable timeLockPeriod;
 
-    /**
-     * @dev Throw when caller is not the sNFT owner
-     */
-    error InvalidOwner();
-
-    /**
-     * @dev Throw when the lock period has not passed
-     */
-    error TimeLockNotPassed();
-
-    /**
-     * @dev Throw when there are no rewards remaining in the contract
-     * to give to stakers
-     */
-    error NoRewardsLeftInContract();
-
-    /**
-     * @dev Throw when passing zero values to set a state var
-     */
-    error InitializedWithZero();
-
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
         uint256 _timeLockPeriod
-    ) {
+    ) Ownable() {
         if (
-            _stakingToken == address(0)
-            || address(_rewardsToken) == address(0)
-            || _rewardsPerPeriod == 0
-            || _periodLength == 0
-        )
-            revert InitializedWithZero();
+            _stakingToken.code.length == 0 ||
+            address(_rewardsToken).code.length == 0 ||
+            _rewardsPerPeriod == 0 ||
+            _periodLength == 0
+        ) revert InitializedWithZero();
 
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
@@ -79,15 +67,114 @@ contract StakingBase {
     }
 
     /**
-     * @notice Calculate rewards for a staker
-     * @dev Returns 0 if time lock period is not passed
-     * @param timePassed Time passed since last stake or claim, in seconds
-     * @param stakeAmount Amount of staking token staked
+     * @notice Claim rewards for the calling user based on their staked amount
      */
-    function _calculateRewards(
-        uint256 timePassed,
-        uint256 stakeAmount
+    function claim() external override {
+        // Require the time lock to have passed
+        Staker storage staker = stakers[msg.sender];
+
+        _onlyUnlocked(staker.unlockTimestamp);
+        _baseClaim(staker);
+    }
+
+    /**
+     * @notice Emergency function for the contract owner to withdraw leftover rewards
+     * in case of an abandoned contract.
+     * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
+     */
+    function withdrawLeftoverRewards() external override onlyOwner {
+        uint256 balance = rewardsToken.balanceOf(address(this));
+        if (balance == 0) revert NoRewardsLeftInContract();
+
+        rewardsToken.safeTransfer(owner(), balance);
+
+        emit LeftoverRewardsWithdrawn(owner(), balance);
+    }
+
+    /**
+     * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
+     */
+    function getRemainingLockTime() external view override returns (uint256) {
+        // Return the time remaining for the stake to be claimed or unstaked
+        Staker memory staker = stakers[msg.sender];
+        if (block.timestamp > staker.unlockTimestamp) {
+            return 0;
+        }
+
+        return staker.unlockTimestamp - block.timestamp;
+    }
+
+    /**
+     * @notice View the pending rewards balance for a user
+     */
+    function getPendingRewards() external view override returns (uint256) {
+        return _getPendingRewards(stakers[msg.sender]);
+    }
+
+    /**
+     * @notice View the rewards balance in this pool
+     */
+    function getContractRewardsBalance()
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return _getContractRewardsBalance();
+    }
+
+    ////////////////////////////////////
+    /* Internal Functions */
+    ////////////////////////////////////
+
+    function _checkRewards(Staker storage staker) internal {
+        if (staker.amountStaked > 0) {
+            // It isn't their first stake, snapshot pending rewards
+            staker.owedRewards = _getPendingRewards(staker);
+        } else {
+            // Log the time at which this stake becomes claimable or unstakable
+            // This is only done once per user
+            staker.unlockTimestamp = block.timestamp + timeLockPeriod;
+        }
+    }
+
+    function _baseClaim(Staker storage staker) internal {
+        uint256 rewards = _getPendingRewards(staker);
+
+        staker.lastUpdatedTimestamp = block.timestamp;
+        staker.owedRewards = 0;
+
+        // Disallow rewards when balance is 0
+        if (_getContractRewardsBalance() == 0) {
+            revert NoRewardsLeftInContract();
+        }
+
+        rewardsToken.safeTransfer(msg.sender, rewards);
+
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
+    }
+
+    function _getPendingRewards(
+        Staker memory staker
     ) internal view returns (uint256) {
-        return rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+        // Return any existing pending rewards value plus the
+        // calculated rewards based on the last updated timestamp
+        return
+            staker.owedRewards +
+            (rewardsPerPeriod *
+                staker.amountStaked *
+                ((block.timestamp - staker.lastUpdatedTimestamp) /
+                    periodLength));
+    }
+
+    function _getContractRewardsBalance() internal view returns (uint256) {
+        return rewardsToken.balanceOf(address(this));
+    }
+
+    function _onlyUnlocked(uint256 unlockTimestamp) internal view {
+        // User is not staked or has not passed the time lock
+        if (unlockTimestamp == 0 || block.timestamp < unlockTimestamp) {
+            revert TimeLockNotPassed();
+        }
     }
 }

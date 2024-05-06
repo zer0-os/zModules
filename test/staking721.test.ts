@@ -23,10 +23,10 @@ import {
   FUNCTION_SELECTOR_ERR,
   ZERO_INIT_ERR, NOT_OWNER_ERR,
   NON_TRANSFERRABLE_ERR,
+  WITHDRAW_EVENT,
+  LOW_LEVEL_CALL_ERR,
 } from "./helpers/staking";
 
-// TODO stake: test token transfers with unstake and claim. Make sure a user after transferring a token
-//  can still claim rewards and unstake. Also test that the user can't claim rewards for a token they no longer own
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
   let stakerA : SignerWithAddress;
@@ -35,7 +35,6 @@ describe("StakingERC721", () => {
   let notStaker : SignerWithAddress;
 
   let stakingERC721 : StakingERC721;
-
   let rewardToken : MockERC20;
   let stakingToken : MockERC721;
 
@@ -80,7 +79,7 @@ describe("StakingERC721", () => {
     rewardToken = await mockERC20Factory.deploy("MEOW", "MEOW");
 
     const mockERC721Factory = await hre.ethers.getContractFactory("MockERC721");
-    stakingToken = await mockERC721Factory.deploy("WilderWheels", "WW", "0://wheels-base");
+    stakingToken = await mockERC721Factory.deploy("WilderWheels", "WW", baseUri);
 
     config = await createDefaultConfigs(rewardToken, stakingToken);
 
@@ -168,7 +167,7 @@ describe("StakingERC721", () => {
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
   });
 
-  describe("#viewRewardsInPool", () => {
+  describe("#getContractRewardsBalance", () => {
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await stakingERC721.getContractRewardsBalance();
       const poolBalance = await rewardToken.balanceOf(await stakingERC721.getAddress());
@@ -191,7 +190,7 @@ describe("StakingERC721", () => {
       // User has staked their NFT and gained an SNFT
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(2); // still has tokenIdB and tokenIdC
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(1);
-      expect(stakerData.numStaked).to.eq(1);
+      expect(stakerData.amountStaked).to.eq(1);
       expect(stakerData.unlockTimestamp).to.eq(stakedAtA + config.timeLockPeriod);
       expect(stakerData.lastUpdatedTimestamp).to.eq(stakedAtA);
     });
@@ -213,7 +212,7 @@ describe("StakingERC721", () => {
       // User has staked their remaining NFTs and gained two SNFTs
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(0);
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(3);
-      expect(stakerData.numStaked).to.eq(3);
+      expect(stakerData.amountStaked).to.eq(3);
       // Verify that the unlockTimestamp *has not* changed after the second stake
       expect(stakerData.unlockTimestamp).to.eq(stakedAtA + config.timeLockPeriod);
       // Verify that the lastUpdatedTimestamp *has* changed after the second stake
@@ -370,10 +369,10 @@ describe("StakingERC721", () => {
       const stakerData = await stakingERC721.stakers(stakerA.address);
 
       // Verify `numStaked` has not changed
-      expect(stakerData.numStaked).to.eq(3);
+      expect(stakerData.amountStaked).to.eq(3);
       // Verify `lastUpdatedTimestamp` has changed
       expect(stakerData.lastUpdatedTimestamp).to.eq(claimedAt);
-      expect(stakerData.pendingRewards).to.eq(0n);
+      expect(stakerData.owedRewards).to.eq(0n);
     });
 
     it("Fails to claim when not enough time has passed", async () => {
@@ -424,9 +423,9 @@ describe("StakingERC721", () => {
       // User has regained their NFT and the SNFT was burned
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(1);
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(2);
-      expect(stakerData.numStaked).to.eq(2);
+      expect(stakerData.amountStaked).to.eq(2);
       expect(stakerData.lastUpdatedTimestamp).to.eq(unstakedAt);
-      expect(stakerData.pendingRewards).to.eq(0n);
+      expect(stakerData.owedRewards).to.eq(0n);
 
       await expect(
         stakingERC721.ownerOf(tokenIdA)
@@ -459,13 +458,13 @@ describe("StakingERC721", () => {
       // User has regained their NFTs and the SNFT was burned
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(3);
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(0);
-      expect((await stakingERC721.stakers(stakerA.address)).numStaked).to.eq(0);
+      expect((await stakingERC721.stakers(stakerA.address)).amountStaked).to.eq(0);
 
       // Staker data has been reset when they have completely unstaked
       expect(stakerData.lastUpdatedTimestamp).to.eq(0n);
       expect(stakerData.unlockTimestamp).to.eq(0n);
-      expect(stakerData.numStaked).to.eq(0);
-      expect(stakerData.pendingRewards).to.eq(0n);
+      expect(stakerData.amountStaked).to.eq(0);
+      expect(stakerData.owedRewards).to.eq(0n);
 
       await expect(stakingERC721.ownerOf(tokenIdB)).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
       await expect(stakingERC721.ownerOf(tokenIdC)).to.be.revertedWith(INVALID_TOKEN_ID_ERR);
@@ -547,7 +546,7 @@ describe("StakingERC721", () => {
       await stakingToken.connect(stakerB).transferFrom(stakerB.address, stakerA.address, tokenIdB);
 
       // Stake multiple
-      // await mockERC721.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      // await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
 
@@ -576,7 +575,7 @@ describe("StakingERC721", () => {
 
       await expect(stakingERC721.connect(stakerA).stake([tokenIdA], [emptyUri]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdA, config.stakingToken);
+        .withArgs(stakerA.address, tokenIdA, config.stakingToken);
 
       stakedAtA = BigInt(await time.latest());
       balanceAtStakeOne = await stakingERC721.balanceOf(stakerA.address);
@@ -589,9 +588,9 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).stake([tokenIdB, tokenIdC], [emptyUri, emptyUri]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdB, config.stakingToken)
+        .withArgs(stakerA.address, tokenIdB, config.stakingToken)
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(tokenIdC, config.stakingToken);
+        .withArgs(stakerA.address, tokenIdC, config.stakingToken);
 
       stakedAtB = BigInt(await time.latest());
 
@@ -605,7 +604,7 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).claim())
         .to.emit(stakingERC721, CLAIMED_EVENT)
-        .withArgs(pendingRewards, config.rewardsToken);
+        .withArgs(stakerA.address, pendingRewards, config.rewardsToken);
 
       claimedAt = BigInt(await time.latest());
     });
@@ -620,8 +619,9 @@ describe("StakingERC721", () => {
       await expect(
         await stakingERC721.connect(stakerA).unstake([tokenIdA], false)
       ).to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdA, config.stakingToken)
-        .to.emit(stakingERC721, CLAIMED_EVENT);
+        .withArgs(stakerA.address, tokenIdA, config.stakingToken)
+        .to.emit(stakingERC721, CLAIMED_EVENT)
+        .withArgs(stakerA.address, pendingRewards, config.rewardsToken);
 
       // Can't use `.withArgs` helper when testing claim event as we can't adjust the
       // timestamp required for calculating the proper rewards amount
@@ -649,10 +649,11 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).unstake([tokenIdB, tokenIdC], false))
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdB, config.stakingToken)
+        .withArgs(stakerA.address, tokenIdB, config.stakingToken)
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(tokenIdC, config.stakingToken)
-        .to.emit(stakingERC721, CLAIMED_EVENT);
+        .withArgs(stakerA.address, tokenIdC, config.stakingToken)
+        .to.emit(stakingERC721, CLAIMED_EVENT)
+        .withArgs(stakerA.address, pendingRewards, config.rewardsToken);
 
       // Cannot verify 'CLAIMED_EVENT' using '.withArgs' because we can't manipulate the
       // timestamp to calculate the expected rewards until after the tx
@@ -702,6 +703,7 @@ describe("StakingERC721", () => {
       await stakingToken.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
 
       // Can't catch this using `await expect(...)` so must try/catch instead
+      /** eslint-disable @typescript-eslint/no-explicit-any */
       try {
         await localStakingERC721.connect(stakerA).stake([tokenIdA], [emptyUri]);
       } catch (e : unknown) {
@@ -709,7 +711,7 @@ describe("StakingERC721", () => {
       }
     });
 
-    it("Can't use the StakngERC721 contract when an IERC721 is the rewards token", async () => {
+    it("Can't use the StakingERC721 contract when an IERC721 is the rewards token", async () => {
       const localConfig = {
         stakingToken: await stakingToken.getAddress(),
         rewardsToken: await stakingToken.getAddress(),
@@ -739,7 +741,7 @@ describe("StakingERC721", () => {
       try {
         await localStakingERC721.connect(stakerA).claim();
       } catch (e : unknown) {
-        expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
+        expect((e as Error).message).to.include(LOW_LEVEL_CALL_ERR);
       }
 
       try {
@@ -756,10 +758,36 @@ describe("StakingERC721", () => {
         await stakingToken.connect(deployer).mint(await localStakingERC721.getAddress(), 1010101);
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
       } catch (e : unknown) {
-        expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
+        expect((e as Error).message).to.include(LOW_LEVEL_CALL_ERR);
       }
 
       await expect(localStakingERC721.connect(stakerA).unstake([tokenIdA], true)).to.not.be.reverted;
+    });
+
+    it("Can't use 0 as the period length", async () => {
+      const localConfig = {
+        stakingToken: await stakingToken.getAddress(),
+        rewardsToken: await stakingToken.getAddress(),
+        rewardsPerPeriod: BigInt(3),
+        periodLength: BigInt(0),
+        timeLockPeriod: BigInt(50),
+      } as BaseConfig;
+
+      const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+      try {
+        await stakingFactory.deploy(
+          "StakingNFT",
+          "SNFT",
+          baseUri,
+          localConfig.stakingToken,
+          localConfig.rewardsToken,
+          localConfig.rewardsPerPeriod,
+          localConfig.periodLength,
+          localConfig.timeLockPeriod
+        );
+      } catch (e : unknown) {
+        expect((e as Error).message).to.include(ZERO_INIT_ERR);
+      }
     });
 
     it("Can't transfer rewards when there is no rewards balance", async () => {
@@ -897,20 +925,20 @@ describe("StakingERC721", () => {
       let stakerCData = await localStakingERC721.stakers(stakerC.address);
 
       // Verify all users have no stake information
-      expect(stakerAData.numStaked).to.eq(0);
+      expect(stakerAData.amountStaked).to.eq(0);
       expect(stakerAData.unlockTimestamp).to.eq(0);
       expect(stakerAData.lastUpdatedTimestamp).to.eq(0);
-      expect(stakerAData.pendingRewards).to.eq(0);
+      expect(stakerAData.owedRewards).to.eq(0);
 
-      expect(stakerBData.numStaked).to.eq(0);
+      expect(stakerBData.amountStaked).to.eq(0);
       expect(stakerBData.unlockTimestamp).to.eq(0);
       expect(stakerBData.lastUpdatedTimestamp).to.eq(0);
-      expect(stakerBData.pendingRewards).to.eq(0);
+      expect(stakerBData.owedRewards).to.eq(0);
 
-      expect(stakerCData.numStaked).to.eq(0);
+      expect(stakerCData.amountStaked).to.eq(0);
       expect(stakerCData.unlockTimestamp).to.eq(0);
       expect(stakerCData.lastUpdatedTimestamp).to.eq(0);
-      expect(stakerCData.pendingRewards).to.eq(0);
+      expect(stakerCData.owedRewards).to.eq(0);
 
       await localStakingERC721.connect(stakerA).stake([tokenIdA, tokenIdB, tokenIdC], [emptyUri, emptyUri, emptyUri]);
       let origStakedAtA = BigInt(await time.latest());
@@ -920,10 +948,10 @@ describe("StakingERC721", () => {
       stakerAData = await localStakingERC721.stakers(stakerA.address);
 
       // `numStaked` was updated
-      expect(stakerAData.numStaked).to.eq(3);
+      expect(stakerAData.amountStaked).to.eq(3);
       // `lastUpdatedTimestamp` was updated
       expect(stakerAData.lastUpdatedTimestamp).to.eq(stakedAtA);
-      expect(stakerAData.pendingRewards).to.eq(0n);
+      expect(stakerAData.owedRewards).to.eq(0n);
       // Unlock timestamp was set
       expect(stakerAData.unlockTimestamp).to.eq(stakedAtA + localConfig.timeLockPeriod);
 
@@ -949,10 +977,10 @@ describe("StakingERC721", () => {
       stakerBData = await localStakingERC721.stakers(stakerB.address);
 
       // `numStaked` was updated
-      expect(stakerBData.numStaked).to.eq(3);
+      expect(stakerBData.amountStaked).to.eq(3);
       // `lastUpdatedTimestamp` was updated
       expect(stakerBData.lastUpdatedTimestamp).to.eq(stakedAtB);
-      expect(stakerBData.pendingRewards).to.eq(0n);
+      expect(stakerBData.owedRewards).to.eq(0n);
       // Unlock timestamp was set
       expect(stakerBData.unlockTimestamp).to.eq(stakedAtB + localConfig.timeLockPeriod);
 
@@ -1020,10 +1048,10 @@ describe("StakingERC721", () => {
       stakerAData = await localStakingERC721.stakers(stakerA.address);
 
       // `numStaked` was not changed in `claim`
-      expect(stakerAData.numStaked).to.eq(3);
+      expect(stakerAData.amountStaked).to.eq(3);
       // `lastUpdatedTimestamp` was updated
       expect(stakerAData.lastUpdatedTimestamp).to.eq(claimedAtA);
-      expect(stakerAData.pendingRewards).to.eq(0n);
+      expect(stakerAData.owedRewards).to.eq(0n);
 
       // stakerC stakes using one token that is theirs and one token that is not
       // so the stake fails
@@ -1047,9 +1075,9 @@ describe("StakingERC721", () => {
 
       stakerCData = await localStakingERC721.stakers(stakerC.address);
 
-      expect(stakerCData.numStaked).to.eq(2);
+      expect(stakerCData.amountStaked).to.eq(2);
       expect(stakerCData.lastUpdatedTimestamp).to.eq(stakedAtC);
-      expect(stakerCData.pendingRewards).to.eq(0n);
+      expect(stakerCData.owedRewards).to.eq(0n);
       expect(stakerCData.unlockTimestamp).to.eq(stakedAtC + localConfig.timeLockPeriod);
 
       await time.increase(delayOne);
@@ -1092,9 +1120,9 @@ describe("StakingERC721", () => {
 
       stakerBData = await localStakingERC721.stakers(stakerB.address);
 
-      expect(stakerBData.numStaked).to.eq(2);
+      expect(stakerBData.amountStaked).to.eq(2);
       expect(stakerBData.lastUpdatedTimestamp).to.eq(claimedAtB);
-      expect(stakerBData.pendingRewards).to.eq(0n);
+      expect(stakerBData.owedRewards).to.eq(0n);
 
       // Unlock period was not changed as we did not remove all staked tokens
       expect(stakerBData.unlockTimestamp).to.eq(stakedAtB + localConfig.timeLockPeriod);
@@ -1116,7 +1144,7 @@ describe("StakingERC721", () => {
 
       stakerBData = await localStakingERC721.stakers(stakerB.address);
 
-      expect(stakerBData.numStaked).to.eq(3);
+      expect(stakerBData.amountStaked).to.eq(3);
       expect(stakerBData.lastUpdatedTimestamp).to.eq(stakedAtB);
       // Unlock period was not changed
       expect(stakerBData.unlockTimestamp).to.eq(origStakeAtB + localConfig.timeLockPeriod);
@@ -1136,7 +1164,7 @@ describe("StakingERC721", () => {
       // But staker doesn't actually receive rewards until claim or unstake
       expect(rewardsBalanceAfterB).to.eq(rewardsBalanceBeforeB);
 
-      expect(stakerBData.pendingRewards).to.eq(expectedRewardsB);
+      expect(stakerBData.owedRewards).to.eq(expectedRewardsB);
 
       rewardsBalanceBeforeA = await newMockERC20.balanceOf(stakerA.address);
       pendingRewardsA = await localStakingERC721.connect(stakerA).getPendingRewards();
@@ -1145,7 +1173,6 @@ describe("StakingERC721", () => {
         await localStakingERC721.getAddress(),
         pendingRewardsA
       );
-
 
       // Completely exit the staking contract
       await localStakingERC721.connect(stakerA).unstake([tokenIdA, tokenIdB, tokenIdC], false);
@@ -1168,9 +1195,9 @@ describe("StakingERC721", () => {
       expect(rewardsBalanceAfterA).to.eq(rewardsBalanceBeforeA + expectedRewardsA);
 
       // Verify total reset
-      expect(stakerAData.numStaked).to.eq(0);
+      expect(stakerAData.amountStaked).to.eq(0);
       expect(stakerAData.lastUpdatedTimestamp).to.eq(0);
-      expect(stakerAData.pendingRewards).to.eq(0n);
+      expect(stakerAData.owedRewards).to.eq(0n);
       expect(stakerAData.unlockTimestamp).to.eq(0n);
 
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(3);
@@ -1211,10 +1238,10 @@ describe("StakingERC721", () => {
       expect(rewardsBalanceAfterC).to.eq(rewardsBalanceBeforeC + expectedRewardsC);
 
       // Value staked hasn't changed after claim
-      expect(stakerCData.numStaked).to.eq(2);
+      expect(stakerCData.amountStaked).to.eq(2);
       // timestamp was updated by claim
       expect(stakerCData.lastUpdatedTimestamp).to.eq(claimedAtC);
-      expect(stakerCData.pendingRewards).to.eq(0n);
+      expect(stakerCData.owedRewards).to.eq(0n);
       // unlock timestamp has not changed
       expect(stakerCData.unlockTimestamp).to.eq(origStakedAtC + localConfig.timeLockPeriod);
 
@@ -1244,9 +1271,9 @@ describe("StakingERC721", () => {
       expect(expectedRewardsB).to.eq(pendingRewardsB);
       expect(rewardsBalanceAfterB).to.eq(rewardsBalanceBeforeB + expectedRewardsB);
 
-      expect(stakerBData.numStaked).to.eq(1);
+      expect(stakerBData.amountStaked).to.eq(1);
       expect(stakerBData.lastUpdatedTimestamp).to.eq(unstakedAtB);
-      expect(stakerBData.pendingRewards).to.eq(0n);
+      expect(stakerBData.owedRewards).to.eq(0n);
       // Verify unchanged during unstake as we did not exit completely
       expect(stakerBData.unlockTimestamp).to.eq(origStakeAtB + localConfig.timeLockPeriod);
 
@@ -1292,11 +1319,11 @@ describe("StakingERC721", () => {
       stakerCData = await localStakingERC721.stakers(stakerC.address);
 
       // Value staked is unchanged
-      expect(stakerCData.numStaked).to.eq(2);
+      expect(stakerCData.amountStaked).to.eq(2);
       // Timestamp is updated
       expect(stakerCData.lastUpdatedTimestamp).to.eq(claimedAtC);
       // No pending rewards after claim
-      expect(stakerCData.pendingRewards).to.eq(0n);
+      expect(stakerCData.owedRewards).to.eq(0n);
       // Unlock timestamp is unchanged
       expect(stakerCData.unlockTimestamp).to.eq(origStakedAtC + localConfig.timeLockPeriod);
 
@@ -1316,9 +1343,9 @@ describe("StakingERC721", () => {
       expect(await stakingToken.balanceOf(await localStakingERC721.getAddress())).to.eq(5);
 
       // Verify updated user data
-      expect(stakerAData.numStaked).to.eq(2);
+      expect(stakerAData.amountStaked).to.eq(2);
       expect(stakerAData.lastUpdatedTimestamp).to.eq(stakedAtA);
-      expect(stakerAData.pendingRewards).to.eq(0n);
+      expect(stakerAData.owedRewards).to.eq(0n);
 
       // Verify new unlock timestamp was set
       expect(stakerAData.unlockTimestamp).to.eq(stakedAtA + localConfig.timeLockPeriod);
@@ -1359,9 +1386,9 @@ describe("StakingERC721", () => {
 
       stakerAData = await localStakingERC721.stakers(stakerA.address);
 
-      expect(stakerAData.numStaked).to.eq(4);
+      expect(stakerAData.amountStaked).to.eq(4);
       expect(stakerAData.lastUpdatedTimestamp).to.eq(stakedAtA);
-      expect(stakerAData.pendingRewards).to.eq(expectedRewardsA);
+      expect(stakerAData.owedRewards).to.eq(expectedRewardsA);
 
       // stakerB exits without rewards
       rewardsBalanceBeforeB = await newMockERC20.balanceOf(stakerB.address);
@@ -1384,9 +1411,9 @@ describe("StakingERC721", () => {
 
       stakerBData = await localStakingERC721.stakers(stakerB.address);
 
-      expect(stakerBData.numStaked).to.eq(0n);
+      expect(stakerBData.amountStaked).to.eq(0n);
       expect(stakerBData.lastUpdatedTimestamp).to.eq(0n);
-      expect(stakerBData.pendingRewards).to.eq(0n);
+      expect(stakerBData.owedRewards).to.eq(0n);
       expect(stakerBData.unlockTimestamp).to.eq(0n);
 
       rewardsBalanceBeforeC = await newMockERC20.balanceOf(stakerC.address);
@@ -1421,9 +1448,9 @@ describe("StakingERC721", () => {
 
       stakerCData = await localStakingERC721.stakers(stakerC.address);
 
-      expect(stakerCData.numStaked).to.eq(0n);
+      expect(stakerCData.amountStaked).to.eq(0n);
       expect(stakerCData.lastUpdatedTimestamp).to.eq(0n);
-      expect(stakerCData.pendingRewards).to.eq(0n);
+      expect(stakerCData.owedRewards).to.eq(0n);
       expect(stakerCData.unlockTimestamp).to.eq(0n);
 
       // No rewards remain in the pool
@@ -1455,9 +1482,9 @@ describe("StakingERC721", () => {
 
       stakerAData = await localStakingERC721.stakers(stakerA.address);
 
-      expect(stakerAData.numStaked).to.eq(0n);
+      expect(stakerAData.amountStaked).to.eq(0n);
       expect(stakerAData.lastUpdatedTimestamp).to.eq(0n);
-      expect(stakerAData.pendingRewards).to.eq(0n);
+      expect(stakerAData.owedRewards).to.eq(0n);
       expect(stakerAData.unlockTimestamp).to.eq(0n);
 
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(4);
@@ -1514,7 +1541,7 @@ describe("StakingERC721", () => {
 
       await expect(
         stakingERC721.connect(deployer).withdrawLeftoverRewards()
-      ).to.emit(stakingERC721, "RewardLeftoverWithdrawal")
+      ).to.emit(stakingERC721, WITHDRAW_EVENT)
         .withArgs(deployer.address, contractBalBefore);
 
       const contractBalAfter = await rewardToken.balanceOf(stakingERC721.target);
