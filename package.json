@@ -3,17 +3,20 @@
   "version": "1.0.0",
   "description": "A collection of simple, modular contracts that can be optionally grouped together",
   "scripts": {
-    "typechain": "hardhat typechian",
+    "typechain": "hardhat typechain",
     "compile": "hardhat compile",
+    "build": "yarn run clean && yarn run compile",
     "clean": "hardhat clean",
     "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "check-coverage": "istanbul check-coverage --statements 90 --branches 87 --functions 89 --lines 90",
     "docgen": "hardhat docgen",
     "lint-sol": "yarn solhint ./contracts/**/*.sol",
     "lint-ts": "yarn eslint ./test/** ./src/**",
     "lint": "yarn lint-sol & yarn lint-ts --no-error-on-unmatched-pattern"
   },
   "keywords": [],
-  "author": "",
+  "author": "Zero CPT",
   "license": "MIT",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
