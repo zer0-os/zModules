@@ -53,8 +53,8 @@ contract StakingBase is Ownable, IStakingBase {
         uint256 _timeLockPeriod
     ) Ownable() {
         if (
-            _stakingToken == address(0) ||
-            address(_rewardsToken) == address(0) ||
+            _stakingToken.code.length == 0 ||
+            address(_rewardsToken).code.length == 0 ||
             _rewardsPerPeriod == 0 ||
             _periodLength == 0
         ) revert InitializedWithZero();
