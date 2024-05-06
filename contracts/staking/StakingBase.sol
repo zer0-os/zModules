@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// eslint-disable immutable-vars-naming
+// solhint-disable immutable-vars-naming
 pragma solidity ^0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
