@@ -36,10 +36,15 @@ interface IStakingBase {
     /**
      * @notice Emit when a user claims rewards
      * @dev Because all contracts reward in ERC20 this can be shared
+     * @param claimer The address of the user claiming rewards
      * @param rewards The amount of rewards the user received
      * @param rewardsToken The address of the rewards token contract
      */
-    event Claimed(uint256 indexed rewards, address indexed rewardsToken);
+    event Claimed(
+        address indexed claimer,
+        uint256 indexed rewards,
+        address indexed rewardsToken
+    );
 
     /**
      * @dev Throw when the lock period has not passed

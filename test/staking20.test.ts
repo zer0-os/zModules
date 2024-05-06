@@ -661,7 +661,7 @@ describe("StakingERC20", () => {
       await expect(
         contract.connect(stakerF).claim()
       ).to.emit(contract, CLAIMED_EVENT)
-        .withArgs(pendingRewards, config.rewardsToken);
+        .withArgs(stakerF.address, pendingRewards, config.rewardsToken);
     });
 
     it("Emits an Unstaked event when a user unstakes", async () => {

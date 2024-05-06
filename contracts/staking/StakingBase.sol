@@ -151,7 +151,7 @@ contract StakingBase is Ownable, IStakingBase {
 
         rewardsToken.safeTransfer(msg.sender, rewards);
 
-        emit Claimed(rewards, address(rewardsToken));
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
     function _getPendingRewards(
