@@ -47,7 +47,12 @@ describe("Match Contract",  () => {
       await mockERC20.connect(addr1).approve(matchAddress, depositAmount);
       await match.connect(addr1).deposit(depositAmount);
 
-      await expect(match.canMatch([addr1Address, addr2Address], depositAmount)).to.be.revertedWithCustomError(match, "PlayersNotFunded");
+      await expect(
+        match.canMatch([addr1Address, addr2Address], depositAmount)
+      ).to.be.revertedWithCustomError(
+        match,
+        "PlayersNotFunded"
+      );
 
       await mockERC20.connect(addr2).approve(matchAddress, depositAmount);
       await match.connect(addr2).deposit(depositAmount);
@@ -81,6 +86,7 @@ describe("Match Contract",  () => {
       await match.connect(addr2).deposit(depositAmount);
       await match.canMatch([addr1Address, addr2Address], depositAmount);
     });
+
     it("Should fail if players are not funded", async () => {
       // Assuming addr1 and addr2 have insufficient balance
       const players = [addr1.address, addr2.address];
@@ -88,11 +94,13 @@ describe("Match Contract",  () => {
       await expect(match.startMatch(players, entryFee))
         .to.be.revertedWithCustomError(match, "PlayersNotFunded");
     });
+
     it("Should not start a match with an empty players array", async () => {
       const entryFee = ethers.parseUnits("1", "wei"); // Smallest possible entry fee
       await expect(match.startMatch([], entryFee))
         .to.be.revertedWith("No players"); // Use the correct revert message from your contract
     });
+
     it("Should start a match with valid players and entry fee", async () => {
       const players = [addr1.address, addr2.address];
       const entryFee = ethers.parseEther("1");
@@ -133,6 +141,5 @@ describe("Match Contract",  () => {
         expect(finalBalance).to.equal(expectedBalance);
       }));
     });
-
   });
 });
