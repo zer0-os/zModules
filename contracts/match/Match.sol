@@ -7,8 +7,15 @@ import { Escrow } from "../escrow/Escrow.sol";
 
 
 contract Match is IMatch, Escrow {
-    // TODO esc: make sure we can actually read this array!!! AND arrays in events !!!
-    error PlayersWithInsufficientFunds(address[] players);
+    // TODO esc: make sure we can actually read arrays in events !!!
+    error PlayerWithInsufficientFunds(address player);
+
+    // TODO esc: what else to add here ?
+    struct MatchData {
+        uint256 nonce;
+        address[] players;
+        uint256 entryFee;
+    }
 
     // TODO esc: should we save match data here to make sure only mathces registered on this contract
     //  can be ended with payouts?
@@ -23,38 +30,46 @@ contract Match is IMatch, Escrow {
 
     // TODO esc: should we add funds release function here to avoid matches being stuck or some other issues???
 
-    // TODO esc: should we make it a single player check, otherwise we will have 2 loops in startMatch
-    // TODO esc: maybe it should be a separate internal function that we use in startMatch and here
-    function canMatch(address[] calldata players, uint256 feeRequired) public override view {
-        address[] memory erroredPlayers = new address[](players.length);
-        bool errored;
+    function canMatch(
+        address[] calldata players,
+        uint256 feeRequired
+    ) external override view returns (
+        address[] memory unfundedPlayers
+    ) {
+        unfundedPlayers = new address[](players.length);
 
+        uint256 k;
         for (uint256 i = 0; i < players.length;) {
-            if (balances[players[i]] < feeRequired) {
-                erroredPlayers[i] = players[i];
-                errored = true;
+            if (!_isFunded(players[i], feeRequired)) {
+                unfundedPlayers[k] = players[i];
+                unchecked { ++k; }
             }
 
             unchecked { ++i; }
         }
 
-        if (errored) {
-            revert PlayersWithInsufficientFunds(erroredPlayers);
-        }
+        return unfundedPlayers;
     }
 
     // TODO esc: needs ACCESS CONTROL !!!
-    function startMatch(address[] calldata players, uint256 entryFee) external override {
+    function startMatch(
+        address[] calldata players,
+        uint256 entryFee
+    ) external override {
+        // TODO esc: do we need this check?
         require(players.length > 0, "No players");
-        // TODO esc: refactor this to not require a second loop
-        canMatch(players, entryFee);
 
         // TODO esc: make this better. possibly do all the logic in this contract
-        for (uint256 i = 0; i < players.length; i++) {
+        for (uint256 i = 0; i < players.length; ) {
+            if (!_isFunded(players[i], entryFee)) {
+                revert PlayerWithInsufficientFunds(players);
+            }
             // TODO esc: add a state var that would save the amount of tokens locked during the race,
             //  so we avoid situations of locked tokens if game bugs out
             //  is this necessary??
             charge(players[i], entryFee);
+
+            unchecked { ++i; }
         }
 
         // TODO esc: can we just create a has of a certain struct with match data and fire it here in the event
@@ -70,10 +85,16 @@ contract Match is IMatch, Escrow {
     ) external override {
         require(winners.length == winAmounts.length, "Array lengths mismatch");
 
+        // TODO esc: validate that the sum of `winAmounts` is equal to the amount locked
+        //  for this race by startMatch.
         for (uint256 i = 0; i < winners.length; i++) {
             pay(winners[i], winAmounts[i]);
         }
 
         emit MatchEnded(block.timestamp, winners, winAmounts);
+    }
+
+    function _isFunded(address player, uint256 feeRequired) internal view returns (bool) {
+        return balances[player] >= feeRequired;
     }
 }
