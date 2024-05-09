@@ -11,7 +11,7 @@ contract Match is Escrow, IMatch {
 
     mapping(bytes32 matchDataHash => uint256 amount) public fundLocks;
 
-    address public wilderWallet;
+    address private wilderWallet;
 
     // TODO esc: should we save match data here to make sure only mathces registered on this contract
     //  can be ended with payouts?
@@ -64,7 +64,6 @@ contract Match is Escrow, IMatch {
         // TODO esc: do we need this check?
         require(players.length > 0, "No players");
 
-        // TODO esc: make this better. possibly do all the logic in this contract
         for (uint256 i = 0; i < players.length;) {
             if (!_isFunded(players[i], matchFee)) {
                 revert PlayerWithInsufficientFunds(players[i]);
@@ -109,8 +108,6 @@ contract Match is Escrow, IMatch {
         uint256 lockedAmount = fundLocks[matchDataHash];
         if (lockedAmount == 0) revert InvalidMatchOrPayouts(matchId, matchDataHash);
 
-        // TODO esc: validate that the sum of `winAmounts` is equal to the amount locked
-        //  for this race by startMatch.
         uint256 payoutSum;
         for (uint256 i = 0; i < players.length;) {
             balances[players[i]] += payouts[i];
@@ -133,11 +130,15 @@ contract Match is Escrow, IMatch {
         );
     }
 
-    function setWilderWallet(address _wilderWallet) external {
+    function setWilderWallet(address _wilderWallet) external override {
         if (_wilderWallet == address(0)) revert ZeroAddress();
 
         wilderWallet = _wilderWallet;
         emit WilderWalletSet(_wilderWallet);
+    }
+
+    function getWilderWallet() external override view returns (address) {
+        return wilderWallet;
     }
 
     function _getMatchDataHash(

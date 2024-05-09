@@ -75,6 +75,10 @@ interface IMatch {
      * @param winAmount The amount of tokens each winner will receive
      */
     function endMatch(uint256 matchId, address[] calldata winners, uint256[] calldata winAmount) external;
+
+    function setWilderWallet(address _wilderWallet) external;
+    
+    function getWilderWallet() external view returns (address);
 }
 
 
