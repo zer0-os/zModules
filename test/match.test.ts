@@ -108,7 +108,7 @@ describe("Match Contract",  () => {
     let playerAddresses : Array<string>;
     let matchId : bigint;
 
-    const entryFee = ethers.parseEther("3.29");
+    const matchFee = ethers.parseEther("3.29");
 
     it("Should match all funded players and emit MatchStarted event with correct parameters", async () => {
       matchId = 18236n;
@@ -126,18 +126,18 @@ describe("Match Contract",  () => {
 
       const matchDataHash = getMatchDataHash({
         matchId,
-        entryFee,
+        matchFee,
         players: playerAddresses,
       });
 
-      await match.startMatch(matchId, playerAddresses, entryFee);
+      await match.startMatch(matchId, playerAddresses, matchFee);
 
       const [ {
         args: {
           matchDataHash: emittedMatchDataHash,
           matchId: emittedMatchId,
           players: emittedPlayers,
-          entryFee: emittedEntryFee,
+          matchFee: emittedmatchFee,
           fundsLocked: emittedFundsLocked,
         },
       } ] = await getMatchStartedEvents({ match });
@@ -147,38 +147,38 @@ describe("Match Contract",  () => {
       expect(emittedPlayers.hash).to.equal(
         ethers.solidityPackedKeccak256(["address[]"], [playerAddresses])
       );
-      expect(emittedEntryFee).to.equal(entryFee);
-      expect(emittedFundsLocked).to.equal(entryFee * BigInt(playerAddresses.length));
+      expect(emittedmatchFee).to.equal(matchFee);
+      expect(emittedFundsLocked).to.equal(matchFee * BigInt(playerAddresses.length));
 
       balancesAfter = await getPlayerBalances(playerAddresses, match);
     });
 
     it("Should remove the entry fee from all the players", async () => {
       balancesBefore.forEach((bal, index) => {
-        expect(bal - balancesAfter[index]).to.equal(entryFee);
+        expect(bal - balancesAfter[index]).to.equal(matchFee);
       });
     });
 
     it("Should fail if players are not funded", async () => {
       // Assuming addr1 and addr2 have insufficient balance
       const players = [player1.address, player2.address];
-      const entryFee = ethers.parseEther("10000000000000000000000000");
-      await expect(match.startMatch(players, entryFee))
+      const matchFee = ethers.parseEther("10000000000000000000000000");
+      await expect(match.startMatch(players, matchFee))
         .to.be.revertedWithCustomError(match, "PlayersNotFunded");
     });
 
     it("Should not start a match with an empty players array", async () => {
-      const entryFee = ethers.parseUnits("1", "wei"); // Smallest possible entry fee
-      await expect(match.startMatch([], entryFee))
+      const matchFee = ethers.parseUnits("1", "wei"); // Smallest possible entry fee
+      await expect(match.startMatch([], matchFee))
         .to.be.revertedWith("No players"); // Use the correct revert message from your contract
     });
 
     it("Should start a match with valid players and entry fee", async () => {
       const players = [player1.address, player2.address];
-      const entryFee = ethers.parseEther("1");
-      await expect(match.startMatch(players, entryFee))
+      const matchFee = ethers.parseEther("1");
+      await expect(match.startMatch(players, matchFee))
         .to.emit(match, "MatchStarted")
-        .withArgs(1n, players, entryFee);
+        .withArgs(1n, players, matchFee);
     });
   });
 

@@ -7,16 +7,16 @@ export const matchDataStructTypeStr = "tuple(uint256,uint256,address[])";
 // TODO esc: make this better and less manual along with the string above !!
 export const getMatchDataHash = ({
   matchId,
-  entryFee,
+  matchFee,
   players,
 } : {
   matchId : bigint;
-  entryFee : bigint;
+  matchFee : bigint;
   players : Array<string>;
 }) => {
   const matchDataEncoded = ethers.AbiCoder.defaultAbiCoder().encode(
     [matchDataStructTypeStr],
-    [[matchId, entryFee, players]]
+    [[matchId, matchFee, players]]
   );
 
   return ethers.keccak256(matchDataEncoded);

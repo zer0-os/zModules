@@ -3,6 +3,21 @@ pragma solidity ^0.8.19;
 
 
 interface IMatch {
+    // TODO esc: what else to add here ?
+    struct MatchData {
+        uint256 matchId;
+        uint256 matchFee;
+        address[] players;
+    }
+
+    // TODO esc: make sure we can actually read arrays in events !!!
+    error PlayerWithInsufficientFunds(address player);
+    error ZeroAddress();
+    error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash);
+
+    event WilderWalletSet(address wilderWallet);
+
+    // TODO esc: fix all NatSpec everywhere!
     /**
      * @notice Emitted when a match starts
      * @param matchDataHash The hash of the MatchData struct
@@ -25,7 +40,13 @@ interface IMatch {
      * @param winners The array of addresses of the winners of the match
      * @param amounts The array of amounts won by the winners
      */
-    event MatchEnded(uint256 endTime, address[] winners, uint256[] amounts);
+    event MatchEnded(
+        bytes32 indexed matchDataHash,
+        uint256 indexed matchId,
+        address[] indexed players,
+        uint256[] payouts,
+        uint256 matchFee
+    );
 
     /**
      * @notice Checks if all players have enough balance in escrow to participate in the match
