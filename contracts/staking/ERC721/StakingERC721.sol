@@ -24,6 +24,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Total supply of all tokens
      */
     uint256 internal _totalSupply;
+
     /**
      * @dev Revert if a call is not from the SNFT owner
      */
@@ -85,7 +86,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     }
 
     /**
-     * @notice Unstake one or more ERC721 tokens
+     * @notice Unstake one or more of what the user has staked
      * @param tokenIds Array of tokenIds to be unstaked by the caller
      * @param exit Flag for if the user would like to exit without rewards
      */

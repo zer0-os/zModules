@@ -54,6 +54,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         emit Staked(msg.sender, amount, stakingToken);
     }
 
+    /**
+     * @notice Unstake some or all of a user's stake
+     * @param amount The amount to withdraw
+     * @param exit If true, the user will unstake without claiming rewards (optional)
+     */
     function unstake(uint256 amount, bool exit) external override {
         Staker storage staker = stakers[msg.sender];
 
