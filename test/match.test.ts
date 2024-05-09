@@ -2,29 +2,59 @@ import * as hre from "hardhat";
 import { ethers } from "ethers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { Escrow, Match } from "../typechain"; // Adjust the import path according to your project structure
-import { ERC20TestToken } from "../typechain"; // Adjust assuming you have a mock ERC20 for testing
+import { Match, ERC20TestToken } from "../typechain";
+import { getMatchDataHash } from "./helpers/match/hashing";
+import { getMatchStartedEvents } from "./helpers/match/events";
 
+
+const getPlayerBalances = async (
+  players : Array<string>,
+  contract : Match
+) => players.reduce(
+  async (acc : Promise<Array<bigint>>, playerAddr) => {
+    const newAcc = await acc;
+    const bal = await contract.balances(playerAddr);
+    return [...newAcc, bal];
+  }, Promise.resolve([])
+);
 
 describe("Match Contract",  () => {
   let mockERC20 : ERC20TestToken;
   let match : Match;
 
   let owner : SignerWithAddress;
-  let addr1 : SignerWithAddress;
-  let addr2 : SignerWithAddress;
+  let player1 : SignerWithAddress;
+  let player2 : SignerWithAddress;
+  let player3 : SignerWithAddress;
+  let player4 : SignerWithAddress;
+  let player5 : SignerWithAddress;
+  let player6 : SignerWithAddress;
+  let allPlayers : Array<SignerWithAddress>;
+
   let ownerAddress : string;
-  let addr1Address : string;
-  let addr2Address : string;
   let mockERC20Address : string;
   let matchAddress : string;
-  const ownerMintAmount = ethers.parseEther("100000000000000000000");
 
   before(async () => {
-    [owner, addr1, addr2] = await hre.ethers.getSigners();
+    [
+      owner,
+      player1,
+      player2,
+      player3,
+      player4,
+      player5,
+      player6,
+    ] = await hre.ethers.getSigners();
     ownerAddress = await owner.getAddress();
-    addr1Address = await addr1.getAddress();
-    addr2Address = await addr2.getAddress();
+
+    allPlayers = [
+      player1,
+      player2,
+      player3,
+      player4,
+      player5,
+      player6,
+    ];
 
     const MockERC20Factory = await hre.ethers.getContractFactory("ERC20TestToken");
     mockERC20 = (await MockERC20Factory.deploy("MockToken", "MTK")) as ERC20TestToken;
@@ -34,62 +64,104 @@ describe("Match Contract",  () => {
     match = (await MatchFactory.deploy(mockERC20Address, ownerAddress)) as Match;
     matchAddress = await match.getAddress();
 
-    await mockERC20.mint(addr1Address, ethers.parseEther("1000"));
-    await mockERC20.mint(addr2Address, ethers.parseEther("500"));
-    // await mockERC20.mint(matchAddress, ethers.parseEther("1000000"));
-    await mockERC20.mint(owner, ownerMintAmount);
-    await mockERC20.connect(owner).increaseAllowance(matchAddress, ownerMintAmount);
+    await allPlayers.reduce(
+      async (acc, player) => {
+        await acc;
+        await mockERC20.mint(player.address, ethers.parseEther("1000"));
+        await mockERC20.connect(player).increaseAllowance(matchAddress, ethers.parseEther("1000"));
+      }, Promise.resolve()
+    );
   });
 
-  describe("Match Operations", () => {
-    it("Should correctly determine if players can match based on match balance", async () => {
-      const depositAmount = ethers.parseEther("100");
-      await mockERC20.connect(addr1).approve(matchAddress, depositAmount);
-      await match.connect(addr1).deposit(depositAmount);
+  describe("Aux Operations", () => {
+    it("#canMatch() should correctly return players with missing funds", async () => {
+      const depositAmount = ethers.parseEther("11");
+      const feeAmt = ethers.parseEther("2.75");
 
-      await expect(
-        match.canMatch([addr1Address, addr2Address], depositAmount)
-      ).to.be.revertedWithCustomError(
-        match,
-        "PlayersNotFunded"
+      await [
+        player1,
+        player2,
+        player4,
+      ].reduce(
+        async (acc, player) => {
+          await acc;
+          await match.connect(player).deposit(depositAmount);
+        }, Promise.resolve()
       );
 
-      await mockERC20.connect(addr2).approve(matchAddress, depositAmount);
-      await match.connect(addr2).deposit(depositAmount);
-      await match.canMatch([addr1Address, addr2Address], depositAmount);
-    });
+      const unfundedPlayers = await match.canMatch(allPlayers, feeAmt);
 
-    it("Should pay winners variable amounts and emit Payment event for each", async () => {
-      const balance1Before = await match.balance(addr1Address);
-      const balance2Before = await match.balance(addr2Address);
-      const amt1 = ethers.parseEther("25");
-      const amt2 = ethers.parseEther("75");
-      const amounts = [amt1, amt2];
-      const winners = [addr1Address, addr2Address];
-
-      await match.connect(owner).payAllAmounts(amounts, winners);
-
-      // Check final balances
-      const addr1FinalBalance = await match.balance(addr1Address);
-      const addr2FinalBalance = await match.balance(addr2Address);
-      expect(addr1FinalBalance).to.equal(balance1Before + amt1);
-      expect(addr2FinalBalance).to.equal(balance2Before + amt2);
+      expect(unfundedPlayers).to.deep.equal([
+        player3.address,
+        player5.address,
+        player6.address,
+        ethers.ZeroAddress,
+        ethers.ZeroAddress,
+        ethers.ZeroAddress,
+      ]);
     });
   });
 
   describe("Start match", () => {
-    it("Should correctly determine if players can match based on match balance", async () => {
-      const depositAmount = ethers.parseEther("100");
-      await mockERC20.connect(addr1).approve(matchAddress, depositAmount);
-      await match.connect(addr1).deposit(depositAmount);
-      await mockERC20.connect(addr2).approve(matchAddress, depositAmount);
-      await match.connect(addr2).deposit(depositAmount);
-      await match.canMatch([addr1Address, addr2Address], depositAmount);
+    let balancesBefore : Array<bigint>;
+    let balancesAfter : Array<bigint>;
+    let playerAddresses : Array<string>;
+    let matchId : bigint;
+
+    const entryFee = ethers.parseEther("3.29");
+
+    it("Should match all funded players and emit MatchStarted event with correct parameters", async () => {
+      matchId = 18236n;
+
+      playerAddresses = await allPlayers.reduce(
+        async (acc : Promise<Array<string>>, player) => {
+          await acc;
+          await match.connect(player).deposit(ethers.parseEther("10"));
+
+          return [...(await acc), player.address];
+        }, Promise.resolve([])
+      );
+
+      balancesBefore = await getPlayerBalances(playerAddresses, match);
+
+      const matchDataHash = getMatchDataHash({
+        matchId,
+        entryFee,
+        players: playerAddresses,
+      });
+
+      await match.startMatch(matchId, playerAddresses, entryFee);
+
+      const [ {
+        args: {
+          matchDataHash: emittedMatchDataHash,
+          matchId: emittedMatchId,
+          players: emittedPlayers,
+          entryFee: emittedEntryFee,
+          fundsLocked: emittedFundsLocked,
+        },
+      } ] = await getMatchStartedEvents({ match });
+
+      expect(emittedMatchDataHash).to.equal(matchDataHash);
+      expect(emittedMatchId).to.equal(matchId);
+      expect(emittedPlayers.hash).to.equal(
+        ethers.solidityPackedKeccak256(["address[]"], [playerAddresses])
+      );
+      expect(emittedEntryFee).to.equal(entryFee);
+      expect(emittedFundsLocked).to.equal(entryFee * BigInt(playerAddresses.length));
+
+      balancesAfter = await getPlayerBalances(playerAddresses, match);
+    });
+
+    it("Should remove the entry fee from all the players", async () => {
+      balancesBefore.forEach((bal, index) => {
+        expect(bal - balancesAfter[index]).to.equal(entryFee);
+      });
     });
 
     it("Should fail if players are not funded", async () => {
       // Assuming addr1 and addr2 have insufficient balance
-      const players = [addr1.address, addr2.address];
+      const players = [player1.address, player2.address];
       const entryFee = ethers.parseEther("10000000000000000000000000");
       await expect(match.startMatch(players, entryFee))
         .to.be.revertedWithCustomError(match, "PlayersNotFunded");
@@ -102,7 +174,7 @@ describe("Match Contract",  () => {
     });
 
     it("Should start a match with valid players and entry fee", async () => {
-      const players = [addr1.address, addr2.address];
+      const players = [player1.address, player2.address];
       const entryFee = ethers.parseEther("1");
       await expect(match.startMatch(players, entryFee))
         .to.emit(match, "MatchStarted")
@@ -114,17 +186,17 @@ describe("Match Contract",  () => {
     const matchId = 0;
     it("Should fail if the match does not exist", async () => {
       const invalidMatchId = 999; // Use an ID for a match that doesn't exist
-      await expect(match.endMatch(invalidMatchId, [addr1.address], [ethers.parseEther("1")]))
+      await expect(match.endMatch(invalidMatchId, [player1.address], [ethers.parseEther("1")]))
         .to.be.revertedWith("Match does not exist");
     });
 
     it("Should fail if winners and winAmounts array lengths mismatch", async () => {
-      await expect(match.endMatch(matchId, [addr1.address], [ethers.parseEther("1"), ethers.parseEther("2")]))
+      await expect(match.endMatch(matchId, [player1.address], [ethers.parseEther("1"), ethers.parseEther("2")]))
         .to.be.revertedWith("Array lengths mismatch");
     });
 
     it("Should correctly end the match and pay winners", async () => {
-      const winners = [addr1.address, addr2.address];
+      const winners = [player1.address, player2.address];
       const winAmounts = [ethers.parseEther("1"), ethers.parseEther("2")];
 
       // Balances before ending the match
