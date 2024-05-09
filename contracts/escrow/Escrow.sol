@@ -19,7 +19,7 @@ contract Escrow is Ownable, IEscrow {
     /**
      * @notice Mapping for balances for every user of this escrow
      */
-    mapping(address client => uint256 amount) public balances;
+    mapping(address user => uint256 amount) public balances;
 
     constructor(address _token, address _owner) {
         // TODO esc: make custom errors
@@ -62,6 +62,7 @@ contract Escrow is Ownable, IEscrow {
         emit Payment(client, amount);
     }
 
+    // TODO esc: what to do with all these functions? which ones we need and where to put this logic?
     function charge(address client, uint256 amount) public override onlyOwner {
         balances[client] -= amount;
         emit Charge(client, amount);

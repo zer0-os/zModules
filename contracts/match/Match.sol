@@ -6,16 +6,19 @@ import { IMatch } from "./IMatch.sol";
 import { Escrow } from "../escrow/Escrow.sol";
 
 
+// TODO esc: find better naming
 contract Match is IMatch, Escrow {
     // TODO esc: make sure we can actually read arrays in events !!!
     error PlayerWithInsufficientFunds(address player);
 
     // TODO esc: what else to add here ?
     struct MatchData {
-        uint256 nonce;
-        address[] players;
+        uint256 matchId;
         uint256 entryFee;
+        address[] players;
     }
+
+    mapping(bytes32 matchDataHash => uint256 amount) public fundLocks;
 
     // TODO esc: should we save match data here to make sure only mathces registered on this contract
     //  can be ended with payouts?
@@ -53,6 +56,7 @@ contract Match is IMatch, Escrow {
 
     // TODO esc: needs ACCESS CONTROL !!!
     function startMatch(
+        uint256 matchId,
         address[] calldata players,
         uint256 entryFee
     ) external override {
@@ -62,19 +66,29 @@ contract Match is IMatch, Escrow {
         // TODO esc: make this better. possibly do all the logic in this contract
         for (uint256 i = 0; i < players.length; ) {
             if (!_isFunded(players[i], entryFee)) {
-                revert PlayerWithInsufficientFunds(players);
+                revert PlayerWithInsufficientFunds(players[i]);
             }
-            // TODO esc: add a state var that would save the amount of tokens locked during the race,
-            //  so we avoid situations of locked tokens if game bugs out
-            //  is this necessary??
-            charge(players[i], entryFee);
+
+            balances[players[i]] -= entryFee;
 
             unchecked { ++i; }
         }
 
+        uint256 lockedAmount = entryFee * players.length;
+
+        MatchData memory matchData = MatchData({
+            matchId: matchId,
+            entryFee: entryFee,
+            players: players
+        });
+
+        bytes32 matchHash = keccak256(abi.encode(matchData));
+
+        fundLocks[matchHash] = lockedAmount;
+
         // TODO esc: can we just create a has of a certain struct with match data and fire it here in the event
         //  instead of saving it in state? AND in MatchEnded event?
-        emit MatchStarted(players, entryFee);
+        emit MatchStarted(matchHash, matchId, players, entryFee, lockedAmount);
     }
 
     function endMatch(
