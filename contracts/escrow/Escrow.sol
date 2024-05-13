@@ -22,16 +22,15 @@ contract Escrow is Ownable, IEscrow {
     mapping(address user => uint256 amount) public balances;
 
     constructor(address _token, address _owner) {
-        // TODO esc: make custom errors
-        require(_token.code.length > 0, "Address passed is not a token contract");
-        require(_owner != address(0), "Owner address cannot be 0");
+        if (_token.code.length == 0) revert AddressIsNotAContract(_token);
+        if (_owner == address(0)) revert ZeroAddressPassed();
 
         token = IERC20(_token);
         Ownable(_owner);
     }
 
     function deposit(uint256 amount) external override {
-        require(amount > 0, "Zero deposit amount");
+        if (amount > 0) revert ZeroAmountPassed();
 
         token.safeTransferFrom(msg.sender, address(this), amount);
         balances[msg.sender] += amount;
@@ -43,9 +42,9 @@ contract Escrow is Ownable, IEscrow {
         uint256 toWithdraw;
         if (all) {
             toWithdraw = balances[msg.sender];
-            require(toWithdraw > 0, "No balance to withdraw");
+            if (toWithdraw == 0) revert InsufficientFunds(msg.sender);
         } else {
-            require(balances[msg.sender] >= amount, "Insufficient balance to withdraw");
+            if (balances[msg.sender] < amount) revert InsufficientFunds(msg.sender);
             toWithdraw = amount;
         }
 
@@ -56,16 +55,16 @@ contract Escrow is Ownable, IEscrow {
     }
 
     // TODO esc: how do we make this flow better and less risky?
-    function pay(address client, uint256 amount) public override onlyOwner {
+    function pay(address user, uint256 amount) public override onlyOwner {
         require(token.balanceOf(address(this)) >= amount, "Contract not funded");
-        balances[client] += amount;
-        emit Payment(client, amount);
+        balances[user] += amount;
+        emit Payment(user, amount);
     }
 
     // TODO esc: what to do with all these functions? which ones we need and where to put this logic?
-    function charge(address client, uint256 amount) public override onlyOwner {
-        balances[client] -= amount;
-        emit Charge(client, amount);
+    function charge(address user, uint256 amount) public override onlyOwner {
+        balances[user] -= amount;
+        emit Charge(user, amount);
     }
 
     function payAllAmounts(uint256[] memory amounts, address[] memory winners) external override onlyOwner {
@@ -76,20 +75,19 @@ contract Escrow is Ownable, IEscrow {
         }
     }
 
-    function chargeAllAmounts(uint256[] memory amounts, address[] memory clients) external override onlyOwner {
-        require(amounts.length == clients.length, "Amounts and clients length mismatch");
+    function chargeAllAmounts(uint256[] memory amounts, address[] memory users) external override onlyOwner {
+        require(amounts.length == users.length, "Amounts and users length mismatch");
 
-        for(uint i = 0; i < clients.length; i++) {
-            charge(clients[i], amounts[i]);
+        for(uint i = 0; i < users.length; i++) {
+            charge(users[i], amounts[i]);
         }
     }
 
-    function refund(address client) external override onlyOwner {
-        require(balances[client] > 0, "No balance to refund");
-        uint256 _balance = balances[client];
-        balances[client] = 0;
-        token.transfer(client, _balance);
+    function releaseFunds(address user, uint256 amount) external override onlyOwner {
+        if (balances[user] < amount) revert InsufficientFunds(user);
+        balances[user] -= amount;
+        token.safeTransfer(user, amount);
 
-        emit Refund(client, _balance); //should these really be emitted? there are events in the transfer emitted already
+        emit FundsReleased(user, amount);
     }
 }

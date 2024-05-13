@@ -4,40 +4,44 @@ pragma solidity ^0.8.0;
 
 interface IEscrow {
     // TODO esc: fix NatSpec and add to main contract
+    error InsufficientFunds(address user);
+    error AddressIsNotAContract(address addr);
+    error ZeroAddressPassed();
+    error ZeroAmountPassed();
     /**
      * @notice Emit when tokens are deposited into the contract
-     * @param client The address of the client who deposited the tokens
+     * @param user The address of the user who deposited the tokens
      * @param amount The amount of tokens deposited
      */
-    event Deposit(address indexed client, uint256 amount);
+    event Deposit(address indexed user, uint256 amount);
 
     /**
      * @notice Emit when tokens are withdrawn from the contract
-     * @param client The address of the client who withdrew the tokens
+     * @param user The address of the user who withdrew the tokens
      * @param amount The amount of tokens withdrawn
      */
-    event Withdrawal(address indexed client, uint256 amount);
+    event Withdrawal(address indexed user, uint256 amount);
 
     /**
-     * @notice Emit when a payment is executed to a client
-     * @param client The address of the client who received the payment
-     * @param amount The amount of tokens paid to the client
+     * @notice Emit when a payment is executed to a user
+     * @param user The address of the user who received the payment
+     * @param amount The amount of tokens paid to the user
      */
-    event Payment(address indexed client, uint256 amount);
+    event Payment(address indexed user, uint256 amount);
 
     /**
-     * @notice Emit when a payment is executed to a client
-     * @param client The address of the client who received the payment
-     * @param amount The amount of tokens paid to the client
+     * @notice Emit when a payment is executed to a user
+     * @param user The address of the user who received the payment
+     * @param amount The amount of tokens paid to the user
      */
-    event Charge(address indexed client, uint256 amount);
+    event Charge(address indexed user, uint256 amount);
 
     /**
-     * @notice Emit when tokens are refunded to a client
-     * @param client The address of the client to whom the tokens were refunded
+     * @notice Emit when tokens are refunded to a user
+     * @param user The address of the user to whom the tokens were refunded
      * @param amount The amount of tokens refunded
      */
-    event Refund(address indexed client, uint256 amount);
+    event FundsReleased(address indexed user, uint256 amount);
 
     /**
      * @dev Allows a user to deposit tokens into the escrow contract.
@@ -52,17 +56,17 @@ interface IEscrow {
 
     /**
      * @dev Executes a payment from the escrow to a winner.
-     * @param client The address to receive tokens.
+     * @param user The address to receive tokens.
      * @param amount The amount of tokens they receive.
      */
-    function pay(address client, uint256 amount) external;
+    function pay(address user, uint256 amount) external;
 
     /**
      * @dev Executes a payment from the escrow to a winner.
-     * @param client The address to receive tokens.
+     * @param user The address to receive tokens.
      * @param amount The amount of tokens they receive.
      */
-    function charge(address client, uint256 amount) external;
+    function charge(address user, uint256 amount) external;
 
     /**
      * @notice Pays varying amounts from the escrow to each winner
@@ -79,8 +83,9 @@ interface IEscrow {
     function chargeAllAmounts(uint256[] memory amounts, address[] memory winners) external;
 
     /**
-     * @dev Refunds tokens from the escrow back to a user.
-     * @param client The address of the user to refund tokens to.
+     * @dev Refunds tokens from the escrow back to a user by the contract owner or operator.
+     * @param user The address of the user to refund tokens to.
+     * @param amount The amount of tokens to release for the user.
      */
-    function refund(address client) external;
+    function releaseFunds(address user, uint256 amount) external;
 }
