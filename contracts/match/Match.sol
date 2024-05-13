@@ -11,7 +11,7 @@ contract Match is Escrow, IMatch {
 
     mapping(bytes32 matchDataHash => uint256 amount) public fundLocks;
 
-    address private wilderWallet;
+    address internal wilderWallet;
 
     // TODO esc: should we save match data here to make sure only mathces registered on this contract
     //  can be ended with payouts?
@@ -27,7 +27,7 @@ contract Match is Escrow, IMatch {
         address _owner,
         address _wilderWallet
     ) Escrow(_token, _owner) {
-        if (_wilderWallet == address(0)) revert ZeroAddress();
+        if (_wilderWallet == address(0)) revert ZeroAddressPassed();
 
         wilderWallet = _wilderWallet;
     }
@@ -131,7 +131,7 @@ contract Match is Escrow, IMatch {
     }
 
     function setWilderWallet(address _wilderWallet) external override {
-        if (_wilderWallet == address(0)) revert ZeroAddress();
+        if (_wilderWallet == address(0)) revert ZeroAddressPassed();
 
         wilderWallet = _wilderWallet;
         emit WilderWalletSet(_wilderWallet);

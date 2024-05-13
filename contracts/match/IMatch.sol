@@ -12,7 +12,6 @@ interface IMatch {
 
     // TODO esc: make sure we can actually read arrays in events !!!
     error PlayerWithInsufficientFunds(address player);
-    error ZeroAddress();
     error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash);
 
     event WilderWalletSet(address wilderWallet);
@@ -36,9 +35,8 @@ interface IMatch {
 
     /**
      * @notice Emitted when a match ends
-     * @param endTime The block.timestampe ended
-     * @param winners The array of addresses of the winners of the match
-     * @param amounts The array of amounts won by the winners
+     * @param players The array of addresses of the players of the match
+     * @param payouts The array of amounts won by the winners
      */
     event MatchEnded(
         bytes32 indexed matchDataHash,
@@ -71,13 +69,19 @@ interface IMatch {
     /**
      * @notice Ends a match, distributes the win amount to the winners, and records match data
      * @param matchId The ID of the match to end
-     * @param winners Array of player addresses who won the match
-     * @param winAmount The amount of tokens each winner will receive
+     * @param players Array of player addresses who won the match
+     * @param payouts The amount of tokens each winner will receive
      */
-    function endMatch(uint256 matchId, address[] calldata winners, uint256[] calldata winAmount) external;
+    function endMatch(
+        uint256 matchId,
+        address[] calldata players,
+        uint256[] calldata payouts,
+        uint256 matchFee,
+        uint256 gameFee
+    ) external;
 
     function setWilderWallet(address _wilderWallet) external;
-    
+
     function getWilderWallet() external view returns (address);
 }
 
