@@ -24,6 +24,7 @@ import {
   INIT_BALANCE,
   DEFAULT_STAKED_AMOUNT,
 } from "./helpers/staking";
+import { contractNames, runCampaign } from "../src/deploy";
 
 describe("StakingERC20", () => {
   let deployer : SignerWithAddress;
@@ -45,7 +46,7 @@ describe("StakingERC20", () => {
 
   // Track first stake and most recent stake times
   let origStakedAtA : bigint;
-  let stakedAtA :  bigint;
+  let stakedAtA : bigint;
 
   let origStakedAtB : bigint;
   let stakedAtB : bigint;
@@ -83,15 +84,29 @@ describe("StakingERC20", () => {
 
     config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
 
-    const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+    // const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
 
-    contract = await stakingFactory.deploy(
-      config.stakingToken,
-      config.rewardsToken,
-      config.rewardsPerPeriod,
-      config.periodLength,
-      config.timeLockPeriod
-    ) as StakingERC20;
+    // contract = await stakingFactory.deploy(
+    //   config.stakingToken,
+    //   config.rewardsToken,
+    //   config.rewardsPerPeriod,
+    //   config.periodLength,
+    //   config.timeLockPeriod
+    // ) as StakingERC20;
+
+    const campaign = await runCampaign({
+      config: {
+        env: "dev",
+        deployAdmin: deployer,
+        postDeploy: {
+          tenderlyProjectSlug: "string",
+          monitorContracts: false,
+          verifyContracts: false,
+        },
+      },
+    });
+
+    contract = campaign.target.state.contracts[contractNames.stakingERC20.contract];
 
     // Give each user funds to stake
     await stakeToken.connect(deployer).transfer(
@@ -243,7 +258,7 @@ describe("StakingERC20", () => {
     });
 
     it("Fails when the staker tries to stake 0", async () => {
-      // TODO Should we bother preventing this case?
+    // TODO Should we bother preventing this case?
       await expect(
         contract.connect(stakerA).stake(0n)
       ).to.be.revertedWithCustomError(contract, ZERO_STAKE_ERR);
@@ -348,15 +363,15 @@ describe("StakingERC20", () => {
     });
 
     it("Fails when the user has never staked", async () => {
-      // `onlyUnlocked` is the first thing checked in this flow
-      // and fails when the user has no set unlock timestamp
+    // `onlyUnlocked` is the first thing checked in this flow
+    // and fails when the user has no set unlock timestamp
       await expect(
         contract.connect(notStaker).claim()
       ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
     });
 
     it("Fails when the contract has no rewards", async () => {
-      // call to claim without first transferring rewards to the contract
+    // call to claim without first transferring rewards to the contract
       await expect(
         contract.connect(stakerA).claim()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
@@ -491,7 +506,7 @@ describe("StakingERC20", () => {
     });
 
     it("Fails when the user tries to unstake more than they have staked", async () => {
-      // Avoid erroring for time lock period
+    // Avoid erroring for time lock period
       await time.increase(config.timeLockPeriod);
 
       await expect(
