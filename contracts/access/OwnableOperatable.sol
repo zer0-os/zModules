@@ -14,6 +14,8 @@ contract OwnableOperatable is Ownable, IOwnableOperatable {
         _;
     }
 
+    constructor() Ownable() {}
+
     function addOperator(address operator) external override onlyOwner {
         if (operator == address(0)) revert ZeroAddress();
 

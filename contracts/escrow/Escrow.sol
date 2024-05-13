@@ -2,13 +2,13 @@
 pragma solidity ^0.8.19;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IEscrow } from "./IEscrow.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { OwnableOperatable } from "../access/OwnableOperatable.sol";
 
 
 // TODO esc: should we rename this into "Wallet"?
-contract Escrow is Ownable, IEscrow {
+contract Escrow is OwnableOperatable, IEscrow {
     using SafeERC20 for IERC20;
 
     /**
@@ -21,12 +21,10 @@ contract Escrow is Ownable, IEscrow {
      */
     mapping(address user => uint256 amount) public balances;
 
-    constructor(address _token, address _owner) {
+    constructor(address _token, address _owner) OwnableOperatable() {
         if (_token.code.length == 0) revert AddressIsNotAContract(_token);
-        if (_owner == address(0)) revert ZeroAddressPassed();
 
         token = IERC20(_token);
-        Ownable(_owner);
     }
 
     function deposit(uint256 amount) external override {
@@ -83,7 +81,7 @@ contract Escrow is Ownable, IEscrow {
         }
     }
 
-    function releaseFunds(address user, uint256 amount) external override onlyOwner {
+    function releaseFunds(address user, uint256 amount) external override onlyAuthorized {
         if (balances[user] < amount) revert InsufficientFunds(user);
         balances[user] -= amount;
         token.safeTransfer(user, amount);

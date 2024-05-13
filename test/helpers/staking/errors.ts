@@ -31,3 +31,8 @@ export const NOT_OWNER_ERR = "Ownable: caller is not the owner";
 // eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";
 export const LOW_LEVEL_CALL_ERR = "SafeERC20: low-level call failed";
+
+// OwnableOperatable
+export const NOT_OWNER = "Ownable: caller is not the owner";
+export const NOT_AUTHORIZED = "NotAuthorized";
+export const ZERO_ADDRESS = "ZeroAddress";
