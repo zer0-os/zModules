@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { IOwnableOperatable } from "../access/IOwnableOperatable.sol";
 
-interface IEscrow {
+
+interface IEscrow is IOwnableOperatable {
     // TODO esc: fix NatSpec and add to main contract
     error InsufficientFunds(address user);
     error AddressIsNotAContract(address addr);
-    error ZeroAddressPassed();
     error ZeroAmountPassed();
     /**
      * @notice Emit when tokens are deposited into the contract

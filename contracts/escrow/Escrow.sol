@@ -21,14 +21,18 @@ contract Escrow is OwnableOperatable, IEscrow {
      */
     mapping(address user => uint256 amount) public balances;
 
-    constructor(address _token, address _owner) OwnableOperatable() {
+    constructor(address _token, address[] memory operators) OwnableOperatable() {
         if (_token.code.length == 0) revert AddressIsNotAContract(_token);
 
         token = IERC20(_token);
+
+        if (operators.length > 0) {
+            addOperators(operators);
+        }
     }
 
     function deposit(uint256 amount) external override {
-        if (amount > 0) revert ZeroAmountPassed();
+        if (amount == 0) revert ZeroAmountPassed();
 
         token.safeTransferFrom(msg.sender, address(this), amount);
         balances[msg.sender] += amount;
