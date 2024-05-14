@@ -9,6 +9,7 @@ interface IEscrow is IOwnableOperatable {
     error InsufficientFunds(address user);
     error AddressIsNotAContract(address addr);
     error ZeroAmountPassed();
+
     /**
      * @notice Emit when tokens are deposited into the contract
      * @param user The address of the user who deposited the tokens
@@ -22,20 +23,6 @@ interface IEscrow is IOwnableOperatable {
      * @param amount The amount of tokens withdrawn
      */
     event Withdrawal(address indexed user, uint256 amount);
-
-    /**
-     * @notice Emit when a payment is executed to a user
-     * @param user The address of the user who received the payment
-     * @param amount The amount of tokens paid to the user
-     */
-    event Payment(address indexed user, uint256 amount);
-
-    /**
-     * @notice Emit when a payment is executed to a user
-     * @param user The address of the user who received the payment
-     * @param amount The amount of tokens paid to the user
-     */
-    event Charge(address indexed user, uint256 amount);
 
     /**
      * @notice Emit when tokens are refunded to a user
@@ -54,34 +41,6 @@ interface IEscrow is IOwnableOperatable {
      * @dev Transfers balance to user.
      */
     function withdraw(uint256 amount, bool all) external;
-
-    /**
-     * @dev Executes a payment from the escrow to a winner.
-     * @param user The address to receive tokens.
-     * @param amount The amount of tokens they receive.
-     */
-    function pay(address user, uint256 amount) external;
-
-    /**
-     * @dev Executes a payment from the escrow to a winner.
-     * @param user The address to receive tokens.
-     * @param amount The amount of tokens they receive.
-     */
-    function charge(address user, uint256 amount) external;
-
-    /**
-     * @notice Pays varying amounts from the escrow to each winner
-     * @param amounts Array of amounts to pay to each winner
-     * @param winners Array of winner addresses
-     */
-    function payAllAmounts(uint256[] memory amounts, address[] memory winners) external;
-
-    /**
-     * @notice Charges varying amounts from the escrow to each winner
-     * @param amounts Array of amounts to charge to each winner
-     * @param winners Array of player addresses
-     */
-    function chargeAllAmounts(uint256[] memory amounts, address[] memory winners) external;
 
     /**
      * @dev Refunds tokens from the escrow back to a user by the contract owner or operator.

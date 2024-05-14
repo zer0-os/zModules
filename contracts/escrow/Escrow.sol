@@ -56,35 +56,8 @@ contract Escrow is OwnableOperatable, IEscrow {
         emit Withdrawal(msg.sender, toWithdraw);
     }
 
-    // TODO esc: how do we make this flow better and less risky?
-    function pay(address user, uint256 amount) public override onlyOwner {
-        require(token.balanceOf(address(this)) >= amount, "Contract not funded");
-        balances[user] += amount;
-        emit Payment(user, amount);
-    }
-
-    // TODO esc: what to do with all these functions? which ones we need and where to put this logic?
-    function charge(address user, uint256 amount) public override onlyOwner {
-        balances[user] -= amount;
-        emit Charge(user, amount);
-    }
-
-    function payAllAmounts(uint256[] memory amounts, address[] memory winners) external override onlyOwner {
-        require(amounts.length == winners.length, "Amounts and winners length mismatch");
-
-        for(uint i = 0; i < winners.length; i++) {
-            pay(winners[i], amounts[i]);
-        }
-    }
-
-    function chargeAllAmounts(uint256[] memory amounts, address[] memory users) external override onlyOwner {
-        require(amounts.length == users.length, "Amounts and users length mismatch");
-
-        for(uint i = 0; i < users.length; i++) {
-            charge(users[i], amounts[i]);
-        }
-    }
-
+    // TODO esc: do we even need this function ?? Maybe only to pay for user withdrawal txes
+    //  if game messed up their payouts?..
     function releaseFunds(address user, uint256 amount) external override onlyAuthorized {
         if (balances[user] < amount) revert InsufficientFunds(user);
         balances[user] -= amount;
