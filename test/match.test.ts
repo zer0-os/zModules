@@ -74,7 +74,7 @@ describe("Match Contract",  () => {
     ];
 
     const MockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-    mockERC20 = (await MockERC20Factory.deploy("MockToken", "MTK")) as MockERC20;
+    mockERC20 = await MockERC20Factory.deploy("MockToken", "MTK");
     mockERC20Address = await mockERC20.getAddress();
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
