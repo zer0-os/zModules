@@ -24,7 +24,6 @@ contract Match is Escrow, IMatch {
 
     constructor(
         address _token,
-        address _owner,
         address _wilderWallet,
         address[] memory operators
     ) Escrow(_token, operators) {
@@ -111,6 +110,8 @@ contract Match is Escrow, IMatch {
         uint256 lockedAmount = fundLocks[matchDataHash];
         if (lockedAmount == 0) revert InvalidMatchOrPayouts(matchId, matchDataHash);
 
+        delete fundLocks[matchDataHash];
+
         uint256 payoutSum;
         for (uint256 i = 0; i < players.length;) {
             balances[players[i]] += payouts[i];
@@ -129,7 +130,8 @@ contract Match is Escrow, IMatch {
             matchId,
             players,
             payouts,
-            matchFee
+            matchFee,
+            gameFee
         );
     }
 

@@ -48,7 +48,8 @@ interface IMatch is IEscrow {
         uint256 indexed matchId,
         address[] indexed players,
         uint256[] payouts,
-        uint256 matchFee
+        uint256 matchFee,
+        uint256 gameFee
     );
 
     /**
