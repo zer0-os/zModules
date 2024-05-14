@@ -3,24 +3,38 @@ import { TypedContractEvent, TypedEventLog } from "../../../typechain/common";
 
 
 // TODO esc: extend to read any events
-export const getMatchStartedEvents = async ({
+export const getMatchEvents = async ({
   match,
+  eventName = "MatchStarted",
   matchDataHash = undefined,
   matchId = undefined,
   players = undefined,
 } : {
   match : Match;
   matchDataHash ?: string | undefined;
+  eventName ?: "MatchStarted" | "MatchEnded" | undefined;
   matchId ?: bigint | undefined;
   players ?: Array<string> | undefined;
 }) : Promise<Array<TypedEventLog<TypedContractEvent>>> => {
-  const filter = match.filters.MatchStarted(
-    matchDataHash,
-    matchId,
-    players,
-    undefined,
-    undefined,
-  );
+  let filter;
+  if (eventName === "MatchEnded") {
+    filter = match.filters.MatchEnded(
+      matchDataHash,
+      matchId,
+      players,
+      undefined,
+      undefined,
+      undefined
+    );
+  } else {
+    filter = match.filters.MatchStarted(
+      matchDataHash,
+      matchId,
+      players,
+      undefined,
+      undefined
+    );
+  }
 
   return match.queryFilter(filter);
 };
