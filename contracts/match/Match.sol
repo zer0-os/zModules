@@ -25,8 +25,9 @@ contract Match is Escrow, IMatch {
     constructor(
         address _token,
         address _owner,
-        address _wilderWallet
-    ) Escrow(_token, _owner) {
+        address _wilderWallet,
+        address[] memory operators
+    ) Escrow(_token, operators) {
         if (_wilderWallet == address(0)) revert ZeroAddressPassed();
 
         wilderWallet = _wilderWallet;
@@ -37,7 +38,7 @@ contract Match is Escrow, IMatch {
     function canMatch(
         address[] calldata players,
         uint256 feeRequired
-    ) external override view returns (
+    ) external view override returns (
         address[] memory unfundedPlayers
     ) {
         unfundedPlayers = new address[](players.length);
@@ -60,9 +61,18 @@ contract Match is Escrow, IMatch {
         uint256 matchId,
         address[] calldata players,
         uint256 matchFee
-    ) external override {
+    ) external override onlyAuthorized {
         // TODO esc: do we need this check?
-        require(players.length > 0, "No players");
+        if (players.length == 0) revert NoPlayersInMatch(matchId);
+
+        bytes32 matchDataHash = _getMatchDataHash(
+            matchId,
+            matchFee,
+            players
+        );
+
+        if (fundLocks[matchDataHash] != 0)
+            revert MatchAlreadyStarted(matchId, matchDataHash);
 
         for (uint256 i = 0; i < players.length;) {
             if (!_isFunded(players[i], matchFee)) {
@@ -75,12 +85,6 @@ contract Match is Escrow, IMatch {
         }
 
         uint256 lockedAmount = matchFee * players.length;
-
-        bytes32 matchDataHash = _getMatchDataHash(
-            matchId,
-            matchFee,
-            players
-        );
 
         fundLocks[matchDataHash] = lockedAmount;
 
@@ -95,9 +99,8 @@ contract Match is Escrow, IMatch {
         uint256[] calldata payouts,
         uint256 matchFee,
         uint256 gameFee
-    ) external override {
-        // TODO esc: add error !
-        require(players.length == payouts.length, "Array lengths mismatch");
+    ) external override onlyAuthorized {
+        if (players.length != payouts.length) revert ArrayLengthMismatch();
 
         bytes32 matchDataHash = _getMatchDataHash(
             matchId,
@@ -130,7 +133,7 @@ contract Match is Escrow, IMatch {
         );
     }
 
-    function setWilderWallet(address _wilderWallet) external override {
+    function setWilderWallet(address _wilderWallet) external override onlyAuthorized {
         if (_wilderWallet == address(0)) revert ZeroAddressPassed();
 
         wilderWallet = _wilderWallet;

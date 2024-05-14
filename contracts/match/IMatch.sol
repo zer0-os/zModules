@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import { IEscrow } from "../escrow/IEscrow.sol";
 
-interface IMatch {
+
+interface IMatch is IEscrow {
     // TODO esc: what else to add here ?
     struct MatchData {
         uint256 matchId;
@@ -13,6 +15,9 @@ interface IMatch {
     // TODO esc: make sure we can actually read arrays in events !!!
     error PlayerWithInsufficientFunds(address player);
     error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash);
+    error MatchAlreadyStarted(uint256 matchId, bytes32 matchDataHash);
+    error NoPlayersInMatch(uint256 matchId);
+    error ArrayLengthMismatch();
 
     event WilderWalletSet(address wilderWallet);
 
@@ -21,7 +26,7 @@ interface IMatch {
      * @notice Emitted when a match starts
      * @param matchDataHash The hash of the MatchData struct
      * @param players The array of player addresses participating in the match
-     * @param entryFee The entry fee for the match
+     * @param matchFee The entry fee for the match
      * @param fundsLocked The total amount of tokens locked in escrow for the match
      */
     event MatchStarted(
@@ -29,7 +34,7 @@ interface IMatch {
         uint256 indexed matchId,
         address[] indexed players,
     // TODO esc: do we need this if we have fundsLocked?
-        uint256 entryFee,
+        uint256 matchFee,
         uint256 fundsLocked
     );
 
@@ -62,9 +67,9 @@ interface IMatch {
     /**
      * @notice Starts a match and charges the entry fee from each player's balance
      * @param players Array of player addresses participating in the match
-     * @param entryFee The entry fee for each player
+     * @param matchFee The entry fee for each player
      */
-    function startMatch(uint256 matchId, address[] calldata players, uint256 entryFee) external;
+    function startMatch(uint256 matchId, address[] calldata players, uint256 matchFee) external;
 
     /**
      * @notice Ends a match, distributes the win amount to the winners, and records match data
