@@ -2,7 +2,7 @@ import * as hre from "hardhat";
 import { ethers } from "ethers";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { Match, ERC20TestToken, Match__factory } from "../typechain";
+import { Match, MockERC20, Match__factory } from "../typechain";
 import { getMatchDataHash } from "./helpers/match/hashing";
 import { getMatchEvents } from "./helpers/match/events";
 import {
@@ -28,7 +28,7 @@ const getPlayerBalances = async (
 );
 
 describe("Match Contract",  () => {
-  let mockERC20 : ERC20TestToken;
+  let mockERC20 : MockERC20;
   let match : Match;
 
   let owner : SignerWithAddress;
@@ -74,7 +74,7 @@ describe("Match Contract",  () => {
     ];
 
     const MockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-    mockERC20 = (await MockERC20Factory.deploy("MockToken", "MTK")) as ERC20TestToken;
+    mockERC20 = (await MockERC20Factory.deploy("MockToken", "MTK")) as MockERC20;
     mockERC20Address = await mockERC20.getAddress();
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
