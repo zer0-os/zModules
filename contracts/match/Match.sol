@@ -75,7 +75,7 @@ contract Match is Escrow, IMatch {
 
         for (uint256 i = 0; i < players.length;) {
             if (!_isFunded(players[i], matchFee)) {
-                revert PlayerWithInsufficientFunds(players[i]);
+                revert InsufficientFunds(players[i]);
             }
 
             balances[players[i]] -= matchFee;

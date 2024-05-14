@@ -13,7 +13,6 @@ interface IMatch is IEscrow {
     }
 
     // TODO esc: make sure we can actually read arrays in events !!!
-    error PlayerWithInsufficientFunds(address player);
     error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash);
     error MatchAlreadyStarted(uint256 matchId, bytes32 matchDataHash);
     error NoPlayersInMatch(uint256 matchId);

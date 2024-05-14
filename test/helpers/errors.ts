@@ -33,11 +33,15 @@ export const NOT_OWNER_ERR = "Ownable: caller is not the owner";
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";
 export const LOW_LEVEL_CALL_ERR = "SafeERC20: low-level call failed";
 
+// Escrow
+export const ZERO_AMOUNT_ERR = "ZeroAmountPassed";
+export const NOT_A_CONTRACT_ERR= "AddressIsNotAContract";
+export const INSUFFICIENT_FUNDS_ERR = "InsufficientFunds";
+
 // OwnableOperatable
 export const ZERO_ADDRESS_ERR = "ZeroAddressPassed";
 
 // Match
-export const INSUFFICIENT_FUNDS_ERR = "PlayerWithInsufficientFunds";
 export const NO_PLAYERS_ERR = "NoPlayersInMatch";
 export const MATCH_STARTED_ERR = "MatchAlreadyStarted";
 export const INVALID_MATCH_ERR = "InvalidMatchOrPayouts";
