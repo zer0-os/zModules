@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 
 interface IOwnableOperatable {
     // TODO esc: refactor common errors into a separate file
-    error NotAuthorized(address caller, address azz);
+    error NotAuthorized(address caller);
     error ZeroAddressPassed();
 
     event OperatorAdded(address indexed operator);

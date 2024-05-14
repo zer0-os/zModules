@@ -10,7 +10,7 @@ contract OwnableOperatable is Ownable, IOwnableOperatable {
 
     modifier onlyAuthorized() {
         if (_msgSender() != owner() && !operators[_msgSender()])
-            revert NotAuthorized(_msgSender(), owner());
+            revert NotAuthorized(_msgSender());
         _;
     }
 
