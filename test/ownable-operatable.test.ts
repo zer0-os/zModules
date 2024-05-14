@@ -2,7 +2,7 @@ import * as hre from "hardhat";
 import { OwnableOperatable } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { ZERO_ADDRESS } from "./helpers/staking";
+import { ZERO_ADDRESS_ERR } from "./helpers/staking";
 
 
 describe("OwnableOperatable Contract", () => {
@@ -60,7 +60,7 @@ describe("OwnableOperatable Contract", () => {
     it("should revert it zero address is passed as operator", async () => {
       await expect(
         op.connect(owner).addOperator(hre.ethers.ZeroAddress)
-      ).to.be.revertedWithCustomError(op, ZERO_ADDRESS);
+      ).to.be.revertedWithCustomError(op, ZERO_ADDRESS_ERR);
     });
 
     it("should remove an operator if owner is the caller and emit an event", async () => {

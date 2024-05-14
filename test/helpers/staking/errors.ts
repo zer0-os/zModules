@@ -33,6 +33,11 @@ export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector wa
 export const LOW_LEVEL_CALL_ERR = "SafeERC20: low-level call failed";
 
 // OwnableOperatable
-export const NOT_OWNER = "Ownable: caller is not the owner";
-export const NOT_AUTHORIZED = "NotAuthorized";
-export const ZERO_ADDRESS = "ZeroAddress";
+export const ZERO_ADDRESS_ERR = "ZeroAddressPassed";
+
+// Match
+export const INSUFFICIENT_FUNDS_ERR = "PlayerWithInsufficientFunds";
+export const NO_PLAYERS_ERR = "NoPlayersInMatch";
+export const MATCH_STARTED_ERR = "MatchAlreadyStarted";
+export const INVALID_MATCH_ERR = "InvalidMatchOrPayouts";
+export const ARRAY_MISMATCH_ERR = "ArrayLengthMismatch";
