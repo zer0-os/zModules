@@ -13,7 +13,7 @@
     "docgen": "hardhat docgen",
     "lint-sol": "yarn solhint ./contracts/**/*.sol",
     "lint-ts": "yarn eslint ./test/** ./src/**",
-    "lint": "yarn lint-sol & yarn lint-ts --no-error-on-unmatched-pattern"
+    "lint": "yarn lint-sol && yarn lint-ts --no-error-on-unmatched-pattern"
   },
   "keywords": [],
   "author": "Zero CPT",
@@ -40,7 +40,7 @@
     "hardhat": "^2.19.1",
     "hardhat-gas-reporter": "^1.0.9",
     "semantic-release": "^21.0.1",
-    "solhint": "^4.0.0",
+    "solhint": "^5.0.1",
     "solidity-coverage": "^0.8.5",
     "solidity-docgen": "^0.6.0-beta.36",
     "ts-node": "10.9.1",
