@@ -2,7 +2,7 @@ import * as hre from "hardhat";
 import { OwnableOperatable } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { ZERO_ADDRESS_ERR } from "./helpers/staking";
+import { NOT_OWNER_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
 
 
 describe("OwnableOperatable Contract", () => {
@@ -57,6 +57,12 @@ describe("OwnableOperatable Contract", () => {
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
+    it("should revert when #addOperators() is called by non-owner", async () => {
+      await expect(
+        op.connect(user).addOperators([operator2.address, operator3.address])
+      ).to.be.revertedWith(NOT_OWNER_ERR);
+    });
+
     it("should revert it zero address is passed as operator", async () => {
       await expect(
         op.connect(owner).addOperator(hre.ethers.ZeroAddress)
@@ -70,6 +76,12 @@ describe("OwnableOperatable Contract", () => {
       expect(await op.isOperator(operator1.address)).to.be.false;
 
       await expect(tx).to.emit(op, "OperatorRemoved").withArgs(operator1.address);
+    });
+
+    it("should revert when #removeOperator() is called by non-owner", async () => {
+      await expect(
+        op.connect(user).removeOperator(operator2.address)
+      ).to.be.revertedWith(NOT_OWNER_ERR);
     });
 
     it("should support multiple operators", async () => {

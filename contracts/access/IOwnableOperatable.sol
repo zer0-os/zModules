@@ -3,12 +3,12 @@ pragma solidity ^0.8.19;
 
 
 interface IOwnableOperatable {
+    event OperatorAdded(address indexed operator);
+    event OperatorRemoved(address indexed operator);
+
     // TODO esc: refactor common errors into a separate file
     error NotAuthorized(address caller);
     error ZeroAddressPassed();
-
-    event OperatorAdded(address indexed operator);
-    event OperatorRemoved(address indexed operator);
 
     function addOperator(address operator) external;
 

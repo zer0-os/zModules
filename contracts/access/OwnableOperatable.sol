@@ -6,7 +6,7 @@ import { IOwnableOperatable } from "./IOwnableOperatable.sol";
 
 
 contract OwnableOperatable is Ownable, IOwnableOperatable {
-    mapping(address => bool) internal operators;
+    mapping(address operator => bool valid) internal operators;
 
     modifier onlyAuthorized() {
         if (_msgSender() != owner() && !operators[_msgSender()])

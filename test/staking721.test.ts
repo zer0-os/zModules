@@ -13,19 +13,22 @@ import {
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
+  BaseConfig,
+  WITHDRAW_EVENT,
+} from "./helpers/staking";
+import {
+  LOW_LEVEL_CALL_ERR,
+  FUNCTION_SELECTOR_ERR,
+  ZERO_INIT_ERR, NOT_OWNER_ERR,
+  NON_TRANSFERRABLE_ERR,
   INCORRECT_OWNER_TRANSFER_ERR,
   INVALID_OWNER_ERR,
   INVALID_TOKEN_ID_ERR,
   NO_REWARDS_ERR,
   ONLY_NFT_OWNER_ERR,
   TIME_LOCK_NOT_PASSED_ERR,
-  BaseConfig,
-  FUNCTION_SELECTOR_ERR,
-  ZERO_INIT_ERR, NOT_OWNER_ERR,
-  NON_TRANSFERRABLE_ERR,
-  WITHDRAW_EVENT,
-  LOW_LEVEL_CALL_ERR,
-} from "./helpers/staking";
+} from "./helpers/errors";
+
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;

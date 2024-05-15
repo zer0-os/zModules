@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
 
 import { IOwnableOperatable } from "../access/IOwnableOperatable.sol";
 
 
 interface IEscrow is IOwnableOperatable {
     // TODO esc: fix NatSpec and add to main contract
-    error InsufficientFunds(address user);
-    error AddressIsNotAContract(address addr);
-    error ZeroAmountPassed();
 
     /**
      * @notice Emit when tokens are deposited into the contract
@@ -30,6 +27,10 @@ interface IEscrow is IOwnableOperatable {
      * @param amount The amount of tokens refunded
      */
     event FundsReleased(address indexed user, uint256 amount);
+
+    error InsufficientFunds(address user);
+    error AddressIsNotAContract(address addr);
+    error ZeroAmountPassed();
 
     /**
      * @dev Allows a user to deposit tokens into the escrow contract.

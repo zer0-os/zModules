@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IMatch } from "./IMatch.sol";
 import { Escrow } from "../escrow/Escrow.sol";
 
@@ -19,7 +18,7 @@ contract Match is Escrow, IMatch {
     //  We could also just make these hashes and fire them in events. We shouldn't be able to
     //  end a match if a proper amount of tokens hasn't been locked ??
 
-    // TODO esc: should the escrow be here as an external address saved vs money being store on this contract directly???
+    // TODO esc: should the escrow be here as an external address saved vs money being store on this contract directly?
     //  this Escrow could be used in other contracts as well for other games.
 
     constructor(
@@ -33,27 +32,6 @@ contract Match is Escrow, IMatch {
     }
 
     // TODO esc: should we add funds release function here to avoid matches being stuck or some other issues???
-
-    function canMatch(
-        address[] calldata players,
-        uint256 feeRequired
-    ) external view override returns (
-        address[] memory unfundedPlayers
-    ) {
-        unfundedPlayers = new address[](players.length);
-
-        uint256 k;
-        for (uint256 i = 0; i < players.length;) {
-            if (!_isFunded(players[i], feeRequired)) {
-                unfundedPlayers[k] = players[i];
-                unchecked { ++k; }
-            }
-
-            unchecked { ++i; }
-        }
-
-        return unfundedPlayers;
-    }
 
     // TODO esc: needs ACCESS CONTROL !!!
     function startMatch(
@@ -87,8 +65,6 @@ contract Match is Escrow, IMatch {
 
         fundLocks[matchDataHash] = lockedAmount;
 
-        // TODO esc: can we just create a has of a certain struct with match data and fire it here in the event
-        //  instead of saving it in state? AND in MatchEnded event?
         emit MatchStarted(matchDataHash, matchId, players, matchFee, lockedAmount);
     }
 
@@ -120,7 +96,9 @@ contract Match is Escrow, IMatch {
             unchecked { ++i; }
         }
 
-        // TODO esc: will there be a problem with rounding here or on the game side where these may not be exactly equal?
+        // It is important to calculate the payouts + gameFee correctly, avoiding rounding issues, before sending here
+        // since the contract validates the correctness of the amounts sent and will revert if they
+        // do not add up exactly to the lockedAmount for the match
         if (payoutSum + gameFee != lockedAmount) revert InvalidMatchOrPayouts(matchId, matchDataHash);
 
         balances[wilderWallet] += gameFee;
@@ -146,6 +124,31 @@ contract Match is Escrow, IMatch {
         return wilderWallet;
     }
 
+    function canMatch(
+        address[] calldata players,
+        uint256 feeRequired
+    ) external view override returns (
+        address[] memory unfundedPlayers
+    ) {
+        unfundedPlayers = new address[](players.length);
+
+        uint256 k;
+        for (uint256 i = 0; i < players.length;) {
+            if (!_isFunded(players[i], feeRequired)) {
+                unfundedPlayers[k] = players[i];
+                unchecked { ++k; }
+            }
+
+            unchecked { ++i; }
+        }
+
+        return unfundedPlayers;
+    }
+
+    function _isFunded(address player, uint256 feeRequired) internal view returns (bool) {
+        return balances[player] >= feeRequired;
+    }
+
     function _getMatchDataHash(
         uint256 matchId,
         uint256 matchFee,
@@ -158,9 +161,5 @@ contract Match is Escrow, IMatch {
         });
 
         return keccak256(abi.encode(matchData));
-    }
-
-    function _isFunded(address player, uint256 feeRequired) internal view returns (bool) {
-        return balances[player] >= feeRequired;
     }
 }

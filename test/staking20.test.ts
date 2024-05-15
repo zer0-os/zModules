@@ -7,22 +7,24 @@ import {
   StakingERC20,
 } from "../typechain";
 import {
-  createDefaultConfigs,
-  calcTotalRewards,
-  STAKED_EVENT,
-  CLAIMED_EVENT,
-  UNSTAKED_EVENT,
   NO_REWARDS_ERR,
   TIME_LOCK_NOT_PASSED_ERR,
-  BaseConfig,
   INSUFFICIENT_ALLOWANCE_ERR,
   INSUFFICIENT_BALANCE_ERR,
   ZERO_STAKE_ERR,
   UNEQUAL_UNSTAKE_ERR,
   ONLY_OWNER_ERR,
+} from "./helpers/errors";
+import {
   WITHDRAW_EVENT,
   INIT_BALANCE,
   DEFAULT_STAKED_AMOUNT,
+  createDefaultConfigs,
+  calcTotalRewards,
+  STAKED_EVENT,
+  CLAIMED_EVENT,
+  UNSTAKED_EVENT,
+  BaseConfig,
 } from "./helpers/staking";
 
 describe("StakingERC20", () => {

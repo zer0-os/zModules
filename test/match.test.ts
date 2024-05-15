@@ -12,7 +12,7 @@ import {
   MATCH_STARTED_ERR,
   NO_PLAYERS_ERR, NOT_AUTHORIZED_ERR,
   ONLY_OWNER_ERR, ZERO_ADDRESS_ERR,
-} from "./helpers/staking";
+} from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
 
 
@@ -130,6 +130,34 @@ describe("Match Contract",  () => {
         ethers.ZeroAddress,
         ethers.ZeroAddress,
       ]);
+    });
+
+    it("#setWilderWallet should set the address correctly and emit an event", async () => {
+      expect(await match.getWilderWallet()).to.equal(wilderWallet.address);
+
+      await expect(
+        match.connect(owner).setWilderWallet(operator1.address)
+      ).to.emit(match, "WilderWalletSet")
+        .withArgs(operator1.address);
+
+      expect(await match.getWilderWallet()).to.equal(operator1.address);
+
+      // set back
+      await match.connect(owner).setWilderWallet(wilderWallet.address);
+
+      expect(await match.getWilderWallet()).to.equal(wilderWallet.address);
+    });
+
+    it("#setWilderWallet should revert if called by non-owner", async () => {
+      await expect(
+        match.connect(player1).setWilderWallet(operator1.address)
+      ).to.be.revertedWith(ONLY_OWNER_ERR);
+    });
+
+    it("#setWilderWallet() should revert if 0x0 address is passed", async () => {
+      await expect(
+        match.connect(owner).setWilderWallet(ethers.ZeroAddress)
+      ).to.be.revertedWithCustomError(match, ZERO_ADDRESS_ERR);
     });
   });
 

@@ -12,12 +12,6 @@ interface IMatch is IEscrow {
         address[] players;
     }
 
-    // TODO esc: make sure we can actually read arrays in events !!!
-    error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash);
-    error MatchAlreadyStarted(uint256 matchId, bytes32 matchDataHash);
-    error NoPlayersInMatch(uint256 matchId);
-    error ArrayLengthMismatch();
-
     event WilderWalletSet(address wilderWallet);
 
     // TODO esc: fix all NatSpec everywhere!
@@ -51,18 +45,10 @@ interface IMatch is IEscrow {
         uint256 gameFee
     );
 
-    /**
-     * @notice Checks if all players have enough balance in escrow to participate in the match
-     * @param players Array of player addresses
-     * @param feeRequired The required balance in escrow for each player to participate
-     * @return unfundedPlayers Array of player addresses who do not have enough balance in escrow
-     */
-    function canMatch(
-        address[] calldata players,
-        uint256 feeRequired
-    ) external view returns (
-        address[] memory unfundedPlayers
-    );
+    error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash);
+    error MatchAlreadyStarted(uint256 matchId, bytes32 matchDataHash);
+    error NoPlayersInMatch(uint256 matchId);
+    error ArrayLengthMismatch();
 
     /**
      * @notice Starts a match and charges the entry fee from each player's balance
@@ -88,6 +74,19 @@ interface IMatch is IEscrow {
     function setWilderWallet(address _wilderWallet) external;
 
     function getWilderWallet() external view returns (address);
+
+    /**
+     * @notice Checks if all players have enough balance in escrow to participate in the match
+     * @param players Array of player addresses
+     * @param feeRequired The required balance in escrow for each player to participate
+     * @return unfundedPlayers Array of player addresses who do not have enough balance in escrow
+     */
+    function canMatch(
+        address[] calldata players,
+        uint256 feeRequired
+    ) external view returns (
+        address[] memory unfundedPlayers
+    );
 }
 
 

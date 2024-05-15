@@ -5,7 +5,7 @@ import { Escrow, MockERC20 } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { INSUFFICIENT_FUNDS_ERR, NOT_A_CONTRACT_ERR, NOT_AUTHORIZED_ERR, ZERO_AMOUNT_ERR } from "./helpers/errors";
 
-
+// TODO esc: update solhint, oz packages and hardhat
 describe("Escrow Contract", () => {
   let mockERC20 : MockERC20;
   let escrow : Escrow;
@@ -56,7 +56,7 @@ describe("Escrow Contract", () => {
       expect(await escrow.token()).to.equal(await mockERC20.getAddress());
     });
 
-    it("Should assing operators in the constructor", async () => {
+    it("Should assign operators in the constructor if they are passed", async () => {
       expect(await escrow.isOperator(operator1.address)).to.equal(true);
     });
 
@@ -69,7 +69,6 @@ describe("Escrow Contract", () => {
 
   describe("Fund Management - Success Scenarios", () => {
     const depositAmount = ethers.parseEther("100");
-    const addr1FinalTokenBalance = ethers.parseEther("1050");
 
     it("Should allow deposits", async () => {
       await mockERC20.connect(addr1).approve(escrowAddress, depositAmount);
