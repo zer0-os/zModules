@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -188,6 +188,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
 
     function _unstake(uint256 tokenId) internal onlySNFTOwner(tokenId) {
         _burn(tokenId);
+        --_totalSupply;
 
         // Return NFT to staker
         IERC721(stakingToken).safeTransferFrom(
@@ -219,11 +220,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function _burn(uint256 tokenId) internal override {
-        super._burn(tokenId);
-        --_totalSupply;
-    }
-
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
@@ -231,14 +227,17 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
      */
-    function _beforeTokenTransfer(
-        address from,
+    function _update(
         address to,
-        uint256,
-        uint256
-    ) internal pure override {
+        uint256 tokenId,
+        address auth
+    ) internal override returns (address) {
+        address from = _ownerOf(tokenId);
+
         if (from != address(0) && to != address(0)) {
             revert NonTransferrableToken();
         }
+
+        return super._update(to, tokenId, auth);
     }
 }
