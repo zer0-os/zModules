@@ -22,7 +22,7 @@ interface IStakingBase {
     }
 
     /**
-     * @dev Emitted when the contract owner withdraws leftover rewards
+     * @notice Emitted when the contract owner withdraws leftover rewards
      * @param owner The address of the contract owner
      * @param amount The amount of rewards withdrawn
      */
@@ -45,18 +45,18 @@ interface IStakingBase {
     );
 
     /**
-     * @dev Throw when the lock period has not passed
+     * @notice Throw when the lock period has not passed
      */
     error TimeLockNotPassed();
 
     /**
-     * @dev Throw when there are no rewards remaining in the pool
+     * @notice Throw when there are no rewards remaining in the pool
      * to give to stakers
      */
     error NoRewardsLeftInContract();
 
     /**
-     * @dev Throw when passing zero values to set a state var
+     * @notice Throw when passing zero values to set a state var
      */
     error InitializedWithZero();
 

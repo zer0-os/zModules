@@ -16,32 +16,32 @@ contract StakingBase is Ownable, IStakingBase {
     using SafeERC20 for IERC20;
 
     /**
-     * @dev Mapping of each staker to that staker's data in the `Staker` struct
+     * @notice Mapping of each staker to that staker's data in the `Staker` struct
      */
     mapping(address staker => Staker stakerData) public stakers;
 
     /**
-     * @dev The staking token for this pool
+     * @notice The staking token for this pool
      */
     address public immutable stakingToken;
 
     /**
-     * @dev The rewards token for this pool
+     * @notice The rewards token for this pool
      */
     IERC20 public immutable rewardsToken;
 
     /**
-     * @dev The rewards of the pool per period length
+     * @notice The rewards of the pool per period length
      */
     uint256 public immutable rewardsPerPeriod;
 
     /**
-     * @dev The length of a time period
+     * @notice The length of a time period
      */
     uint256 public immutable periodLength;
 
     /**
-     * @dev The amount of time required to pass to be able to claim or unstake
+     * @notice The amount of time required to pass to be able to claim or unstake
      */
     uint256 public immutable timeLockPeriod;
 

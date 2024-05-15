@@ -10,7 +10,7 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
  */
 interface IStakingERC721 is IERC721Receiver {
     /**
-     * @dev Emitted when the base URI is updated
+     * @notice Emitted when the base URI is updated
      * @param baseURI The new base URI
      */
     event BaseURIUpdated(string baseURI);
@@ -40,12 +40,12 @@ interface IStakingERC721 is IERC721Receiver {
     );
 
     /**
-     * @dev Throw when caller is not the sNFT owner
+     * @notice Throw when caller is not the sNFT owner
      */
     error InvalidOwner();
 
     /**
-     * @dev Throw when trying to transfer the representative sNFT
+     * @notice Throw when trying to transfer the representative sNFT
      */
     error NonTransferrableToken();
 

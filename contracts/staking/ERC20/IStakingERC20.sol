@@ -31,12 +31,12 @@ interface IStakingERC20 {
     );
 
     /**
-     * Revert when the user tries to unstake more than the initial stake amount
+     * @notice Revert when the user tries to unstake more than the initial stake amount
      */
     error UnstakeMoreThanStake();
 
     /**
-     * Revert when the user tries to stake 0 tokens
+     * @notice Revert when the user tries to stake 0 tokens
      */
     error ZeroStake();
 
