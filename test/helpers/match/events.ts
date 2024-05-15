@@ -2,7 +2,6 @@ import { Match } from "../../../typechain";
 import { TypedContractEvent, TypedEventLog } from "../../../typechain/common";
 
 
-// TODO esc: extend to read any events
 export const getMatchEvents = async ({
   match,
   eventName = "MatchStarted",

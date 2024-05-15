@@ -4,19 +4,12 @@ pragma solidity ^0.8.19;
 import { IMatch } from "./IMatch.sol";
 import { Escrow } from "../escrow/Escrow.sol";
 
-
-// TODO esc: find better naming
+// TODO esc: add authors to NatSpec
 contract Match is Escrow, IMatch {
 
     mapping(bytes32 matchDataHash => uint256 amount) public fundLocks;
 
     address internal feeVault;
-
-    // TODO esc: should we save match data here to make sure only mathces registered on this contract
-    //  can be ended with payouts?
-    //  Should this data be saved as hashes of structs that can be verified, to save on space?
-    //  We could also just make these hashes and fire them in events. We shouldn't be able to
-    //  end a match if a proper amount of tokens hasn't been locked ??
 
     // TODO esc: should the escrow be here as an external address saved vs money being store on this contract directly?
     //  this Escrow could be used in other contracts as well for other games.
@@ -31,15 +24,11 @@ contract Match is Escrow, IMatch {
         feeVault = _feeVault;
     }
 
-    // TODO esc: should we add funds release function here to avoid matches being stuck or some other issues???
-
-    // TODO esc: needs ACCESS CONTROL !!!
     function startMatch(
         uint256 matchId,
         address[] calldata players,
         uint256 matchFee
     ) external override onlyAuthorized {
-        // TODO esc: do we need this check?
         if (players.length == 0) revert NoPlayersInMatch(matchId);
 
         bytes32 matchDataHash = _getMatchDataHash(
