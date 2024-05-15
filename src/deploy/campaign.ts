@@ -1,12 +1,12 @@
-import { IZModulesContracts } from "./types.campaign";
+import { DCConfig, IZModulesContracts } from "./types.campaign";
 import * as hre from "hardhat";
 import { HardhatEthersSigner, SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   DeployCampaign,
   HardhatDeployer,
-  IDeployCampaignConfig,
   IProviderBase,
   getLogger,
+  getMongoAdapter,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ZModulesStakingERC20DM, ZModulesStakingERC721DM } from "./missions";
@@ -15,7 +15,8 @@ export const runCampaign = async ({
   config,
   deployer,
 } : {
-  config : IDeployCampaignConfig<HardhatEthersSigner>;
+  config : DCConfig<HardhatEthersSigner>;
+  // TODO myself: mb its excess
   deployer ?: HardhatDeployer<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase>;
 }) => {
 
@@ -37,6 +38,12 @@ export const runCampaign = async ({
     });
   }
 
+  const logger = await getLogger();
+
+  const dbAdapter = await getMongoAdapter({
+    logger,
+  });
+
   const campaign = new DeployCampaign<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -49,7 +56,7 @@ export const runCampaign = async ({
     ],
     deployer,
     dbAdapter,
-    logger: await getLogger(),
+    logger,
     config,
   });
 

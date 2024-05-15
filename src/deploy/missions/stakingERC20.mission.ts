@@ -2,10 +2,9 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   BaseDeployMission,
   IProviderBase,
-  TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesContracts } from "../types.campaign";
+import { IZModulesContracts, Ierc20DeployArgs } from "../types.campaign";
 import { contractNames } from "../contractNames";
 
 export class ZModulesStakingERC20DM extends BaseDeployMission<
@@ -14,26 +13,34 @@ SignerWithAddress,
 IProviderBase,
 IZModulesContracts
 > {
-  async deployArgs () : Promise<TDeployArgs> {
+  async deployArgs () : Promise<Ierc20DeployArgs> {
     const {
-      _stakingToken,
-      _rewardsToken,
-      _rewardsPerPeriod,
-      _periodLength,
-      _timeLockPeriod,
-    } = this.campaign.config;
+      config: {
+        stakingERC20Config: {
+          stakingToken,
+          rewardsToken,
+          rewardsPerPeriod,
+          periodLength,
+          timeLockPeriod,
+        },
+      },
+    } = this.campaign;
 
     return [
-      _stakingToken,
-      _rewardsToken,
-      _rewardsPerPeriod,
-      _periodLength,
-      _timeLockPeriod,
+      stakingToken,
+      rewardsToken,
+      rewardsPerPeriod,
+      periodLength,
+      timeLockPeriod,
     ];
   }
 
   contractName = contractNames.stakingERC20.contract;
   instanceName = contractNames.stakingERC20.instance;
+
+  proxyData = {
+    isProxy: false,
+  };
 
   async needsPostDeploy () : Promise<boolean> {
     const { deployAdmin, owner } = this.campaign;

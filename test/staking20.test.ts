@@ -24,10 +24,12 @@ import {
   INIT_BALANCE,
   DEFAULT_STAKED_AMOUNT,
 } from "./helpers/staking";
-import { contractNames, runCampaign } from "../src/deploy";
+import { DCConfig, Ierc20DeployArgs, runCampaign } from "../src/deploy";
+import { TDeployArgs } from "@zero-tech/zdc";
 
 describe("StakingERC20", () => {
   let deployer : SignerWithAddress;
+  let owner : SignerWithAddress;
   let stakerA : SignerWithAddress;
   let stakerB : SignerWithAddress;
   let stakerC : SignerWithAddress;
@@ -69,6 +71,7 @@ describe("StakingERC20", () => {
   before(async () => {
     [
       deployer,
+      owner,
       stakerA,
       stakerB,
       stakerC,
@@ -94,7 +97,25 @@ describe("StakingERC20", () => {
     //   config.timeLockPeriod
     // ) as StakingERC20;
 
-    const campaign = await runCampaign({
+    const argsForDeployERC20 : Ierc20DeployArgs = {
+      stakingToken: await stakeToken.getAddress(),
+      rewardsToken: await rewardsToken.getAddress(),
+      rewardsPerPeriod : 10,
+      periodLength : 10,
+      timeLockPeriod : 10,
+    };
+    const argsForDeployERC721 = {
+      stakingToken : "0x00000002",
+      name : "Empty",
+      symbol : "E",
+      baseUri : "EmptyUri",
+      rewardsToken : "0x00000001",
+      rewardsPerPeriod : 0,
+      periodLength : 0,
+      timeLockPeriod : 0,
+    };
+
+    const myConfig : DCConfig = {
       config: {
         env: "dev",
         deployAdmin: deployer,
@@ -103,10 +124,17 @@ describe("StakingERC20", () => {
           monitorContracts: false,
           verifyContracts: false,
         },
+        owner,
+        argsForDeployERC20,
+        argsForDeployERC721,
       },
-    });
+    };
 
-    contract = campaign.target.state.contracts[contractNames.stakingERC20.contract];
+    const campaign = await runCampaign(myConfig);
+
+    const { stakingERC20 } = campaign;
+
+    contract = stakingERC20;
 
     // Give each user funds to stake
     await stakeToken.connect(deployer).transfer(
