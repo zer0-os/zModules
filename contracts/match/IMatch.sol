@@ -5,14 +5,13 @@ import { IEscrow } from "../escrow/IEscrow.sol";
 
 
 interface IMatch is IEscrow {
-    // TODO esc: what else to add here ?
     struct MatchData {
         uint256 matchId;
         uint256 matchFee;
         address[] players;
     }
 
-    event WilderWalletSet(address wilderWallet);
+    event FeeVaultSet(address feeVault);
 
     // TODO esc: fix all NatSpec everywhere!
     /**
@@ -26,7 +25,6 @@ interface IMatch is IEscrow {
         bytes32 indexed matchDataHash,
         uint256 indexed matchId,
         address[] indexed players,
-    // TODO esc: do we need this if we have fundsLocked?
         uint256 matchFee,
         uint256 fundsLocked
     );
@@ -71,9 +69,9 @@ interface IMatch is IEscrow {
         uint256 gameFee
     ) external;
 
-    function setWilderWallet(address _wilderWallet) external;
+    function setFeeVault(address _feeVault) external;
 
-    function getWilderWallet() external view returns (address);
+    function getFeeVault() external view returns (address);
 
     /**
      * @notice Checks if all players have enough balance in escrow to participate in the match

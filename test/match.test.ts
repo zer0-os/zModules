@@ -41,7 +41,7 @@ describe("Match Contract",  () => {
   let operator1 : SignerWithAddress;
   let operator2 : SignerWithAddress;
   let operator3 : SignerWithAddress;
-  let wilderWallet : SignerWithAddress;
+  let feeVault : SignerWithAddress;
   let allPlayers : Array<SignerWithAddress>;
 
   let mockERC20Address : string;
@@ -61,7 +61,7 @@ describe("Match Contract",  () => {
       operator1,
       operator2,
       operator3,
-      wilderWallet,
+      feeVault,
     ] = await hre.ethers.getSigners();
 
     allPlayers = [
@@ -80,7 +80,7 @@ describe("Match Contract",  () => {
     MatchFactory = await hre.ethers.getContractFactory("Match");
     match = await MatchFactory.connect(owner).deploy(
       mockERC20Address,
-      wilderWallet,
+      feeVault,
       [ operator3.address ]
     );
     matchAddress = await match.getAddress();
@@ -94,7 +94,7 @@ describe("Match Contract",  () => {
     );
   });
 
-  it("Should revert if wilderWallet is passed as 0x0 address", async () => {
+  it("Should revert if feeVault is passed as 0x0 address", async () => {
     await expect(
       MatchFactory.connect(owner).deploy(
         mockERC20Address,
@@ -132,31 +132,31 @@ describe("Match Contract",  () => {
       ]);
     });
 
-    it("#setWilderWallet should set the address correctly and emit an event", async () => {
-      expect(await match.getWilderWallet()).to.equal(wilderWallet.address);
+    it("#setFeeVault should set the address correctly and emit an event", async () => {
+      expect(await match.getFeeVault()).to.equal(feeVault.address);
 
       await expect(
-        match.connect(owner).setWilderWallet(operator1.address)
-      ).to.emit(match, "WilderWalletSet")
+        match.connect(owner).setFeeVault(operator1.address)
+      ).to.emit(match, "FeeVaultSet")
         .withArgs(operator1.address);
 
-      expect(await match.getWilderWallet()).to.equal(operator1.address);
+      expect(await match.getFeeVault()).to.equal(operator1.address);
 
       // set back
-      await match.connect(owner).setWilderWallet(wilderWallet.address);
+      await match.connect(owner).setFeeVault(feeVault.address);
 
-      expect(await match.getWilderWallet()).to.equal(wilderWallet.address);
+      expect(await match.getFeeVault()).to.equal(feeVault.address);
     });
 
-    it("#setWilderWallet should revert if called by non-owner", async () => {
+    it("#setFeeVault() should revert if called by non-owner", async () => {
       await expect(
-        match.connect(player1).setWilderWallet(operator1.address)
-      ).to.be.revertedWith(ONLY_OWNER_ERR);
+        match.connect(player1).setFeeVault(operator1.address)
+      ).to.be.revertedWithCustomError(match, NOT_AUTHORIZED_ERR);
     });
 
-    it("#setWilderWallet() should revert if 0x0 address is passed", async () => {
+    it("#setFeeVault() should revert if 0x0 address is passed", async () => {
       await expect(
-        match.connect(owner).setWilderWallet(ethers.ZeroAddress)
+        match.connect(owner).setFeeVault(ethers.ZeroAddress)
       ).to.be.revertedWithCustomError(match, ZERO_ADDRESS_ERR);
     });
   });
@@ -167,7 +167,7 @@ describe("Match Contract",  () => {
     let balancesAfterEnd : Array<bigint>;
     let playerAddresses : Array<string>;
     let matchId : bigint;
-    let wilderWalletBalanceBefore : bigint;
+    let feeVaultBalanceBefore : bigint;
     let matchDataHash : string;
 
     const matchFee = ethers.parseEther("3.29");
@@ -345,7 +345,7 @@ describe("Match Contract",  () => {
         // because if we get any leftover the contract will revert
         expect(totalPayout + gameFee).to.equal(totalPayoutRef);
 
-        wilderWalletBalanceBefore = await match.balances(wilderWallet.address);
+        feeVaultBalanceBefore = await match.balances(feeVault.address);
 
         await match.endMatch(
           matchId,
@@ -398,10 +398,10 @@ describe("Match Contract",  () => {
         );
       });
 
-      it("Should add #gameFee to the #wilderWallet balance", async () => {
-        const wilderWalletBalAfter = await match.balances(wilderWallet.address);
+      it("Should add #gameFee to the #feeVault balance", async () => {
+        const feeVaultBalAfter = await match.balances(feeVault.address);
 
-        expect(wilderWalletBalAfter - wilderWalletBalanceBefore).to.equal(gameFee);
+        expect(feeVaultBalAfter - feeVaultBalanceBefore).to.equal(gameFee);
       });
 
       it("Players should be able to withdraw their winnings", async () => {
@@ -482,7 +482,7 @@ describe("Match Contract",  () => {
           ).to.be.fulfilled;
 
           await expect(
-            match.connect(operator).setWilderWallet(operator1.address)
+            match.connect(operator).setFeeVault(operator1.address)
           ).to.be.fulfilled;
 
           if (operator !== owner) {
@@ -498,7 +498,7 @@ describe("Match Contract",  () => {
       );
 
       // set back
-      await match.connect(operator2).setWilderWallet(wilderWallet.address);
+      await match.connect(operator2).setFeeVault(feeVault.address);
       await match.connect(player1).transferOwnership(owner.address);
     });
   });

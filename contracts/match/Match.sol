@@ -10,7 +10,7 @@ contract Match is Escrow, IMatch {
 
     mapping(bytes32 matchDataHash => uint256 amount) public fundLocks;
 
-    address internal wilderWallet;
+    address internal feeVault;
 
     // TODO esc: should we save match data here to make sure only mathces registered on this contract
     //  can be ended with payouts?
@@ -23,12 +23,12 @@ contract Match is Escrow, IMatch {
 
     constructor(
         address _token,
-        address _wilderWallet,
+        address _feeVault,
         address[] memory operators
     ) Escrow(_token, operators) {
-        if (_wilderWallet == address(0)) revert ZeroAddressPassed();
+        if (_feeVault == address(0)) revert ZeroAddressPassed();
 
-        wilderWallet = _wilderWallet;
+        feeVault = _feeVault;
     }
 
     // TODO esc: should we add funds release function here to avoid matches being stuck or some other issues???
@@ -101,7 +101,7 @@ contract Match is Escrow, IMatch {
         // do not add up exactly to the lockedAmount for the match
         if (payoutSum + gameFee != lockedAmount) revert InvalidMatchOrPayouts(matchId, matchDataHash);
 
-        balances[wilderWallet] += gameFee;
+        balances[feeVault] += gameFee;
 
         emit MatchEnded(
             matchDataHash,
@@ -113,15 +113,15 @@ contract Match is Escrow, IMatch {
         );
     }
 
-    function setWilderWallet(address _wilderWallet) external override onlyAuthorized {
-        if (_wilderWallet == address(0)) revert ZeroAddressPassed();
+    function setFeeVault(address _feeVault) external override onlyAuthorized {
+        if (_feeVault == address(0)) revert ZeroAddressPassed();
 
-        wilderWallet = _wilderWallet;
-        emit WilderWalletSet(_wilderWallet);
+        feeVault = _feeVault;
+        emit FeeVaultSet(_feeVault);
     }
 
-    function getWilderWallet() external override view returns (address) {
-        return wilderWallet;
+    function getFeeVault() external override view returns (address) {
+        return feeVault;
     }
 
     function canMatch(

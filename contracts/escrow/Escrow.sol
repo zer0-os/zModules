@@ -7,7 +7,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { OwnableOperatable } from "../access/OwnableOperatable.sol";
 
 
-// TODO esc: should we rename this into "Wallet"?
 contract Escrow is OwnableOperatable, IEscrow {
     using SafeERC20 for IERC20;
 
@@ -56,8 +55,6 @@ contract Escrow is OwnableOperatable, IEscrow {
         emit Withdrawal(msg.sender, toWithdraw);
     }
 
-    // TODO esc: do we even need this function ?? Maybe only to pay for user withdrawal txes
-    //  if game messed up their payouts?..
     function releaseFunds(address user, uint256 amount) external override onlyAuthorized {
         if (balances[user] < amount) revert InsufficientFunds(user);
         balances[user] -= amount;

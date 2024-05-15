@@ -6,7 +6,6 @@ interface IOwnableOperatable {
     event OperatorAdded(address indexed operator);
     event OperatorRemoved(address indexed operator);
 
-    // TODO esc: refactor common errors into a separate file
     error NotAuthorized(address caller);
     error ZeroAddressPassed();
 
