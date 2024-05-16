@@ -11,7 +11,7 @@ import {
   INVALID_MATCH_ERR,
   MATCH_STARTED_ERR,
   NO_PLAYERS_ERR, NOT_AUTHORIZED_ERR,
-  ONLY_OWNER_ERR, ZERO_ADDRESS_ERR,
+  ONLY_OWNER_ERR, OWNABLE_INVALID_OWNER_ERR, OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR,
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
 
@@ -81,6 +81,7 @@ describe("Match Contract",  () => {
     match = await MatchFactory.connect(owner).deploy(
       mockERC20Address,
       feeVault,
+      owner.address,
       [ operator3.address ]
     );
     matchAddress = await match.getAddress();
@@ -89,7 +90,7 @@ describe("Match Contract",  () => {
       async (acc, player) => {
         await acc;
         await mockERC20.mint(player.address, ethers.parseEther("1000"));
-        await mockERC20.connect(player).increaseAllowance(matchAddress, ethers.parseEther("1000"));
+        await mockERC20.connect(player).approve(matchAddress, ethers.parseEther("1000"));
       }, Promise.resolve()
     );
   });
@@ -99,6 +100,7 @@ describe("Match Contract",  () => {
       MatchFactory.connect(owner).deploy(
         mockERC20Address,
         ethers.ZeroAddress,
+        owner.address,
         [ operator3.address ]
       )
     ).to.be.revertedWithCustomError(match, ZERO_ADDRESS_ERR);
@@ -488,7 +490,8 @@ describe("Match Contract",  () => {
           if (operator !== owner) {
             await expect(
               match.connect(operator).transferOwnership(operator1.address)
-            ).to.be.revertedWith(ONLY_OWNER_ERR);
+            ).to.be.revertedWithCustomError(match, OWNABLE_UNAUTHORIZED_ERR)
+              .withArgs(operator.address);
           } else {
             await expect(
               match.connect(operator).transferOwnership(player1.address)

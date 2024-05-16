@@ -35,6 +35,7 @@ describe("Escrow Contract", () => {
     const escrowFactory = await hre.ethers.getContractFactory("Escrow");
     escrow = await escrowFactory.connect(owner).deploy(
       await mockERC20.getAddress(),
+      owner.address,
       [operator1.address]
     );
     escrowAddress = await escrow.getAddress();
@@ -62,7 +63,7 @@ describe("Escrow Contract", () => {
 
     it("Should revert if _token is passed as a non-contract address", async () => {
       const EscrowFactory = await hre.ethers.getContractFactory("Escrow");
-      await expect(EscrowFactory.deploy(owner.address, [operator1.address]))
+      await expect(EscrowFactory.deploy(owner.address, owner.address, [operator1.address]))
         .to.be.revertedWithCustomError(escrow, NOT_A_CONTRACT_ERR);
     });
   });

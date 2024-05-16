@@ -1,11 +1,12 @@
 // ERC721
-export const INVALID_TOKEN_ID_ERR = "ERC721: invalid token ID";
-export const INCORRECT_OWNER_TRANSFER_ERR = "ERC721: transfer from incorrect owner";
+export const NONEXISTENT_TOKEN_ERR = "ERC721NonexistentToken";
+export const INCORRECT_OWNER_TRANSFER_ERR = "ERC721IncorrectOwner";
 export const ONLY_NFT_OWNER_ERR = "ERC721: caller is not token owner or approved";
+export const INSUFFICIENT_APPROVAL_721_ERR = "ERC721InsufficientApproval";
 
 // ERC20
-export const INSUFFICIENT_ALLOWANCE_ERR = "ERC20: insufficient allowance";
-export const INSUFFICIENT_BALANCE_ERR = "ERC20: transfer amount exceeds balance";
+export const INSUFFICIENT_ALLOWANCE_ERR = "ERC20InsufficientAllowance";
+export const INSUFFICIENT_BALANCE_ERR = "ERC20InsufficientBalance";
 
 // Ownable /OwnableOperatable
 export const ONLY_OWNER_ERR = "Ownable: caller is not the owner";
@@ -26,12 +27,11 @@ export const INVALID_OWNER_ERR = "InvalidOwner";
 export const NO_REWARDS_ERR = "NoRewardsLeftInContract";
 export const NON_TRANSFERRABLE_ERR = "NonTransferrableToken";
 export const ZERO_INIT_ERR = "InitializedWithZero";
-
 export const NOT_OWNER_ERR = "Ownable: caller is not the owner";
 
 // eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";
-export const LOW_LEVEL_CALL_ERR = "SafeERC20: low-level call failed";
+export const FAILED_INNER_CALL_ERR = "FailedInnerCall";
 
 // Escrow
 export const ZERO_AMOUNT_ERR = "ZeroAmountPassed";
@@ -40,6 +40,8 @@ export const INSUFFICIENT_FUNDS_ERR = "InsufficientFunds";
 
 // OwnableOperatable
 export const ZERO_ADDRESS_ERR = "ZeroAddressPassed";
+export const OWNABLE_INVALID_OWNER_ERR = "OwnableInvalidOwner";
+export const OWNABLE_UNAUTHORIZED_ERR = "OwnableUnauthorizedAccount";
 
 // Match
 export const NO_PLAYERS_ERR = "NoPlayersInMatch";

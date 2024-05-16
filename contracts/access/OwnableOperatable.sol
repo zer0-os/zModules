@@ -14,7 +14,7 @@ contract OwnableOperatable is Ownable, IOwnableOperatable {
         _;
     }
 
-    constructor() Ownable() {}
+    constructor(address contractOwner) Ownable(contractOwner) {}
 
     function removeOperator(address operator) external override onlyOwner {
         operators[operator] = false;

@@ -43,7 +43,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
-        uint256 _timeLockPeriod
+        uint256 _timeLockPeriod,
+        address contractOwner
     )
         ERC721(name, symbol)
         StakingBase(
@@ -51,7 +52,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             _rewardsToken,
             _rewardsPerPeriod,
             _periodLength,
-            _timeLockPeriod
+            _timeLockPeriod,
+            contractOwner
         )
     {
         if (bytes(baseUri).length > 0) {

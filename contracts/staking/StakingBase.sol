@@ -50,8 +50,9 @@ contract StakingBase is Ownable, IStakingBase {
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
-        uint256 _timeLockPeriod
-    ) Ownable() {
+        uint256 _timeLockPeriod,
+        address contractOwner
+    ) Ownable(contractOwner) {
         if (
             _stakingToken.code.length == 0 ||
             address(_rewardsToken).code.length == 0 ||

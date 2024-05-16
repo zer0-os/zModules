@@ -17,8 +17,9 @@ contract Match is Escrow, IMatch {
     constructor(
         address _token,
         address _feeVault,
-        address[] memory operators
-    ) Escrow(_token, operators) {
+        address _owner,
+        address[] memory _operators
+    ) Escrow(_token, _owner, _operators) {
         if (_feeVault == address(0)) revert ZeroAddressPassed();
 
         feeVault = _feeVault;

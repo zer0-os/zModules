@@ -2,7 +2,7 @@ import * as hre from "hardhat";
 import { OwnableOperatable } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { NOT_OWNER_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
+import { NOT_OWNER_ERR, OWNABLE_INVALID_OWNER_ERR, OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
 
 
 describe("OwnableOperatable Contract", () => {
@@ -18,7 +18,7 @@ describe("OwnableOperatable Contract", () => {
     [ owner, operator1, operator2, operator3, user ] = await hre.ethers.getSigners();
 
     const OPFactory = await hre.ethers.getContractFactory("OwnableOperatable");
-    op = await OPFactory.connect(owner).deploy();
+    op = await OPFactory.connect(owner).deploy(owner.address);
   });
 
   describe("Ownable", () => {
@@ -37,7 +37,8 @@ describe("OwnableOperatable Contract", () => {
     it("should revert when #transferOwnership() is called by non-owner", async () => {
       await expect(
         op.connect(user).transferOwnership(operator1.address)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(op, OWNABLE_UNAUTHORIZED_ERR)
+        .withArgs(user.address);
     });
   });
 
@@ -54,13 +55,15 @@ describe("OwnableOperatable Contract", () => {
     it("should revert when #addOperator() is called by non-owner", async () => {
       await expect(
         op.connect(user).addOperator(operator2.address)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(op, OWNABLE_UNAUTHORIZED_ERR)
+        .withArgs(user.address);
     });
 
     it("should revert when #addOperators() is called by non-owner", async () => {
       await expect(
         op.connect(user).addOperators([operator2.address, operator3.address])
-      ).to.be.revertedWith(NOT_OWNER_ERR);
+      ).to.be.revertedWithCustomError(op, OWNABLE_UNAUTHORIZED_ERR)
+        .withArgs(user.address);
     });
 
     it("should revert it zero address is passed as operator", async () => {
@@ -81,7 +84,8 @@ describe("OwnableOperatable Contract", () => {
     it("should revert when #removeOperator() is called by non-owner", async () => {
       await expect(
         op.connect(user).removeOperator(operator2.address)
-      ).to.be.revertedWith(NOT_OWNER_ERR);
+      ).to.be.revertedWithCustomError(op, OWNABLE_UNAUTHORIZED_ERR)
+        .withArgs(user.address);
     });
 
     it("should support multiple operators", async () => {

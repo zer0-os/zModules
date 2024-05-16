@@ -20,13 +20,17 @@ contract Escrow is OwnableOperatable, IEscrow {
      */
     mapping(address user => uint256 amount) public balances;
 
-    constructor(address _token, address[] memory operators) OwnableOperatable() {
+    constructor(
+        address _token,
+        address _owner,
+        address[] memory _operators
+    ) OwnableOperatable(_owner) {
         if (_token.code.length == 0) revert AddressIsNotAContract(_token);
 
         token = IERC20(_token);
 
-        if (operators.length > 0) {
-            addOperators(operators);
+        if (_operators.length > 0) {
+            addOperators(_operators);
         }
     }
 
