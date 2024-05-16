@@ -9,6 +9,7 @@ import { StakingBase } from "../StakingBase.sol";
 /**
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
+ * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC20 is StakingBase, IStakingERC20 {
     using SafeERC20 for IERC20;

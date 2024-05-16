@@ -5,7 +5,7 @@ import { expect } from "chai";
 import { OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
 
 
-describe("OwnableOperable.sol Contract", () => {
+describe("OwnableOperable Contract", () => {
   let op : OwnableOperable;
 
   let owner : SignerWithAddress;

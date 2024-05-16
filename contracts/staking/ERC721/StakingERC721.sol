@@ -13,6 +13,7 @@ import { StakingBase } from "../StakingBase.sol";
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
  * non-transferable ERC721 token in return as representation of the deposit.
+ * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**

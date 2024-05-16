@@ -11,6 +11,7 @@ import { IStakingBase } from "./IStakingBase.sol";
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
+ * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingBase is Ownable, IStakingBase {
     using SafeERC20 for IERC20;
