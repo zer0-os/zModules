@@ -2,10 +2,18 @@
 pragma solidity ^0.8.20;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IOwnableOperatable } from "./IOwnableOperatable.sol";
+import { IOwnableOperable } from "./IOwnableOperable.sol";
 
 
-contract OwnableOperatable is Ownable, IOwnableOperatable {
+/**
+ * @title OwnableOperable
+ * @notice A contract that allows the owner to add and remove operators
+ * @author Kirill Korchagin <https://github.com/Whytecrowe>
+ */
+contract OwnableOperable is Ownable, IOwnableOperable {
+    /**
+     * @notice Mapping of operators to their status
+     */
     mapping(address operator => bool valid) internal operators;
 
     modifier onlyAuthorized() {

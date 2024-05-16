@@ -4,11 +4,21 @@ pragma solidity ^0.8.20;
 import { IMatch } from "./IMatch.sol";
 import { Escrow } from "../escrow/Escrow.sol";
 
-// TODO esc: add authors to NatSpec
+/**
+ * @title Match contract
+ * @notice Contract for managing matches for escrow funds between players.
+ * @author Kirill Korchagin <https://github.com/Whytecrowe>, Damien Burbine <https://github.com/durienb>
+ */
 contract Match is Escrow, IMatch {
-
+    /**
+     * @notice Mapping from the hash of `MatchData` struct
+     *  to the total amount of tokens locked in escrow for the match
+     */
     mapping(bytes32 matchDataHash => uint256 amount) public fundLocks;
 
+    /**
+     * @notice The address of the fee vault which gathers all the `gameFee`s
+     */
     address internal feeVault;
 
     // TODO esc: should the escrow be here as an external address saved vs money being store on this contract directly?
@@ -116,7 +126,7 @@ contract Match is Escrow, IMatch {
 
     function canMatch(
         address[] calldata players,
-        uint256 feeRequired
+        uint256 matchFee
     ) external view override returns (
         address[] memory unfundedPlayers
     ) {
@@ -124,7 +134,7 @@ contract Match is Escrow, IMatch {
 
         uint256 k;
         for (uint256 i = 0; i < players.length;) {
-            if (!_isFunded(players[i], feeRequired)) {
+            if (!_isFunded(players[i], matchFee)) {
                 unfundedPlayers[k] = players[i];
                 unchecked { ++k; }
             }
@@ -135,8 +145,8 @@ contract Match is Escrow, IMatch {
         return unfundedPlayers;
     }
 
-    function _isFunded(address player, uint256 feeRequired) internal view returns (bool) {
-        return balances[player] >= feeRequired;
+    function _isFunded(address player, uint256 amountRequired) internal view returns (bool) {
+        return balances[player] >= amountRequired;
     }
 
     function _getMatchDataHash(

@@ -1,12 +1,12 @@
 import * as hre from "hardhat";
-import { OwnableOperatable } from "../typechain";
+import { OwnableOperable } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { NOT_OWNER_ERR, OWNABLE_INVALID_OWNER_ERR, OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
+import { OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
 
 
-describe("OwnableOperatable Contract", () => {
-  let op : OwnableOperatable;
+describe("OwnableOperable.sol Contract", () => {
+  let op : OwnableOperable;
 
   let owner : SignerWithAddress;
   let user : SignerWithAddress;
@@ -17,7 +17,7 @@ describe("OwnableOperatable Contract", () => {
   before(async () => {
     [ owner, operator1, operator2, operator3, user ] = await hre.ethers.getSigners();
 
-    const OPFactory = await hre.ethers.getContractFactory("OwnableOperatable");
+    const OPFactory = await hre.ethers.getContractFactory("OwnableOperable");
     op = await OPFactory.connect(owner).deploy(owner.address);
   });
 

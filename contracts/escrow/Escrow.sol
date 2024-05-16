@@ -4,10 +4,15 @@ pragma solidity ^0.8.20;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IEscrow } from "./IEscrow.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { OwnableOperatable } from "../access/OwnableOperatable.sol";
+import { OwnableOperable } from "../access/OwnableOperable.sol";
 
 
-contract Escrow is OwnableOperatable, IEscrow {
+/**
+ * @title Escrow
+ * @notice A simple general contract for holding tokens in escrow for multiple users
+ * @author Kirill Korchagin <https://github.com/Whytecrowe>, Damien Burbine <https://github.com/durienb>
+ */
+contract Escrow is OwnableOperable, IEscrow {
     using SafeERC20 for IERC20;
 
     /**
@@ -16,7 +21,7 @@ contract Escrow is OwnableOperatable, IEscrow {
     IERC20 public token;
 
     /**
-     * @notice Mapping for balances for every user of this escrow
+     * @notice Mapping of balances for every user of this escrow
      */
     mapping(address user => uint256 amount) public balances;
 
@@ -24,7 +29,7 @@ contract Escrow is OwnableOperatable, IEscrow {
         address _token,
         address _owner,
         address[] memory _operators
-    ) OwnableOperatable(_owner) {
+    ) OwnableOperable(_owner) {
         if (_token.code.length == 0) revert AddressIsNotAContract(_token);
 
         token = IERC20(_token);
