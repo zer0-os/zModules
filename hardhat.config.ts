@@ -45,6 +45,11 @@ const config : HardhatUserConfig = {
     enabled: false,
   },
   networks: {
+      amoy: {
+        url: "https://rpc-amoy.polygon.technology/",
+        chainId: 80002,
+        accounts: [`${process.env.PRIVATE_KEY}`],
+      }
     // mainnet: {
     // //   url: `${process.env.MAINNET_RPC_URL}`,
     // //   gasPrice: 80000000000,
