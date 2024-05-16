@@ -1,12 +1,8 @@
 ## IStakingERC721
 
-
 **IStakingERC721**
 
 Interface for the StakingERC721 contract
-
-
-
 
 ### BaseURIUpdated
 
@@ -14,9 +10,7 @@ Interface for the StakingERC721 contract
 event BaseURIUpdated(string baseURI)
 ```
 
-
 Emitted when the base URI is updated
-
 
 #### Parameters
 
@@ -24,16 +18,13 @@ Emitted when the base URI is updated
 | ---- | ---- | ----------- |
 | baseURI | string | The new base URI |
 
-
 ### Staked
 
 ```solidity
 event Staked(address staker, uint256 tokenId, address stakingToken)
 ```
 
-
 Emit when a user stakes a token
-
 
 #### Parameters
 
@@ -43,16 +34,13 @@ Emit when a user stakes a token
 | tokenId | uint256 | The token ID of the staked token |
 | stakingToken | address | The address of the staking token contract |
 
-
 ### Unstaked
 
 ```solidity
 event Unstaked(address staker, uint256 tokenId, address stakingToken)
 ```
 
-
 Emit when a user unstakes
-
 
 #### Parameters
 
@@ -62,18 +50,13 @@ Emit when a user unstakes
 | tokenId | uint256 | The token ID of the staked token |
 | stakingToken | address | The address of the staking token contract |
 
-
 ### InvalidOwner
 
 ```solidity
 error InvalidOwner()
 ```
 
-
 Throw when caller is not the sNFT owner
-
-
-
 
 ### NonTransferrableToken
 
@@ -81,11 +64,7 @@ Throw when caller is not the sNFT owner
 error NonTransferrableToken()
 ```
 
-
 Throw when trying to transfer the representative sNFT
-
-
-
 
 ### stake
 
@@ -93,23 +72,11 @@ Throw when trying to transfer the representative sNFT
 function stake(uint256[] tokenIds, string[] tokenURIs) external
 ```
 
-
-
-
-
-
-
 ### unstake
 
 ```solidity
 function unstake(uint256[] tokenIds, bool exit) external
 ```
-
-
-
-
-
-
 
 ### setBaseURI
 
@@ -117,23 +84,11 @@ function unstake(uint256[] tokenIds, bool exit) external
 function setBaseURI(string baseUri) external
 ```
 
-
-
-
-
-
-
 ### setTokenURI
 
 ```solidity
 function setTokenURI(uint256 tokenId, string tokenUri) external
 ```
-
-
-
-
-
-
 
 ### totalSupply
 
@@ -141,22 +96,9 @@ function setTokenURI(uint256 tokenId, string tokenUri) external
 function totalSupply() external view returns (uint256)
 ```
 
-
-
-
-
-
-
 ### getInterfaceId
 
 ```solidity
 function getInterfaceId() external pure returns (bytes4)
 ```
-
-
-
-
-
-
-
 

@@ -6,9 +6,9 @@ import { IEscrow } from "../escrow/IEscrow.sol";
 
 /**
  * @notice struct MatchData
- * matchId - The ID of the match assigned by a game client or the operator of this contract
- * matchFee - The entry fee for the match
- * players - Array of player addresses participating in the match
+ * - matchId (uint256) - The ID of the match assigned by a game client or the operator of this contract
+ * - matchFee (uint256) - The entry fee for the match
+ * - players (address[]) - Array of player addresses participating in the match
  */
 interface IMatch is IEscrow {
     struct MatchData {
