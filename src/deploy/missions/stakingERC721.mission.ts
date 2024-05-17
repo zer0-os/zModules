@@ -15,31 +15,36 @@ IProviderBase,
 IZModulesContracts
 > {
 
+  proxyData = {
+    isProxy: false,
+  };
 
   contractName = contractNames.stakingERC721.contract;
   instanceName = contractNames.stakingERC721.instance;
 
   async deployArgs () : Promise<TDeployArgs> {
     const {
-      name,
-      symbol,
-      baseUri,
-      _stakingToken,
-      _rewardsToken,
-      _rewardsPerPeriod,
-      _periodLength,
-      _timeLockPeriod,
+      stakingERC721Config: {
+        name,
+        symbol,
+        baseUri,
+        stakingToken,
+        rewardsToken,
+        rewardsPerPeriod,
+        periodLength,
+        timeLockPeriod,
+      },
     } = this.campaign.config;
 
     return [
       name,
       symbol,
       baseUri,
-      _stakingToken,
-      _rewardsToken,
-      _rewardsPerPeriod,
-      _periodLength,
-      _timeLockPeriod,
+      stakingToken,
+      rewardsToken,
+      rewardsPerPeriod,
+      periodLength,
+      timeLockPeriod,
     ];
   }
 
@@ -53,7 +58,13 @@ IZModulesContracts
   }
 
   async postDeploy () : Promise<void> {
-    const { stakingERC721, deployAdmin, owner } = this.campaign;
+    const {
+      stakingERC721,
+      config: {
+        deployAdmin,
+        owner,
+      },
+    } = this.campaign;
     await stakingERC721.connect(deployAdmin).transferOwnership(owner.address);
   }
 }

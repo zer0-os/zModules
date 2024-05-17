@@ -24,8 +24,9 @@ import {
   INIT_BALANCE,
   DEFAULT_STAKED_AMOUNT,
 } from "./helpers/staking";
-import { DCConfig, Ierc20DeployArgs, runCampaign } from "../src/deploy";
-import { TDeployArgs } from "@zero-tech/zdc";
+import { DCConfig, IERC20DeployArgs, runCampaign } from "../src/deploy";
+import { MongoDBAdapter } from "@zero-tech/zdc";
+import { ZModulesStakingERC20DM } from "../src/deploy/missions/stakingERC20.mission";
 
 describe("StakingERC20", () => {
   let deployer : SignerWithAddress;
@@ -68,6 +69,8 @@ describe("StakingERC20", () => {
   let unstakedAtA : bigint;
   let unstakedAtC : bigint;
 
+  let dbAdapter : MongoDBAdapter;
+
   before(async () => {
     [
       deployer,
@@ -87,77 +90,82 @@ describe("StakingERC20", () => {
 
     config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
 
-    // const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
-
-    // contract = await stakingFactory.deploy(
-    //   config.stakingToken,
-    //   config.rewardsToken,
-    //   config.rewardsPerPeriod,
-    //   config.periodLength,
-    //   config.timeLockPeriod
-    // ) as StakingERC20;
-
-    const argsForDeployERC20 : Ierc20DeployArgs = {
-      stakingToken: await stakeToken.getAddress(),
-      rewardsToken: await rewardsToken.getAddress(),
-      rewardsPerPeriod : 10,
-      periodLength : 10,
-      timeLockPeriod : 10,
-    };
+    const argsForDeployERC20 : IERC20DeployArgs = config;
     const argsForDeployERC721 = {
       stakingToken : "0x00000002",
       name : "Empty",
       symbol : "E",
       baseUri : "EmptyUri",
       rewardsToken : "0x00000001",
-      rewardsPerPeriod : 0,
-      periodLength : 0,
+      rewardsPerPeriod : 0n,
+      periodLength : 0n,
       timeLockPeriod : 0,
     };
 
-    const myConfig : DCConfig = {
-      config: {
-        env: "dev",
-        deployAdmin: deployer,
-        postDeploy: {
-          tenderlyProjectSlug: "string",
-          monitorContracts: false,
-          verifyContracts: false,
-        },
-        owner,
-        argsForDeployERC20,
-        argsForDeployERC721,
+    const campaignConfig : DCConfig = {
+      env: "dev",
+      deployAdmin: deployer,
+      postDeploy: {
+        tenderlyProjectSlug: "string",
+        monitorContracts: false,
+        verifyContracts: false,
       },
+      owner,
+      stakingERC20Config: argsForDeployERC20,
+      stakingERC721Config: argsForDeployERC721,
     };
 
-    const campaign = await runCampaign(myConfig);
+    const campaign = await runCampaign({
+      config: campaignConfig,
+      missions: [
+        ZModulesStakingERC20DM,
+      ],
+    });
+
+    dbAdapter = campaign.dbAdapter;
 
     const { stakingERC20 } = campaign;
 
     contract = stakingERC20;
 
+    // [
+    //   stakerA,
+    //   stakerB,
+    //   stakerC,
+    //   stakerD,
+    //   stakerF,
+    // ].reduce(
+    //   async (acc, elem) => {
+    //     await stakeToken.mint(elem.address, INIT_BALANCE);
+    //     await stakeToken.connect(elem).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    //   }, 0
+    // );
+
+    // TODO myself: through reduce
+
+
     // Give each user funds to stake
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerA.address,
       INIT_BALANCE
     );
 
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerB.address,
       INIT_BALANCE
     );
 
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerC.address,
       INIT_BALANCE
     );
 
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerD.address,
       INIT_BALANCE
     );
 
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerF.address,
       INIT_BALANCE
     );
@@ -168,6 +176,10 @@ describe("StakingERC20", () => {
     await stakeToken.connect(stakerC).approve(await contract.getAddress(), hre.ethers.MaxUint256);
     await stakeToken.connect(stakerD).approve(await contract.getAddress(), hre.ethers.MaxUint256);
     await stakeToken.connect(stakerF).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+  });
+
+  after(async () => {
+    await dbAdapter.dropDB();
   });
 
   describe("#getContractRewardsBalance", () => {
@@ -366,7 +378,7 @@ describe("StakingERC20", () => {
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
 
       // Give staking contract balance to pay rewards
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -429,7 +441,7 @@ describe("StakingERC20", () => {
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
 
       // Give staking contract balance to pay rewards
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -472,7 +484,7 @@ describe("StakingERC20", () => {
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
 
       // Give staking contract balance to pay rewards
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -652,17 +664,17 @@ describe("StakingERC20", () => {
   describe("#withdrawLeftoverRewards", () => {
     it("Allows the admin to withdraw leftover rewards", async () => {
       const amount = 1000n;
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         amount
       );
 
-      const rewardsBalanceBefore = await rewardsToken.balanceOf(deployer.address);
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(owner.address);
       const contractRewardsBalanceBefore = await contract.getContractRewardsBalance();
 
-      await contract.connect(deployer).withdrawLeftoverRewards();
+      await contract.connect(owner).withdrawLeftoverRewards();
 
-      const rewardsBalanceAfter = await rewardsToken.balanceOf(deployer.address);
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(owner.address);
       const contractRewardsBalanceAfter = await contract.getContractRewardsBalance();
 
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + amount);
@@ -678,7 +690,7 @@ describe("StakingERC20", () => {
 
     it("Fails when the contract has no rewards left to withdraw", async () => {
       await expect(
-        contract.connect(deployer).withdrawLeftoverRewards()
+        contract.connect(owner).withdrawLeftoverRewards()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
     });
   });
@@ -696,7 +708,7 @@ describe("StakingERC20", () => {
 
       const pendingRewards = await contract.connect(stakerF).getPendingRewards();
 
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -712,7 +724,7 @@ describe("StakingERC20", () => {
 
       const pendingRewards = await contract.connect(stakerF).getPendingRewards();
 
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -754,15 +766,15 @@ describe("StakingERC20", () => {
 
     it("Emits 'LeftoverRewardsWithdrawn' event when the admin withdraws", async () => {
       const amount = 1000n;
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         amount
       );
 
       await expect(
-        contract.connect(deployer).withdrawLeftoverRewards()
+        contract.connect(owner).withdrawLeftoverRewards()
       ).to.emit(contract, WITHDRAW_EVENT)
-        .withArgs(deployer.address, amount);
+        .withArgs(owner.address, amount);
     });
   });
 });

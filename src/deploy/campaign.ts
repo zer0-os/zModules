@@ -1,40 +1,31 @@
 import { DCConfig, IZModulesContracts } from "./types.campaign";
 import * as hre from "hardhat";
-import { HardhatEthersSigner, SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   DeployCampaign,
   HardhatDeployer,
   IProviderBase,
+  TDeployMissionCtor,
   getLogger,
   getMongoAdapter,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { ZModulesStakingERC20DM, ZModulesStakingERC721DM } from "./missions";
 
 export const runCampaign = async ({
   config,
   deployer,
+  missions,
 } : {
-  config : DCConfig<HardhatEthersSigner>;
-  // TODO myself: mb its excess
+  config : DCConfig;
   deployer ?: HardhatDeployer<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase>;
+  missions : Array<TDeployMissionCtor<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase, IZModulesContracts>>;
 }) => {
-
-  // TODO: Fix this when removing provider in zDC.
-  const provider = {
-    waitForTransaction: async () =>
-      (Promise.resolve({
-        contractAddress: "0x123456789",
-      })),
-  };
 
   if (!deployer) {
     deployer = new HardhatDeployer({
       hre,
       signer: config.deployAdmin,
       env: config.env,
-      // TODO:  Make it optional in zDC.
-      provider,
     });
   }
 
@@ -50,10 +41,7 @@ export const runCampaign = async ({
   IProviderBase,
   IZModulesContracts
   >({
-    missions: [
-      ZModulesStakingERC20DM,
-      ZModulesStakingERC721DM,
-    ],
+    missions,
     deployer,
     dbAdapter,
     logger,

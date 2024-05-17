@@ -7,22 +7,21 @@ import {
   StakingERC721,
 } from "../../typechain";
 import {
-  HardhatEthersSigner,
   SignerWithAddress,
 } from "@nomicfoundation/hardhat-ethers/signers";
 
 export interface IStakingDeployArgs {
   rewardsToken : string;
-  rewardsPerPeriod : number;
-  periodLength : number;
-  timeLockPeriod : number;
+  rewardsPerPeriod : bigint;
+  periodLength : bigint;
+  timeLockPeriod : bigint;
 }
 
-export interface Ierc20DeployArgs extends IStakingDeployArgs {
+export interface IERC20DeployArgs extends IStakingDeployArgs {
   stakingToken : string;
 }
 
-export interface Ierc721DeployArgs extends IStakingDeployArgs {
+export interface IERC721DeployArgs extends IStakingDeployArgs {
   stakingToken : string;
   name : string;
   symbol : string;
@@ -31,8 +30,8 @@ export interface Ierc721DeployArgs extends IStakingDeployArgs {
 
 export interface DCConfig extends IDeployCampaignConfig<SignerWithAddress> {
   owner : SignerWithAddress;
-  stakingERC20Config : Ierc20DeployArgs;
-  stakingERC721Config : Ierc721DeployArgs;
+  stakingERC20Config : IERC20DeployArgs;
+  stakingERC721Config : IERC721DeployArgs;
 }
 
 export type ZModulesContract =

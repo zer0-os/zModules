@@ -2,9 +2,10 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   BaseDeployMission,
   IProviderBase,
+  TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesContracts, Ierc20DeployArgs } from "../types.campaign";
+import { IZModulesContracts } from "../types.campaign";
 import { contractNames } from "../contractNames";
 
 export class ZModulesStakingERC20DM extends BaseDeployMission<
@@ -13,7 +14,7 @@ SignerWithAddress,
 IProviderBase,
 IZModulesContracts
 > {
-  async deployArgs () : Promise<Ierc20DeployArgs> {
+  async deployArgs () : Promise<TDeployArgs> {
     const {
       config: {
         stakingERC20Config: {
@@ -43,8 +44,8 @@ IZModulesContracts
   };
 
   async needsPostDeploy () : Promise<boolean> {
-    const { deployAdmin, owner } = this.campaign;
-    if (deployAdmin.address !== owner.address) {
+    const { deployAdmin, owner } = this.campaign.config;
+    if (deployAdmin.address !== (owner as SignerWithAddress).address) {
       return true;
     } else {
       return false;
@@ -52,7 +53,13 @@ IZModulesContracts
   }
 
   async postDeploy () : Promise<void> {
-    const { stakingERC20, deployAdmin, owner } = this.campaign;
-    await stakingERC20.connect(deployAdmin).transferOwnership(owner.address);
+    const {
+      stakingERC20,
+      config: {
+        deployAdmin,
+        owner,
+      },
+    } = this.campaign;
+    await stakingERC20.connect(deployAdmin).transferOwnership((owner as SignerWithAddress).address);
   }
 }
