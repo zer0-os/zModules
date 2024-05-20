@@ -7,26 +7,28 @@ import {
   StakingERC20,
 } from "../typechain";
 import {
+  NO_REWARDS_ERR,
+  TIME_LOCK_NOT_PASSED_ERR,
+  INSUFFICIENT_ALLOWANCE_ERR,
+  INSUFFICIENT_BALANCE_ERR,
+  ZERO_STAKE_ERR,
+  UNEQUAL_UNSTAKE_ERR,
+  OWNABLE_UNAUTHORIZED_ERR,
+} from "./helpers/errors";
+import {
+  WITHDRAW_EVENT,
+  INIT_BALANCE,
+  DEFAULT_STAKED_AMOUNT,
   createDefaultConfigs,
   calcTotalRewards,
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
-  NO_REWARDS_ERR,
-  TIME_LOCK_NOT_PASSED_ERR,
   BaseConfig,
-  INSUFFICIENT_ALLOWANCE_ERR,
-  INSUFFICIENT_BALANCE_ERR,
-  ZERO_STAKE_ERR,
-  UNEQUAL_UNSTAKE_ERR,
-  ONLY_OWNER_ERR,
-  WITHDRAW_EVENT,
-  INIT_BALANCE,
-  DEFAULT_STAKED_AMOUNT,
 } from "./helpers/staking";
 
 describe("StakingERC20", () => {
-  let deployer : SignerWithAddress;
+  let owner : SignerWithAddress;
   let stakerA : SignerWithAddress;
   let stakerB : SignerWithAddress;
   let stakerC : SignerWithAddress;
@@ -67,7 +69,7 @@ describe("StakingERC20", () => {
 
   before(async () => {
     [
-      deployer,
+      owner,
       stakerA,
       stakerB,
       stakerC,
@@ -90,31 +92,32 @@ describe("StakingERC20", () => {
       config.rewardsToken,
       config.rewardsPerPeriod,
       config.periodLength,
-      config.timeLockPeriod
+      config.timeLockPeriod,
+      owner.address
     ) as StakingERC20;
 
     // Give each user funds to stake
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerA.address,
       INIT_BALANCE
     );
 
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerB.address,
       INIT_BALANCE
     );
 
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerC.address,
       INIT_BALANCE
     );
 
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerD.address,
       INIT_BALANCE
     );
 
-    await stakeToken.connect(deployer).transfer(
+    await stakeToken.connect(owner).transfer(
       stakerF.address,
       INIT_BALANCE
     );
@@ -233,13 +236,17 @@ describe("StakingERC20", () => {
       // First, it will fail on allowance
       await expect(
         contract.connect(notStaker).stake(amount)
-      ).to.be.revertedWith(INSUFFICIENT_ALLOWANCE_ERR);
+      ).to.be.revertedWithCustomError(rewardsToken, INSUFFICIENT_ALLOWANCE_ERR)
+        .withArgs(contract.target, 0n, amount);
 
       // Then after we allow funds, it will fail on balance
       await stakeToken.connect(notStaker).approve(await contract.getAddress(), amount);
+
+      const balance = await stakeToken.balanceOf(notStaker.address);
       await expect(
         contract.connect(notStaker).stake(amount)
-      ).to.be.revertedWith(INSUFFICIENT_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(stakeToken, INSUFFICIENT_BALANCE_ERR)
+        .withArgs(notStaker.address, balance, amount);
     });
 
     it("Fails when the staker tries to stake 0", async () => {
@@ -323,7 +330,7 @@ describe("StakingERC20", () => {
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
 
       // Give staking contract balance to pay rewards
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -386,7 +393,7 @@ describe("StakingERC20", () => {
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
 
       // Give staking contract balance to pay rewards
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -429,7 +436,7 @@ describe("StakingERC20", () => {
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
 
       // Give staking contract balance to pay rewards
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -609,17 +616,17 @@ describe("StakingERC20", () => {
   describe("#withdrawLeftoverRewards", () => {
     it("Allows the admin to withdraw leftover rewards", async () => {
       const amount = 1000n;
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         amount
       );
 
-      const rewardsBalanceBefore = await rewardsToken.balanceOf(deployer.address);
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(owner.address);
       const contractRewardsBalanceBefore = await contract.getContractRewardsBalance();
 
-      await contract.connect(deployer).withdrawLeftoverRewards();
+      await contract.connect(owner).withdrawLeftoverRewards();
 
-      const rewardsBalanceAfter = await rewardsToken.balanceOf(deployer.address);
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(owner.address);
       const contractRewardsBalanceAfter = await contract.getContractRewardsBalance();
 
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + amount);
@@ -630,12 +637,13 @@ describe("StakingERC20", () => {
     it("Fails when the caller is not the admin", async () => {
       await expect(
         contract.connect(notStaker).withdrawLeftoverRewards()
-      ).to.be.revertedWith(ONLY_OWNER_ERR);
+      ).to.be.revertedWithCustomError(contract, OWNABLE_UNAUTHORIZED_ERR)
+        .withArgs(notStaker.address);
     });
 
     it("Fails when the contract has no rewards left to withdraw", async () => {
       await expect(
-        contract.connect(deployer).withdrawLeftoverRewards()
+        contract.connect(owner).withdrawLeftoverRewards()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
     });
   });
@@ -653,7 +661,7 @@ describe("StakingERC20", () => {
 
       const pendingRewards = await contract.connect(stakerF).getPendingRewards();
 
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -669,7 +677,7 @@ describe("StakingERC20", () => {
 
       const pendingRewards = await contract.connect(stakerF).getPendingRewards();
 
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards
       );
@@ -711,15 +719,15 @@ describe("StakingERC20", () => {
 
     it("Emits 'LeftoverRewardsWithdrawn' event when the admin withdraws", async () => {
       const amount = 1000n;
-      await rewardsToken.connect(deployer).transfer(
+      await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         amount
       );
 
       await expect(
-        contract.connect(deployer).withdrawLeftoverRewards()
+        contract.connect(owner).withdrawLeftoverRewards()
       ).to.emit(contract, WITHDRAW_EVENT)
-        .withArgs(deployer.address, amount);
+        .withArgs(owner.address, amount);
     });
   });
 });

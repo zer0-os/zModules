@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // solhint-disable immutable-vars-naming
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -11,6 +11,7 @@ import { IStakingBase } from "./IStakingBase.sol";
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
+ * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingBase is Ownable, IStakingBase {
     using SafeERC20 for IERC20;
@@ -50,8 +51,9 @@ contract StakingBase is Ownable, IStakingBase {
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
-        uint256 _timeLockPeriod
-    ) Ownable() {
+        uint256 _timeLockPeriod,
+        address contractOwner
+    ) Ownable(contractOwner) {
         if (
             _stakingToken.code.length == 0 ||
             address(_rewardsToken).code.length == 0 ||

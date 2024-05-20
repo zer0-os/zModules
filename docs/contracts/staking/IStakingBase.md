@@ -1,21 +1,10 @@
 ## IStakingBase
 
-
 **IStakingBase**
 
 Interface for the base staking contract
 
-
-
-
 ### Staker
-
-
-
-
-
-
-
 
 ```solidity
 struct Staker {
@@ -32,9 +21,7 @@ struct Staker {
 event LeftoverRewardsWithdrawn(address owner, uint256 amount)
 ```
 
-
 Emitted when the contract owner withdraws leftover rewards
-
 
 #### Parameters
 
@@ -43,13 +30,11 @@ Emitted when the contract owner withdraws leftover rewards
 | owner | address | The address of the contract owner |
 | amount | uint256 | The amount of rewards withdrawn |
 
-
 ### Claimed
 
 ```solidity
 event Claimed(address claimer, uint256 rewards, address rewardsToken)
 ```
-
 
 Emit when a user claims rewards
 
@@ -63,18 +48,13 @@ Because all contracts reward in ERC20 this can be shared
 | rewards | uint256 | The amount of rewards the user received |
 | rewardsToken | address | The address of the rewards token contract |
 
-
 ### TimeLockNotPassed
 
 ```solidity
 error TimeLockNotPassed()
 ```
 
-
 Throw when the lock period has not passed
-
-
-
 
 ### NoRewardsLeftInContract
 
@@ -82,12 +62,8 @@ Throw when the lock period has not passed
 error NoRewardsLeftInContract()
 ```
 
-
 Throw when there are no rewards remaining in the pool
 to give to stakers
-
-
-
 
 ### InitializedWithZero
 
@@ -95,11 +71,7 @@ to give to stakers
 error InitializedWithZero()
 ```
 
-
 Throw when passing zero values to set a state var
-
-
-
 
 ### claim
 
@@ -107,23 +79,11 @@ Throw when passing zero values to set a state var
 function claim() external
 ```
 
-
-
-
-
-
-
 ### getRemainingLockTime
 
 ```solidity
 function getRemainingLockTime() external returns (uint256)
 ```
-
-
-
-
-
-
 
 ### withdrawLeftoverRewards
 
@@ -131,34 +91,15 @@ function getRemainingLockTime() external returns (uint256)
 function withdrawLeftoverRewards() external
 ```
 
-
-
-
-
-
-
 ### getPendingRewards
 
 ```solidity
 function getPendingRewards() external view returns (uint256)
 ```
 
-
-
-
-
-
-
 ### getContractRewardsBalance
 
 ```solidity
 function getContractRewardsBalance() external view returns (uint256)
 ```
-
-
-
-
-
-
-
 
