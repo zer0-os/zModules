@@ -49,8 +49,8 @@ IZModulesContracts
   }
 
   async needsPostDeploy () : Promise<boolean> {
-    const { deployAdmin, owner } = this.campaign;
-    if (deployAdmin.address !== owner.address) {
+    const { deployAdmin, owner } = this.campaign.config;
+    if (deployAdmin.address !== (owner as SignerWithAddress).address) {
       return true;
     } else {
       return false;

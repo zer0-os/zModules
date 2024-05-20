@@ -86,7 +86,7 @@ describe("StakingERC20", () => {
     const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
     stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
 
-    rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
+    rewardsToken = await mockERC20Factory.connect(owner).deploy("WilderWorld", "WW");
 
     config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
 
@@ -128,54 +128,19 @@ describe("StakingERC20", () => {
 
     contract = stakingERC20;
 
-    // [
-    //   stakerA,
-    //   stakerB,
-    //   stakerC,
-    //   stakerD,
-    //   stakerF,
-    // ].reduce(
-    //   async (acc, elem) => {
-    //     await stakeToken.mint(elem.address, INIT_BALANCE);
-    //     await stakeToken.connect(elem).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    //   }, 0
-    // );
+    const stakersArr = [
+      owner,
+      stakerA,
+      stakerB,
+      stakerC,
+      stakerD,
+      stakerF,
+    ];
 
-    // TODO myself: through reduce
-
-
-    // Give each user funds to stake
-    await stakeToken.connect(owner).transfer(
-      stakerA.address,
-      INIT_BALANCE
-    );
-
-    await stakeToken.connect(owner).transfer(
-      stakerB.address,
-      INIT_BALANCE
-    );
-
-    await stakeToken.connect(owner).transfer(
-      stakerC.address,
-      INIT_BALANCE
-    );
-
-    await stakeToken.connect(owner).transfer(
-      stakerD.address,
-      INIT_BALANCE
-    );
-
-    await stakeToken.connect(owner).transfer(
-      stakerF.address,
-      INIT_BALANCE
-    );
-
-    // Approve staking contract to spend staker funds
-    await stakeToken.connect(stakerA).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    await stakeToken.connect(stakerB).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    await stakeToken.connect(stakerC).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    await stakeToken.connect(stakerD).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    await stakeToken.connect(stakerF).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    for (const staker of stakersArr) {
+      await stakeToken.mint(staker.address, INIT_BALANCE);
+      await stakeToken.connect(staker).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    }
   });
 
   after(async () => {
