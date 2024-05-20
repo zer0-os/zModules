@@ -24,15 +24,28 @@ contract OwnableOperable is Ownable, IOwnableOperable {
 
     constructor(address contractOwner) Ownable(contractOwner) {}
 
+    /**
+     * @notice Removes an operator from the contract. Only callable by the owner
+     * @param operator The address of the operator to remove
+     */
     function removeOperator(address operator) external override onlyOwner {
         operators[operator] = false;
         emit OperatorRemoved(operator);
     }
 
+    /**
+     * @notice Checks if an address is an operator
+     * @param operator The address to check
+     * @return bool True if the address is an operator
+     */
     function isOperator(address operator) external view override returns (bool) {
         return operators[operator];
     }
 
+    /**
+     * @notice Adds an operator to the contract. Only callable by the owner
+     * @param operator The address of the new operator
+     */
     function addOperator(address operator) public override onlyOwner {
         if (operator == address(0)) revert ZeroAddressPassed();
 
@@ -40,6 +53,10 @@ contract OwnableOperable is Ownable, IOwnableOperable {
         emit OperatorAdded(operator);
     }
 
+    /**
+     * @notice Adds multiple operators to the contract. Only callable by the owner
+     * @param _operators The array of operator addresses to add
+     */
     function addOperators(address[] memory _operators) public override onlyOwner {
         for (uint256 i = 0; i < _operators.length; i++) {
             addOperator(_operators[i]);

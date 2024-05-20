@@ -102,7 +102,7 @@ describe("Escrow Contract", () => {
       const escBalBefore = await escrow.balances(addr1.address);
       const tokenBalBefore = await mockERC20.balanceOf(addr1.address);
 
-      await expect(escrow.connect(addr1).withdraw(depositAmount, false))
+      await expect(escrow.connect(addr1).withdraw(depositAmount))
         .to.emit(escrow, "Withdrawal")
         .withArgs(addr1.address, depositAmount);
 
@@ -127,13 +127,13 @@ describe("Escrow Contract", () => {
 
       expect(BigInt(await escrow.balances(addr1.address))).to.equal(totalDeposit + prevBalance);
 
-      await escrow.connect(addr1).withdraw(0n, true);
+      await escrow.connect(addr1).withdraw(totalDeposit + prevBalance);
 
       expect(BigInt(await escrow.balances(addr1.address))).to.equal(0n);
     });
 
     it("Should revert on attempt to withdraw with zero balance", async () => {
-      await expect(escrow.connect(addr2).withdraw(0n, true))
+      await expect(escrow.connect(addr2).withdraw(10n))
         .to.be.revertedWithCustomError(escrow, INSUFFICIENT_FUNDS_ERR)
         .withArgs(addr2.address);
     });
@@ -150,7 +150,7 @@ describe("Escrow Contract", () => {
 
     it("Should revert withdrawals when balance is zero or withdrawing more than balance", async () => {
       await expect(
-        escrow.connect(addr2).withdraw(0n, true)
+        escrow.connect(addr2).withdraw(1000000n)
       ).to.be.revertedWithCustomError(escrow, INSUFFICIENT_FUNDS_ERR)
         .withArgs(addr2.address);
 
@@ -159,7 +159,7 @@ describe("Escrow Contract", () => {
       await escrow.connect(addr1).deposit(depAmt);
 
       await expect(
-        escrow.connect(addr1).withdraw(depAmt * 6n, false)
+        escrow.connect(addr1).withdraw(depAmt * 6n)
       ).to.be.revertedWithCustomError(escrow, INSUFFICIENT_FUNDS_ERR)
         .withArgs(addr1.address);
     });
@@ -180,9 +180,9 @@ describe("Escrow Contract", () => {
         await escrow.balances(addr1.address)
       ).to.equal(depAmt + anotherDepositAmount + prevBalance);
 
-      await escrow.connect(addr1).withdraw(depAmt, false);
-      await escrow.connect(addr1).withdraw(anotherDepositAmount, false);
-      await escrow.connect(addr1).withdraw(0n, true);
+      await escrow.connect(addr1).withdraw(depAmt);
+      await escrow.connect(addr1).withdraw(anotherDepositAmount);
+      await escrow.connect(addr1).withdraw(prevBalance);
 
       expect(await escrow.balances(addr1.address)).to.equal(0);
       expect(await mockERC20.balanceOf(addr1.address)).to.equal(currentBalanceStore + prevBalance);

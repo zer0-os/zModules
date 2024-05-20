@@ -42,17 +42,15 @@ interface IEscrow is IOwnableOperable {
 
     /**
      * @notice Allows a user to deposit tokens into the escrow contract.
-     * @param _amount The amount of tokens to deposit.
+     * @param amount The amount of tokens to deposit.
      */
-    function deposit(uint256 _amount) external;
+    function deposit(uint256 amount) external;
 
     /**
      * @notice Allows a user to withdraw funds from the escrow contract.
-     * @dev Pass amount and `false` as `all` or `true` to withdraw all tokens and 0 as `amount`.
      * @param amount The amount of tokens to withdraw.
-     * @param all If true, withdraws all tokens from the user's balance.
      */
-    function withdraw(uint256 amount, bool all) external;
+    function withdraw(uint256 amount) external;
 
     /**
      * @notice Refunds tokens from the escrow back to a user by the contract owner or operator.

@@ -30,7 +30,7 @@ interface IMatch is IEscrow {
      * @param players The array of player addresses participating in the match
      * @param matchFee The entry fee for the match
      * @param fundsLocked The total amount of tokens locked in escrow for the match (or `players.length * matchFee`)
-     *  this is also a value that is saved to state in `fundLocks[matchDataHash]`
+     *  this is also a value that is saved to state in `lockedFunds[matchDataHash]`
      */
     event MatchStarted(
         bytes32 indexed matchDataHash,
@@ -59,7 +59,7 @@ interface IMatch is IEscrow {
     );
 
     /**
-     * @notice Reverted when the match data is incorrect or the payout amounts do not add up to `fundLocks`
+     * @notice Reverted when the match data is incorrect or the payout amounts do not add up to `lockedFunds`
      *  from `startMatch()` calls
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
      * @param matchDataHash The hash of the MatchData struct (`keccak256(abi.encode(matchData))`)
@@ -83,7 +83,7 @@ interface IMatch is IEscrow {
 
     /**
      * @notice Starts a match, charges the entry fee from each player's balance, creates and hashes `MatchData` struct,
-     *  and locks the total amount of tokens in escrow for the match, saving the amount to `fundLocks` mapping,
+     *  and locks the total amount of tokens in escrow for the match, saving the amount to `lockedFunds` mapping,
      *  mapped by `matchDataHash` as the key. Emits a `MatchStarted` event with all the data.
      * @dev Can ONLY be called by an authorized account!
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
@@ -97,7 +97,7 @@ interface IMatch is IEscrow {
      *  funds have been locked for this match previously (same match has been started), validates that
      *  `payouts + gameFee` add up to the total locked funds, transfers the payouts to the players,
      *  and emits a `MatchEnded` event.
-     * @dev Can ONLY be called by an authorized account! Please note that the `fundLocks` mapping entry will be deleted
+     * @dev Can ONLY be called by an authorized account! Please note that the `lockedFunds` mapping entry will be deleted
      *  for a gas refund, leaving historical data only in the event logs.
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
      * @param players Array of player addresses (has to be the exact same array passed to `startMatch()`!)

@@ -39,6 +39,10 @@ contract Escrow is OwnableOperable, IEscrow {
         }
     }
 
+    /**
+     * @notice Allows a user to deposit tokens into the escrow contract.
+     * @param amount The amount of tokens to deposit.
+     */
     function deposit(uint256 amount) external override {
         if (amount == 0) revert ZeroAmountPassed();
 
@@ -48,22 +52,25 @@ contract Escrow is OwnableOperable, IEscrow {
         emit Deposit(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount, bool all) external override {
-        uint256 toWithdraw;
-        if (all) {
-            toWithdraw = balances[msg.sender];
-            if (toWithdraw == 0) revert InsufficientFunds(msg.sender);
-        } else {
-            if (balances[msg.sender] < amount) revert InsufficientFunds(msg.sender);
-            toWithdraw = amount;
-        }
+    /**
+     * @notice Allows a user to withdraw funds from the escrow contract.
+     * @param amount The amount of tokens to withdraw.
+     */
+    function withdraw(uint256 amount) external override {
+        if (amount == 0) revert ZeroAmountPassed();
+        if (balances[msg.sender] < amount) revert InsufficientFunds(msg.sender);
 
-        balances[msg.sender] -= toWithdraw;
-        token.safeTransfer(msg.sender, toWithdraw);
+        balances[msg.sender] -= amount;
+        token.safeTransfer(msg.sender, amount);
 
-        emit Withdrawal(msg.sender, toWithdraw);
+        emit Withdrawal(msg.sender, amount);
     }
 
+    /**
+     * @notice Refunds tokens from the escrow back to a user by the contract owner or operator.
+     * @param user The address of the user to refund tokens to.
+     * @param amount The amount of tokens to release for the user.
+     */
     function releaseFunds(address user, uint256 amount) external override onlyAuthorized {
         if (balances[user] < amount) revert InsufficientFunds(user);
         balances[user] -= amount;

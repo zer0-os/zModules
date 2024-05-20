@@ -14,7 +14,7 @@ contract Match is Escrow, IMatch {
      * @notice Mapping from the hash of `MatchData` struct
      *  to the total amount of tokens locked in escrow for the match
      */
-    mapping(bytes32 matchDataHash => uint256 amount) public fundLocks;
+    mapping(bytes32 matchDataHash => uint256 amount) public lockedFunds;
 
     /**
      * @notice The address of the fee vault which gathers all the `gameFee`s
@@ -35,6 +35,15 @@ contract Match is Escrow, IMatch {
         feeVault = _feeVault;
     }
 
+    /**
+     * @notice Starts a match, charges the entry fee from each player's balance, creates and hashes `MatchData` struct,
+     *  and locks the total amount of tokens in escrow for the match, saving the amount to `lockedFunds` mapping,
+     *  mapped by `matchDataHash` as the key. Emits a `MatchStarted` event with all the data.
+     * @dev Can ONLY be called by an authorized account!
+     * @param matchId The ID of the match assigned by a game client or the operator of this contract
+     * @param players Array of player addresses participating in the match
+     * @param matchFee The entry fee for each player
+     */
     function startMatch(
         uint256 matchId,
         address[] calldata players,
@@ -48,7 +57,7 @@ contract Match is Escrow, IMatch {
             players
         );
 
-        if (fundLocks[matchDataHash] != 0)
+        if (lockedFunds[matchDataHash] != 0)
             revert MatchAlreadyStarted(matchId, matchDataHash);
 
         for (uint256 i = 0; i < players.length;) {
@@ -63,11 +72,25 @@ contract Match is Escrow, IMatch {
 
         uint256 lockedAmount = matchFee * players.length;
 
-        fundLocks[matchDataHash] = lockedAmount;
+        lockedFunds[matchDataHash] = lockedAmount;
 
         emit MatchStarted(matchDataHash, matchId, players, matchFee, lockedAmount);
     }
 
+    /**
+     * @notice Ends a match, creates and hashes a MatchData struct with the data provided, validates that
+     *  funds have been locked for this match previously (same match has been started), validates that
+     *  `payouts + gameFee` add up to the total locked funds, transfers the payouts to the players,
+     *  and emits a `MatchEnded` event.
+     * @dev Can ONLY be called by an authorized account! Please note that the `lockedFunds` mapping entry will be deleted
+     *  for a gas refund, leaving historical data only in the event logs.
+     * @param matchId The ID of the match assigned by a game client or the operator of this contract
+     * @param players Array of player addresses (has to be the exact same array passed to `startMatch()`!)
+     * @param payouts The amount of tokens each player will receive (pass 0 for players with no payouts!)
+     *  Has to be the same length as `players`!
+     * @param matchFee The entry fee for the match
+     * @param gameFee The fee charged by the contract for hosting the match, will go to `feeVault`
+     */
     function endMatch(
         uint256 matchId,
         address[] calldata players,
@@ -83,10 +106,10 @@ contract Match is Escrow, IMatch {
             players
         );
 
-        uint256 lockedAmount = fundLocks[matchDataHash];
+        uint256 lockedAmount = lockedFunds[matchDataHash];
         if (lockedAmount == 0) revert InvalidMatchOrPayouts(matchId, matchDataHash);
 
-        delete fundLocks[matchDataHash];
+        delete lockedFunds[matchDataHash];
 
         uint256 payoutSum;
         for (uint256 i = 0; i < players.length;) {
@@ -113,6 +136,11 @@ contract Match is Escrow, IMatch {
         );
     }
 
+    /**
+     * @notice Sets the address of the fee vault where all the `gameFee`s go
+     * @dev Can ONLY be called by an authorized account!
+     * @param _feeVault The address of the new fee vault
+     */
     function setFeeVault(address _feeVault) external override onlyAuthorized {
         if (_feeVault == address(0)) revert ZeroAddressPassed();
 
@@ -120,10 +148,23 @@ contract Match is Escrow, IMatch {
         emit FeeVaultSet(_feeVault);
     }
 
+    /**
+     * @notice Gets the address of the fee vault where all the `gameFee`s go
+     * @return feeVault The address of the fee vault
+     */
     function getFeeVault() external override view returns (address) {
         return feeVault;
     }
 
+    /**
+     * @notice Checks if all players have enough balance in escrow to participate in the match
+     * @dev Note that the returned array will always be the same length as `players` array, with valid players
+     *  being `address(0)` in the same index as the player in the `players` array. If all players have enough balance
+     *  in escrow, the returned array will be filled with 0x0 addresses.
+     * @param players Array of player addresses
+     * @param matchFee The required balance in escrow for each player to participate
+     * @return unfundedPlayers Array of player addresses who do not have enough balance in escrow
+     */
     function canMatch(
         address[] calldata players,
         uint256 matchFee

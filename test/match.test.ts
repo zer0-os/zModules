@@ -132,6 +132,39 @@ describe("Match Contract",  () => {
         ethers.ZeroAddress,
         ethers.ZeroAddress,
       ]);
+
+      // check all valid
+      await [
+        player3,
+        player5,
+        player6,
+      ].reduce(
+        async (acc, player) => {
+          await acc;
+          await match.connect(player).deposit(depositAmount);
+        }, Promise.resolve()
+      );
+
+      const allPlayersFunded = await match.canMatch(allPlayers, ethers.parseEther("10"));
+      expect(allPlayersFunded).to.deep.equal([
+        ethers.ZeroAddress,
+        ethers.ZeroAddress,
+        ethers.ZeroAddress,
+        ethers.ZeroAddress,
+        ethers.ZeroAddress,
+        ethers.ZeroAddress,
+      ]);
+
+      // check all invalid
+      const allPlayersUnfunded = await match.canMatch(allPlayers, ethers.parseEther("10000000000000000000000000"));
+      expect(allPlayersUnfunded).to.deep.equal([
+        player1.address,
+        player2.address,
+        player3.address,
+        player4.address,
+        player5.address,
+        player6.address,
+      ]);
     });
 
     it("#setFeeVault should set the address correctly and emit an event", async () => {
@@ -263,7 +296,7 @@ describe("Match Contract",  () => {
       });
 
       it("Should save and lock the correct amount of fees for the match", async () => {
-        const lockedForMatch = await match.fundLocks(matchDataHash);
+        const lockedForMatch = await match.lockedFunds(matchDataHash);
         expect(lockedForMatch).to.equal(matchFee * BigInt(playerAddresses.length));
       });
 
@@ -381,8 +414,8 @@ describe("Match Contract",  () => {
         expect(emittedGameFee).to.equal(gameFee);
       });
 
-      it("Should remove the locked amount from the #fundLocks mapping", async () => {
-        const lockedForMatch = await match.fundLocks(matchDataHash);
+      it("Should remove the locked amount from the #lockedFunds mapping", async () => {
+        const lockedForMatch = await match.lockedFunds(matchDataHash);
         expect(lockedForMatch).to.equal(0n);
       });
 
@@ -410,7 +443,7 @@ describe("Match Contract",  () => {
         await allPlayers.reduce(
           async (acc, player, idx) => {
             await acc;
-            await match.connect(player).withdraw(payouts[idx], false);
+            await match.connect(player).withdraw(payouts[idx]);
           }, Promise.resolve()
         );
 
