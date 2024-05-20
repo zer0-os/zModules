@@ -55,7 +55,7 @@ The amount of time required to pass to be able to claim or unstake
 ### constructor
 
 ```solidity
-constructor(address _stakingToken, contract IERC20 _rewardsToken, uint256 _rewardsPerPeriod, uint256 _periodLength, uint256 _timeLockPeriod, address contractOwner) public
+constructor(address _stakingToken, contract IERC20 _rewardsToken, uint256 _rewardsPerPeriod, uint256 _periodLength, uint256 _timeLockPeriod) public
 ```
 
 ### claim

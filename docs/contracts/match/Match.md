@@ -4,10 +4,10 @@
 
 Contract for managing matches for escrow funds between players.
 
-### fundLocks
+### lockedFunds
 
 ```solidity
-mapping(bytes32 => uint256) fundLocks
+mapping(bytes32 => uint256) lockedFunds
 ```
 
 Mapping from the hash of `MatchData` struct
@@ -34,7 +34,7 @@ function startMatch(uint256 matchId, address[] players, uint256 matchFee) extern
 ```
 
 Starts a match, charges the entry fee from each player's balance, creates and hashes `MatchData` struct,
- and locks the total amount of tokens in escrow for the match, saving the amount to `fundLocks` mapping,
+ and locks the total amount of tokens in escrow for the match, saving the amount to `lockedFunds` mapping,
  mapped by `matchDataHash` as the key. Emits a `MatchStarted` event with all the data.
 
 Can ONLY be called by an authorized account!
@@ -58,7 +58,7 @@ Ends a match, creates and hashes a MatchData struct with the data provided, vali
  `payouts + gameFee` add up to the total locked funds, transfers the payouts to the players,
  and emits a `MatchEnded` event.
 
-Can ONLY be called by an authorized account! Please note that the `fundLocks` mapping entry will be deleted
+Can ONLY be called by an authorized account! Please note that the `lockedFunds` mapping entry will be deleted
  for a gas refund, leaving historical data only in the event logs.
 
 #### Parameters

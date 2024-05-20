@@ -32,22 +32,27 @@ constructor(address _token, address _owner, address[] _operators) public
 function deposit(uint256 amount) external
 ```
 
+Allows a user to deposit tokens into the escrow contract.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| amount | uint256 | The amount of tokens to deposit. |
+
 ### withdraw
 
 ```solidity
-function withdraw(uint256 amount, bool all) external
+function withdraw(uint256 amount) external
 ```
 
 Allows a user to withdraw funds from the escrow contract.
-
-Pass amount and `false` as `all` or `true` to withdraw all tokens and 0 as `amount`.
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | amount | uint256 | The amount of tokens to withdraw. |
-| all | bool | If true, withdraws all tokens from the user's balance. |
 
 ### releaseFunds
 

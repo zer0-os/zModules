@@ -6,13 +6,6 @@ Interface for the base staking contract
 
 ### Staker
 
-Struct to track a set of data for each staker
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-
 ```solidity
 struct Staker {
   uint256 unlockTimestamp;

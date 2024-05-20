@@ -73,7 +73,7 @@ Reverted when zero amount is passed to the function
 ### deposit
 
 ```solidity
-function deposit(uint256 _amount) external
+function deposit(uint256 amount) external
 ```
 
 Allows a user to deposit tokens into the escrow contract.
@@ -82,24 +82,21 @@ Allows a user to deposit tokens into the escrow contract.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _amount | uint256 | The amount of tokens to deposit. |
+| amount | uint256 | The amount of tokens to deposit. |
 
 ### withdraw
 
 ```solidity
-function withdraw(uint256 amount, bool all) external
+function withdraw(uint256 amount) external
 ```
 
 Allows a user to withdraw funds from the escrow contract.
-
-Pass amount and `false` as `all` or `true` to withdraw all tokens and 0 as `amount`.
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | amount | uint256 | The amount of tokens to withdraw. |
-| all | bool | If true, withdraws all tokens from the user's balance. |
 
 ### releaseFunds
 

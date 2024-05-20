@@ -45,7 +45,7 @@ Emitted when a match is started by the contract operator/owner
 | matchId | uint256 | The ID of the match assigned by a game client or the operator of this contract |
 | players | address[] | The array of player addresses participating in the match |
 | matchFee | uint256 | The entry fee for the match |
-| fundsLocked | uint256 | The total amount of tokens locked in escrow for the match (or `players.length * matchFee`)  this is also a value that is saved to state in `fundLocks[matchDataHash]` |
+| fundsLocked | uint256 | The total amount of tokens locked in escrow for the match (or `players.length * matchFee`)  this is also a value that is saved to state in `lockedFunds[matchDataHash]` |
 
 ### MatchEnded
 
@@ -72,7 +72,7 @@ Emitted when a match is ended by the contract operator/owner
 error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash)
 ```
 
-Reverted when the match data is incorrect or the payout amounts do not add up to `fundLocks`
+Reverted when the match data is incorrect or the payout amounts do not add up to `lockedFunds`
  from `startMatch()` calls
 
 #### Parameters
@@ -126,7 +126,7 @@ function startMatch(uint256 matchId, address[] players, uint256 matchFee) extern
 ```
 
 Starts a match, charges the entry fee from each player's balance, creates and hashes `MatchData` struct,
- and locks the total amount of tokens in escrow for the match, saving the amount to `fundLocks` mapping,
+ and locks the total amount of tokens in escrow for the match, saving the amount to `lockedFunds` mapping,
  mapped by `matchDataHash` as the key. Emits a `MatchStarted` event with all the data.
 
 Can ONLY be called by an authorized account!
@@ -150,7 +150,7 @@ Ends a match, creates and hashes a MatchData struct with the data provided, vali
  `payouts + gameFee` add up to the total locked funds, transfers the payouts to the players,
  and emits a `MatchEnded` event.
 
-Can ONLY be called by an authorized account! Please note that the `fundLocks` mapping entry will be deleted
+Can ONLY be called by an authorized account! Please note that the `lockedFunds` mapping entry will be deleted
  for a gas refund, leaving historical data only in the event logs.
 
 #### Parameters

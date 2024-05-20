@@ -32,7 +32,7 @@ Revert if a call is not from the SNFT owner
 ### constructor
 
 ```solidity
-constructor(string name, string symbol, string baseUri, address _stakingToken, contract IERC20 _rewardsToken, uint256 _rewardsPerPeriod, uint256 _periodLength, uint256 _timeLockPeriod, address contractOwner) public
+constructor(string name, string symbol, string baseUri, address _stakingToken, contract IERC20 _rewardsToken, uint256 _rewardsPerPeriod, uint256 _periodLength, uint256 _timeLockPeriod) public
 ```
 
 ### stake
@@ -56,7 +56,7 @@ Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in re
 function unstake(uint256[] tokenIds, bool exit) external
 ```
 
-Unstake one or more of what the user has staked
+Unstake one or more ERC721 tokens
 
 #### Parameters
 
@@ -135,6 +135,16 @@ function _safeMint(address to, uint256 tokenId, string tokenUri) internal
 function _mint(address to, uint256 tokenId, string tokenUri) internal
 ```
 
+### _burn
+
+```solidity
+function _burn(uint256 tokenId) internal
+```
+
+See {ERC721-_burn}. This override additionally checks to see if a
+token-specific URI was set for the token, and if so, it deletes the token URI from
+the storage mapping.
+
 ### _baseURI
 
 ```solidity
@@ -145,10 +155,10 @@ Base URI for computing {tokenURI}. If set, the resulting URI for each
 token will be the concatenation of the `baseURI` and the `tokenId`. Empty
 by default, can be overridden in child contracts.
 
-### _update
+### _beforeTokenTransfer
 
 ```solidity
-function _update(address to, uint256 tokenId, address auth) internal returns (address)
+function _beforeTokenTransfer(address from, address to, uint256, uint256) internal pure
 ```
 
 Disallow all transfers, only `_mint` and `_burn` are allowed
