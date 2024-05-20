@@ -97,7 +97,7 @@ interface IMatch is IEscrow {
      *  funds have been locked for this match previously (same match has been started), validates that
      *  `payouts + gameFee` add up to the total locked funds, transfers the payouts to the players,
      *  and emits a `MatchEnded` event.
-     * @dev Can ONLY be called by an authorized account! Please note that the `lockedFunds` mapping entry will be deleted
+     * @dev Can ONLY be called by an authorized account! Note that the `lockedFunds` mapping entry will be deleted
      *  for a gas refund, leaving historical data only in the event logs.
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
      * @param players Array of player addresses (has to be the exact same array passed to `startMatch()`!)

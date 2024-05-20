@@ -150,7 +150,7 @@ Ends a match, creates and hashes a MatchData struct with the data provided, vali
  `payouts + gameFee` add up to the total locked funds, transfers the payouts to the players,
  and emits a `MatchEnded` event.
 
-Can ONLY be called by an authorized account! Please note that the `lockedFunds` mapping entry will be deleted
+Can ONLY be called by an authorized account! Note that the `lockedFunds` mapping entry will be deleted
  for a gas refund, leaving historical data only in the event logs.
 
 #### Parameters
