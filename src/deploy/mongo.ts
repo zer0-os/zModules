@@ -7,7 +7,7 @@ import { getGitTag } from "../utils/git-tag/get-tag";
 const execAsync = promisify(exec);
 
 
-export const getZnsMongoAdapter = async ({
+export const getZModulesMongoAdapter = async ({
   contractsVersion,
   logger,
 } : {

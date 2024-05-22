@@ -6,6 +6,8 @@
     "typechain": "hardhat typechain",
     "compile": "hardhat compile",
     "build": "yarn run clean && yarn run compile",
+    "postbuild": "yarn save-tag",
+    "save-tag": "chmod a+x ./src/utils/git-tag/save-tag.sh && bash ./src/utils/git-tag/save-tag.sh",
     "clean": "hardhat clean",
     "test": "hardhat test",
     "coverage": "hardhat coverage",

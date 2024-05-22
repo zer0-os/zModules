@@ -26,7 +26,7 @@ import {
   WITHDRAW_EVENT,
   LOW_LEVEL_CALL_ERR,
 } from "./helpers/staking";
-import { DCConfig, IERC20DeployArgs, IERC721DeployArgs, runCampaign } from "../src/deploy";
+import { DCConfig, IERC20DeployArgs, IERC721DeployArgs, contractNames, runCampaign } from "../src/deploy";
 import { ZModulesStakingERC721DM } from "../src/deploy/missions";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 
@@ -1628,4 +1628,29 @@ describe("StakingERC721", () => {
       expect(await stakingERC721.owner()).to.eq(hre.ethers.ZeroAddress);
     });
   });
+
+  // describe("Deploy", () => {
+  //   it("Deployed contract should exist in the DB", async () => {
+  //     const contractFromDB = await dbAdapter.getContract(contractNames.stakingERC20.contract);
+
+  //     await expect({
+  //       addrs: contractFromDB?.address,
+  //       label: contractFromDB?.name,
+  //       version: contractFromDB?.version,
+  //     }).to.eq({
+  //       addrs: await contract.getAddress(),
+  //       label: contractNames.stakingERC20.contract,
+  //       version: await dbAdapter.versioner.getDeployedVersion(),
+  //     });
+  //   });
+
+  //   it("Should deploy with correct args", async () => {
+
+  //     expect(contract.rewardsToken()).to.eq(config.rewardsToken);
+  //     expect(contract.stakingToken()).to.eq(config.stakingToken);
+  //     expect(contract.rewardsPerPeriod).to.eq(config.rewardsPerPeriod);
+  //     expect(contract.periodLength).to.eq(config.periodLength);
+  //     expect(contract.timeLockPeriod).to.eq(config.timeLockPeriod);
+  //   });
+  // });
 });

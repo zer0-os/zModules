@@ -10,14 +10,17 @@ import {
   getMongoAdapter,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { getZModulesMongoAdapter } from "./mongo";
 
 export const runCampaign = async ({
   config,
   deployer,
+  dbVersion,
   missions,
 } : {
   config : DCConfig;
   deployer ?: HardhatDeployer<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase>;
+  dbVersion ?: string;
   missions : Array<TDeployMissionCtor<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase, IZModulesContracts>>;
 }) => {
 
@@ -31,9 +34,7 @@ export const runCampaign = async ({
 
   const logger = await getLogger();
 
-  const dbAdapter = await getMongoAdapter({
-    logger,
-  });
+  const dbAdapter = await getZModulesMongoAdapter();
 
   const campaign = new DeployCampaign<
   HardhatRuntimeEnvironment,
@@ -49,6 +50,8 @@ export const runCampaign = async ({
   });
 
   await campaign.execute();
+
+  await dbAdapter.finalize(dbVersion);
 
   return campaign;
 };

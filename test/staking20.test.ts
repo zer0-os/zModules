@@ -24,9 +24,10 @@ import {
   INIT_BALANCE,
   DEFAULT_STAKED_AMOUNT,
 } from "./helpers/staking";
-import { DCConfig, IERC20DeployArgs, runCampaign } from "../src/deploy";
+import { DCConfig, IERC20DeployArgs, contractNames, runCampaign } from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { ZModulesStakingERC20DM } from "../src/deploy/missions/stakingERC20.mission";
+import { assert } from "console";
 
 describe("StakingERC20", () => {
   let deployer : SignerWithAddress;
@@ -740,6 +741,42 @@ describe("StakingERC20", () => {
         contract.connect(owner).withdrawLeftoverRewards()
       ).to.emit(contract, WITHDRAW_EVENT)
         .withArgs(owner.address, amount);
+    });
+  });
+
+  describe("Deploy", () => {
+    it("Deployed contract should exist in the DB", async () => {
+      const contractFromDB = await dbAdapter.getContract(contractNames.stakingERC20.contract);
+
+      const dbV = await dbAdapter.versioner.getDeployedVersion();
+      const dbAddress = await contract.getAddress();
+
+      expect({
+        addrs: contractFromDB?.address,
+        label: contractFromDB?.name,
+        version: contractFromDB?.version,
+      }).to.deep.equal({
+        addrs: dbAddress,
+        label: contractNames.stakingERC20.contract,
+        version: dbV.dbVersion,
+      });
+    });
+
+    it("Should deploy with correct args", async () => {
+
+      const expectedArgs = {
+        rewardsToken: await contract.rewardsToken(),
+        stakingToken: await contract.stakingToken(),
+        rewardsPerPeriod: await contract.rewardsPerPeriod(),
+        periodLength: await contract.periodLength(),
+        timeLockPeriod: await contract.timeLockPeriod(),
+      };
+
+      expect(expectedArgs.rewardsToken).to.eq(config.rewardsToken);
+      expect(expectedArgs.stakingToken).to.eq(config.stakingToken);
+      expect(expectedArgs.rewardsPerPeriod).to.eq(config.rewardsPerPeriod);
+      expect(expectedArgs.periodLength).to.eq(config.periodLength);
+      expect(expectedArgs.timeLockPeriod).to.eq(config.timeLockPeriod);
     });
   });
 });
