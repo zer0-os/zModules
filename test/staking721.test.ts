@@ -29,6 +29,7 @@ import {
 import { DCConfig, IERC20DeployArgs, IERC721DeployArgs, contractNames, runCampaign } from "../src/deploy";
 import { ZModulesStakingERC721DM } from "../src/deploy/missions";
 import { MongoDBAdapter } from "@zero-tech/zdc";
+import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
@@ -1629,28 +1630,52 @@ describe("StakingERC721", () => {
     });
   });
 
-  // describe("Deploy", () => {
-  //   it("Deployed contract should exist in the DB", async () => {
-  //     const contractFromDB = await dbAdapter.getContract(contractNames.stakingERC20.contract);
+  describe("Deploy", () => {
 
-  //     await expect({
-  //       addrs: contractFromDB?.address,
-  //       label: contractFromDB?.name,
-  //       version: contractFromDB?.version,
-  //     }).to.eq({
-  //       addrs: await contract.getAddress(),
-  //       label: contractNames.stakingERC20.contract,
-  //       version: await dbAdapter.versioner.getDeployedVersion(),
-  //     });
-  //   });
+    it("Deployed contract should exist in the DB", async () => {
+      const nameOfContract = contractNames.stakingERC721.contract;
+      const dbAddress = await stakingERC721.getAddress();
+      const contractFromDB = await dbAdapter.getContract(nameOfContract);
 
-  //   it("Should deploy with correct args", async () => {
+      expect({
+        addrs: contractFromDB?.address,
+        label: contractFromDB?.name,
+      }).to.deep.equal({
+        addrs: dbAddress,
+        label: nameOfContract,
+      });
+    });
 
-  //     expect(contract.rewardsToken()).to.eq(config.rewardsToken);
-  //     expect(contract.stakingToken()).to.eq(config.stakingToken);
-  //     expect(contract.rewardsPerPeriod).to.eq(config.rewardsPerPeriod);
-  //     expect(contract.periodLength).to.eq(config.periodLength);
-  //     expect(contract.timeLockPeriod).to.eq(config.timeLockPeriod);
-  //   });
-  // });
+    it("Should be deployed with correct args", async () => {
+
+      const expectedArgs = {
+        rewardsToken: await stakingERC721.rewardsToken(),
+        stakingToken: await stakingERC721.stakingToken(),
+        rewardsPerPeriod: await stakingERC721.rewardsPerPeriod(),
+        periodLength: await stakingERC721.periodLength(),
+        timeLockPeriod: await stakingERC721.timeLockPeriod(),
+      };
+
+      expect(expectedArgs.rewardsToken).to.eq(config.rewardsToken);
+      expect(expectedArgs.stakingToken).to.eq(config.stakingToken);
+      expect(expectedArgs.rewardsPerPeriod).to.eq(config.rewardsPerPeriod);
+      expect(expectedArgs.periodLength).to.eq(config.periodLength);
+      expect(expectedArgs.timeLockPeriod).to.eq(config.timeLockPeriod);
+    });
+
+    it("Should have correct db and contract versions", async () => {
+
+      const tag = await acquireLatestGitTag();
+      const contractFromDB = await dbAdapter.getContract(contractNames.stakingERC721.contract);
+      const dbDeployedV = await dbAdapter.versioner.getDeployedVersion();
+
+      expect({
+        dbVersion: contractFromDB?.version,
+        contractVersion: dbDeployedV?.contractsVersion,
+      }).to.deep.equal({
+        dbVersion: dbDeployedV.dbVersion,
+        contractVersion: tag,
+      });
+    });
+  });
 });

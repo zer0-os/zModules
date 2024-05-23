@@ -28,6 +28,7 @@ import { DCConfig, IERC20DeployArgs, contractNames, runCampaign } from "../src/d
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { ZModulesStakingERC20DM } from "../src/deploy/missions/stakingERC20.mission";
 import { assert } from "console";
+import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 
 describe("StakingERC20", () => {
   let deployer : SignerWithAddress;
@@ -745,24 +746,22 @@ describe("StakingERC20", () => {
   });
 
   describe("Deploy", () => {
-    it("Deployed contract should exist in the DB", async () => {
-      const contractFromDB = await dbAdapter.getContract(contractNames.stakingERC20.contract);
 
-      const dbV = await dbAdapter.versioner.getDeployedVersion();
+    it("Deployed contract should exist in the DB", async () => {
+      const nameOfContract = contractNames.stakingERC20.contract;
       const dbAddress = await contract.getAddress();
+      const contractFromDB = await dbAdapter.getContract(nameOfContract);
 
       expect({
         addrs: contractFromDB?.address,
         label: contractFromDB?.name,
-        version: contractFromDB?.version,
       }).to.deep.equal({
         addrs: dbAddress,
-        label: contractNames.stakingERC20.contract,
-        version: dbV.dbVersion,
+        label: nameOfContract,
       });
     });
 
-    it("Should deploy with correct args", async () => {
+    it("Should be deployed with correct args", async () => {
 
       const expectedArgs = {
         rewardsToken: await contract.rewardsToken(),
@@ -778,5 +777,24 @@ describe("StakingERC20", () => {
       expect(expectedArgs.periodLength).to.eq(config.periodLength);
       expect(expectedArgs.timeLockPeriod).to.eq(config.timeLockPeriod);
     });
+
+    it("Should have correct db and contract versions", async () => {
+
+      const tag = await acquireLatestGitTag();
+      const contractFromDB = await dbAdapter.getContract(contractNames.stakingERC20.contract);
+      const dbDeployedV = await dbAdapter.versioner.getDeployedVersion();
+
+      expect({
+        dbVersion: contractFromDB?.version,
+        contractVersion: dbDeployedV?.contractsVersion,
+      }).to.deep.equal({
+        dbVersion: dbDeployedV.dbVersion,
+        contractVersion: tag,
+      });
+    });
+
+    // TODO myself: add missions tests.
+    // Change name of contract to name from mission
+    // Change variable "Contract"
   });
 });
