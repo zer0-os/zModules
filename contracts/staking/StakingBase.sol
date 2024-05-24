@@ -6,6 +6,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingBase } from "./IStakingBase.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 
 /**
@@ -13,7 +14,7 @@ import { IStakingBase } from "./IStakingBase.sol";
  * @notice A set of common elements that are used in any Staking contract
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
-contract StakingBase is Ownable, IStakingBase {
+contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     using SafeERC20 for IERC20;
 
     /**

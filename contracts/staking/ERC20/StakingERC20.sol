@@ -36,7 +36,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @notice Stake an amount of the ERC20 staking token specified
      * @param amount The amount to stake
      */
-    function stake(uint256 amount) external override {
+    function stake(uint256 amount) external override nonReentrant {
         Staker storage staker = stakers[msg.sender];
 
         if (amount == 0) {
@@ -62,7 +62,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to withdraw
      * @param exit If true, the user will unstake without claiming rewards (optional)
      */
-    function unstake(uint256 amount, bool exit) external override {
+    function unstake(uint256 amount, bool exit) external override nonReentrant {
         Staker storage staker = stakers[msg.sender];
 
         if (!exit) _onlyUnlocked(staker.unlockTimestamp);

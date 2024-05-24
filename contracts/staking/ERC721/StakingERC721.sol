@@ -70,7 +70,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function stake(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris
-    ) external override {
+    ) external override nonReentrant {
         Staker storage staker = stakers[msg.sender];
 
         _checkRewards(staker);
@@ -93,7 +93,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @param tokenIds Array of tokenIds to be unstaked by the caller
      * @param exit Flag for if the user would like to exit without rewards
      */
-    function unstake(uint256[] memory tokenIds, bool exit) external override {
+    function unstake(uint256[] memory tokenIds, bool exit) external override nonReentrant {
         Staker storage staker = stakers[msg.sender];
 
         if (!exit) _onlyUnlocked(staker.unlockTimestamp);
