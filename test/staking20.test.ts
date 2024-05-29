@@ -801,8 +801,6 @@ describe("StakingERC20", () => {
         contract.connect(stakerF).stake(DEFAULT_STAKED_AMOUNT)
       ).to.emit(contract, STAKED_EVENT)
         .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakingToken);
-
-      stakedAtF = BigInt(await time.latest());
     });
 
     it("Emits a Claimed event when a user claims rewards", async () => {
