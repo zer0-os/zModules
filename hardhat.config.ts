@@ -12,8 +12,18 @@ import "solidity-coverage";
 import "solidity-docgen";
 import "hardhat-gas-reporter";
 
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig, subtask } from "hardhat/config";
+import { mochaGlobalSetup, mochaGlobalTeardown } from "./test/mongo-global";
+import { TASK_TEST_RUN_MOCHA_TESTS } from "hardhat/builtin-tasks/task-names";
 
+subtask(TASK_TEST_RUN_MOCHA_TESTS)
+  .setAction(async (args, hre, runSuper) => {
+    await mochaGlobalSetup();
+    const testFailures = await runSuper(args);
+    await mochaGlobalTeardown();
+
+    return testFailures;
+  });
 
 const config : HardhatUserConfig = {
   solidity: {
