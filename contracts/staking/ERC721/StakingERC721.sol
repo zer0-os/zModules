@@ -108,19 +108,14 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
 
         if (!exit) {
-            _baseClaim(staker);
+            _baseClaim(staker, tokenIds.length);
         } else {
             // Snapshot their pending rewards
             staker.owedRewards = _getPendingRewards(staker);
         }
 
-        // if `numStaked < tokenIds.length` it will have already failed above
-        // so we don't need to check that here
-        staker.amountStaked -= tokenIds.length;
-
-        if (staker.amountStaked == 0) {
-            delete stakers[msg.sender];
-        } else {
+        if (staker.amountStaked != 0) {
+            staker.amountStaked -= tokenIds.length;
             staker.lastUpdatedTimestamp = block.timestamp;
         }
     }

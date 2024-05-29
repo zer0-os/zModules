@@ -77,7 +77,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         Staker storage staker = stakers[msg.sender];
 
         _onlyUnlocked(staker.unlockTimestamp);
-        _baseClaim(staker);
+        _baseClaim(staker, 0);
     }
 
     /**
@@ -141,7 +141,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         }
     }
 
-    function _baseClaim(Staker storage staker) internal {
+    function _baseClaim(Staker storage staker, uint256 subtractAmountStaked) internal {
         uint256 rewards = _getPendingRewards(staker);
 
         staker.lastUpdatedTimestamp = block.timestamp;
@@ -153,6 +153,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         }
 
         rewardsToken.safeTransfer(msg.sender, rewards);
+
+        if (staker.amountStaked - subtractAmountStaked == 0 && staker.owedRewards == 0) {
+            delete stakers[msg.sender];
+        }
 
         emit Claimed(msg.sender, rewards, address(rewardsToken));
     }

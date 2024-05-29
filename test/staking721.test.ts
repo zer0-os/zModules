@@ -34,6 +34,7 @@ describe("StakingERC721", () => {
   let stakerA : SignerWithAddress;
   let stakerB : SignerWithAddress;
   let stakerC : SignerWithAddress;
+  let edgeStaker : SignerWithAddress;
   let notStaker : SignerWithAddress;
 
   let stakingERC721 : StakingERC721;
@@ -64,6 +65,8 @@ describe("StakingERC721", () => {
   const tokenIdDelayed = 7; // Minted and used in stake at a later point in time
   const nonStakedTokenId = 8; // Minted but never used in `stake`
   const unmintedTokenId = 9; // Never minted
+  const edgeTokenId = 99999; // Used for edge cases
+  const edgeTokenId2 = 99991; // Used for edge cases
 
   const baseUri = "0://staked-wheels";
   const emptyUri = "";
@@ -75,6 +78,7 @@ describe("StakingERC721", () => {
       stakerB,
       stakerC,
       notStaker,
+      edgeStaker,
     ] = await hre.ethers.getSigners();
 
     const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
@@ -108,10 +112,14 @@ describe("StakingERC721", () => {
     await stakingToken.connect(owner).mint(stakerA.address, tokenIdB);
     await stakingToken.connect(owner).mint(stakerA.address, tokenIdC);
     await stakingToken.connect(owner).mint(owner.address, nonStakedTokenId);
+    await stakingToken.connect(owner).mint(edgeStaker.address, edgeTokenId);
+    await stakingToken.connect(owner).mint(edgeStaker.address, edgeTokenId2);
 
     await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
     await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
     await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
+    await stakingToken.connect(edgeStaker).approve(await stakingERC721.getAddress(), edgeTokenId);
+    await stakingToken.connect(edgeStaker).approve(await stakingERC721.getAddress(), edgeTokenId2);
   });
 
   it("Should NOT deploy with zero values passed", async () => {
@@ -1436,11 +1444,12 @@ describe("StakingERC721", () => {
       expect(rewardsBalanceAfterB).to.eq(rewardsBalanceBeforeB);
 
       stakerBData = await localStakingERC721.stakers(stakerB.address);
+      pendingRewardsB = await localStakingERC721.connect(stakerB).getPendingRewards();
 
       expect(stakerBData.amountStaked).to.eq(0n);
-      expect(stakerBData.lastUpdatedTimestamp).to.eq(0n);
-      expect(stakerBData.owedRewards).to.eq(0n);
-      expect(stakerBData.unlockTimestamp).to.eq(0n);
+      expect(stakerBData.lastUpdatedTimestamp).to.eq(unstakedAtB);
+      expect(stakerBData.owedRewards).to.eq(pendingRewardsB);
+      expect(stakerBData.unlockTimestamp).to.eq(origStakeAtB + localConfig.timeLockPeriod);
 
       rewardsBalanceBeforeC = await newMockERC20.balanceOf(stakerC.address);
       pendingRewardsC = await localStakingERC721.connect(stakerC).getPendingRewards();
@@ -1505,6 +1514,17 @@ describe("StakingERC721", () => {
       rewardsBalanceAfterA = await newMockERC20.balanceOf(stakerA.address);
 
       expect(rewardsBalanceAfterA).to.eq(rewardsBalanceBeforeA);
+
+      pendingRewardsA = await localStakingERC721.connect(stakerA).getPendingRewards();
+
+      // fund the contract
+      await newMockERC20.connect(owner).transfer(
+        await localStakingERC721.getAddress(),
+        pendingRewardsA
+      );
+
+      // claim all
+      await localStakingERC721.connect(stakerA).claim();
 
       stakerAData = await localStakingERC721.stakers(stakerA.address);
 
@@ -1607,6 +1627,69 @@ describe("StakingERC721", () => {
       await stakingERC721.connect(notStaker).renounceOwnership();
 
       expect(await stakingERC721.owner()).to.eq(hre.ethers.ZeroAddress);
+    });
+  });
+
+  describe("Edge Cases", () => {
+    // eslint-disable-next-line max-len
+    it("#exit from staking should yield the same rewards for partial and full exit within `unlockTimestamp` rules", async () => {
+      await rewardToken.connect(owner).transfer(stakingERC721, 10000000n);
+
+      await stakingERC721.connect(edgeStaker).stake(
+        [edgeTokenId, edgeTokenId2],
+        [emptyUri, emptyUri]
+      );
+      const stakeTime = BigInt(await time.latest());
+
+      // partial exit before timelock passed
+      await stakingERC721.connect(edgeStaker).unstake([edgeTokenId], true);
+
+      const timeToRewards = config.timeLockPeriod + config.periodLength * 2n;
+      await time.increase(timeToRewards);
+
+      // claim rewards
+      await stakingERC721.connect(edgeStaker).claim();
+      const firstClaimTime = BigInt(await time.latest());
+
+      const rewardsForPartialExit = calcTotalRewards(
+        [firstClaimTime - stakeTime],
+        [1n],
+        config.rewardsPerPeriod,
+        config.periodLength
+      );
+
+      const balAfterFirstClaim = await rewardToken.balanceOf(edgeStaker.address);
+
+      expect(balAfterFirstClaim).to.eq(rewardsForPartialExit);
+      const {
+        amountStaked: amountStakedFirstClaim,
+        owedRewards: owedRewardsFirstClaim,
+      } = await stakingERC721.stakers(edgeStaker.address);
+      expect(amountStakedFirstClaim).to.eq(1);
+      expect(owedRewardsFirstClaim).to.eq(0);
+
+      await time.increase(timeToRewards);
+
+      // fully exit
+      await stakingERC721.connect(edgeStaker).unstake([edgeTokenId2], true);
+
+      const {
+        owedRewards: owedRewardsAfterExit,
+        amountStaked: stakedAfterExit,
+      } = await stakingERC721.stakers(edgeStaker.address);
+      expect(owedRewardsAfterExit).to.eq(rewardsForPartialExit);
+      expect(stakedAfterExit).to.eq(0n);
+
+      // even though he exited, rewards have been generated, so he should be able to claim them
+      // even though he doesn't have stake in anymore
+      await stakingERC721.connect(edgeStaker).claim();
+
+      // make sure staker struct got deleted
+      const stakerData = await stakingERC721.stakers(edgeStaker.address);
+      expect(stakerData.amountStaked).to.eq(0);
+      expect(stakerData.owedRewards).to.eq(0);
+      expect(stakerData.unlockTimestamp).to.eq(0);
+      expect(stakerData.lastUpdatedTimestamp).to.eq(0);
     });
   });
 });

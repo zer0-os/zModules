@@ -65,22 +65,17 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     function unstake(uint256 amount, bool exit) external override nonReentrant {
         Staker storage staker = stakers[msg.sender];
 
-        if (!exit) _onlyUnlocked(staker.unlockTimestamp);
-
-        if (amount > staker.amountStaked) {
-            revert UnstakeMoreThanStake();
-        }
+        if (amount > staker.amountStaked) revert UnstakeMoreThanStake();
 
         if (!exit) {
-            _baseClaim(staker);
+            _onlyUnlocked(staker.unlockTimestamp);
+            _baseClaim(staker, amount);
         } else {
             // Snapshot their pending rewards
             staker.owedRewards = _getPendingRewards(staker);
         }
 
-        if (staker.amountStaked - amount == 0) {
-            delete stakers[msg.sender];
-        } else {
+        if (staker.amountStaked != 0) {
             staker.amountStaked -= amount;
             staker.lastUpdatedTimestamp = block.timestamp;
         }
