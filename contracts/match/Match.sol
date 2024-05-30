@@ -21,9 +21,6 @@ contract Match is Escrow, IMatch {
      */
     address internal feeVault;
 
-    // TODO esc: should the escrow be here as an external address saved vs money being store on this contract directly?
-    //  this Escrow could be used in other contracts as well for other games.
-
     constructor(
         address _token,
         address _feeVault,

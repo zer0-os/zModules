@@ -86,7 +86,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
     function withdrawLeftoverRewards() external override onlyOwner {
-        uint256 balance = rewardsToken.balanceOf(address(this));
+        uint256 balance = _getContractRewardsBalance();
         if (balance == 0) revert NoRewardsLeftInContract();
 
         rewardsToken.safeTransfer(owner(), balance);
@@ -147,10 +147,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         staker.lastUpdatedTimestamp = block.timestamp;
         staker.owedRewards = 0;
 
-        // Disallow rewards when balance is 0
-        if (_getContractRewardsBalance() == 0) {
-            revert NoRewardsLeftInContract();
-        }
+        _checkRewardsAvailable(rewards);
 
         rewardsToken.safeTransfer(msg.sender, rewards);
 
@@ -174,8 +171,16 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                     periodLength));
     }
 
-    function _getContractRewardsBalance() internal view returns (uint256) {
+    function _getContractRewardsBalance() internal view virtual returns (uint256) {
         return rewardsToken.balanceOf(address(this));
+    }
+
+    function _checkRewardsAvailable(uint256 rewardAmount) internal view {
+        uint256 rewardBalance = _getContractRewardsBalance();
+
+        if (rewardBalance < rewardAmount || rewardBalance == 0) {
+            revert NoRewardsLeftInContract();
+        }
     }
 
     function _onlyUnlocked(uint256 unlockTimestamp) internal view {

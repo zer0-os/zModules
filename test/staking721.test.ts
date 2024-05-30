@@ -762,11 +762,19 @@ describe("StakingERC721", () => {
         owner.address
       ) as StakingERC721;
 
+      // mint some rewards to the contract because every tx here will progress time by 1 second
+      // which will equate to a reward of 2 tokens for the tx
+      await [1231, 3234].reduce(
+        async (acc, tokenId) => {
+          await acc;
+          await stakingToken.connect(owner).mint(await localStakingERC721.getAddress(), tokenId);
+        },
+        Promise.resolve()
+      );
+
       await stakingToken.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
 
       await localStakingERC721.connect(stakerA).stake([tokenIdA], [emptyUri]);
-
-      await time.increase(localConfig.timeLockPeriod);
 
       try {
         await localStakingERC721.connect(stakerA).claim();
@@ -775,17 +783,6 @@ describe("StakingERC721", () => {
       }
 
       try {
-        // In this flow balance is checked before trying to transfer, and so this will
-        // fail first
-        await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
-      } catch (e : unknown) {
-        expect((e as Error).message).to.include(NO_REWARDS_ERR);
-      }
-
-      try {
-        // After providing balance to the contract, we see it now fails correctly as it can't recognize
-        // the function selector being called in unstake
-        await stakingToken.connect(owner).mint(await localStakingERC721.getAddress(), 1010101);
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
       } catch (e : unknown) {
         expect((e as Error).message).to.include(FAILED_INNER_CALL_ERR);
@@ -1553,6 +1550,13 @@ describe("StakingERC721", () => {
       expect(await stakingERC721.tokenURI(tokenIdA)).to.eq(newBaseUri + tokenIdA);
     });
 
+    it("#setBaseURI() should revert if called by non-owner", async () => {
+      await expect(
+        stakingERC721.connect(notStaker).setBaseURI("https://newbaseuri.com/")
+      ).to.be.revertedWithCustomError(stakingERC721, OWNABLE_UNAUTHORIZED_ERR)
+        .withArgs(notStaker.address);
+    });
+
     it("#setTokenURI() should set the token URI and return it properly when baseURI is empty", async () => {
       const newTokenUri = "https://newtokenuri.com/";
       await stakingERC721.connect(owner).setBaseURI("");
@@ -1563,6 +1567,13 @@ describe("StakingERC721", () => {
       expect(uriFromContract).to.eq(newTokenUri);
 
       await stakingERC721.connect(stakerA).unstake([tokenIdA], true);
+    });
+
+    it("#setTokenURI() should revert if called by non-owner", async () => {
+      await expect(
+        stakingERC721.connect(notStaker).setTokenURI(tokenIdA, "https://newtokenuri.com/")
+      ).to.be.revertedWithCustomError(stakingERC721, OWNABLE_UNAUTHORIZED_ERR)
+        .withArgs(notStaker.address);
     });
 
     // eslint-disable-next-line max-len
