@@ -161,11 +161,14 @@ contract StakingBase is Ownable, IStakingBase {
     ) internal view returns (uint256) {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
+
+         uint256 flooredLastUpdateTimestamp = periodLength * (staker.lastUpdatedTimestamp / periodLength);
+
         return
             staker.owedRewards +
             (rewardsPerPeriod *
                 staker.amountStaked *
-                ((block.timestamp - staker.lastUpdatedTimestamp) /
+                ((block.timestamp - flooredLastUpdateTimestamp) /
                     periodLength));
     }
 

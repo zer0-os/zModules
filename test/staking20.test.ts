@@ -27,7 +27,7 @@ import {
   BaseConfig,
 } from "./helpers/staking";
 
-describe("StakingERC20", () => {
+describe.only("StakingERC20", () => {
   let owner : SignerWithAddress;
   let stakerA : SignerWithAddress;
   let stakerB : SignerWithAddress;
