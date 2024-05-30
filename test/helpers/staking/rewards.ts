@@ -20,4 +20,7 @@ export const calcRewardsAmount = (
   stakeAmount : bigint,
   rewardsPerPeriod : bigint,
   periodLength : bigint
-) : bigint => rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+) : bigint => {
+  // const flooredTimestamp = 
+  return rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+}
