@@ -161,9 +161,19 @@ describe.only("StakingERC20", () => {
     });
 
     it("Can stake a second time as the same user successfully", async () => {
-      await time.increase(config.periodLength * 6n);
+      // period length is 17
+      // rewards per period is 6
+      // any value * period Length will be an even multiple of period length
+      // so we cant properly evaluate this change unless we're in the middle of two periods
+      // 17 * 6 = 102
+      // 17 * 5 = 85
+      // so time inrease has to be 85 < x < 102
+      await time.increase(101);
+
+      const user = await contract.stakers(stakerA.address);
 
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
+      const oldpendingRewards = await contract.connect(stakerA).oldPendingRewards();
 
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceBeforeA = await rewardsToken.balanceOf(stakerA.address);
@@ -172,8 +182,19 @@ describe.only("StakingERC20", () => {
       stakedAtA = BigInt(await time.latest());
       amountStakedA += DEFAULT_STAKED_AMOUNT;
 
+      const userAfter = await contract.stakers(stakerA.address);
+
+      const floored = config.periodLength * (origStakedAtA / config.periodLength);
+
       const expectedRewards = calcTotalRewards(
         [stakedAtA - origStakedAtA],
+        [DEFAULT_STAKED_AMOUNT],
+        config.rewardsPerPeriod,
+        config.periodLength
+      );
+
+      const updatedExpectedRewards = calcTotalRewards(
+        [stakedAtA - floored],
         [DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
         config.periodLength

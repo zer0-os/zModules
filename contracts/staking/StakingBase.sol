@@ -156,6 +156,18 @@ contract StakingBase is Ownable, IStakingBase {
         emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
+    // temp
+    function oldPendingRewards() external view returns (uint256) {
+        Staker memory staker = stakers[msg.sender];
+
+        return
+            staker.owedRewards +
+            (rewardsPerPeriod *
+                staker.amountStaked *
+                ((block.timestamp - staker.lastUpdatedTimestamp) /
+                    periodLength));
+    }
+
     function _getPendingRewards(
         Staker memory staker
     ) internal view returns (uint256) {
