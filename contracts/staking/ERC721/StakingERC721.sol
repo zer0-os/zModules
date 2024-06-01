@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -13,6 +13,7 @@ import { StakingBase } from "../StakingBase.sol";
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
  * non-transferable ERC721 token in return as representation of the deposit.
+ * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
@@ -24,6 +25,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Total supply of all tokens
      */
     uint256 internal _totalSupply;
+
     /**
      * @dev Revert if a call is not from the SNFT owner
      */
@@ -42,7 +44,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
-        uint256 _timeLockPeriod
+        uint256 _timeLockPeriod,
+        address contractOwner
     )
         ERC721(name, symbol)
         StakingBase(
@@ -50,7 +53,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             _rewardsToken,
             _rewardsPerPeriod,
             _periodLength,
-            _timeLockPeriod
+            _timeLockPeriod,
+            contractOwner
         )
     {
         if (bytes(baseUri).length > 0) {
@@ -85,7 +89,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     }
 
     /**
-     * @notice Unstake one or more ERC721 tokens
+     * @notice Unstake one or more of what the user has staked
      * @param tokenIds Array of tokenIds to be unstaked by the caller
      * @param exit Flag for if the user would like to exit without rewards
      */
@@ -188,6 +192,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
 
     function _unstake(uint256 tokenId) internal onlySNFTOwner(tokenId) {
         _burn(tokenId);
+        --_totalSupply;
 
         // Return NFT to staker
         IERC721(stakingToken).safeTransferFrom(
@@ -219,11 +224,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function _burn(uint256 tokenId) internal override {
-        super._burn(tokenId);
-        --_totalSupply;
-    }
-
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
@@ -231,14 +231,17 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
      */
-    function _beforeTokenTransfer(
-        address from,
+    function _update(
         address to,
-        uint256,
-        uint256
-    ) internal pure override {
+        uint256 tokenId,
+        address auth
+    ) internal override returns (address) {
+        address from = _ownerOf(tokenId);
+
         if (from != address(0) && to != address(0)) {
             revert NonTransferrableToken();
         }
+
+        return super._update(to, tokenId, auth);
     }
 }

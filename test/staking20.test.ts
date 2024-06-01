@@ -7,22 +7,24 @@ import {
   StakingERC20,
 } from "../typechain";
 import {
+  NO_REWARDS_ERR,
+  TIME_LOCK_NOT_PASSED_ERR,
+  INSUFFICIENT_ALLOWANCE_ERR,
+  INSUFFICIENT_BALANCE_ERR,
+  ZERO_STAKE_ERR,
+  UNEQUAL_UNSTAKE_ERR,
+  OWNABLE_UNAUTHORIZED_ERR,
+} from "./helpers/errors";
+import {
+  WITHDRAW_EVENT,
+  INIT_BALANCE,
+  DEFAULT_STAKED_AMOUNT,
   createDefaultConfigs,
   calcTotalRewards,
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
-  NO_REWARDS_ERR,
-  TIME_LOCK_NOT_PASSED_ERR,
   BaseConfig,
-  INSUFFICIENT_ALLOWANCE_ERR,
-  INSUFFICIENT_BALANCE_ERR,
-  ZERO_STAKE_ERR,
-  UNEQUAL_UNSTAKE_ERR,
-  ONLY_OWNER_ERR,
-  WITHDRAW_EVENT,
-  INIT_BALANCE,
-  DEFAULT_STAKED_AMOUNT,
 } from "./helpers/staking";
 import { DCConfig, IERC20DeployArgs, contractNames, runCampaign } from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
@@ -254,13 +256,17 @@ describe("StakingERC20", () => {
       // First, it will fail on allowance
       await expect(
         stakingContractERC20.connect(notStaker).stake(amount)
-      ).to.be.revertedWith(INSUFFICIENT_ALLOWANCE_ERR);
+      ).to.be.revertedWithCustomError(rewardsToken, INSUFFICIENT_ALLOWANCE_ERR)
+        .withArgs(stakingContractERC20.target, 0n, amount);
 
       // Then after we allow funds, it will fail on balance
       await stakeToken.connect(notStaker).approve(await stakingContractERC20.getAddress(), amount);
+
+      const balance = await stakeToken.balanceOf(notStaker.address);
       await expect(
         stakingContractERC20.connect(notStaker).stake(amount)
-      ).to.be.revertedWith(INSUFFICIENT_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(stakeToken, INSUFFICIENT_BALANCE_ERR)
+        .withArgs(notStaker.address, balance, amount);
     });
 
     it("Fails when the staker tries to stake 0", async () => {
@@ -651,7 +657,8 @@ describe("StakingERC20", () => {
     it("Fails when the caller is not the admin", async () => {
       await expect(
         stakingContractERC20.connect(notStaker).withdrawLeftoverRewards()
-      ).to.be.revertedWith(ONLY_OWNER_ERR);
+      ).to.be.revertedWithCustomError(stakingContractERC20, OWNABLE_UNAUTHORIZED_ERR)
+        .withArgs(notStaker.address);
     });
 
     it("Fails when the contract has no rewards left to withdraw", async () => {
