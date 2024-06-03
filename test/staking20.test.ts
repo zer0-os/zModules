@@ -91,7 +91,7 @@ describe("StakingERC20", () => {
 
     rewardsToken = await mockERC20Factory.connect(owner).deploy("WilderWorld", "WW");
 
-    config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
+    config = await createDefaultConfigs(rewardsToken, owner, undefined, stakeToken);
 
     const argsForDeployERC20 : IERC20DeployArgs = config;
     const argsForDeployERC721 = {
@@ -103,6 +103,7 @@ describe("StakingERC20", () => {
       rewardsPerPeriod : 0n,
       periodLength : 0n,
       timeLockPeriod : 0,
+      contractOwner: owner,
     };
 
     const campaignConfig : DCConfig = {

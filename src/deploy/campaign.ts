@@ -7,7 +7,6 @@ import {
   IProviderBase,
   TDeployMissionCtor,
   getLogger,
-  getMongoAdapter,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getZModulesMongoAdapter } from "./mongo";

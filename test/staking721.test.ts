@@ -16,29 +16,12 @@ import {
   BaseConfig,
   WITHDRAW_EVENT,
 } from "./helpers/staking";
-import {
-  FAILED_INNER_CALL_ERR,
-  FUNCTION_SELECTOR_ERR,
-  ZERO_INIT_ERR,
-  NON_TRANSFERRABLE_ERR,
-  INCORRECT_OWNER_TRANSFER_ERR,
-  INVALID_OWNER_ERR,
-  NONEXISTENT_TOKEN_ERR,
-  NO_REWARDS_ERR,
-  ONLY_NFT_OWNER_ERR,
-  TIME_LOCK_NOT_PASSED_ERR,
-  BaseConfig,
-  FUNCTION_SELECTOR_ERR,
-  ZERO_INIT_ERR, NOT_OWNER_ERR,
-  NON_TRANSFERRABLE_ERR,
-  WITHDRAW_EVENT,
-  LOW_LEVEL_CALL_ERR,
-} from "./helpers/staking";
+
 import { DCConfig, IERC20DeployArgs, IERC721DeployArgs, contractNames, runCampaign } from "../src/deploy";
 import { ZModulesStakingERC721DM } from "../src/deploy/missions";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
-import { INSUFFICIENT_APPROVAL_721_ERR, OWNABLE_UNAUTHORIZED_ERR } from "./helpers/errors";
+import { FAILED_INNER_CALL_ERR, FUNCTION_SELECTOR_ERR, INCORRECT_OWNER_TRANSFER_ERR, INSUFFICIENT_APPROVAL_721_ERR, INVALID_OWNER_ERR, NONEXISTENT_TOKEN_ERR, NON_TRANSFERRABLE_ERR, NO_REWARDS_ERR, OWNABLE_UNAUTHORIZED_ERR, TIME_LOCK_NOT_PASSED_ERR, ZERO_INIT_ERR } from "./helpers/errors";
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
@@ -100,7 +83,7 @@ describe("StakingERC721", () => {
     rewardToken = await mockERC20Factory.deploy("MEOW", "MEOW");
     stakingToken = await mockERC721Factory.deploy("WilderWheels", "WW", baseUri);
 
-    config = await createDefaultConfigs(rewardToken, stakingToken);
+    config = await createDefaultConfigs(rewardToken, owner, stakingToken);
 
     const argsForDeployERC721 : IERC721DeployArgs = {
       stakingToken : config.stakingToken,
@@ -111,6 +94,7 @@ describe("StakingERC721", () => {
       rewardsPerPeriod : config.rewardsPerPeriod,
       periodLength : config.periodLength,
       timeLockPeriod : config.timeLockPeriod,
+      contractOwner: owner,
     };
 
     const argsForDeployERC20  : IERC20DeployArgs = config;

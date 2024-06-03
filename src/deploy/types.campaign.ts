@@ -15,6 +15,7 @@ export interface IStakingDeployArgs {
   rewardsPerPeriod : bigint;
   periodLength : bigint;
   timeLockPeriod : bigint;
+  contractOwner : SignerWithAddress;
 }
 
 export interface IERC20DeployArgs extends IStakingDeployArgs {

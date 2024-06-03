@@ -33,6 +33,7 @@ IZModulesContracts
         rewardsPerPeriod,
         periodLength,
         timeLockPeriod,
+        contractOwner,
       },
     } = this.campaign.config;
 
@@ -45,26 +46,7 @@ IZModulesContracts
       rewardsPerPeriod,
       periodLength,
       timeLockPeriod,
+      contractOwner,
     ];
-  }
-
-  async needsPostDeploy () : Promise<boolean> {
-    const { deployAdmin, owner } = this.campaign.config;
-    if (deployAdmin.address !== (owner as SignerWithAddress).address) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  async postDeploy () : Promise<void> {
-    const {
-      stakingERC721,
-      config: {
-        deployAdmin,
-        owner,
-      },
-    } = this.campaign;
-    await stakingERC721.connect(deployAdmin).transferOwnership(owner.address);
   }
 }
