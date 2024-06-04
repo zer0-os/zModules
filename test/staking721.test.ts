@@ -21,7 +21,19 @@ import { DCConfig, IERC20DeployArgs, IERC721DeployArgs, contractNames, runCampai
 import { ZModulesStakingERC721DM } from "../src/deploy/missions";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
-import { FAILED_INNER_CALL_ERR, FUNCTION_SELECTOR_ERR, INCORRECT_OWNER_TRANSFER_ERR, INSUFFICIENT_APPROVAL_721_ERR, INVALID_OWNER_ERR, NONEXISTENT_TOKEN_ERR, NON_TRANSFERRABLE_ERR, NO_REWARDS_ERR, OWNABLE_UNAUTHORIZED_ERR, TIME_LOCK_NOT_PASSED_ERR, ZERO_INIT_ERR } from "./helpers/errors";
+import {
+  FAILED_INNER_CALL_ERR,
+  FUNCTION_SELECTOR_ERR,
+  INCORRECT_OWNER_TRANSFER_ERR,
+  INSUFFICIENT_APPROVAL_721_ERR,
+  INVALID_OWNER_ERR,
+  NONEXISTENT_TOKEN_ERR,
+  NON_TRANSFERRABLE_ERR,
+  NO_REWARDS_ERR,
+  OWNABLE_UNAUTHORIZED_ERR,
+  TIME_LOCK_NOT_PASSED_ERR,
+  ZERO_INIT_ERR,
+} from "./helpers/errors";
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
@@ -1076,7 +1088,7 @@ describe("StakingERC721", () => {
       let pendingRewardsA = await localStakingERC721.connect(stakerA).getPendingRewards();
 
       // Only transfer what we need so we can have an empty rewards contract at the end
-      await newMockERC20.connect(owner).transfer(
+      await newMockERC20.connect(deployer).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsA
       );
@@ -1147,7 +1159,7 @@ describe("StakingERC721", () => {
       let pendingRewardsB = await localStakingERC721.connect(stakerB).getPendingRewards();
       let rewardsBalanceBeforeB = await newMockERC20.balanceOf(stakerB.address);
 
-      await newMockERC20.connect(owner).transfer(
+      await newMockERC20.connect(deployer).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsB
       );
@@ -1231,7 +1243,7 @@ describe("StakingERC721", () => {
       rewardsBalanceBeforeA = await newMockERC20.balanceOf(stakerA.address);
       pendingRewardsA = await localStakingERC721.connect(stakerA).getPendingRewards();
 
-      await newMockERC20.connect(owner).transfer(
+      await newMockERC20.connect(deployer).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsA
       );
@@ -1277,7 +1289,7 @@ describe("StakingERC721", () => {
       let pendingRewardsC = await localStakingERC721.connect(stakerC).getPendingRewards();
       let rewardsBalanceBeforeC = await newMockERC20.balanceOf(stakerC.address);
 
-      await newMockERC20.connect(owner).transfer(
+      await newMockERC20.connect(deployer).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsC
       );
@@ -1310,7 +1322,7 @@ describe("StakingERC721", () => {
       pendingRewardsB = await localStakingERC721.connect(stakerB).getPendingRewards();
       rewardsBalanceBeforeB = await newMockERC20.balanceOf(stakerB.address);
 
-      await newMockERC20.connect(owner).transfer(
+      await newMockERC20.connect(deployer).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsB
       );
@@ -1357,7 +1369,7 @@ describe("StakingERC721", () => {
       rewardsBalanceBeforeC = await newMockERC20.balanceOf(stakerC.address);
       pendingRewardsC = await localStakingERC721.connect(stakerC).getPendingRewards();
 
-      await newMockERC20.connect(owner).transfer(
+      await newMockERC20.connect(deployer).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsC
       );
@@ -1481,7 +1493,7 @@ describe("StakingERC721", () => {
       rewardsBalanceBeforeC = await newMockERC20.balanceOf(stakerC.address);
       pendingRewardsC = await localStakingERC721.connect(stakerC).getPendingRewards();
 
-      await newMockERC20.connect(owner).transfer(
+      await newMockERC20.connect(deployer).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsC
       );
