@@ -139,6 +139,23 @@ contract StakingBase is Ownable, IStakingBase {
             staker.unlockTimestamp = block.timestamp + timeLockPeriod;
         }
     }
+    /**
+     * Staked T=0
+     * Period length 2
+     * Unlock timestamp 5 
+     * Rewards per period 1
+     * 
+     * Claim at T=5, get 2 rewards
+     * SHOULD get 2.5 rewards, if we pro rate
+     * 
+     * 1  2  3  4  5  6  7  8  9  10  11  12  13  14  15
+     * -------------------------------------------------
+     * -------------------------------------------------
+     * -------------------------------------------------
+     * -------------------------------------------------
+     * -------------------------------------------------
+     * 
+     */
 
     function _baseClaim(Staker storage staker) internal {
         uint256 rewards = _getPendingRewards(staker);
@@ -156,20 +173,44 @@ contract StakingBase is Ownable, IStakingBase {
         emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
+    function getPartialPendingRewards() external view returns (uint256) {
+        Staker memory staker = stakers[msg.sender];
+
+        // uint256 flooredLastUpdateTimestamp = (staker.lastUpdatedTimestamp / periodLength) * periodLength;
+
+        uint256 fixedPeriodRewards = (rewardsPerPeriod *
+                staker.amountStaked *
+                ((block.timestamp - staker.lastUpdatedTimestamp) /
+                    periodLength));
+
+        // time passed since last full period * rewards
+        uint256 amountOfPeriodPassed = periodLength - (block.timestamp % periodLength);
+        uint256 partialRewards = (rewardsPerPeriod * staker.amountStaked * (amountOfPeriodPassed));
+        
+
+        // test modulo
+
+
+        // 5 full periods plus 12/17 rewards for 6th period
+
+        return fixedPeriodRewards + partialRewards;
+    }
+
     function _getPendingRewards(
         Staker memory staker
     ) internal view returns (uint256) {
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
 
-         uint256 flooredLastUpdateTimestamp = (staker.lastUpdatedTimestamp / periodLength) * periodLength;
+        // uint256 flooredLastUpdateTimestamp = (staker.lastUpdatedTimestamp / periodLength) * periodLength;
 
-        return
-            staker.owedRewards +
-            (rewardsPerPeriod *
+        uint256 fixedPeriodRewards = (rewardsPerPeriod *
                 staker.amountStaked *
-                ((block.timestamp - flooredLastUpdateTimestamp) /
+                ((block.timestamp - staker.lastUpdatedTimestamp) /
                     periodLength));
+
+        // test with fixed vs. partial
+        return staker.owedRewards + fixedPeriodRewards;
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

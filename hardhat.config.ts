@@ -45,6 +45,9 @@ const config : HardhatUserConfig = {
     enabled: false,
   },
   networks: {
+    hardhat: {
+      
+    }
     // mainnet: {
     // //   url: `${process.env.MAINNET_RPC_URL}`,
     // //   gasPrice: 80000000000,
