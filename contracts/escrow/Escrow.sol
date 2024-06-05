@@ -65,17 +65,4 @@ contract Escrow is OwnableOperable, IEscrow {
 
         emit Withdrawal(msg.sender, amount);
     }
-
-    /**
-     * @notice Refunds tokens from the escrow back to a user by the contract owner or operator.
-     * @param user The address of the user to refund tokens to.
-     * @param amount The amount of tokens to release for the user.
-     */
-    function releaseFunds(address user, uint256 amount) external override onlyAuthorized {
-        if (balances[user] < amount) revert InsufficientFunds(user);
-        balances[user] -= amount;
-        token.safeTransfer(user, amount);
-
-        emit FundsReleased(user, amount);
-    }
 }

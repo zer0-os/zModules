@@ -20,13 +20,6 @@ interface IEscrow is IOwnableOperable {
     event Withdrawal(address indexed user, uint256 amount);
 
     /**
-     * @notice Emitted when tokens are refunded to a user by the contract owner or operator
-     * @param user The address of the user to whom the tokens were refunded
-     * @param amount The amount of tokens refunded
-     */
-    event FundsReleased(address indexed user, uint256 amount);
-
-    /**
      * @notice Reverted when a user has insufficient funds in this Escrow for an operation
      */
     error InsufficientFunds(address user);
@@ -51,11 +44,4 @@ interface IEscrow is IOwnableOperable {
      * @param amount The amount of tokens to withdraw.
      */
     function withdraw(uint256 amount) external;
-
-    /**
-     * @notice Refunds tokens from the escrow back to a user by the contract owner or operator.
-     * @param user The address of the user to refund tokens to.
-     * @param amount The amount of tokens to release for the user.
-     */
-    function releaseFunds(address user, uint256 amount) external;
 }

@@ -25,7 +25,6 @@ describe("Escrow Contract", () => {
       addr1,
       addr2,
       operator1,
-      operator2,
     ] = await hre.ethers.getSigners();
 
     const MockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
