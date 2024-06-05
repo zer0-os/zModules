@@ -46,10 +46,19 @@ contract Escrow is OwnableOperable, IEscrow {
     function deposit(uint256 amount) external override {
         if (amount == 0) revert ZeroAmountPassed();
 
-        token.safeTransferFrom(msg.sender, address(this), amount);
-        balances[msg.sender] += amount;
+        uint256 balanceBefore = token.balanceOf(address(this));
 
-        emit Deposit(msg.sender, amount);
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        
+        uint256 balanceAfter = token.balanceOf(address(this));
+
+        // Often this will be the same as `amount` but for
+        // deflationary tokens it may be different
+        uint256 actualAmount = balanceAfter - balanceBefore;
+        
+        balances[msg.sender] += actualAmount;
+
+        emit Deposit(msg.sender, actualAmount);
     }
 
     /**
