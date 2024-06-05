@@ -111,6 +111,12 @@ describe("Match Contract",  () => {
     expect(await match.gameFeePercentage()).to.equal(gameFeePerc);
   });
 
+  it("Should NOT allow operator to call #setGameFeePercentage()", async () => {
+    await expect(
+      match.connect(operator3).setGameFeePercentage(gameFeePerc)
+    ).to.be.revertedWithCustomError(match, OWNABLE_UNAUTHORIZED_ERR);
+  });
+
   it("Should revert if feeVault is passed as 0x0 address", async () => {
     await expect(
       MatchFactory.connect(owner).deploy(

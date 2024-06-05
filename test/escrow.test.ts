@@ -3,9 +3,9 @@ import { ethers } from "ethers";
 import { expect } from "chai";
 import { Escrow, MockERC20 } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { INSUFFICIENT_FUNDS_ERR, NOT_A_CONTRACT_ERR, NOT_AUTHORIZED_ERR, ZERO_AMOUNT_ERR } from "./helpers/errors";
+import { INSUFFICIENT_FUNDS_ERR, NOT_A_CONTRACT_ERR, ZERO_AMOUNT_ERR } from "./helpers/errors";
 
-// TODO esc: update solhint, oz packages and hardhat
+
 describe("Escrow Contract", () => {
   let mockERC20 : MockERC20;
   let escrow : Escrow;
@@ -13,7 +13,6 @@ describe("Escrow Contract", () => {
   let addr1 : SignerWithAddress;
   let addr2 : SignerWithAddress;
   let operator1 : SignerWithAddress;
-  let operator2 : SignerWithAddress;
   let escrowAddress : string;
 
   const initialMintAmountOwner = ethers.parseEther("9000000000000000000000");
@@ -80,22 +79,13 @@ describe("Escrow Contract", () => {
       expect(await escrow.balances(addr1.address)).to.equal(depositAmount);
     });
 
-    it("Should allow to #releaseFunds() by the owner/operator", async () => {
-      await expect(escrow.connect(owner).releaseFunds(addr1.address, depositAmount))
-        .to.emit(escrow, "FundsReleased")
-        .withArgs(addr1.address, depositAmount);
-
-      expect(await escrow.balances(addr1.address)).to.equal(ethers.parseEther("0"));
-      expect(await mockERC20.balanceOf(addr1.address)).to.equal(initialMintAmountAddr1);
-    });
-
     it("Should re-deposit", async () => {
       await mockERC20.connect(addr1).approve(escrowAddress, depositAmount);
       await expect(escrow.connect(addr1).deposit(depositAmount))
         .to.emit(escrow, "Deposit")
         .withArgs(addr1.address, depositAmount);
 
-      expect(await escrow.balances(addr1.address)).to.equal(depositAmount);
+      expect(await escrow.balances(addr1.address)).to.equal(depositAmount * 2n);
     });
 
     it("Should allow withdrawal", async () => {
@@ -136,11 +126,6 @@ describe("Escrow Contract", () => {
       await expect(escrow.connect(addr2).withdraw(10n))
         .to.be.revertedWithCustomError(escrow, INSUFFICIENT_FUNDS_ERR)
         .withArgs(addr2.address);
-    });
-
-    it("Should revert on 0 balance to releaseFunds", async () => {
-      await expect(escrow.connect(owner).releaseFunds(addr1.address, depositAmount))
-        .to.be.revertedWithCustomError(escrow, INSUFFICIENT_FUNDS_ERR);
     });
 
     it("Should revert if depositing zero amount", async () => {
@@ -186,41 +171,6 @@ describe("Escrow Contract", () => {
 
       expect(await escrow.balances(addr1.address)).to.equal(0);
       expect(await mockERC20.balanceOf(addr1.address)).to.equal(currentBalanceStore + prevBalance);
-    });
-
-    it("Should emit the correct events and update balances on multiple #releaseFunds()", async () => {
-      const depositAmt = ethers.parseEther("50");
-      const doubleDepositAmt = depositAmt + depositAmt;
-      await mockERC20.connect(addr1).approve(await escrow.getAddress(), doubleDepositAmt);
-      await escrow.connect(addr1).deposit(depositAmt);
-      await escrow.connect(addr1).deposit(depositAmt);
-
-      await expect(escrow.connect(owner).releaseFunds(addr1.address, doubleDepositAmt))
-        .to.emit(escrow, "FundsReleased")
-        .withArgs(addr1.address, doubleDepositAmt);
-
-      const leftoverBal = await escrow.balances(addr1.address);
-
-      await expect(
-        escrow.connect(owner).releaseFunds(addr1.address, leftoverBal)
-      ).to.emit(escrow, "FundsReleased")
-        .withArgs(addr1.address, leftoverBal);
-
-      expect(await escrow.balances(addr1.address)).to.equal(0);
-    });
-  });
-
-  describe("Fund Management - Failure Scenarios", () => {
-    it("Should fail an unauthorized #releaseFunds() call", async () => {
-      await expect(escrow.connect(addr1).releaseFunds(addr2.address, 1n))
-        .to.be.revertedWithCustomError(escrow, NOT_AUTHORIZED_ERR)
-        .withArgs(addr1.address);
-    });
-
-    it("Should revert #releaseFunds() called by non-owner/operator", async () => {
-      await expect(escrow.connect(operator2).releaseFunds(addr1.address, ethers.parseEther("100")))
-        .to.be.revertedWithCustomError(escrow, NOT_AUTHORIZED_ERR)
-        .withArgs(operator2.address);
     });
   });
 

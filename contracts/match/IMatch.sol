@@ -141,6 +141,14 @@ interface IMatch is IEscrow {
     function setFeeVault(address _feeVault) external;
 
     /**
+     * @notice Sets the percentage of the `matchFee` per match that is charged for hosting the match
+     * by the game. Represented as parts of 10,000 (100% = 10,000)
+     * @dev Can ONLY be called by the OWNER!
+     * @param _gameFeePercentage The percentage value to set
+     */
+    function setGameFeePercentage(uint256 _gameFeePercentage) external;
+
+    /**
      * @notice Gets the address of the fee vault where all the `gameFee`s go
      * @return feeVault The address of the fee vault
      */

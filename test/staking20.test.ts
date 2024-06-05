@@ -274,7 +274,6 @@ describe("StakingERC20", () => {
     });
 
     it("Fails when the staker tries to stake 0", async () => {
-      // TODO Should we bother preventing this case?
       await expect(
         contract.connect(stakerA).stake(0n)
       ).to.be.revertedWithCustomError(contract, ZERO_STAKE_ERR);
