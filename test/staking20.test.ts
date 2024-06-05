@@ -13,7 +13,7 @@ import {
   INSUFFICIENT_BALANCE_ERR,
   ZERO_STAKE_ERR,
   UNEQUAL_UNSTAKE_ERR,
-  OWNABLE_UNAUTHORIZED_ERR,
+  OWNABLE_UNAUTHORIZED_ERR, ZERO_UNSTAKE_ERR,
 } from "./helpers/errors";
 import {
   WITHDRAW_EVENT,
@@ -395,7 +395,10 @@ describe("StakingERC20", () => {
     it("Fails when the contract has no rewards", async () => {
       // call to claim without first transferring rewards to the contract
       await expect(
-        contract.connect(stakerA).claim()
+        // we are using `stakerB` here, because the check would only hit if the
+        // user who calls actually has rewards to claim
+        // otherwise, if user has 0 rewards, the check for rewards availability will not hit
+        contract.connect(stakerB).claim()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
     });
 
@@ -502,6 +505,12 @@ describe("StakingERC20", () => {
       expect(stakerData.lastUpdatedTimestamp).to.eq(0n);
       expect(stakerData.unlockTimestamp).to.eq(0n);
       expect(stakerData.owedRewards).to.eq(0n);
+    });
+
+    it("Fails when unstaking 0 amount", async () => {
+      await expect(
+        contract.connect(stakerA).unstake(0, false)
+      ).to.be.revertedWithCustomError(contract, ZERO_UNSTAKE_ERR);
     });
 
     it("Fails when the user has never staked", async () => {

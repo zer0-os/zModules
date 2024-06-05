@@ -25,7 +25,11 @@ import {
   INVALID_OWNER_ERR,
   NONEXISTENT_TOKEN_ERR,
   NO_REWARDS_ERR,
-  TIME_LOCK_NOT_PASSED_ERR, INSUFFICIENT_APPROVAL_721_ERR, OWNABLE_UNAUTHORIZED_ERR,
+  TIME_LOCK_NOT_PASSED_ERR,
+  INSUFFICIENT_APPROVAL_721_ERR,
+  OWNABLE_UNAUTHORIZED_ERR,
+  ZERO_STAKE_ERR,
+  ARRAY_MISMATCH_ERR, ZERO_UNSTAKE_ERR,
 } from "./helpers/errors";
 
 
@@ -235,6 +239,18 @@ describe("StakingERC721", () => {
 
       const totalSupply = await stakingERC721.totalSupply();
       expect(totalSupply).to.eq(3);
+    });
+
+    it("Fails when staking 0 tokens (tokenIds.length == 0)", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).stake([], [])
+      ).to.be.revertedWithCustomError(stakingERC721, ZERO_STAKE_ERR);
+    });
+
+    it("Fails when tokenIds and tokenUris are not the same length", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).stake([tokenIdA], [emptyUri, emptyUri])
+      ).to.be.revertedWithCustomError(stakingERC721, ARRAY_MISMATCH_ERR);
     });
 
     it("Fails when the user tries to transfer the SNFT", async () => {
@@ -536,6 +552,12 @@ describe("StakingERC721", () => {
         stakingERC721.connect(stakerA).unstake([nonStakedTokenId], false)
       ).to.be.revertedWithCustomError(stakingERC721, NONEXISTENT_TOKEN_ERR)
         .withArgs(nonStakedTokenId);
+    });
+
+    it("Fails to unstake when no `tokenIds` are passed", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).unstake([], false)
+      ).to.be.revertedWithCustomError(stakingERC721, ZERO_UNSTAKE_ERR);
     });
   });
 

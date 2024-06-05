@@ -68,6 +68,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param exit If true, the user will unstake without claiming rewards (optional)
      */
     function unstake(uint256 amount, bool exit) external override nonReentrant {
+        if (amount == 0) revert ZeroUnstake();
+
         Staker storage staker = stakers[msg.sender];
 
         if (amount > staker.amountStaked) revert UnstakeMoreThanStake();

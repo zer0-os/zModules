@@ -10,6 +10,8 @@ import { Escrow } from "../escrow/Escrow.sol";
  * @author Kirill Korchagin <https://github.com/Whytecrowe>, Damien Burbine <https://github.com/durienb>
  */
 contract Match is Escrow, IMatch {
+    uint256 public constant PERCENTAGE_BASIS = 10000;
+
     /**
      * @notice Mapping from the hash of `MatchData` struct
      *  to the total amount of tokens locked in escrow for the match
@@ -18,18 +20,30 @@ contract Match is Escrow, IMatch {
 
     /**
      * @notice The address of the fee vault which gathers all the `gameFee`s
+     * This is a BASE value, that can change depending on the presence of rounding errors
+     * in the payout calculation. If rounding errors occur, the difference in total payout amount
+     * and the locked amount will be added to the `gameFee` and sent to the `feeVault`
      */
     address internal feeVault;
+
+    /**
+     * @notice The percentage of the `matchFee` per match that is charged for hosting the match
+     * by the game. Represented as parts of 10,000 (100% = 10,000)
+     */
+    uint256 public gameFeePercentage;
 
     constructor(
         address _token,
         address _feeVault,
         address _owner,
-        address[] memory _operators
+        address[] memory _operators,
+        uint256 _gameFeePercentage
     ) Escrow(_token, _owner, _operators) {
         if (_feeVault == address(0)) revert ZeroAddressPassed();
 
         feeVault = _feeVault;
+
+        _setGameFeePercentage(_gameFeePercentage);
     }
 
     /**
@@ -47,6 +61,8 @@ contract Match is Escrow, IMatch {
         uint256 matchFee
     ) external override onlyAuthorized {
         if (players.length == 0) revert NoPlayersInMatch(matchId);
+        // matchFee can not be 0, otherwise the `lockedFunds` will be 0 and it won't be possible to `endMatch()`
+        if (matchFee == 0) revert ZeroMatchFee(matchId);
 
         bytes32 matchDataHash = _getMatchDataHash(
             matchId,
@@ -81,19 +97,23 @@ contract Match is Escrow, IMatch {
      *  and emits a `MatchEnded` event.
      * @dev Can ONLY be called by an authorized account! Note that the `lockedFunds` mapping entry will be deleted
      *  for a gas refund, leaving historical data only in the event logs.
+     * > It is important for the caller to calculate the payouts correctly,
+     * since the contract validates the correctness of the amounts sent and will revert if they
+     * do not add up exactly to the `lockedAmount` for the match.
+     * If rounding errors occur in calculating payouts,
+     * the difference between `payoutSum + gameFee` and `lockedAmount` should be added
+     * to one of the payouts (probably a loser of the match)!
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
      * @param players Array of player addresses (has to be the exact same array passed to `startMatch()`!)
      * @param payouts The amount of tokens each player will receive (pass 0 for players with no payouts!)
      *  Has to be the same length as `players`!
      * @param matchFee The entry fee for the match
-     * @param gameFee The fee charged by the contract for hosting the match, will go to `feeVault`
      */
     function endMatch(
         uint256 matchId,
         address[] calldata players,
         uint256[] calldata payouts,
-        uint256 matchFee,
-        uint256 gameFee
+        uint256 matchFee
     ) external override onlyAuthorized {
         if (players.length != payouts.length) revert ArrayLengthMismatch();
 
@@ -104,7 +124,8 @@ contract Match is Escrow, IMatch {
         );
 
         uint256 lockedAmount = lockedFunds[matchDataHash];
-        if (lockedAmount == 0) revert InvalidMatchOrPayouts(matchId, matchDataHash);
+        if (lockedAmount == 0)
+            revert InvalidMatchOrMatchData(matchId, matchDataHash);
 
         delete lockedFunds[matchDataHash];
 
@@ -116,10 +137,10 @@ contract Match is Escrow, IMatch {
             unchecked { ++i; }
         }
 
-        // It is important to calculate the payouts + gameFee correctly, avoiding rounding issues, before sending here
-        // since the contract validates the correctness of the amounts sent and will revert if they
-        // do not add up exactly to the lockedAmount for the match
-        if (payoutSum + gameFee != lockedAmount) revert InvalidMatchOrPayouts(matchId, matchDataHash);
+        uint256 gameFee = (matchFee * gameFeePercentage) / PERCENTAGE_BASIS;
+
+        if (payoutSum + gameFee != lockedAmount)
+            revert InvalidPayouts(matchId);
 
         balances[feeVault] += gameFee;
 
@@ -153,6 +174,10 @@ contract Match is Escrow, IMatch {
         return feeVault;
     }
 
+    function setGameFeePercentage(uint256 _gameFeePercentage) external onlyAuthorized {
+        _setGameFeePercentage(_gameFeePercentage);
+    }
+
     /**
      * @notice Checks if all players have enough balance in escrow to participate in the match
      * @dev Note that the returned array will always be the same length as `players` array, with valid players
@@ -181,6 +206,13 @@ contract Match is Escrow, IMatch {
         }
 
         return unfundedPlayers;
+    }
+
+    function _setGameFeePercentage(uint256 _gameFeePercentage) internal {
+        if (_gameFeePercentage > PERCENTAGE_BASIS) revert InvalidPercentageValue(_gameFeePercentage);
+
+        gameFeePercentage = _gameFeePercentage;
+        emit GameFeePercentageSet(_gameFeePercentage);
     }
 
     function _isFunded(address player, uint256 amountRequired) internal view returns (bool) {

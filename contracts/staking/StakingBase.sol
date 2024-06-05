@@ -147,9 +147,11 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         staker.lastUpdatedTimestamp = block.timestamp;
         staker.owedRewards = 0;
 
-        _checkRewardsAvailable(rewards);
+        if (rewards != 0) {
+            _checkRewardsAvailable(rewards);
 
-        rewardsToken.safeTransfer(msg.sender, rewards);
+            rewardsToken.safeTransfer(msg.sender, rewards);
+        }
 
         if (staker.amountStaked - subtractAmountStaked == 0 && staker.owedRewards == 0) {
             delete stakers[msg.sender];

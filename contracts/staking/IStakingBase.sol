@@ -60,6 +60,15 @@ interface IStakingBase {
      */
     error InitializedWithZero();
 
+    /**
+     * @notice Revert when the user tries to stake 0 tokens
+     */
+    error ZeroStake();
+    /**
+     * @notice Revert when the user tries to unstake 0 tokens
+     */
+    error ZeroUnstake();
+
     function claim() external;
 
     function getRemainingLockTime() external returns (uint256);

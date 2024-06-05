@@ -49,6 +49,11 @@ interface IStakingERC721 is IERC721Receiver {
      */
     error NonTransferrableToken();
 
+    /**
+     * @notice Throw when the token array lengths do not match
+     */
+    error ArrayLengthMismatch();
+
     function stake(
         uint256[] calldata tokenIds,
         string[] calldata tokenURIs

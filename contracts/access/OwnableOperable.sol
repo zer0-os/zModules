@@ -29,6 +29,7 @@ contract OwnableOperable is Ownable, IOwnableOperable {
      * @param operator The address of the operator to remove
      */
     function removeOperator(address operator) external override onlyOwner {
+        if (!operators[operator]) revert OperatorNotAssigned(operator);
         operators[operator] = false;
         emit OperatorRemoved(operator);
     }
@@ -48,6 +49,7 @@ contract OwnableOperable is Ownable, IOwnableOperable {
      */
     function addOperator(address operator) public override onlyOwner {
         if (operator == address(0)) revert ZeroAddressPassed();
+        if (operators[operator]) revert OperatorAlreadyAssigned(operator);
 
         operators[operator] = true;
         emit OperatorAdded(operator);

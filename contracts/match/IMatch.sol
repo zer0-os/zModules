@@ -59,12 +59,23 @@ interface IMatch is IEscrow {
     );
 
     /**
-     * @notice Reverted when the match data is incorrect or the payout amounts do not add up to `lockedFunds`
-     *  from `startMatch()` calls
+     * @notice Emitted when the `gameFeePercentage` is set in state
+     * @param percentage The percentage value (as part of 10,000) that is set
+     */
+    event GameFeePercentageSet(uint256 percentage);
+
+    /**
+     * @notice Reverted when the match data passed to the contract is incorrect
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
      * @param matchDataHash The hash of the MatchData struct (`keccak256(abi.encode(matchData))`)
      */
-    error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash);
+    error InvalidMatchOrMatchData(uint256 matchId, bytes32 matchDataHash);
+    /**
+     * @notice Reverted when the payout amounts passed as `payouts` array to `endMatch()` are calculated incorrectly,
+     * and their sum + `gameFee` do not add up to the total `lockedFunds` set by `startMatch()`
+     * @param matchId The ID of the match assigned by a game client or the operator of this contract
+     */
+    error InvalidPayouts(uint256 matchId);
     /**
      * @notice Reverted when a match is already started with the same `matchId` and `matchDataHash`
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
@@ -80,6 +91,16 @@ interface IMatch is IEscrow {
      * @notice Reverted when the length of `players` and `payouts` arrays are different
      */
     error ArrayLengthMismatch();
+    /**
+     * @notice Reverted when the match fee is set to 0
+     * @param matchId The ID of the match assigned by a game client or the operator of this contract
+     */
+    error ZeroMatchFee(uint256 matchId);
+    /**
+     * @notice Reverted when setting `gameFeePercentage` as a wrong value (as part of 10,000)
+     * @param percentage The percentage value passed to the function
+     */
+    error InvalidPercentageValue(uint256 percentage);
 
     /**
      * @notice Starts a match, charges the entry fee from each player's balance, creates and hashes `MatchData` struct,
@@ -104,14 +125,12 @@ interface IMatch is IEscrow {
      * @param payouts The amount of tokens each player will receive (pass 0 for players with no payouts!)
      *  Has to be the same length as `players`!
      * @param matchFee The entry fee for the match
-     * @param gameFee The fee charged by the contract for hosting the match, will go to `feeVault`
      */
     function endMatch(
         uint256 matchId,
         address[] calldata players,
         uint256[] calldata payouts,
-        uint256 matchFee,
-        uint256 gameFee
+        uint256 matchFee
     ) external;
 
     /**
