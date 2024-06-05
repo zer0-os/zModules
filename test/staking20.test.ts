@@ -149,6 +149,20 @@ describe.only("StakingERC20", () => {
       stakedAtA = BigInt(await time.latest());
       origStakedAtA = stakedAtA;
 
+      const perFraction = await contract.connect(stakerA).userRewardsPerFraction();
+
+      // forward in time < 1 period
+      await time.increase(config.periodLength + (config.periodLength / 3n));
+      const afterIncrease =  BigInt(await time.latest());
+
+      // TODO go more than a period and calc rewards, then backward calc
+      // to be sure we get the right amount for < 1 period
+      const fullperiodspassed = await contract.connect(stakerA).fullPeriodsPassed();
+      const fixedRewards = await contract.connect(stakerA).fixedPeriodsRewards();
+      const userMultiplier = await contract.connect(stakerA).userMultiplier();
+      const legacyPendingRewards = await contract.connect(stakerA).legacyPendingRewards();
+      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
+
       amountStakedA = DEFAULT_STAKED_AMOUNT;
 
       const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);

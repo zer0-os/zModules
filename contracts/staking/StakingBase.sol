@@ -167,6 +167,34 @@ contract StakingBase is Ownable, IStakingBase {
                     periodLength));
     }
 
+
+    // can turn off auto mining in HH
+    // maybe even turn it off in test?
+    // either in HH config or in test itself
+    function userMultiplier() external view returns (uint256) {
+        Staker memory staker = stakers[msg.sender];
+
+        return rewardsPerPeriod * staker.amountStaked;
+    }
+
+    function userRewardsPerFraction() external view returns (uint256) {
+        Staker memory staker = stakers[msg.sender];
+
+        return ((rewardsPerPeriod * staker.amountStaked) / periodLength);
+    }
+
+    function fullPeriodsPassed() external view returns (uint256) {
+        Staker memory staker = stakers[msg.sender];
+
+        return ((block.timestamp - staker.lastUpdatedTimestamp) / periodLength);
+    }
+
+    function fixedPeriodsRewards() external view returns (uint256) {
+        Staker memory staker = stakers[msg.sender];
+
+        return (rewardsPerPeriod * staker.amountStaked * this.fullPeriodsPassed());
+    }
+
     function _getPendingRewards(
         Staker memory staker
     ) internal view returns (uint256) {
@@ -180,6 +208,12 @@ contract StakingBase is Ownable, IStakingBase {
         // Find how many periods have passed
         uint256 fullPeriodsPassed = ((block.timestamp - staker.lastUpdatedTimestamp) / periodLength);
         
+        // The amount of the fractional period that has passed
+        uint256 amountOfPeriodPassed = periodLength - (block.timestamp % periodLength);
+
+        if (fullPeriodsPassed == 0) {
+            return (amountOfPeriodPassed) * ((rewardsPerPeriod * staker.amountStaked) / periodLength);
+        }
         // TODO fullperiods passed not right?
         // because of order of calls in test? (after stake)
         // block timestamp and last updated tomestamp = 0
@@ -188,13 +222,6 @@ contract StakingBase is Ownable, IStakingBase {
 
         // Calculate rewards owed for that number of periods
         uint256 fixedPeriodRewards = (rewardsPerPeriod * staker.amountStaked * fullPeriodsPassed);
-
-        // The amount of the fractional period that has passed
-        uint256 amountOfPeriodPassed = periodLength - (block.timestamp % periodLength);
-
-        // if (fixedPeriodRewards == 0) {
-        //     return rewardsPerPeriod * staker.amountStaked * amountOfPeriodPassed;
-        // }
 
         // TODO if not yet through a single period, `fixPeriodRewards` is zero
         // but this is used to calculate the partial rewards
