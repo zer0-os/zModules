@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IOwnableOperable } from "./IOwnableOperable.sol";
@@ -60,7 +60,7 @@ contract OwnableOperable is Ownable, IOwnableOperable {
      * @param _operators The array of operator addresses to add
      */
     function addOperators(address[] memory _operators) public override onlyOwner {
-        for (uint256 i = 0; i < _operators.length; i++) {
+        for (uint256 i = 0; i < _operators.length; ++i) {
             addOperator(_operators[i]);
         }
     }

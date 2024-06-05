@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 import { IMatch } from "./IMatch.sol";
 import { Escrow } from "../escrow/Escrow.sol";
+
 
 /**
  * @title Match contract
@@ -24,7 +25,7 @@ contract Match is Escrow, IMatch {
      * in the payout calculation. If rounding errors occur, the difference in total payout amount
      * and the locked amount will be added to the `gameFee` and sent to the `feeVault`
      */
-    address internal feeVault;
+    address public feeVault;
 
     /**
      * @notice The percentage of the `matchFee` per match that is charged for hosting the match
@@ -73,14 +74,12 @@ contract Match is Escrow, IMatch {
         if (lockedFunds[matchDataHash] != 0)
             revert MatchAlreadyStarted(matchId, matchDataHash);
 
-        for (uint256 i = 0; i < players.length;) {
+        for (uint256 i = 0; i < players.length; ++i) {
             if (!_isFunded(players[i], matchFee)) {
                 revert InsufficientFunds(players[i]);
             }
 
             balances[players[i]] -= matchFee;
-
-            unchecked { ++i; }
         }
 
         uint256 lockedAmount = matchFee * players.length;
@@ -130,11 +129,9 @@ contract Match is Escrow, IMatch {
         delete lockedFunds[matchDataHash];
 
         uint256 payoutSum;
-        for (uint256 i = 0; i < players.length;) {
+        for (uint256 i = 0; i < players.length; ++i) {
             balances[players[i]] += payouts[i];
             payoutSum += payouts[i];
-
-            unchecked { ++i; }
         }
 
         uint256 gameFee = (matchFee * gameFeePercentage) / PERCENTAGE_BASIS;
@@ -174,44 +171,6 @@ contract Match is Escrow, IMatch {
      */
     function setGameFeePercentage(uint256 _gameFeePercentage) external override onlyOwner {
         _setGameFeePercentage(_gameFeePercentage);
-    }
-
-    /**
-     * @notice Gets the address of the fee vault where all the `gameFee`s go
-     * @return feeVault The address of the fee vault
-     */
-    function getFeeVault() external override view returns (address) {
-        return feeVault;
-    }
-
-    /**
-     * @notice Checks if all players have enough balance in escrow to participate in the match
-     * @dev Note that the returned array will always be the same length as `players` array, with valid players
-     *  being `address(0)` in the same index as the player in the `players` array. If all players have enough balance
-     *  in escrow, the returned array will be filled with 0x0 addresses.
-     * @param players Array of player addresses
-     * @param matchFee The required balance in escrow for each player to participate
-     * @return unfundedPlayers Array of player addresses who do not have enough balance in escrow
-     */
-    function canMatch(
-        address[] calldata players,
-        uint256 matchFee
-    ) external view override returns (
-        address[] memory unfundedPlayers
-    ) {
-        unfundedPlayers = new address[](players.length);
-
-        uint256 k;
-        for (uint256 i = 0; i < players.length;) {
-            if (!_isFunded(players[i], matchFee)) {
-                unfundedPlayers[k] = players[i];
-                unchecked { ++k; }
-            }
-
-            unchecked { ++i; }
-        }
-
-        return unfundedPlayers;
     }
 
     function _setGameFeePercentage(uint256 _gameFeePercentage) internal {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // solhint-disable immutable-vars-naming
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";

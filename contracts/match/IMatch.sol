@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 import { IEscrow } from "../escrow/IEscrow.sol";
 
@@ -147,28 +147,6 @@ interface IMatch is IEscrow {
      * @param _gameFeePercentage The percentage value to set
      */
     function setGameFeePercentage(uint256 _gameFeePercentage) external;
-
-    /**
-     * @notice Gets the address of the fee vault where all the `gameFee`s go
-     * @return feeVault The address of the fee vault
-     */
-    function getFeeVault() external view returns (address);
-
-    /**
-     * @notice Checks if all players have enough balance in escrow to participate in the match
-     * @dev Note that the returned array will always be the same length as `players` array, with valid players
-     *  being `address(0)` in the same index as the player in the `players` array. If all players have enough balance
-     *  in escrow, the returned array will be filled with 0x0 addresses.
-     * @param players Array of player addresses
-     * @param matchFee The required balance in escrow for each player to participate
-     * @return unfundedPlayers Array of player addresses who do not have enough balance in escrow
-     */
-    function canMatch(
-        address[] calldata players,
-        uint256 matchFee
-    ) external view returns (
-        address[] memory unfundedPlayers
-    );
 }
 
 

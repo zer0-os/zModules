@@ -130,80 +130,20 @@ describe("Match Contract",  () => {
   });
 
   describe("Aux Operations", () => {
-    it("#canMatch() should correctly return players with missing funds", async () => {
-      const depositAmount = ethers.parseEther("11");
-      const feeAmt = ethers.parseEther("2.75");
-
-      await [
-        player1,
-        player2,
-        player4,
-      ].reduce(
-        async (acc, player) => {
-          await acc;
-          await match.connect(player).deposit(depositAmount);
-        }, Promise.resolve()
-      );
-
-      const unfundedPlayers = await match.canMatch(allPlayers, feeAmt);
-
-      expect(unfundedPlayers).to.deep.equal([
-        player3.address,
-        player5.address,
-        player6.address,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-      ]);
-
-      // check all valid
-      await [
-        player3,
-        player5,
-        player6,
-      ].reduce(
-        async (acc, player) => {
-          await acc;
-          await match.connect(player).deposit(depositAmount);
-        }, Promise.resolve()
-      );
-
-      const allPlayersFunded = await match.canMatch(allPlayers, ethers.parseEther("10"));
-      expect(allPlayersFunded).to.deep.equal([
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-      ]);
-
-      // check all invalid
-      const allPlayersUnfunded = await match.canMatch(allPlayers, ethers.parseEther("10000000000000000000000000"));
-      expect(allPlayersUnfunded).to.deep.equal([
-        player1.address,
-        player2.address,
-        player3.address,
-        player4.address,
-        player5.address,
-        player6.address,
-      ]);
-    });
-
     it("#setFeeVault should set the address correctly and emit an event", async () => {
-      expect(await match.getFeeVault()).to.equal(feeVault.address);
+      expect(await match.feeVault()).to.equal(feeVault.address);
 
       await expect(
         match.connect(owner).setFeeVault(operator1.address)
       ).to.emit(match, "FeeVaultSet")
         .withArgs(operator1.address);
 
-      expect(await match.getFeeVault()).to.equal(operator1.address);
+      expect(await match.feeVault()).to.equal(operator1.address);
 
       // set back
       await match.connect(owner).setFeeVault(feeVault.address);
 
-      expect(await match.getFeeVault()).to.equal(feeVault.address);
+      expect(await match.feeVault()).to.equal(feeVault.address);
     });
 
     it("#setFeeVault() should revert if called by non-owner", async () => {
