@@ -151,15 +151,6 @@ describe.only("StakingERC20", () => {
 
       amountStakedA = DEFAULT_STAKED_AMOUNT;
 
-      // temp
-      // to be sure we are not at a full period
-      await time.increase((config.periodLength * 6n) - (config.periodLength / 3n));
-      const latest = await time.latest();
-
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-      const partialPendingRewards = await contract.connect(stakerA).getPartialPendingRewards();
-
-
       const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
 
       const stakerData = await contract.stakers(stakerA.address);
@@ -173,18 +164,27 @@ describe.only("StakingERC20", () => {
     });
 
     it("Can stake a second time as the same user successfully", async () => {
-      await time.increase(config.periodLength * 6n);
-
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
+      await time.increase(config.periodLength * 5n - (config.periodLength / 3n));
 
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceBeforeA = await rewardsToken.balanceOf(stakerA.address);
-
+      
+      const legacyPendingRewards = await contract.connect(stakerA).legacyPendingRewards();
+      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
+      
+      const latest = BigInt(await time.latest());
       await contract.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
+      
+      // reverts division error, after updated timestamp
+      // const pendingRewardsAfter = await contract.connect(stakerA).getPendingRewards();
+
       stakedAtA = BigInt(await time.latest());
       amountStakedA += DEFAULT_STAKED_AMOUNT;
+      
+      const latestAfterStake = BigInt(await time.latest());
 
       const expectedRewards = calcTotalRewards(
+        latestAfterStake,
         [stakedAtA - origStakedAtA],
         [DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
@@ -193,7 +193,6 @@ describe.only("StakingERC20", () => {
 
       const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceAfterA = await rewardsToken.balanceOf(stakerA.address);
-
 
       const stakerData = await contract.stakers(stakerA.address);
 
@@ -220,6 +219,7 @@ describe.only("StakingERC20", () => {
       origStakedAtB = stakedAtB;
 
       const expectedRewards = calcTotalRewards(
+        BigInt(await time.latest()),
         [stakedAtB - origStakedAtB], // Will be 0
         [DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
@@ -297,9 +297,10 @@ describe.only("StakingERC20", () => {
   describe("#getPendingRewards", () => {
     it("Allows the user to view the pending rewards for a stake", async () => {
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-      const partialPendingRewards = await contract.connect(stakerA).getPartialPendingRewards();
+      // const partialPendingRewards = await contract.connect(stakerA).getPartialPendingRewards();
 
       const expectedRewards = calcTotalRewards(
+        BigInt(await time.latest()),
         [BigInt(await time.latest()) - stakedAtA, stakedAtA - origStakedAtA],
         [amountStakedA, DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
@@ -352,6 +353,7 @@ describe.only("StakingERC20", () => {
       claimedAtA = BigInt(await time.latest());
 
       const expectedRewards = calcTotalRewards(
+        BigInt(await time.latest()),
         [claimedAtA - stakedAtA, stakedAtA - origStakedAtA],
         [amountStakedA, DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
@@ -420,6 +422,7 @@ describe.only("StakingERC20", () => {
       const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
 
       const expectedRewards = calcTotalRewards(
+        BigInt(await time.latest()),
         [unstakedAtA - claimedAtA],
         [amountStakedA],
         config.rewardsPerPeriod,
@@ -460,6 +463,7 @@ describe.only("StakingERC20", () => {
       const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
 
       const expectedRewards = calcTotalRewards(
+        BigInt(await time.latest()),
         [BigInt(await time.latest()) - unstakedAtA],
         [amountStakedA],
         config.rewardsPerPeriod,
@@ -536,6 +540,7 @@ describe.only("StakingERC20", () => {
       amountStakedC -= amount;
 
       const expectedRewards = calcTotalRewards(
+        BigInt(await time.latest()),
         [unstakedAtC - origStakedAtC],
         [DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
@@ -570,6 +575,7 @@ describe.only("StakingERC20", () => {
       const timestamp = BigInt(await time.latest());
 
       const expectedRewards = calcTotalRewards(
+        BigInt(await time.latest()),
         [timestamp - unstakedAtC, unstakedAtC - stakedAtC],
         [DEFAULT_STAKED_AMOUNT / 2n, DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
