@@ -8,9 +8,10 @@ interface IEscrow is IOwnableOperable {
     /**
      * @notice Emitted when tokens are deposited into the contract
      * @param user The address of the user who deposited the tokens
-     * @param amount The amount of tokens deposited
+     * @param depositAmount The amount of tokens deposited (argument to `deposit()`)
+     * @param amountTransferred The amount of tokens actually transferred (deflationary or rebasing tokens)
      */
-    event Deposit(address indexed user, uint256 amount);
+    event Deposit(address indexed user, uint256 indexed depositAmount, uint256 amountTransferred);
 
     /**
      * @notice Emitted when tokens are withdrawn from the contract

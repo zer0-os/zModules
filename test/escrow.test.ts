@@ -73,7 +73,7 @@ describe("Escrow Contract", () => {
       await mockERC20.connect(addr1).approve(escrowAddress, depositAmount);
       await expect(escrow.connect(addr1).deposit(depositAmount))
         .to.emit(escrow, "Deposit")
-        .withArgs(addr1.address, depositAmount);
+        .withArgs(addr1.address, depositAmount, depositAmount);
 
       expect(await escrow.balances(addr1.address)).to.equal(depositAmount);
     });
@@ -82,7 +82,7 @@ describe("Escrow Contract", () => {
       await mockERC20.connect(addr1).approve(escrowAddress, depositAmount);
       await expect(escrow.connect(addr1).deposit(depositAmount))
         .to.emit(escrow, "Deposit")
-        .withArgs(addr1.address, depositAmount);
+        .withArgs(addr1.address, depositAmount, depositAmount);
 
       expect(await escrow.balances(addr1.address)).to.equal(depositAmount * 2n);
     });
@@ -191,5 +191,63 @@ describe("Escrow Contract", () => {
         }
       });
     }
+  });
+
+  it("Should properly support deflationary a token", async () => {
+    const deflationaryTokenFactory = await hre.ethers.getContractFactory("DeflERC20Mock");
+    const deflToken = await deflationaryTokenFactory.connect(owner).deploy("DeflationaryToken", "DEFT");
+    const escrowFactory = await hre.ethers.getContractFactory("Escrow");
+    const escrowLocal = await escrowFactory.connect(owner).deploy(
+      deflToken.target,
+      owner.address,
+      [operator1.address]
+    );
+
+    const depositAmount = ethers.parseEther("77531");
+
+    const totalSupplyBefore = await deflToken.totalSupply();
+    await deflToken.connect(owner).approve(escrowLocal.target, depositAmount);
+
+    const transferFeeDeposit = await deflToken.getFee(depositAmount);
+
+    const tokenBalanceBefore = await deflToken.balanceOf(owner.address);
+    const escrowBalanceBefore = await escrowLocal.balances(owner.address);
+
+
+    // deposit and check the event in one go
+    await expect(
+      escrowLocal.connect(owner).deposit(depositAmount)
+    ).to.emit(escrowLocal, "Deposit")
+      .withArgs(owner.address, depositAmount, depositAmount - transferFeeDeposit);
+
+    const totalSupplyAfterDeposit = await deflToken.totalSupply();
+    const tokenBalanceAfterDeposit = await deflToken.balanceOf(owner.address);
+    const escrowBalanceAfterDeposit = await escrowLocal.balances(owner.address);
+
+    expect(tokenBalanceBefore - tokenBalanceAfterDeposit).to.equal(depositAmount);
+    expect(escrowBalanceAfterDeposit - escrowBalanceBefore).to.equal(depositAmount - transferFeeDeposit);
+    expect(totalSupplyBefore - totalSupplyAfterDeposit).to.equal(transferFeeDeposit);
+
+    // withdrawing the same amount should fail, because the actual transferred amount was `depositAmount - transferFee`
+    await expect(
+      escrowLocal.connect(owner).withdraw(depositAmount)
+    ).to.be.revertedWithCustomError(escrowLocal, INSUFFICIENT_FUNDS_ERR);
+
+    const withdrawAmount = depositAmount - transferFeeDeposit;
+    const transferFeeWithdraw = await deflToken.getFee(withdrawAmount);
+    // correct amount withdrawal
+    await escrowLocal.connect(owner).withdraw(withdrawAmount);
+
+    const tokenBalanceAfterWithdraw = await deflToken.balanceOf(owner.address);
+    const escrowBalanceAfterWithdraw = await escrowLocal.balances(owner.address);
+    const totalSupplyAfterWithdraw = await deflToken.totalSupply();
+
+    expect(
+      tokenBalanceAfterWithdraw - tokenBalanceAfterDeposit
+    ).to.equal(
+      depositAmount - transferFeeDeposit - transferFeeWithdraw
+    );
+    expect(escrowBalanceAfterWithdraw).to.equal(0);
+    expect(totalSupplyAfterWithdraw).to.equal(totalSupplyAfterDeposit - transferFeeWithdraw);
   });
 });

@@ -48,18 +48,24 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         _checkRewards(staker);
 
+        // this logic is here to support deflationary or rebasing tokens
+        uint256 balanceBefore = IERC20(stakingToken).balanceOf(address(this));
+
         IERC20(stakingToken).safeTransferFrom(
             msg.sender,
             address(this),
             amount
         );
 
-        staker.amountStaked += amount;
+        uint256 balanceAfter = IERC20(stakingToken).balanceOf(address(this));
+        uint256 amountTransferred = balanceAfter - balanceBefore;
+
+        staker.amountStaked += amountTransferred;
         staker.lastUpdatedTimestamp = block.timestamp;
 
-        totalStaked += amount;
+        totalStaked += amountTransferred;
 
-        emit Staked(msg.sender, amount, stakingToken);
+        emit Staked(msg.sender, amount, amountTransferred, stakingToken);
     }
 
     /**

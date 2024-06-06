@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
+  DeflERC20Mock,
   MockERC20,
   StakingERC20, StakingERC20__factory,
 } from "../typechain";
@@ -720,7 +721,7 @@ describe("StakingERC20", () => {
       await expect(
         contract.connect(stakerF).stake(DEFAULT_STAKED_AMOUNT)
       ).to.emit(contract, STAKED_EVENT)
-        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakingToken);
+        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, DEFAULT_STAKED_AMOUNT, config.stakingToken);
     });
 
     it("Emits a Claimed event when a user claims rewards", async () => {
@@ -814,7 +815,7 @@ describe("StakingERC20", () => {
     });
   });
 
-  describe("Edge Cases", async () => {
+  describe("Special Cases", async () => {
     describe("Exiting", () => {
       // eslint-disable-next-line max-len
       it("#exit from staking should yield the same rewards for partial and full exit within `unlockTimestamp` rules", async () => {
@@ -1034,6 +1035,91 @@ describe("StakingERC20", () => {
         expect(rewardBalAfter).to.eq(0n);
         expect(totalBalBefore - totalBalAfter).to.eq(rewardBalBefore);
         expect(totalStakedAfter).to.eq(totalStakedBefore);
+      });
+    });
+
+    describe("Staking with Deflationary Token", () => {
+      let stakingToken : DeflERC20Mock;
+      let staking : StakingERC20;
+      let transferAmtStk : bigint;
+      let tokenBalAfterStk : bigint;
+      let totalStakedAfterStk : bigint;
+      let contractBalAfterStk : bigint;
+
+      const stakeAmt = ethers.parseEther("291");
+
+      it("Should correctly account staked amount on #stake()", async () => {
+        const stakingTokenFactory = await hre.ethers.getContractFactory("DeflERC20Mock");
+        stakingToken = await stakingTokenFactory.deploy("Deflationary Token", "DTK");
+
+        staking = await stakingFactory.deploy(
+          stakingToken.target,
+          config.rewardsToken,
+          config.rewardsPerPeriod,
+          config.periodLength,
+          config.timeLockPeriod,
+          owner.address
+        ) as StakingERC20;
+
+        const transferFeeStk = await stakingToken.getFee(stakeAmt);
+
+        await stakingToken.connect(owner).transfer(
+          edgeStaker.address,
+          hre.ethers.parseEther("1000")
+        );
+
+        await stakingToken.connect(edgeStaker).approve(
+          staking.target,
+          stakeAmt
+        );
+
+        const tokenBalBefore = await stakingToken.balanceOf(edgeStaker.address);
+        const totalStakedBefore = await staking.totalStaked();
+        const contractBalBefore = await stakingToken.balanceOf(staking.target);
+
+        transferAmtStk = stakeAmt - transferFeeStk;
+
+        // stake and check event in one go
+        await expect(
+          staking.connect(edgeStaker).stake(stakeAmt)
+        ).to.emit(staking, STAKED_EVENT)
+          .withArgs(edgeStaker.address, stakeAmt, transferAmtStk, stakingToken.target);
+
+        tokenBalAfterStk = await stakingToken.balanceOf(edgeStaker.address);
+        totalStakedAfterStk = await staking.totalStaked();
+        contractBalAfterStk = await stakingToken.balanceOf(staking.target);
+
+        const stakerData = await staking.stakers(edgeStaker.address);
+
+        expect(stakerData.amountStaked).to.eq(transferAmtStk);
+        expect(totalStakedAfterStk).to.eq(transferAmtStk);
+        expect(tokenBalBefore - tokenBalAfterStk).to.eq(stakeAmt);
+        expect(totalStakedAfterStk - totalStakedBefore).to.eq(transferAmtStk);
+        expect(contractBalAfterStk - contractBalBefore).to.eq(transferAmtStk);
+      });
+
+      it("Should correctly account exit amount with #unstake()", async () => {
+        // withdraw with `exit`
+
+        // this amount should fail, since the actual staked amount is lower
+        await expect(
+          staking.connect(edgeStaker).unstake(stakeAmt, true)
+        ).to.be.revertedWithCustomError(staking, UNEQUAL_UNSTAKE_ERR);
+
+        // exit with correct amount
+        await staking.connect(edgeStaker).unstake(transferAmtStk, true);
+
+        const transferFeeExit = await stakingToken.getFee(transferAmtStk);
+        const transferAmtExit = transferAmtStk - transferFeeExit;
+
+        const tokenBalAfterExit = await stakingToken.balanceOf(edgeStaker.address);
+        const totalStakedAfterExit = await staking.totalStaked();
+        const contractBalAfterExit = await stakingToken.balanceOf(staking.target);
+
+        expect(tokenBalAfterExit - tokenBalAfterStk).to.eq(transferAmtExit);
+        expect(totalStakedAfterStk - totalStakedAfterExit).to.eq(transferAmtStk);
+        expect(totalStakedAfterExit).to.eq(0n);
+        expect(contractBalAfterStk - contractBalAfterExit).to.eq(transferAmtStk);
       });
     });
   });
