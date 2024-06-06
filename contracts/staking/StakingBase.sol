@@ -130,6 +130,7 @@ contract StakingBase is Ownable, IStakingBase {
     ////////////////////////////////////
 
     function _checkRewards(Staker storage staker) internal {
+
         if (staker.amountStaked > 0) {
             // It isn't their first stake, snapshot pending rewards
             staker.owedRewards = _getPendingRewards(staker);
@@ -156,21 +157,61 @@ contract StakingBase is Ownable, IStakingBase {
         emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
-    function legacyPendingRewards() external view returns (uint256) {
+    function legacyPendingRewards() external view returns (
+        uint256
+        // uint256,
+        // uint256,
+        // uint256,
+        // uint256,
+        // uint256,
+        // uint256,
+        // uint256
+    ) {
         Staker memory staker = stakers[msg.sender];
 
-        return
-            staker.owedRewards +
+        uint256 retval = staker.owedRewards +
             (rewardsPerPeriod *
                 staker.amountStaked *
                 ((block.timestamp - staker.lastUpdatedTimestamp) /
                     periodLength));
+
+        return (
+            retval
+            // staker.owedRewards, 
+            // rewardsPerPeriod, 
+            // staker.amountStaked, 
+            // block.timestamp,
+            // staker.lastUpdatedTimestamp,
+            // block.timestamp - staker.lastUpdatedTimestamp,
+            // periodLength
+        );
     }
 
 
     // can turn off auto mining in HH
     // maybe even turn it off in test?
     // either in HH config or in test itself
+
+    function latestTimestamp() external view returns (uint256) {
+        return block.timestamp;
+    }
+
+    function userStartTimestamp () external view returns (uint256) {
+        Staker memory staker = stakers[msg.sender];
+
+        return staker.unlockTimestamp - timeLockPeriod;
+    }
+
+    function fractionalPeriodPassed() external view returns (uint256) {
+        Staker memory staker = stakers[msg.sender];
+
+        uint256 startTimestamp = staker.unlockTimestamp - timeLockPeriod;
+
+        // will be 0 when exactly at a period end or beginning
+        // will be the timestamp relative to the amount of a period that
+        // has passed otherwise
+        return ((block.timestamp - startTimestamp) % periodLength);
+    }
     function userMultiplier() external view returns (uint256) {
         Staker memory staker = stakers[msg.sender];
 
@@ -183,59 +224,49 @@ contract StakingBase is Ownable, IStakingBase {
         return ((rewardsPerPeriod * staker.amountStaked) / periodLength);
     }
 
-    function fullPeriodsPassed() external view returns (uint256) {
+    function fullPeriodsPassedTest() external view returns (uint256) {
         Staker memory staker = stakers[msg.sender];
 
-        return ((block.timestamp - staker.lastUpdatedTimestamp) / periodLength);
+        uint256 startTimestamp = staker.unlockTimestamp - timeLockPeriod;
+
+        return ((block.timestamp - startTimestamp) / periodLength);
     }
 
     function fixedPeriodsRewards() external view returns (uint256) {
         Staker memory staker = stakers[msg.sender];
 
-        return (rewardsPerPeriod * staker.amountStaked * this.fullPeriodsPassed());
+        return (rewardsPerPeriod * staker.amountStaked * this.fullPeriodsPassedTest());
     }
 
+    function zeroPeriodsRewards() external view returns (uint256) { 
+        Staker memory staker = stakers[msg.sender];
+
+        uint256 startTimestamp = staker.unlockTimestamp - timeLockPeriod;
+        uint256 amountOfPeriodPassed = ((block.timestamp - startTimestamp) % periodLength);
+        
+        return (amountOfPeriodPassed) * ((rewardsPerPeriod * staker.amountStaked) / periodLength);
+    }
+
+    // creating this to avoid checking `_getPendingRewards` which seems accurate
     function _getPendingRewards(
         Staker memory staker
     ) internal view returns (uint256) {
-        // TODO optimize this function
-
         // Return any existing rewards they are owed plus the additional amount accrued
         // Value is prorated to a fractional period length
         // This means that calls will calculate rewards for the appropriate amount in between
-        // periods, instead of just the full periods
+        // periods, instead of just the full period
 
-        // Find how many periods have passed
-        uint256 fullPeriodsPassed = ((block.timestamp - staker.lastUpdatedTimestamp) / periodLength);
-        
-        // The amount of the fractional period that has passed
-        uint256 amountOfPeriodPassed = periodLength - (block.timestamp % periodLength);
-
-        if (fullPeriodsPassed == 0) {
-            return (amountOfPeriodPassed) * ((rewardsPerPeriod * staker.amountStaked) / periodLength);
-        }
-        // TODO fullperiods passed not right?
-        // because of order of calls in test? (after stake)
-        // block timestamp and last updated tomestamp = 0
-        // so later division is zero
-
+        // The fractional amount of a period that has passed
+        uint256 amountOfPeriodPassed = ((block.timestamp - staker.lastUpdatedTimestamp) % periodLength);
 
         // Calculate rewards owed for that number of periods
-        uint256 fixedPeriodRewards = (rewardsPerPeriod * staker.amountStaked * fullPeriodsPassed);
-
-        // TODO if not yet through a single period, `fixPeriodRewards` is zero
-        // but this is used to calculate the partial rewards
-        // find a second way to cal these not reliant on above
-
-        // Divide by number of periods passed to get the 
-        // user specific rewards given per period
-        uint256 userRewardsPerPeriod = fixedPeriodRewards / fullPeriodsPassed;
-
-        // Divide by period length to get the user specific rewards per single fraction of a period
-        uint256 rewardsPerPeriodFraction = userRewardsPerPeriod / periodLength;
+        uint256 fixedPeriodRewards = (rewardsPerPeriod *
+                staker.amountStaked *
+                ((block.timestamp - staker.lastUpdatedTimestamp) /
+                    periodLength));
 
         // Return the full period rewards prorated up to the moment they call
-        return fixedPeriodRewards + (rewardsPerPeriodFraction * amountOfPeriodPassed);
+        return staker.owedRewards + fixedPeriodRewards + (amountOfPeriodPassed) * ((rewardsPerPeriod * staker.amountStaked) / periodLength);
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

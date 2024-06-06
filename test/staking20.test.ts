@@ -129,8 +129,9 @@ describe.only("StakingERC20", () => {
     await stakeToken.connect(stakerD).approve(await contract.getAddress(), hre.ethers.MaxUint256);
     await stakeToken.connect(stakerF).approve(await contract.getAddress(), hre.ethers.MaxUint256);
 
-    // Always start at the same block going forward
-    await time.setNextBlockTimestamp(1720000000)
+    // Always start at the same block going forward, disable auto mining for each tx
+    await hre.network.provider.send("evm_setAutomine", [false]);
+    await time.increaseTo(1720000000)
   });
 
   describe("#getContractRewardsBalance", () => {
@@ -145,21 +146,30 @@ describe.only("StakingERC20", () => {
     it("Can stake an amount successfully", async () => {
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
 
+      // staked at 0
       await contract.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
+      
+      
+      // Always mine block before expects
+      // Always update timestamps after mining a block
+      await time.increase(1);
       stakedAtA = BigInt(await time.latest());
       origStakedAtA = stakedAtA;
-
-      const perFraction = await contract.connect(stakerA).userRewardsPerFraction();
+      
+      // TODO remove when fixed further tests, keeping just to help debug
+      // const perFraction = await contract.connect(stakerA).userRewardsPerFraction();
+      // const pendingRewardsbefore = await contract.connect(stakerA).getPendingRewards();
 
       // forward in time < 1 period
-      await time.increase(config.periodLength + (config.periodLength / 3n));
-      const afterIncrease =  BigInt(await time.latest());
+      await time.increase(config.periodLength - 5n); // 12
+      const latest2 = BigInt(await time.latest()); // should equal 13
 
-      // TODO go more than a period and calc rewards, then backward calc
-      // to be sure we get the right amount for < 1 period
-      const fullperiodspassed = await contract.connect(stakerA).fullPeriodsPassed();
-      const fixedRewards = await contract.connect(stakerA).fixedPeriodsRewards();
-      const userMultiplier = await contract.connect(stakerA).userMultiplier();
+      // const afterIncrease =  BigInt(await time.latest());
+      // const fullperiodspassed = await contract.connect(stakerA).fullPeriodsPassedTest();
+      // const fractionPeriodAmount = await contract.connect(stakerA).fractionalPeriodPassed();
+      // const fixedRewards = await contract.connect(stakerA).fixedPeriodsRewards();
+      // const userMultiplier = await contract.connect(stakerA).userMultiplier();
+
       const legacyPendingRewards = await contract.connect(stakerA).legacyPendingRewards();
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
 
@@ -178,26 +188,57 @@ describe.only("StakingERC20", () => {
     });
 
     it("Can stake a second time as the same user successfully", async () => {
-      await time.increase(config.periodLength * 5n - (config.periodLength / 3n));
+      const latestBeforeIncrease = BigInt(await time.latest());
+
+      // await time.increase(config.periodLength); // (config.periodLength / 2n));
 
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceBeforeA = await rewardsToken.balanceOf(stakerA.address);
       
-      const legacyPendingRewards = await contract.connect(stakerA).legacyPendingRewards();
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
       
-      const latest = BigInt(await time.latest());
+
+      // should be 0, no time passed
+      const fractionPeriodAmountBefore = await contract.connect(stakerA).fractionalPeriodPassed();
+
+      const legacyPendingRewardsBefore = await contract.connect(stakerA).legacyPendingRewards();
+      const pendingRewardsBefore = await contract.connect(stakerA).getPendingRewards();
+
+      const stakerDataBefore = await contract.stakers(stakerA.address);
+
+      
       await contract.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
+      
+      // Mine block for tx
+      await time.increase(1);
+
+      stakedAtA = BigInt(await time.latest());
+      amountStakedA += DEFAULT_STAKED_AMOUNT;
+      const latest = BigInt(await time.latest());
+
+      const stakerData = await contract.stakers(stakerA.address);
+
+      const afterIncrease =  BigInt(await time.latest());
+      const fullperiodspassed = await contract.connect(stakerA).fullPeriodsPassedTest();
+      const fractionPeriodAmount = await contract.connect(stakerA).fractionalPeriodPassed();
+      const latestTimestampFromChain = await contract.connect(stakerA).latestTimestamp();
+      const userStartTimestamp = await contract.connect(stakerA).userStartTimestamp();
+      const userMultiplier = await contract.connect(stakerA).userMultiplier();
+
+      // Includes the `owedRewards` calculated from second stake addition
+      let legacyPendingRewards = (await contract.connect(stakerA).legacyPendingRewards());
+
+      // const zeroPeriodrewards = await contract.connect(stakerA).zeroPeriodsRewards();
+      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
+
+      // might be slightly different due to HH automine per tx
       
       // reverts division error, after updated timestamp
       // const pendingRewardsAfter = await contract.connect(stakerA).getPendingRewards();
 
-      stakedAtA = BigInt(await time.latest());
-      amountStakedA += DEFAULT_STAKED_AMOUNT;
-      
       const latestAfterStake = BigInt(await time.latest());
 
       const expectedRewards = calcTotalRewards(
+        origStakedAtA,
         latestAfterStake,
         [stakedAtA - origStakedAtA],
         [DEFAULT_STAKED_AMOUNT],
@@ -207,8 +248,6 @@ describe.only("StakingERC20", () => {
 
       const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceAfterA = await rewardsToken.balanceOf(stakerA.address);
-
-      const stakerData = await contract.stakers(stakerA.address);
 
       // They have gained pending rewards but are not yet given them
       expect(pendingRewards).to.eq(expectedRewards);

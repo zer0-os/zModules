@@ -1,7 +1,8 @@
 
 
 export const calcTotalRewards = (
-  timestamp : bigint,
+  startTimestamp : bigint,
+  currentTimestamp : bigint,
   durations : Array<bigint>,
   balances : Array<bigint>,
   rewardsPerPeriod : bigint,
@@ -10,27 +11,32 @@ export const calcTotalRewards = (
   let totalRewards = 0n;
 
   for (let i = 0; i < durations.length; i++) {
-    totalRewards += calcRewardsAmount(timestamp, durations[i], balances[i], rewardsPerPeriod, periodLength);
+    totalRewards += calcRewardsAmount(startTimestamp, currentTimestamp, durations[i], balances[i], rewardsPerPeriod, periodLength);
   }
 
   return totalRewards;
 };
 
+// TODO can simplify these, write out each step for now while debugging
+
 export const calcRewardsAmount = (
-  timestamp : bigint,
+  startTimestamp : bigint,
+  currentTimestamp : bigint,
   timePassed : bigint,
   stakeAmount : bigint,
   rewardsPerPeriod : bigint,
   periodLength : bigint
 ) : bigint => {
 
-  const fullPeriodsPassed = timePassed / periodLength;
-  const fixPeriodRewards = rewardsPerPeriod * stakeAmount * fullPeriodsPassed;
-  
-  const amountOfPeriodPassed = periodLength - (timestamp % periodLength);
-  
-  const userRewardsPerPeriod = fixPeriodRewards / fullPeriodsPassed;
-  const rewardsPerPeriodFraction = userRewardsPerPeriod / periodLength;
+  // The amount of a single time period that has passed, used for fractional rewards
+  const amountOfPeriodPassed = (currentTimestamp - startTimestamp) % periodLength;
 
-  return fixPeriodRewards + (rewardsPerPeriodFraction * amountOfPeriodPassed);
+  // The amount of full periods that have passed
+  const fullPeriodsPassed = timePassed / periodLength;
+
+  if (fullPeriodsPassed === 0n) return amountOfPeriodPassed * ((rewardsPerPeriod * stakeAmount) / periodLength);
+
+  const fixPeriodRewards = rewardsPerPeriod * stakeAmount * fullPeriodsPassed;
+
+  return fixPeriodRewards + ((rewardsPerPeriod * stakeAmount) / periodLength);
 }
