@@ -66,7 +66,7 @@ describe("Escrow Contract", () => {
     });
   });
 
-  describe("Fund Management - Success Scenarios", () => {
+  describe("Fund Management", () => {
     const depositAmount = ethers.parseEther("100");
 
     it("Should allow deposits", async () => {
@@ -129,6 +129,11 @@ describe("Escrow Contract", () => {
 
     it("Should revert if depositing zero amount", async () => {
       await expect(escrow.connect(addr1).deposit(0n))
+        .to.be.revertedWithCustomError(escrow, ZERO_AMOUNT_ERR);
+    });
+
+    it("Should revert if withdrawing zero amount", async () => {
+      await expect(escrow.connect(addr1).withdraw(0n))
         .to.be.revertedWithCustomError(escrow, ZERO_AMOUNT_ERR);
     });
 
