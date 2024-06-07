@@ -8,7 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import { console } from "hardhat/console.sol";
+
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
@@ -146,8 +146,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
     function _baseClaim(Staker storage staker, uint256 subtractAmountStaked) internal {
         uint256 rewards = _getPendingRewards(staker);
-        console.log("#Claim");
-        console.log("Rewards: %s", rewards);
 
         staker.lastUpdatedTimestamp = block.timestamp;
         staker.owedRewards = 0;
@@ -155,13 +153,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         if (rewards != 0) {
             _checkRewardsAvailable(rewards);
 
-            // console.log("inside the transfer if");
-
             rewardsToken.safeTransfer(msg.sender, rewards);
         }
 
         if (staker.amountStaked - subtractAmountStaked == 0 && staker.owedRewards == 0) {
-            // console.log("inside the delete if");
             delete stakers[msg.sender];
         }
 

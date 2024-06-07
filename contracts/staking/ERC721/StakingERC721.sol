@@ -8,7 +8,6 @@ import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extension
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 
-
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a

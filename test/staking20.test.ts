@@ -165,8 +165,6 @@ describe.only("StakingERC20", () => {
 
       // Always mine block before expects
       // Always update timestamps after mining a block
-      // TODO move timestamp by more than one, change after debugging
-      // TODO issues when using `time. increase(1)`?
       await contract.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
 
       await time.increase(timeIncreaseAmount);
@@ -584,9 +582,6 @@ describe.only("StakingERC20", () => {
     it("Allows a user to partially unstake without rewards using 'exit' and updates `totalStaked`", async () => {
       await time.increase(config.periodLength * 2n);
 
-      // TODO one change that will affect exit is that we no longer delete the staker struct
-      // in the same place, we keep their rewards for them to claim later
-      // Change this behaviour here after merging other changes
       const totalStakedBefore = await contract.totalStaked();
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerC.address);
@@ -666,12 +661,6 @@ describe.only("StakingERC20", () => {
       // claim all rewards to delete struct
       await contract.connect(stakerC).claim();
       await time.increase(timeIncreaseAmount);
-
-      // was silently reverting but didnt end execution or anything
-      // because we werent transferring enough funds for it to do the claim,
-      // so the `console.log` messages weren't being hit
-      // and therefore the staker struct wasn't getting deleted, even though the tx
-      // was "mined"
 
       // Confirm we got all the balances we're owed
       const rewardsBalanceAfterClaim = await rewardsToken.balanceOf(stakerC.address);

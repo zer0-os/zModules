@@ -21,6 +21,7 @@ export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
 export const ZERO_UNSTAKE_ERR = "ZeroUnstake";
 
 // StakingERC721
+export const ZERO_STAKE_ERR = "ZeroStake";
 export const TIME_LOCK_NOT_PASSED_ERR = "TimeLockNotPassed";
 export const INVALID_OWNER_ERR = "InvalidOwner";
 export const NO_REWARDS_ERR = "NoRewardsLeftInContract";
