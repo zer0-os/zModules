@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 import { IOwnableOperable } from "../access/IOwnableOperable.sol";
 
@@ -8,9 +8,10 @@ interface IEscrow is IOwnableOperable {
     /**
      * @notice Emitted when tokens are deposited into the contract
      * @param user The address of the user who deposited the tokens
-     * @param amount The amount of tokens deposited
+     * @param depositAmount The amount of tokens deposited (argument to `deposit()`)
+     * @param amountTransferred The amount of tokens actually transferred (deflationary or rebasing tokens)
      */
-    event Deposit(address indexed user, uint256 amount);
+    event Deposit(address indexed user, uint256 indexed depositAmount, uint256 amountTransferred);
 
     /**
      * @notice Emitted when tokens are withdrawn from the contract
@@ -18,13 +19,6 @@ interface IEscrow is IOwnableOperable {
      * @param amount The amount of tokens withdrawn
      */
     event Withdrawal(address indexed user, uint256 amount);
-
-    /**
-     * @notice Emitted when tokens are refunded to a user by the contract owner or operator
-     * @param user The address of the user to whom the tokens were refunded
-     * @param amount The amount of tokens refunded
-     */
-    event FundsReleased(address indexed user, uint256 amount);
 
     /**
      * @notice Reverted when a user has insufficient funds in this Escrow for an operation
@@ -51,11 +45,4 @@ interface IEscrow is IOwnableOperable {
      * @param amount The amount of tokens to withdraw.
      */
     function withdraw(uint256 amount) external;
-
-    /**
-     * @notice Refunds tokens from the escrow back to a user by the contract owner or operator.
-     * @param user The address of the user to refund tokens to.
-     * @param amount The amount of tokens to release for the user.
-     */
-    function releaseFunds(address user, uint256 amount) external;
 }

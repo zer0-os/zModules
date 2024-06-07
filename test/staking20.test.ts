@@ -3,17 +3,17 @@ import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
+  DeflERC20Mock,
   MockERC20,
-  StakingERC20,
+  StakingERC20, StakingERC20__factory,
 } from "../typechain";
 import {
   NO_REWARDS_ERR,
   TIME_LOCK_NOT_PASSED_ERR,
   INSUFFICIENT_ALLOWANCE_ERR,
   INSUFFICIENT_BALANCE_ERR,
-  ZERO_STAKE_ERR,
   UNEQUAL_UNSTAKE_ERR,
-  OWNABLE_UNAUTHORIZED_ERR,
+  OWNABLE_UNAUTHORIZED_ERR, ZERO_UNSTAKE_ERR,
 } from "./helpers/errors";
 import {
   WITHDRAW_EVENT,
@@ -26,6 +26,8 @@ import {
   UNSTAKED_EVENT,
   BaseConfig,
 } from "./helpers/staking";
+import { ethers } from "ethers";
+
 
 describe("StakingERC20", () => {
   let owner : SignerWithAddress;
@@ -35,6 +37,7 @@ describe("StakingERC20", () => {
   let stakerD : SignerWithAddress;
   let stakerF : SignerWithAddress;
   let notStaker : SignerWithAddress;
+  let edgeStaker : SignerWithAddress;
 
   let contract : StakingERC20;
 
@@ -45,27 +48,31 @@ describe("StakingERC20", () => {
   // we can leave this type where it is
   let config : BaseConfig;
 
+  // The amount we increase the `block.timestamp` by whenever we mine manually
+  const timeIncreaseAmount = 5n;
+
   // Track first stake and most recent stake times
   let origStakedAtA : bigint;
-  let stakedAtA :  bigint;
+  let stakedAtA : bigint;
+  let claimedAtA : bigint;
+  let unstakedAtA : bigint;
+  let amountStakedA = 0n;
 
   let origStakedAtB : bigint;
   let stakedAtB : bigint;
-
   let origStakedAtC : bigint;
   let stakedAtC : bigint;
+  let unstakedAtC : bigint;
+  let amountStakedC = 0n;
 
   let origStakedAtD : bigint;
   let stakedAtD : bigint;
 
-  // Set initial values for stakers
-  let amountStakedA = 0n;
-  let amountStakedC = 0n;
+  let stakedAtF : bigint;
+  let claimedAtF : bigint;
 
-  let claimedAtA : bigint;
 
-  let unstakedAtA : bigint;
-  let unstakedAtC : bigint;
+  let stakingFactory : StakingERC20__factory;
 
   before(async () => {
     [
@@ -76,6 +83,7 @@ describe("StakingERC20", () => {
       stakerD,
       stakerF,
       notStaker,
+      edgeStaker,
     ] = await hre.ethers.getSigners();
 
     const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
@@ -85,7 +93,7 @@ describe("StakingERC20", () => {
 
     config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
 
-    const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+    stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
 
     contract = await stakingFactory.deploy(
       config.stakingToken,
@@ -122,12 +130,22 @@ describe("StakingERC20", () => {
       INIT_BALANCE
     );
 
+    await stakeToken.connect(owner).transfer(
+      edgeStaker.address,
+      INIT_BALANCE
+    );
+
     // Approve staking contract to spend staker funds
     await stakeToken.connect(stakerA).approve(await contract.getAddress(), hre.ethers.MaxUint256);
     await stakeToken.connect(stakerB).approve(await contract.getAddress(), hre.ethers.MaxUint256);
     await stakeToken.connect(stakerC).approve(await contract.getAddress(), hre.ethers.MaxUint256);
     await stakeToken.connect(stakerD).approve(await contract.getAddress(), hre.ethers.MaxUint256);
     await stakeToken.connect(stakerF).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    await stakeToken.connect(edgeStaker).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+
+    // Always start at the same block going forward, disable auto mining for each tx
+    await hre.network.provider.send("evm_setAutomine", [false]);
+    await time.increaseTo(1720000000);
   });
 
   describe("#getContractRewardsBalance", () => {
@@ -139,38 +157,55 @@ describe("StakingERC20", () => {
   });
 
   describe("#stake", () => {
-    it("Can stake an amount successfully", async () => {
+    it("Can stake an amount successfully and update `totalStaked`", async () => {
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
 
+      const totalStakedBefore = await contract.totalStaked();
+
+      // Always mine block before expects
+      // Always update timestamps after mining a block
       await contract.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
+
+      await time.increase(timeIncreaseAmount);
       stakedAtA = BigInt(await time.latest());
       origStakedAtA = stakedAtA;
 
       amountStakedA = DEFAULT_STAKED_AMOUNT;
 
+      const totalStakedAfter = await contract.totalStaked();
+
       const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
 
-      const stakerData = await contract.stakers(stakerA.address);
-
       expect(stakeBalanceAfterA).to.eq(stakeBalanceBeforeA - DEFAULT_STAKED_AMOUNT);
+
+      const stakerData = await contract.stakers(stakerA.address);
 
       expect(stakerData.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT);
       expect(stakerData.lastUpdatedTimestamp).to.eq(stakedAtA);
       expect(stakerData.unlockTimestamp).to.eq(stakedAtA + config.timeLockPeriod);
       expect(stakerData.owedRewards).to.eq(0n);
+
+      expect(totalStakedAfter - totalStakedBefore).to.eq(DEFAULT_STAKED_AMOUNT);
     });
 
     it("Can stake a second time as the same user successfully", async () => {
-      await time.increase(config.periodLength * 6n);
-
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceBeforeA = await rewardsToken.balanceOf(stakerA.address);
 
+      const totalStakedBefore = await contract.totalStaked();
+
       await contract.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
+
+      // Mine block for tx
+      await time.increase(timeIncreaseAmount);
       stakedAtA = BigInt(await time.latest());
       amountStakedA += DEFAULT_STAKED_AMOUNT;
+
+      const stakerData = await contract.stakers(stakerA.address);
+
+      // Includes the `staker.owedRewards` calculated from second stake addition
+      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
+      const totalStakedAfter = await contract.totalStaked();
 
       const expectedRewards = calcTotalRewards(
         [stakedAtA - origStakedAtA],
@@ -179,14 +214,12 @@ describe("StakingERC20", () => {
         config.periodLength
       );
 
+      expect(pendingRewards).to.eq(expectedRewards);
+
       const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceAfterA = await rewardsToken.balanceOf(stakerA.address);
 
-
-      const stakerData = await contract.stakers(stakerA.address);
-
       // They have gained pending rewards but are not yet given them
-      expect(pendingRewards).to.eq(expectedRewards);
       expect(stakeBalanceAfterA).to.eq(stakeBalanceBeforeA - DEFAULT_STAKED_AMOUNT);
       expect(rewardsBalanceAfterA).to.eq(rewardsBalanceBeforeA);
 
@@ -195,20 +228,25 @@ describe("StakingERC20", () => {
 
       expect(stakerData.lastUpdatedTimestamp).to.eq(stakedAtA);
       expect(stakerData.owedRewards).to.eq(expectedRewards);
+
+      expect(totalStakedAfter - totalStakedBefore).to.eq(DEFAULT_STAKED_AMOUNT);
     });
 
     it("Can stake as a new user when others are already staked", async () => {
-      const pendingRewards = await contract.connect(stakerB).getPendingRewards();
-
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerB.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerB.address);
 
       await contract.connect(stakerB).stake(DEFAULT_STAKED_AMOUNT);
+
+      // Mine block for tx
+      await time.increase(timeIncreaseAmount);
       stakedAtB = BigInt(await time.latest());
       origStakedAtB = stakedAtB;
 
+      const pendingRewards = await contract.connect(stakerB).getPendingRewards();
+
       const expectedRewards = calcTotalRewards(
-        [stakedAtB - origStakedAtB], // Will be 0
+        [stakedAtB - origStakedAtB], // will be the same values
         [DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
         config.periodLength
@@ -219,8 +257,10 @@ describe("StakingERC20", () => {
 
       const stakerData = await contract.stakers(stakerB.address);
 
+      expect(expectedRewards).to.eq(0n);
       expect(pendingRewards).to.eq(expectedRewards);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
+      expect(rewardsBalanceAfter).to.eq(0n);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
 
       expect(stakerData.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT);
@@ -231,29 +271,28 @@ describe("StakingERC20", () => {
     });
 
     it("Fails when the staker doesn't have the funds to stake", async () => {
-      const amount = hre.ethers.MaxUint256;
+      // Using the `await expect(...).to.be.revertedWithCustomError` syntax doesn't work
+      // when automining is off and we cant call to mine in the hook, or call the expect on
+      // the `time.increase()` call.
+      await hre.network.provider.send("evm_setAutomine", [true]);
 
-      // First, it will fail on allowance
       await expect(
-        contract.connect(notStaker).stake(amount)
-      ).to.be.revertedWithCustomError(rewardsToken, INSUFFICIENT_ALLOWANCE_ERR)
-        .withArgs(contract.target, 0n, amount);
-
-      // Then after we allow funds, it will fail on balance
-      await stakeToken.connect(notStaker).approve(await contract.getAddress(), amount);
-
-      const balance = await stakeToken.balanceOf(notStaker.address);
-      await expect(
-        contract.connect(notStaker).stake(amount)
-      ).to.be.revertedWithCustomError(stakeToken, INSUFFICIENT_BALANCE_ERR)
-        .withArgs(notStaker.address, balance, amount);
+        contract.connect(notStaker).stake(DEFAULT_STAKED_AMOUNT)
+      ).to.be.revertedWithCustomError(stakeToken, INSUFFICIENT_ALLOWANCE_ERR)
+        .withArgs(await contract.getAddress(), 0, DEFAULT_STAKED_AMOUNT);
     });
 
     it("Fails when the staker tries to stake 0", async () => {
-      // TODO Should we bother preventing this case?
+      // Then after we allow funds, it will fail on balance
+      await stakeToken.connect(notStaker).approve(await contract.getAddress(), DEFAULT_STAKED_AMOUNT);
+
+      const balance = await stakeToken.balanceOf(notStaker.address);
       await expect(
-        contract.connect(stakerA).stake(0n)
-      ).to.be.revertedWithCustomError(contract, ZERO_STAKE_ERR);
+        contract.connect(notStaker).stake(DEFAULT_STAKED_AMOUNT)
+      ).to.be.revertedWithCustomError(stakeToken, INSUFFICIENT_BALANCE_ERR)
+        .withArgs(notStaker.address, balance, DEFAULT_STAKED_AMOUNT);
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
   });
 
@@ -307,8 +346,11 @@ describe("StakingERC20", () => {
     });
 
     it("Returns 0 for a user that has staked but not passed a time period", async () => {
+      await hre.network.provider.send("evm_setAutomine", [false]);
+
       await contract.connect(stakerD).stake(DEFAULT_STAKED_AMOUNT);
 
+      await time.increase(timeIncreaseAmount);
       stakedAtD = BigInt(await time.latest());
       origStakedAtD = stakedAtD;
 
@@ -326,37 +368,49 @@ describe("StakingERC20", () => {
 
   describe("#claim", () => {
     it("Allows the user to claim their rewards", async () => {
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+      await time.increase(config.timeLockPeriod);
+      const latest = BigInt(await time.latest());
 
-      // Give staking contract balance to pay rewards
-      await rewardsToken.connect(owner).transfer(
-        await contract.getAddress(),
-        pendingRewards
-      );
-
-      await contract.connect(stakerA).claim();
-      claimedAtA = BigInt(await time.latest());
-
+      // We calculate with two transactions worth of additional time because we know the
+      // timestamp is modified from the transfer of funds as well as `claim` execution
       const expectedRewards = calcTotalRewards(
-        [claimedAtA - stakedAtA, stakedAtA - origStakedAtA],
+        [latest + (timeIncreaseAmount * 2n) - stakedAtA, stakedAtA - origStakedAtA],
         [amountStakedA, DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
         config.periodLength
       );
 
-      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+      // Give staking contract balance to pay rewards
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        expectedRewards
+      );
+      await time.increase(timeIncreaseAmount);
 
-      expect(pendingRewards).to.eq(expectedRewards);
-      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + pendingRewards);
+      const totalStakedBefore = await contract.totalStaked();
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+
+      await contract.connect(stakerA).claim();
+      await time.increase(timeIncreaseAmount);
+      claimedAtA = BigInt(await time.latest());
+
+      const totalStakedAfter = await contract.totalStaked();
 
       const stakerData = await contract.stakers(stakerA.address);
+
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + expectedRewards);
       expect(stakerData.owedRewards).to.eq(0n);
+
+      expect(totalStakedAfter).to.eq(totalStakedBefore);
     });
 
     it("Fails when the user has never staked", async () => {
       // `onlyUnlocked` is the first thing checked in this flow
       // and fails when the user has no set unlock timestamp
+      await hre.network.provider.send("evm_setAutomine", [true]);
+
       await expect(
         contract.connect(notStaker).claim()
       ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
@@ -365,7 +419,10 @@ describe("StakingERC20", () => {
     it("Fails when the contract has no rewards", async () => {
       // call to claim without first transferring rewards to the contract
       await expect(
-        contract.connect(stakerA).claim()
+        // we are using `stakerB` here, because the check would only hit if the
+        // user who calls actually has rewards to claim
+        // otherwise, if user has 0 rewards, the check for rewards availability will not hit
+        contract.connect(stakerB).claim()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
     });
 
@@ -378,11 +435,13 @@ describe("StakingERC20", () => {
 
       // Reset
       await contract.connect(stakerC).unstake(DEFAULT_STAKED_AMOUNT, true);
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
   });
 
   describe("#unstake", () => {
-    it("Allows a user to unstake partially", async () => {
+    it("Allows a user to unstake partially and updates `totalStaked`", async () => {
       await time.increase(config.periodLength * 7n);
 
       // Unstake half of the original stake
@@ -390,32 +449,34 @@ describe("StakingERC20", () => {
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
       const stakeTokenBalanceBefore = await stakeToken.balanceOf(stakerA.address);
 
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-
-      // Give staking contract balance to pay rewards
-      await rewardsToken.connect(owner).transfer(
-        await contract.getAddress(),
-        pendingRewards
-      );
-
-      await stakeToken.connect(stakerA).approve(await contract.getAddress(), amount);
-
-      await contract.connect(stakerA).unstake(amount, false);
-      unstakedAtA = BigInt(await time.latest());
-
-      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
-      const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
-
+      // Calculate the rewards we expect after the next 3 transactions have occurred.
       const expectedRewards = calcTotalRewards(
-        [unstakedAtA - claimedAtA],
+        [BigInt(await time.latest()) + timeIncreaseAmount * 2n - claimedAtA],
         [amountStakedA],
         config.rewardsPerPeriod,
         config.periodLength
       );
 
-      expect(pendingRewards).to.eq(expectedRewards);
+      // Give staking contract balance to pay rewards
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        expectedRewards
+      );
+      await time.increase(timeIncreaseAmount);
+
+      const totalStakedBefore = await contract.totalStaked();
+
+      await contract.connect(stakerA).unstake(amount, false);
+      await time.increase(timeIncreaseAmount);
+      unstakedAtA = BigInt(await time.latest());
+
+      const totalStakedAfter = await contract.totalStaked();
+
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+      const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
+
       expect(stakeTokenBalanceAfter).to.eq(stakeTokenBalanceBefore + amount);
-      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + pendingRewards);
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + expectedRewards);
 
       const stakerData = await contract.stakers(stakerA.address);
       expect(stakerData.amountStaked).to.eq(amountStakedA - amount);
@@ -423,41 +484,41 @@ describe("StakingERC20", () => {
       expect(stakerData.unlockTimestamp).to.eq(origStakedAtA + config.timeLockPeriod);
       expect(stakerData.owedRewards).to.eq(0n);
 
+      expect(totalStakedBefore - totalStakedAfter).to.eq(amount);
+
       // Update the amount the user has left staked in the contract
       amountStakedA -= amount;
     });
 
-    it("Allows a user to fully withdraw their entire staked amount", async () => {
+    it("Allows a user to fully withdraw their entire staked amount and delete the Staker struct", async () => {
       await time.increase(config.periodLength * 11n);
 
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
       const stakeTokenBalanceBefore = await stakeToken.balanceOf(stakerA.address);
 
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-
-      // Give staking contract balance to pay rewards
-      await rewardsToken.connect(owner).transfer(
-        await contract.getAddress(),
-        pendingRewards
-      );
-
-      await contract.connect(stakerA).unstake(amountStakedA, false);
-
-      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
-      const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
-
       const expectedRewards = calcTotalRewards(
-        [BigInt(await time.latest()) - unstakedAtA],
+        [BigInt(await time.latest()) + timeIncreaseAmount * 2n - unstakedAtA],
         [amountStakedA],
         config.rewardsPerPeriod,
         config.periodLength
       );
 
+      // Give staking contract balance to pay rewards
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        expectedRewards
+      );
+      await time.increase(timeIncreaseAmount);
+
+      await contract.connect(stakerA).unstake(amountStakedA, false);
+      await time.increase(timeIncreaseAmount);
       unstakedAtA = BigInt(await time.latest());
 
-      expect(pendingRewards).to.eq(expectedRewards);
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+      const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
+
       expect(stakeTokenBalanceAfter).to.eq(stakeTokenBalanceBefore + amountStakedA);
-      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + pendingRewards);
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + expectedRewards);
 
       const stakerData = await contract.stakers(stakerA.address);
 
@@ -468,10 +529,18 @@ describe("StakingERC20", () => {
       expect(stakerData.owedRewards).to.eq(0n);
     });
 
+    it("Fails when unstaking 0 amount", async () => {
+      await hre.network.provider.send("evm_setAutomine", [true]);
+
+      await expect(
+        contract.connect(stakerA).unstake(0, false)
+      ).to.be.revertedWithCustomError(contract, ZERO_UNSTAKE_ERR);
+    });
+
     it("Fails when the user has never staked", async () => {
       await expect(
         contract.connect(notStaker).unstake(DEFAULT_STAKED_AMOUNT, false)
-      ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
+      ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
     });
 
     it("Fails when the user has not passed their lock time", async () => {
@@ -498,42 +567,45 @@ describe("StakingERC20", () => {
     });
 
     it("Fails when the user tries to unstake more than they have staked", async () => {
-      // Avoid erroring for time lock period
       await time.increase(config.timeLockPeriod);
 
       await expect(
         contract.connect(stakerC).unstake(amountStakedC + 1n, false)
       ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
   });
 
   describe("#unstake with 'exit'", () => {
-    it("Allows a user to partially unstake without rewards using 'exit'", async () => {
+    it("Allows a user to partially unstake without rewards using 'exit' and updates `totalStaked`", async () => {
+      await time.increase(config.periodLength * 2n);
+
+      const totalStakedBefore = await contract.totalStaked();
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerC.address);
 
-      await time.increase(config.periodLength * 2n);
-
-      const pendingRewards = await contract.connect(stakerC).getPendingRewards();
-
-      // Allows unstaking with 'exit' before the time lock is over
-      const amount = DEFAULT_STAKED_AMOUNT / 2n;
-      await contract.connect(stakerC).unstake(amount, true);
-      unstakedAtC = BigInt(await time.latest());
-      amountStakedC -= amount;
-
+      // +2 to account for the prior two failures each incrementing +1
       const expectedRewards = calcTotalRewards(
-        [unstakedAtC - origStakedAtC],
+        [BigInt(await time.latest()) + timeIncreaseAmount + 2n - origStakedAtC],
         [DEFAULT_STAKED_AMOUNT],
         config.rewardsPerPeriod,
         config.periodLength
       );
 
+      // Allows unstaking with 'exit' before the time lock is over
+      const amount = DEFAULT_STAKED_AMOUNT / 2n;
+      await contract.connect(stakerC).unstake(amount, true);
+      await time.increase(timeIncreaseAmount);
+
+      unstakedAtC = BigInt(await time.latest());
+      amountStakedC -= amount;
+
+      const totalStakedAfter = await contract.totalStaked();
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerC.address);
 
       // Confirm they have pending rewards but don't receive them
-      expect(pendingRewards).to.eq(expectedRewards);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + amount);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
 
@@ -542,74 +614,108 @@ describe("StakingERC20", () => {
       expect(stakerData.amountStaked).to.eq(amount);
       expect(stakerData.lastUpdatedTimestamp).to.eq(unstakedAtC);
       expect(stakerData.unlockTimestamp).to.eq(origStakedAtC + config.timeLockPeriod);
-      expect(stakerData.owedRewards).to.eq(pendingRewards);
+      expect(stakerData.owedRewards).to.eq(expectedRewards);
+      expect(totalStakedBefore - totalStakedAfter).to.eq(amount);
     });
 
-    it("Allows a user to fully unstake without rewards using 'exit'", async () => {
+    it("Allows a user to fully unstake without rewards using 'exit' and claim later", async () => {
+      await time.increase(config.periodLength * 3n);
+
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerC.address);
 
-      const pendingRewards = await contract.connect(stakerC).getPendingRewards();
-
       const amount = DEFAULT_STAKED_AMOUNT / 2n;
       await contract.connect(stakerC).unstake(amount, true);
+      await time.increase(timeIncreaseAmount);
 
-      const timestamp = BigInt(await time.latest());
+      const exitTime = BigInt(await time.latest());
 
-      const expectedRewards = calcTotalRewards(
-        [timestamp - unstakedAtC, unstakedAtC - stakedAtC],
-        [DEFAULT_STAKED_AMOUNT / 2n, DEFAULT_STAKED_AMOUNT],
-        config.rewardsPerPeriod,
-        config.periodLength
-      );
+      const pendingRewards = await contract.connect(stakerC).getPendingRewards();
 
-      unstakedAtC = BigInt(await time.latest());
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerC.address);
-      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerC.address);
+      const rewardsBalanceAfterUnstake = await rewardsToken.balanceOf(stakerC.address);
 
       // Confirm they have pending rewards but don't receive them
-      expect(pendingRewards).to.eq(expectedRewards);
-
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + amount);
-      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
+      expect(rewardsBalanceAfterUnstake).to.eq(rewardsBalanceBefore);
 
       const stakerData = await contract.stakers(stakerC.address);
 
+      // Fails, why does this not delete the struct properly?
       expect(stakerData.amountStaked).to.eq(0n);
-      expect(stakerData.lastUpdatedTimestamp).to.eq(0n);
-      expect(stakerData.unlockTimestamp).to.eq(0n);
-      expect(stakerData.owedRewards).to.eq(0n);
+      expect(stakerData.lastUpdatedTimestamp).to.eq(exitTime);
+      expect(stakerData.unlockTimestamp).to.eq(stakedAtC + config.timeLockPeriod);
+      expect(stakerData.owedRewards).to.eq(pendingRewards);
+
+      unstakedAtC = BigInt(await time.latest());
+      amountStakedC -= amount;
+
+      // Give staking contract balance to pay rewards
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        pendingRewards
+      );
+      await time.increase(timeIncreaseAmount);
+
+      // claim all rewards to delete struct
+      await contract.connect(stakerC).claim();
+      await time.increase(timeIncreaseAmount);
+
+      // Confirm we got all the balances we're owed
+      const rewardsBalanceAfterClaim = await rewardsToken.balanceOf(stakerC.address);
+      expect(rewardsBalanceAfterClaim).to.eq(stakerData.owedRewards);
+
+      // validate struct has been deleted
+      const stakerDataAfterClaim = await contract.stakers(stakerC.address);
+      expect(stakerDataAfterClaim.amountStaked).to.eq(0n);
+      expect(stakerDataAfterClaim.lastUpdatedTimestamp).to.eq(0n);
+      expect(stakerDataAfterClaim.unlockTimestamp).to.eq(0n);
+      expect(stakerDataAfterClaim.owedRewards).to.eq(0n);
     });
 
     it("Fails when the user has never staked", async () => {
+      await hre.network.provider.send("evm_setAutomine", [true]);
+
       await expect(
         contract.connect(notStaker).unstake(1, true)
       ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
 
-    it("Succeeds when the user has not passed their lock time", async () => {
+    it("Unstakes with `exit` when the user has not passed their lock time", async () => {
       await contract.connect(stakerC).stake(DEFAULT_STAKED_AMOUNT);
+      await time.increase(timeIncreaseAmount);
       stakedAtC = BigInt(await time.latest());
 
       // Fully withdrew stake previously, so expect a new unlock time
       origStakedAtC = stakedAtC;
       amountStakedC = DEFAULT_STAKED_AMOUNT;
 
+
       // unstake without rewards when not passed time lock period
       await contract.connect(stakerC).unstake(DEFAULT_STAKED_AMOUNT, true);
+      await time.increase(timeIncreaseAmount);
+      const exitTime = BigInt(await time.latest());
+
+      const pendingRewards = await contract.connect(stakerC).getPendingRewards();
 
       const stakerData = await contract.stakers(stakerC.address);
 
-      expect(stakerData.unlockTimestamp).to.eq(0n);
       expect(stakerData.amountStaked).to.eq(0n);
-      expect(stakerData.owedRewards).to.eq(0n);
-      expect(stakerData.lastUpdatedTimestamp).to.eq(0n);
+      expect(stakerData.unlockTimestamp).to.eq(origStakedAtC + config.timeLockPeriod);
+      expect(stakerData.owedRewards).to.eq(pendingRewards);
+      expect(stakerData.lastUpdatedTimestamp).to.eq(exitTime);
     });
 
     it("Fails when the user tries to unstake more than they have staked", async () => {
+      await hre.network.provider.send("evm_setAutomine", [true]);
+
       await expect(
         contract.connect(stakerC).unstake(amountStakedC + 1n, true)
       ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
   });
 
@@ -620,11 +726,13 @@ describe("StakingERC20", () => {
         await contract.getAddress(),
         amount
       );
+      await time.increase(timeIncreaseAmount);
 
       const rewardsBalanceBefore = await rewardsToken.balanceOf(owner.address);
       const contractRewardsBalanceBefore = await contract.getContractRewardsBalance();
 
       await contract.connect(owner).withdrawLeftoverRewards();
+      await time.increase(timeIncreaseAmount);
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(owner.address);
       const contractRewardsBalanceAfter = await contract.getContractRewardsBalance();
@@ -635,6 +743,8 @@ describe("StakingERC20", () => {
     });
 
     it("Fails when the caller is not the admin", async () => {
+      await hre.network.provider.send("evm_setAutomine", [true]);
+
       await expect(
         contract.connect(notStaker).withdrawLeftoverRewards()
       ).to.be.revertedWithCustomError(contract, OWNABLE_UNAUTHORIZED_ERR)
@@ -645,49 +755,83 @@ describe("StakingERC20", () => {
       await expect(
         contract.connect(owner).withdrawLeftoverRewards()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
   });
 
   describe("Events", () => {
     it("Emits a Staked event when a user stakes", async () => {
+      await hre.network.provider.send("evm_setAutomine", [true]);
+
       await expect(
         contract.connect(stakerF).stake(DEFAULT_STAKED_AMOUNT)
       ).to.emit(contract, STAKED_EVENT)
-        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakingToken);
+        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, DEFAULT_STAKED_AMOUNT, config.stakingToken);
+
+      stakedAtF = BigInt(await time.latest());
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
 
     it("Emits a Claimed event when a user claims rewards", async () => {
       await time.increase(config.timeLockPeriod);
 
-      const pendingRewards = await contract.connect(stakerF).getPendingRewards();
+      // Calculate for future transactions. +5 for manual time increase in transfer,
+      // and an extra + 1 for auto time increase when calling `claim`
+      const expectedRewards = calcTotalRewards(
+        [BigInt(await time.latest()) + timeIncreaseAmount + 1n - stakedAtF],
+        [DEFAULT_STAKED_AMOUNT],
+        config.rewardsPerPeriod,
+        config.periodLength
+      );
 
       await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
-        pendingRewards
+        expectedRewards
       );
+      await time.increase(timeIncreaseAmount);
+
+      await hre.network.provider.send("evm_setAutomine", [true]);
 
       await expect(
         contract.connect(stakerF).claim()
       ).to.emit(contract, CLAIMED_EVENT)
-        .withArgs(stakerF.address, pendingRewards, config.rewardsToken);
+        .withArgs(stakerF.address, expectedRewards, config.rewardsToken);
+
+      claimedAtF = BigInt(await time.latest());
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
 
     it("Emits an Unstaked event when a user unstakes", async () => {
       await time.increase(config.periodLength * 3n);
 
-      const pendingRewards = await contract.connect(stakerF).getPendingRewards();
+      // Calculate for future transactions. +5 for manual time increase in transfer,
+      // and an extra + 1 for auto time increase when calling `claim`
+      const expectedRewards = calcTotalRewards(
+        [BigInt(await time.latest()) + timeIncreaseAmount + 1n - claimedAtF],
+        [DEFAULT_STAKED_AMOUNT],
+        config.rewardsPerPeriod,
+        config.periodLength
+      );
 
       await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
-        pendingRewards
+        expectedRewards
       );
+      await time.increase(timeIncreaseAmount);
 
       const stakerData = await contract.stakers(stakerF.address);
+
+      await hre.network.provider.send("evm_setAutomine", [true]);
 
       await expect(
         contract.connect(stakerF).unstake(stakerData.amountStaked / 2n, false)
       ).to.emit(contract, UNSTAKED_EVENT)
         .withArgs(stakerF.address, stakerData.amountStaked / 2n, config.stakingToken);
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
     });
 
     it("Emits an Unstaked event when a user exits with unstake", async () => {
@@ -697,6 +841,8 @@ describe("StakingERC20", () => {
 
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerF.address);
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerF.address);
+
+      await hre.network.provider.send("evm_setAutomine", [true]);
 
       await expect(
         contract.connect(stakerF).unstake(stakerData.amountStaked, true)
@@ -709,8 +855,19 @@ describe("StakingERC20", () => {
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + stakerData.amountStaked);
 
+      const pendingRewards = await contract.connect(stakerF).getPendingRewards();
+      // fund the contract
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        pendingRewards
+      );
+
+      // claim to clear the struct
+      await contract.connect(stakerF).claim();
+
       const stakerDataAfter = await contract.stakers(stakerF.address);
 
+      // make sure the struct is cleared
       expect(stakerDataAfter.amountStaked).to.eq(0n);
       expect(stakerDataAfter.lastUpdatedTimestamp).to.eq(0n);
       expect(stakerDataAfter.unlockTimestamp).to.eq(0n);
@@ -718,16 +875,346 @@ describe("StakingERC20", () => {
     });
 
     it("Emits 'LeftoverRewardsWithdrawn' event when the admin withdraws", async () => {
-      const amount = 1000n;
-      await rewardsToken.connect(owner).transfer(
-        await contract.getAddress(),
-        amount
-      );
+      const balance = await rewardsToken.balanceOf(await contract.getAddress());
+
+      let amount = balance;
+      if (balance === 0n) {
+        amount = 1231231n;
+        await rewardsToken.connect(owner).transfer(
+          await contract.getAddress(),
+          amount
+        );
+      }
 
       await expect(
         contract.connect(owner).withdrawLeftoverRewards()
       ).to.emit(contract, WITHDRAW_EVENT)
         .withArgs(owner.address, amount);
+
+      // turn off automine?
+    });
+  });
+
+  describe("Special Cases", async () => {
+    describe("Exiting", () => {
+      // eslint-disable-next-line max-len
+      it("#exit from staking should yield the same rewards for partial and full exit within `unlockTimestamp` rules", async () => {
+        await hre.network.provider.send("evm_setAutomine", [true]);
+
+        await rewardsToken.connect(owner).transfer(
+          contract.target,
+          1000000n
+        );
+        await time.increase(timeIncreaseAmount);
+
+        const stakeAmt = 100n;
+
+        await contract.connect(edgeStaker).stake(stakeAmt);
+        const stakeTime = BigInt(await time.latest());
+
+        // partially exit before timelock passed
+        const halfStakeAmt = stakeAmt / 2n;
+        await contract.connect(edgeStaker).unstake(halfStakeAmt, true);
+        const unstakeTime = BigInt(await time.latest());
+
+        // No rewards were transferred, should be zero
+        const balAfterExit = await rewardsToken.balanceOf(edgeStaker.address);
+
+        const timeToRewards = config.timeLockPeriod + config.periodLength * 2n;
+        await time.increase(timeToRewards);
+
+        await contract.connect(edgeStaker).claim();
+
+        const firstClaimTime = BigInt(await time.latest());
+        const balAfterFirstClaim = await rewardsToken.balanceOf(edgeStaker.address);
+
+        const rewardsForHalfStake = calcTotalRewards(
+          [firstClaimTime - unstakeTime, unstakeTime - stakeTime],
+          [halfStakeAmt, stakeAmt],
+          config.rewardsPerPeriod,
+          config.periodLength
+        );
+
+        // should get rewards for the half-stake since he exited before rewards started generating
+        expect(balAfterFirstClaim - balAfterExit).to.eq(rewardsForHalfStake);
+
+        const {
+          owedRewards: owedRewardsAfterTimelock,
+          amountStaked,
+        } = await contract.stakers(edgeStaker.address);
+        // zero rewards cause he just got them all
+        expect(owedRewardsAfterTimelock).to.eq(0n);
+        expect(amountStaked).to.eq(halfStakeAmt);
+
+        // increase time to generate rewards for the new period
+        await time.increase(timeToRewards);
+
+        // fully exit
+        await contract.connect(edgeStaker).unstake(halfStakeAmt, true);
+        const remainderUnstakeTime = BigInt(await time.latest());
+
+        const rewardsForHalfStakeUpdate = calcTotalRewards(
+          [remainderUnstakeTime - firstClaimTime],
+          [halfStakeAmt],
+          config.rewardsPerPeriod,
+          config.periodLength
+        );
+
+        const {
+          owedRewards: owedRewardsAfterExit,
+          amountStaked: stakedAfterExit,
+        } = await contract.stakers(edgeStaker.address);
+        expect(owedRewardsAfterExit).to.eq(rewardsForHalfStakeUpdate);
+        expect(stakedAfterExit).to.eq(0n);
+
+        // even though he exited, rewards have been generated, so he should be able to claim them
+        // even though he doesn't have stake in anymore
+        await contract.connect(edgeStaker).claim();
+
+        // now make sure staker struct got deleted
+        const stakerDataFinal = await contract.stakers(edgeStaker.address);
+        expect(stakerDataFinal.amountStaked).to.eq(0n);
+        expect(stakerDataFinal.lastUpdatedTimestamp).to.eq(0n);
+        expect(stakerDataFinal.unlockTimestamp).to.eq(0n);
+        expect(stakerDataFinal.owedRewards).to.eq(0n);
+
+        const balAfterClaim = await rewardsToken.balanceOf(edgeStaker.address);
+        expect(balAfterClaim - balAfterFirstClaim).to.eq(rewardsForHalfStakeUpdate);
+      });
+
+      it("should let the user who exits fully after timelock to claim all his available rewards", async () => {
+        await rewardsToken.connect(owner).transfer(
+          contract.target,
+          1000000n
+        );
+
+        const stakeAmt = 100n;
+
+        await contract.connect(edgeStaker).stake(stakeAmt);
+        const stakeTime = BigInt(await time.latest());
+
+        await time.increase(config.timeLockPeriod + config.periodLength * 2n);
+
+        // fully unstake
+        await contract.connect(edgeStaker).unstake(stakeAmt, true);
+        const unstakeTime = BigInt(await time.latest());
+
+        const rewardsForFullStake = calcTotalRewards(
+          [unstakeTime - stakeTime],
+          [stakeAmt],
+          config.rewardsPerPeriod,
+          config.periodLength
+        );
+
+        const {
+          owedRewards: owedRewardsInitial,
+        } = await contract.stakers(edgeStaker.address);
+
+        expect(owedRewardsInitial).to.eq(rewardsForFullStake);
+
+        const balAfterExit = await rewardsToken.balanceOf(edgeStaker.address);
+
+        await contract.connect(edgeStaker).claim();
+
+        const {
+          owedRewards: owedRewardsAfterClaim,
+          amountStaked: amountStakedAfterClaim,
+          unlockTimestamp,
+          lastUpdatedTimestamp,
+        } = await contract.stakers(edgeStaker.address);
+
+        expect(owedRewardsAfterClaim).to.eq(0n);
+        expect(amountStakedAfterClaim).to.eq(0n);
+        expect(unlockTimestamp).to.eq(0n);
+        expect(lastUpdatedTimestamp).to.eq(0n);
+
+        const balAfterClaim = await rewardsToken.balanceOf(edgeStaker.address);
+
+        expect(balAfterClaim - balAfterExit).to.eq(rewardsForFullStake);
+      });
+    });
+
+    describe("Staking Token === Reward Token", () => {
+      const stakeAmt = ethers.parseEther("133");
+      let stakingContract : StakingERC20;
+
+      it("should NOT give rewards from staked tokens when staking and reward tokens are the same", async () => {
+        stakingContract = await stakingFactory.deploy(
+          config.rewardsToken, // same token
+          config.rewardsToken, // same token
+          config.rewardsPerPeriod,
+          config.periodLength,
+          config.timeLockPeriod,
+          owner.address
+        ) as StakingERC20;
+
+        await rewardsToken.connect(owner).transfer(
+          edgeStaker.address,
+          stakeAmt
+        );
+
+        await rewardsToken.connect(edgeStaker).approve(
+          stakingContract.target,
+          stakeAmt
+        );
+
+        // stake
+        await stakingContract.connect(edgeStaker).stake(stakeAmt);
+
+        const timeToRewards = config.timeLockPeriod + config.periodLength * 2n;
+
+        // +1 to account for transfer function below moving time forward 1s
+        const pendingRewardsRef = calcTotalRewards(
+          [timeToRewards + 1n],
+          [stakeAmt],
+          config.rewardsPerPeriod,
+          config.periodLength
+        );
+
+        const lessRewards = pendingRewardsRef - 1n;
+
+        // fund contract with a little less rewards
+        await rewardsToken.connect(owner).transfer(
+          stakingContract.target,
+          lessRewards
+        );
+
+        // progress time to ref
+        await time.increase(timeToRewards);
+
+        const pendingRewardsContract = await stakingContract.connect(edgeStaker).getPendingRewards();
+        const rewardsAvailable = await stakingContract.getContractRewardsBalance();
+        const totalContractBalance = await rewardsToken.balanceOf(stakingContract.target);
+
+        expect(pendingRewardsContract).to.eq(pendingRewardsRef);
+        expect(rewardsAvailable).to.eq(lessRewards);
+        expect(totalContractBalance).to.eq(lessRewards + stakeAmt);
+
+        // try to claim
+        await expect(
+          stakingContract.connect(edgeStaker).claim()
+        ).to.be.revertedWithCustomError(stakingContract, NO_REWARDS_ERR);
+      });
+
+      it("#withdrawLeftoverRewards() should NOT withdraw staked tokens", async () => {
+        // stake more
+        await rewardsToken.connect(owner).transfer(
+          edgeStaker.address,
+          stakeAmt
+        );
+        await rewardsToken.connect(edgeStaker).approve(
+          stakingContract.target,
+          stakeAmt
+        );
+        await stakingContract.connect(edgeStaker).stake(stakeAmt);
+
+        const totalBalBefore = await rewardsToken.balanceOf(stakingContract.target);
+        const rewardBalBefore = await stakingContract.getContractRewardsBalance();
+        const totalStakedBefore = await stakingContract.totalStaked();
+        expect(totalBalBefore).to.eq(rewardBalBefore + totalStakedBefore);
+        expect(rewardBalBefore).to.be.lt(totalBalBefore);
+
+        const ownerBalBefore = await rewardsToken.balanceOf(owner.address);
+        // withdraw rewards only
+        await stakingContract.connect(owner).withdrawLeftoverRewards();
+
+        const ownerBalAfter = await rewardsToken.balanceOf(owner.address);
+
+        expect(ownerBalAfter - ownerBalBefore).to.eq(rewardBalBefore);
+
+        const rewardBalAfter = await stakingContract.getContractRewardsBalance();
+        const totalBalAfter = await rewardsToken.balanceOf(stakingContract.target);
+        const totalStakedAfter = await stakingContract.totalStaked();
+
+        expect(rewardBalAfter).to.eq(0n);
+        expect(totalBalBefore - totalBalAfter).to.eq(rewardBalBefore);
+        expect(totalStakedAfter).to.eq(totalStakedBefore);
+      });
+    });
+
+    describe("Staking with Deflationary Token", () => {
+      let stakingToken : DeflERC20Mock;
+      let staking : StakingERC20;
+      let transferAmtStk : bigint;
+      let tokenBalAfterStk : bigint;
+      let totalStakedAfterStk : bigint;
+      let contractBalAfterStk : bigint;
+
+      const stakeAmt = ethers.parseEther("291");
+
+      it("Should correctly account staked amount on #stake()", async () => {
+        const stakingTokenFactory = await hre.ethers.getContractFactory("DeflERC20Mock");
+        stakingToken = await stakingTokenFactory.deploy("Deflationary Token", "DTK");
+
+        staking = await stakingFactory.deploy(
+          stakingToken.target,
+          config.rewardsToken,
+          config.rewardsPerPeriod,
+          config.periodLength,
+          config.timeLockPeriod,
+          owner.address
+        ) as StakingERC20;
+
+        const transferFeeStk = await stakingToken.getFee(stakeAmt);
+
+        await stakingToken.connect(owner).transfer(
+          edgeStaker.address,
+          hre.ethers.parseEther("1000")
+        );
+
+        await stakingToken.connect(edgeStaker).approve(
+          staking.target,
+          stakeAmt
+        );
+
+        const tokenBalBefore = await stakingToken.balanceOf(edgeStaker.address);
+        const totalStakedBefore = await staking.totalStaked();
+        const contractBalBefore = await stakingToken.balanceOf(staking.target);
+
+        transferAmtStk = stakeAmt - transferFeeStk;
+
+        // stake and check event in one go
+        await expect(
+          staking.connect(edgeStaker).stake(stakeAmt)
+        ).to.emit(staking, STAKED_EVENT)
+          .withArgs(edgeStaker.address, stakeAmt, transferAmtStk, stakingToken.target);
+
+        tokenBalAfterStk = await stakingToken.balanceOf(edgeStaker.address);
+        totalStakedAfterStk = await staking.totalStaked();
+        contractBalAfterStk = await stakingToken.balanceOf(staking.target);
+
+        const stakerData = await staking.stakers(edgeStaker.address);
+
+        expect(stakerData.amountStaked).to.eq(transferAmtStk);
+        expect(totalStakedAfterStk).to.eq(transferAmtStk);
+        expect(tokenBalBefore - tokenBalAfterStk).to.eq(stakeAmt);
+        expect(totalStakedAfterStk - totalStakedBefore).to.eq(transferAmtStk);
+        expect(contractBalAfterStk - contractBalBefore).to.eq(transferAmtStk);
+      });
+
+      it("Should correctly account exit amount with #unstake()", async () => {
+        // withdraw with `exit`
+
+        // this amount should fail, since the actual staked amount is lower
+        await expect(
+          staking.connect(edgeStaker).unstake(stakeAmt, true)
+        ).to.be.revertedWithCustomError(staking, UNEQUAL_UNSTAKE_ERR);
+
+        // exit with correct amount
+        await staking.connect(edgeStaker).unstake(transferAmtStk, true);
+
+        const transferFeeExit = await stakingToken.getFee(transferAmtStk);
+        const transferAmtExit = transferAmtStk - transferFeeExit;
+
+        const tokenBalAfterExit = await stakingToken.balanceOf(edgeStaker.address);
+        const totalStakedAfterExit = await staking.totalStaked();
+        const contractBalAfterExit = await stakingToken.balanceOf(staking.target);
+
+        expect(tokenBalAfterExit - tokenBalAfterStk).to.eq(transferAmtExit);
+        expect(totalStakedAfterStk - totalStakedAfterExit).to.eq(transferAmtStk);
+        expect(totalStakedAfterExit).to.eq(0n);
+        expect(contractBalAfterStk - contractBalAfterExit).to.eq(transferAmtStk);
+      });
     });
   });
 });

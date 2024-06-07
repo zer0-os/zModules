@@ -2,7 +2,12 @@ import * as hre from "hardhat";
 import { OwnableOperable } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
+import {
+  OPERATOR_ALREADY_ASSIGNED_ERR,
+  OPERATOR_NOT_ASSIGNED_ERR,
+  OWNABLE_UNAUTHORIZED_ERR,
+  ZERO_ADDRESS_ERR,
+} from "./helpers/errors";
 
 
 describe("OwnableOperable Contract", () => {
@@ -42,7 +47,7 @@ describe("OwnableOperable Contract", () => {
     });
   });
 
-  describe("Operatable", () => {
+  describe("Operable", () => {
     it("should assign an operator if owner is the caller and emit an event", async () => {
       expect(await op.isOperator(operator1.address)).to.be.false;
 
@@ -70,6 +75,20 @@ describe("OwnableOperable Contract", () => {
       await expect(
         op.connect(owner).addOperator(hre.ethers.ZeroAddress)
       ).to.be.revertedWithCustomError(op, ZERO_ADDRESS_ERR);
+    });
+
+    it("#addOperator() should revert if adding an existing operator", async () => {
+      await expect(
+        op.connect(owner).addOperator(operator1.address)
+      ).to.be.revertedWithCustomError(op, OPERATOR_ALREADY_ASSIGNED_ERR)
+        .withArgs(operator1.address);
+    });
+
+    it("#removeOperator() should revert if removing a non-existing operator", async () => {
+      await expect(
+        op.connect(owner).removeOperator(operator3.address)
+      ).to.be.revertedWithCustomError(op, OPERATOR_NOT_ASSIGNED_ERR)
+        .withArgs(operator3.address);
     });
 
     it("should remove an operator if owner is the caller and emit an event", async () => {
