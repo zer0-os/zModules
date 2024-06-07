@@ -224,10 +224,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
-
     /**
      * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
      */
@@ -243,5 +239,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
 
         return super._update(to, tokenId, auth);
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
     }
 }

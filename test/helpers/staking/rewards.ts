@@ -35,4 +35,4 @@ export const calcRewardsAmount = (
 
   const retval = fullPeriodRewards + (amountOfPeriodPassed * (rewardsPerPeriod * stakeAmount) / periodLength);
   return retval;
-}
+};
