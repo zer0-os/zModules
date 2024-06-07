@@ -159,7 +159,6 @@ contract StakingBase is Ownable, IStakingBase {
         emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
-    // creating this to avoid checking `_getPendingRewards` which seems accurate
     function _getPendingRewards(
         Staker memory staker
     ) internal view returns (uint256) {
@@ -171,13 +170,14 @@ contract StakingBase is Ownable, IStakingBase {
         // The fractional amount of a period that has passed
         uint256 amountOfPeriodPassed = ((block.timestamp - staker.lastUpdatedTimestamp) % periodLength);
 
-        // Calculate rewards owed for that number of periods
+        // Calculate rewards owed for the number of periods
         uint256 fixedPeriodRewards = 
                 PRECISION_MULTIPLIER * (rewardsPerPeriod *
                 staker.amountStaked *
                 ((block.timestamp - staker.lastUpdatedTimestamp) /
                     periodLength)) / PRECISION_MULTIPLIER;
 
+        // Calculate rewards owed for the fractional amount of this period
         uint256 partialRewards = 
             PRECISION_MULTIPLIER * 
                 ((amountOfPeriodPassed * rewardsPerPeriod * staker.amountStaked) /
