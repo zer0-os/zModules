@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 
 /**
@@ -59,6 +59,15 @@ interface IStakingBase {
      * @notice Throw when passing zero values to set a state var
      */
     error InitializedWithZero();
+
+    /**
+     * @notice Revert when the user tries to stake 0 tokens
+     */
+    error ZeroStake();
+    /**
+     * @notice Revert when the user tries to unstake 0 tokens
+     */
+    error ZeroUnstake();
 
     function claim() external;
 

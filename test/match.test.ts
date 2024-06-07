@@ -8,10 +8,10 @@ import { getMatchEvents } from "./helpers/match/events";
 import {
   ARRAY_MISMATCH_ERR,
   INSUFFICIENT_FUNDS_ERR,
-  INVALID_MATCH_ERR,
+  INVALID_MATCH_ERR, INVALID_PAYOUTS_ERR,
   MATCH_STARTED_ERR,
   NO_PLAYERS_ERR, NOT_AUTHORIZED_ERR,
-  OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR,
+  OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR, ZERO_MATCH_FEE_ERR,
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
 
@@ -26,6 +26,7 @@ const getPlayerBalances = async (
     return [...newAcc, bal];
   }, Promise.resolve([])
 );
+
 
 describe("Match Contract",  () => {
   let mockERC20 : MockERC20;
@@ -48,6 +49,10 @@ describe("Match Contract",  () => {
   let matchAddress : string;
 
   let MatchFactory : Match__factory;
+
+  const matchFee = ethers.parseEther("3.29");
+  const gameFeePercInitial = 1000n; // 10%
+  const gameFeePerc = 500n; // 5%
 
   before(async () => {
     [
@@ -82,7 +87,8 @@ describe("Match Contract",  () => {
       mockERC20Address,
       feeVault,
       owner.address,
-      [ operator3.address ]
+      [ operator3.address ],
+      gameFeePercInitial
     );
     matchAddress = await match.getAddress();
 
@@ -95,92 +101,49 @@ describe("Match Contract",  () => {
     );
   });
 
+  it("Should #setGameFeePercentage() correctly", async () => {
+    const curGameFeePerc = await match.gameFeePercentage();
+    expect(curGameFeePerc).to.equal(gameFeePercInitial);
+    expect(curGameFeePerc).to.not.equal(gameFeePerc);
+
+    await match.connect(owner).setGameFeePercentage(gameFeePerc);
+
+    expect(await match.gameFeePercentage()).to.equal(gameFeePerc);
+  });
+
+  it("Should NOT allow operator to call #setGameFeePercentage()", async () => {
+    await expect(
+      match.connect(operator3).setGameFeePercentage(gameFeePerc)
+    ).to.be.revertedWithCustomError(match, OWNABLE_UNAUTHORIZED_ERR);
+  });
+
   it("Should revert if feeVault is passed as 0x0 address", async () => {
     await expect(
       MatchFactory.connect(owner).deploy(
         mockERC20Address,
         ethers.ZeroAddress,
         owner.address,
-        [ operator3.address ]
+        [ operator3.address ],
+        gameFeePercInitial
       )
     ).to.be.revertedWithCustomError(match, ZERO_ADDRESS_ERR);
   });
 
   describe("Aux Operations", () => {
-    it("#canMatch() should correctly return players with missing funds", async () => {
-      const depositAmount = ethers.parseEther("11");
-      const feeAmt = ethers.parseEther("2.75");
-
-      await [
-        player1,
-        player2,
-        player4,
-      ].reduce(
-        async (acc, player) => {
-          await acc;
-          await match.connect(player).deposit(depositAmount);
-        }, Promise.resolve()
-      );
-
-      const unfundedPlayers = await match.canMatch(allPlayers, feeAmt);
-
-      expect(unfundedPlayers).to.deep.equal([
-        player3.address,
-        player5.address,
-        player6.address,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-      ]);
-
-      // check all valid
-      await [
-        player3,
-        player5,
-        player6,
-      ].reduce(
-        async (acc, player) => {
-          await acc;
-          await match.connect(player).deposit(depositAmount);
-        }, Promise.resolve()
-      );
-
-      const allPlayersFunded = await match.canMatch(allPlayers, ethers.parseEther("10"));
-      expect(allPlayersFunded).to.deep.equal([
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-      ]);
-
-      // check all invalid
-      const allPlayersUnfunded = await match.canMatch(allPlayers, ethers.parseEther("10000000000000000000000000"));
-      expect(allPlayersUnfunded).to.deep.equal([
-        player1.address,
-        player2.address,
-        player3.address,
-        player4.address,
-        player5.address,
-        player6.address,
-      ]);
-    });
-
     it("#setFeeVault should set the address correctly and emit an event", async () => {
-      expect(await match.getFeeVault()).to.equal(feeVault.address);
+      expect(await match.feeVault()).to.equal(feeVault.address);
 
       await expect(
         match.connect(owner).setFeeVault(operator1.address)
       ).to.emit(match, "FeeVaultSet")
         .withArgs(operator1.address);
 
-      expect(await match.getFeeVault()).to.equal(operator1.address);
+      expect(await match.feeVault()).to.equal(operator1.address);
 
       // set back
       await match.connect(owner).setFeeVault(feeVault.address);
 
-      expect(await match.getFeeVault()).to.equal(feeVault.address);
+      expect(await match.feeVault()).to.equal(feeVault.address);
     });
 
     it("#setFeeVault() should revert if called by non-owner", async () => {
@@ -205,8 +168,6 @@ describe("Match Contract",  () => {
     let feeVaultBalanceBefore : bigint;
     let matchDataHash : string;
 
-    const matchFee = ethers.parseEther("3.29");
-    const gameFeeBase = ethers.parseEther("0.1");
     let payouts : Array<bigint>;
     let gameFee : bigint;
 
@@ -278,14 +239,14 @@ describe("Match Contract",  () => {
 
         balancesAfterStart = await getPlayerBalances(playerAddresses, match);
 
-        // get payouts for the tests below
+        // calculate reference values for the subsequent tests
         ({
           payouts,
           gameFee,
         } = getPayouts({
           playerCount: BigInt(allPlayers.length),
           matchFee,
-          gameFeeBase,
+          gameFeePerc,
         }));
       });
 
@@ -304,6 +265,12 @@ describe("Match Contract",  () => {
         await expect(match.startMatch(matchId, playerAddresses, matchFee))
           .to.be.revertedWithCustomError(match, MATCH_STARTED_ERR);
       });
+
+      it("Should fail when starting a match with 0 `matchFee`", async () => {
+        await expect(match.startMatch(2, playerAddresses, 0n))
+          .to.be.revertedWithCustomError(match, ZERO_MATCH_FEE_ERR)
+          .withArgs(2);
+      });
     });
 
     describe("#endMatch()", () => {
@@ -314,7 +281,6 @@ describe("Match Contract",  () => {
             [player1.address, player2.address],
             [ethers.parseEther("1"), ethers.parseEther("1")],
             ethers.parseEther("1"),
-            ethers.parseEther("0.1")
           )
         ).to.be.revertedWithCustomError(match, NOT_AUTHORIZED_ERR)
           .withArgs(player1.address);
@@ -327,10 +293,14 @@ describe("Match Contract",  () => {
             invalidMatchId,
             [player1.address, player2.address],
             [1n, 1n],
-            ethers.parseEther("1"),
-            ethers.parseEther("0.1")
+            ethers.parseEther("1")
           )
-        ).to.be.revertedWithCustomError(match, INVALID_MATCH_ERR);
+        ).to.be.revertedWithCustomError(match, INVALID_MATCH_ERR)
+          .withArgs(invalidMatchId, getMatchDataHash({
+            matchId: BigInt(invalidMatchId),
+            matchFee: ethers.parseEther("1"),
+            players: [player1.address, player2.address],
+          }));
       });
 
       it("Should fail if players and payouts array lengths mismatch", async () => {
@@ -339,33 +309,22 @@ describe("Match Contract",  () => {
             matchId,
             [player1.address, player2.address],
             [1n],
-            ethers.parseEther("1"),
-            ethers.parseEther("0.1")
+            ethers.parseEther("1")
           )
         ).to.be.revertedWithCustomError(match, ARRAY_MISMATCH_ERR);
       });
 
-      it("Should revert if payout amounts and/or gameFee are calculated incorrectly", async () => {
+      it("Should revert if payout amounts are calculated incorrectly", async () => {
         const invalidPayouts = [1n, 1n, 1n, 1n, 1n, 1n];
         await expect(
           match.endMatch(
             matchId,
             playerAddresses,
             invalidPayouts,
-            matchFee,
-            gameFee
+            matchFee
           )
-        ).to.be.revertedWithCustomError(match, INVALID_MATCH_ERR);
-
-        await expect(
-          match.endMatch(
-            matchId,
-            playerAddresses,
-            payouts,
-            matchFee,
-            gameFeeBase // using a gameFeeBase that is less than gameFee, so it fails
-          )
-        ).to.be.revertedWithCustomError(match, INVALID_MATCH_ERR);
+        ).to.be.revertedWithCustomError(match, INVALID_PAYOUTS_ERR)
+          .withArgs(matchId);
       });
 
       it("Should end the match and emit event with correct parameters", async () => {
@@ -386,8 +345,7 @@ describe("Match Contract",  () => {
           matchId,
           playerAddresses,
           payouts,
-          matchFee,
-          gameFee
+          matchFee
         );
 
         const [{
@@ -476,7 +434,6 @@ describe("Match Contract",  () => {
       await match.connect(player4).deposit(depositAmt);
 
       const matchFeeAC = ethers.parseEther("1");
-      const gameFeeBaseAC = ethers.parseEther("0.1");
 
       const players = [
         player1.address,
@@ -499,11 +456,10 @@ describe("Match Contract",  () => {
 
           const {
             payouts: payoutsAC,
-            gameFee: gameFeeAC,
           } = getPayouts({
             playerCount: BigInt(players.length),
             matchFee: matchFeeAC,
-            gameFeeBase: gameFeeBaseAC,
+            gameFeePerc,
           });
 
           await expect(
@@ -511,8 +467,7 @@ describe("Match Contract",  () => {
               idx + 1,
               players,
               payoutsAC,
-              matchFeeAC,
-              gameFeeAC
+              matchFeeAC
             )
           ).to.be.fulfilled;
 

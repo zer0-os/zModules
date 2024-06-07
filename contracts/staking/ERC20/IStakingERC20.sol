@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 
 /**
@@ -10,12 +10,14 @@ interface IStakingERC20 {
     /**
      * @notice Emit when a user stakes a token
      * @param staker The address of the account which staked
-     * @param amount The amount of the staked token
+     * @param stakeAmount The amount of the staked token passed as an argument to the `stake()`
+     * @param amountTransferred The amount of the staked token actually transferred (deflationary or rebasing tokens)
      * @param stakingToken The address of the staking token contract
      */
     event Staked(
         address indexed staker,
-        uint256 indexed amount,
+        uint256 indexed stakeAmount,
+        uint256 amountTransferred,
         address indexed stakingToken
     );
 
