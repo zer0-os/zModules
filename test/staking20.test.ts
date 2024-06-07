@@ -29,7 +29,7 @@ import {
 import { ethers } from "ethers";
 
 
-describe.only("StakingERC20", () => {
+describe("StakingERC20", () => {
   let owner : SignerWithAddress;
   let stakerA : SignerWithAddress;
   let stakerB : SignerWithAddress;
@@ -768,7 +768,6 @@ describe.only("StakingERC20", () => {
       await expect(
         contract.connect(stakerF).stake(DEFAULT_STAKED_AMOUNT)
       ).to.emit(contract, STAKED_EVENT)
-        // .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakingToken);
         .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, DEFAULT_STAKED_AMOUNT, config.stakingToken);
 
       stakedAtF = BigInt(await time.latest());

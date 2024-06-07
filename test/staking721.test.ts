@@ -33,7 +33,7 @@ import {
 } from "./helpers/errors";
 
 
-describe.only("StakingERC721", () => {
+describe("StakingERC721", () => {
   let owner : SignerWithAddress;
   let stakerA : SignerWithAddress;
   let stakerB : SignerWithAddress;
