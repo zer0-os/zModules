@@ -16,7 +16,6 @@ export const OPERATOR_ALREADY_ASSIGNED_ERR = "OperatorAlreadyAssigned";
 export const OPERATOR_NOT_ASSIGNED_ERR = "OperatorNotAssigned";
 
 // StakingERC20
-export const INVALID_STAKE_ERR = "InvalidStake";
 export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
 export const ZERO_UNSTAKE_ERR = "ZeroUnstake";
 

@@ -40,7 +40,7 @@ interface IStakingERC20 {
     /**
      * @notice Revert when the user tries to stake 0 tokens
      */
-    error InvalidStake();
+    error ZeroStake();
 
     function stake(uint256 amount) external;
 

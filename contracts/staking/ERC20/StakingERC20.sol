@@ -42,7 +42,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         Staker storage staker = stakers[msg.sender];
 
         if (amount == 0) {
-            revert InvalidStake();
+            revert ZeroStake();
         }
 
         _checkRewards(staker);
@@ -89,7 +89,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         totalStaked -= amount;
 
-        // maybe consider different `if` logic, something else to check
         if (staker.amountStaked != 0) {
             staker.amountStaked -= amount;
             staker.lastUpdatedTimestamp = block.timestamp;
