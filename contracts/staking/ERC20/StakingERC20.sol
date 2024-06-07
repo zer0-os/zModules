@@ -6,7 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 
-
+import { console } from "hardhat/console.sol";
 /**
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
@@ -90,10 +90,14 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         totalStaked -= amount;
 
+        // maybe consider different `if` logic, something else to check
         if (staker.amountStaked != 0) {
+            console.log("in if statement for amount staked");
             staker.amountStaked -= amount;
             staker.lastUpdatedTimestamp = block.timestamp;
         }
+        console.log("outside of if");
+
 
         // Return the user's initial stake
         IERC20(stakingToken).safeTransfer(msg.sender, amount);

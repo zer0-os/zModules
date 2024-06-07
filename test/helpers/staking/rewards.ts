@@ -1,8 +1,6 @@
 
 
 export const calcTotalRewards = (
-  // startTimestamp : bigint,
-  // currentTimestamp : bigint,
   durations : Array<bigint>,
   balances : Array<bigint>,
   rewardsPerPeriod : bigint,
@@ -17,11 +15,7 @@ export const calcTotalRewards = (
   return totalRewards;
 };
 
-// TODO can simplify these, write out each step for now while debugging
-
 export const calcRewardsAmount = (
-  // lastUpdatedTimestamp : bigint,
-  // currentTimestamp : bigint,
   timePassed : bigint,
   stakeAmount : bigint,
   rewardsPerPeriod : bigint,
@@ -33,6 +27,5 @@ export const calcRewardsAmount = (
 
   const fullPeriodRewards = rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
 
-  const retval = fullPeriodRewards + (amountOfPeriodPassed * (rewardsPerPeriod * stakeAmount) / periodLength);
-  return retval;
+  return fullPeriodRewards + (amountOfPeriodPassed * (rewardsPerPeriod * stakeAmount) / periodLength);
 };
