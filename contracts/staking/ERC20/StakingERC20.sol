@@ -6,6 +6,9 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 
+// TODO for debugging only
+import { console } from "hardhat/console.sol";
+
 /**
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
@@ -39,9 +42,13 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     function stake(uint256 amount) external override {
         Staker storage staker = stakers[msg.sender];
 
+        // IERC20(stakingToken).balanceOf(msg.sender) < amount
         if (amount == 0) {
-            revert ZeroStake();
+            revert InvalidStake();
         }
+
+        // console.log("msg.sender: %s", msg.sender);
+        // console.log("balance: %s", IERC20(stakingToken).balanceOf(msg.sender));
 
         _checkRewards(staker);
 
