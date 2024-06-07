@@ -60,7 +60,6 @@ describe("StakingERC20", () => {
 
   let origStakedAtB : bigint;
   let stakedAtB : bigint;
- 
   let origStakedAtC : bigint;
   let stakedAtC : bigint;
   let unstakedAtC : bigint;
@@ -73,7 +72,7 @@ describe("StakingERC20", () => {
   let claimedAtF : bigint;
 
 
-  let stakingFactory: StakingERC20__factory;
+  let stakingFactory : StakingERC20__factory;
 
   before(async () => {
     [
@@ -1037,7 +1036,7 @@ describe("StakingERC20", () => {
 
     describe("Staking Token === Reward Token", () => {
       const stakeAmt = ethers.parseEther("133");
-      let stakingContract: StakingERC20;
+      let stakingContract : StakingERC20;
 
       it("should NOT give rewards from staked tokens when staking and reward tokens are the same", async () => {
         stakingContract = await stakingFactory.deploy(
@@ -1134,12 +1133,12 @@ describe("StakingERC20", () => {
     });
 
     describe("Staking with Deflationary Token", () => {
-      let stakingToken: DeflERC20Mock;
-      let staking: StakingERC20;
-      let transferAmtStk: bigint;
-      let tokenBalAfterStk: bigint;
-      let totalStakedAfterStk: bigint;
-      let contractBalAfterStk: bigint;
+      let stakingToken : DeflERC20Mock;
+      let staking : StakingERC20;
+      let transferAmtStk : bigint;
+      let tokenBalAfterStk : bigint;
+      let totalStakedAfterStk : bigint;
+      let contractBalAfterStk : bigint;
 
       const stakeAmt = ethers.parseEther("291");
 

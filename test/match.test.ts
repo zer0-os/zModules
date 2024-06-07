@@ -15,7 +15,6 @@ import {
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
 
-
 const getPlayerBalances = async (
   players : Array<string>,
   contract : Match

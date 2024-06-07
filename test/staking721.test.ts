@@ -376,7 +376,7 @@ describe("StakingERC721", () => {
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
       // Verify that our calculations must always be in sync with what is on chain
-      // Note: because we now do partial rewards, we have to account for the +1 addition to the 
+      // Note: because we now do partial rewards, we have to account for the +1 addition to the
       // timestamp that calling `claim` makes. We can't call `pendingRewards` after claim,
       // because this value is adjusted onchain and would be zero.
       expect(expectedRewards).to.eq(pendingRewards + 1n);
@@ -453,7 +453,7 @@ describe("StakingERC721", () => {
         config.periodLength
       );
 
-      // Note: because we now do partial rewards, we have to account for the +1 addition to the 
+      // Note: because we now do partial rewards, we have to account for the +1 addition to the
       // timestamp that calling `unstake` makes. We can't call `pendingRewards` after `unstake`,
       // because this value is adjusted onchain and would be zero.
       expect(expectedRewards).to.eq(pendingRewards + 1n);
@@ -674,7 +674,7 @@ describe("StakingERC721", () => {
 
       const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
 
-      // Because we do partial rewards now, we must account for the additional +1 
+      // Because we do partial rewards now, we must account for the additional +1
       // due to `unstake` altering the timestamp
       await expect(
         await stakingERC721.connect(stakerA).unstake([tokenIdA], false)
@@ -768,7 +768,7 @@ describe("StakingERC721", () => {
       /** eslint-disable @typescript-eslint/no-explicit-any */
       try {
         await localStakingERC721.connect(stakerA).stake([tokenIdA], [emptyUri]);
-      } catch (e: unknown) {
+      } catch (e : unknown) {
         expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
       }
     });
@@ -811,13 +811,13 @@ describe("StakingERC721", () => {
 
       try {
         await localStakingERC721.connect(stakerA).claim();
-      } catch (e: unknown) {
+      } catch (e : unknown) {
         expect((e as Error).message).to.include(FAILED_INNER_CALL_ERR);
       }
 
       try {
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
-      } catch (e: unknown) {
+      } catch (e : unknown) {
         expect((e as Error).message).to.include(FAILED_INNER_CALL_ERR);
       }
 
@@ -846,7 +846,7 @@ describe("StakingERC721", () => {
           localConfig.timeLockPeriod,
           owner.address
         );
-      } catch (e: unknown) {
+      } catch (e : unknown) {
         expect((e as Error).message).to.include(ZERO_INIT_ERR);
       }
     });
@@ -1004,7 +1004,7 @@ describe("StakingERC721", () => {
       expect(stakerCData.owedRewards).to.eq(0);
 
       await localStakingERC721.connect(stakerA).stake([tokenIdA, tokenIdB, tokenIdC], [emptyUri, emptyUri, emptyUri]);
-      const localOrigStakedAtA = BigInt(await time.latest());
+      let localOrigStakedAtA = BigInt(await time.latest());
       stakedAtA = localOrigStakedAtA;
       let balanceAtStakeOneA = await localStakingERC721.balanceOf(stakerA.address);
 
