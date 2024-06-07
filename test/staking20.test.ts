@@ -53,14 +53,14 @@ describe.only("StakingERC20", () => {
 
   // Track first stake and most recent stake times
   let origStakedAtA : bigint;
-  let stakedAtA :  bigint;
+  let stakedAtA : bigint;
   let claimedAtA : bigint;
   let unstakedAtA : bigint;
   let amountStakedA = 0n;
 
   let origStakedAtB : bigint;
   let stakedAtB : bigint;
-
+ 
   let origStakedAtC : bigint;
   let stakedAtC : bigint;
   let unstakedAtC : bigint;
@@ -73,7 +73,7 @@ describe.only("StakingERC20", () => {
   let claimedAtF : bigint;
 
 
-  let stakingFactory : StakingERC20__factory;
+  let stakingFactory: StakingERC20__factory;
 
   before(async () => {
     [
@@ -172,7 +172,7 @@ describe.only("StakingERC20", () => {
       origStakedAtA = stakedAtA;
 
       amountStakedA = DEFAULT_STAKED_AMOUNT;
-      
+
       const totalStakedAfter = await contract.totalStaked();
 
       const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
@@ -711,7 +711,7 @@ describe.only("StakingERC20", () => {
 
     it("Fails when the user tries to unstake more than they have staked", async () => {
       await hre.network.provider.send("evm_setAutomine", [true]);
-      
+
       await expect(
         contract.connect(stakerC).unstake(amountStakedC + 1n, true)
       ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
@@ -900,8 +900,6 @@ describe.only("StakingERC20", () => {
   describe("Special Cases", async () => {
     describe("Exiting", () => {
       // eslint-disable-next-line max-len
-
-      
       it("#exit from staking should yield the same rewards for partial and full exit within `unlockTimestamp` rules", async () => {
         await hre.network.provider.send("evm_setAutomine", [true]);
 
@@ -927,9 +925,6 @@ describe.only("StakingERC20", () => {
         const timeToRewards = config.timeLockPeriod + config.periodLength * 2n;
         await time.increase(timeToRewards);
 
-        const stakerDataBeforeClaim = await contract.stakers(edgeStaker.address);
-
-        const pendingRewards = await contract.connect(edgeStaker).getPendingRewards();
         await contract.connect(edgeStaker).claim();
 
         const firstClaimTime = BigInt(await time.latest());
@@ -1043,7 +1038,7 @@ describe.only("StakingERC20", () => {
 
     describe("Staking Token === Reward Token", () => {
       const stakeAmt = ethers.parseEther("133");
-      let stakingContract : StakingERC20;
+      let stakingContract: StakingERC20;
 
       it("should NOT give rewards from staked tokens when staking and reward tokens are the same", async () => {
         stakingContract = await stakingFactory.deploy(
@@ -1140,12 +1135,12 @@ describe.only("StakingERC20", () => {
     });
 
     describe("Staking with Deflationary Token", () => {
-      let stakingToken : DeflERC20Mock;
-      let staking : StakingERC20;
-      let transferAmtStk : bigint;
-      let tokenBalAfterStk : bigint;
-      let totalStakedAfterStk : bigint;
-      let contractBalAfterStk : bigint;
+      let stakingToken: DeflERC20Mock;
+      let staking: StakingERC20;
+      let transferAmtStk: bigint;
+      let tokenBalAfterStk: bigint;
+      let totalStakedAfterStk: bigint;
+      let contractBalAfterStk: bigint;
 
       const stakeAmt = ethers.parseEther("291");
 

@@ -172,7 +172,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // just the full period
 
         // The fractional amount of a period that has passed
-        uint256 amountOfPeriodPassed = ((block.timestamp - staker.lastUpdatedTimestamp) % periodLength);
+        uint256 fractionOfPeriod = ((block.timestamp - staker.lastUpdatedTimestamp) % periodLength);
 
         // Calculate rewards owed for the number of periods
         uint256 fixedPeriodRewards = 
@@ -184,7 +184,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Calculate rewards owed for the fractional amount of this period
         uint256 partialRewards = 
             PRECISION_MULTIPLIER * 
-                ((amountOfPeriodPassed * rewardsPerPeriod * staker.amountStaked) /
+                ((fractionOfPeriod * rewardsPerPeriod * staker.amountStaked) /
                     periodLength) / PRECISION_MULTIPLIER;
 
         // Return the full period rewards prorated up to the moment they call
