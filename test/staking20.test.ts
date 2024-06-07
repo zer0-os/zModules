@@ -939,7 +939,7 @@ describe("StakingERC20", () => {
         expect(balAfterFirstClaim - balAfterExit).to.eq(rewardsForHalfStake);
 
         const {
-          owedRewards: owedRewardsAfterTimelock,
+          owedRewards : owedRewardsAfterTimelock,
           amountStaked,
         } = await contract.stakers(edgeStaker.address);
         // zero rewards cause he just got them all
@@ -961,8 +961,8 @@ describe("StakingERC20", () => {
         );
 
         const {
-          owedRewards: owedRewardsAfterExit,
-          amountStaked: stakedAfterExit,
+          owedRewards : owedRewardsAfterExit,
+          amountStaked : stakedAfterExit,
         } = await contract.stakers(edgeStaker.address);
         expect(owedRewardsAfterExit).to.eq(rewardsForHalfStakeUpdate);
         expect(stakedAfterExit).to.eq(0n);
@@ -1007,7 +1007,7 @@ describe("StakingERC20", () => {
         );
 
         const {
-          owedRewards: owedRewardsInitial,
+          owedRewards : owedRewardsInitial,
         } = await contract.stakers(edgeStaker.address);
 
         expect(owedRewardsInitial).to.eq(rewardsForFullStake);
@@ -1017,8 +1017,8 @@ describe("StakingERC20", () => {
         await contract.connect(edgeStaker).claim();
 
         const {
-          owedRewards: owedRewardsAfterClaim,
-          amountStaked: amountStakedAfterClaim,
+          owedRewards : owedRewardsAfterClaim,
+          amountStaked : amountStakedAfterClaim,
           unlockTimestamp,
           lastUpdatedTimestamp,
         } = await contract.stakers(edgeStaker.address);
