@@ -146,8 +146,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
     function _baseClaim(Staker storage staker, uint256 subtractAmountStaked) internal {
         uint256 rewards = _getPendingRewards(staker);
-
-        // console.log("Rewards: %s", rewards);
+        console.log("#Claim");
+        console.log("Rewards: %s", rewards);
 
         staker.lastUpdatedTimestamp = block.timestamp;
         staker.owedRewards = 0;

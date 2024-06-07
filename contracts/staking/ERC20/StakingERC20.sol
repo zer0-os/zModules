@@ -46,6 +46,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             revert InvalidStake();
         }
 
+        console.log("#Stake");
+
         _checkRewards(staker);
 
         // this logic is here to support deflationary or rebasing tokens
@@ -74,6 +76,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param exit If true, the user will unstake without claiming rewards (optional)
      */
     function unstake(uint256 amount, bool exit) external override nonReentrant {
+        console.log("#Unstake");
         if (amount == 0) revert ZeroUnstake();
 
         Staker storage staker = stakers[msg.sender];
