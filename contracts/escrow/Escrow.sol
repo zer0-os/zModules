@@ -47,7 +47,7 @@ contract Escrow is OwnableOperable, ReentrancyGuard, IEscrow {
     function deposit(uint256 amount) external override nonReentrant {
         if (amount == 0) revert ZeroAmountPassed();
 
-        // this logic is here to support deflationary or rebasing tokens
+        // this logic is here to support deflationary tokens
         uint256 balanceBefore = IERC20(token).balanceOf(address(this));
 
         token.safeTransferFrom(msg.sender, address(this), amount);
@@ -64,7 +64,7 @@ contract Escrow is OwnableOperable, ReentrancyGuard, IEscrow {
      * @notice Allows a user to withdraw funds from the escrow contract.
      * @param amount The amount of tokens to withdraw.
      */
-    function withdraw(uint256 amount) external override {
+    function withdraw(uint256 amount) external override nonReentrant {
         if (amount == 0) revert ZeroAmountPassed();
         if (balances[msg.sender] < amount) revert InsufficientFunds(msg.sender);
 
