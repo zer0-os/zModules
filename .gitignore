@@ -9,6 +9,7 @@ lerna-debug.log*
 
 # IDE files
 .idea
+.vscode
 
 
 node_modules
