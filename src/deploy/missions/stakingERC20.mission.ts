@@ -14,29 +14,6 @@ SignerWithAddress,
 IProviderBase,
 IZModulesContracts
 > {
-  async deployArgs () : Promise<TDeployArgs> {
-    const {
-      config: {
-        stakingERC20Config: {
-          stakingToken,
-          rewardsToken,
-          rewardsPerPeriod,
-          periodLength,
-          timeLockPeriod,
-          contractOwner,
-        },
-      },
-    } = this.campaign;
-
-    return [
-      stakingToken,
-      rewardsToken,
-      rewardsPerPeriod,
-      periodLength,
-      timeLockPeriod,
-      contractOwner,
-    ];
-  }
 
   contractName = contractNames.stakingERC20.contract;
   instanceName = contractNames.stakingERC20.instance;
@@ -44,4 +21,48 @@ IZModulesContracts
   proxyData = {
     isProxy: false,
   };
+
+  async deployArgs () : Promise<TDeployArgs> {
+
+    const envLevel = this.campaign.config.env;
+    const contractConfig = this.campaign.config.stakingERC20Config;
+
+    if (
+      envLevel === "dev" &&
+      (
+        !contractConfig.stakingToken &&
+        !contractConfig.rewardsToken
+      )
+    ) {
+      const {
+        config: {
+          stakingERC20Config: {
+            rewardsPerPeriod,
+            periodLength,
+            timeLockPeriod,
+            contractOwner,
+          },
+        },
+      } = this.campaign;
+
+      return [
+        await this.campaign.state.contracts.mockERC20.getAddress(),
+        await this.campaign.state.contracts.mockERC20Second.getAddress(),
+        rewardsPerPeriod,
+        periodLength,
+        timeLockPeriod,
+        contractOwner,
+      ];
+    } else if (
+      envLevel === "test" ||
+      envLevel === "prod" ||
+      (
+        envLevel === "dev" &&
+        contractConfig.stakingToken &&
+        contractConfig.rewardsToken
+      )
+    ) {
+      return Object.values(this.campaign.config.stakingERC20Config);
+    }
+  }
 }

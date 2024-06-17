@@ -19,17 +19,20 @@ import {
   WITHDRAW_EVENT,
   INIT_BALANCE,
   DEFAULT_STAKED_AMOUNT,
-  createDefaultConfigs,
   calcTotalRewards,
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
   BaseConfig,
+  DEFAULT_REWARDS_PER_PERIOD,
+  DEFAULT_PERIOD_LENGTH,
+  DEFAULT_LOCK_TIME,
 } from "./helpers/staking";
-import { DCConfig, IERC20DeployArgs, contractNames, runCampaign } from "../src/deploy";
+import { DCConfig, IERC20DeployArgs, contractNames, runZModulesCampaign } from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { ZModulesStakingERC20DM } from "../src/deploy/missions/stakingERC20.mission";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
+import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 
 describe("StakingERC20", () => {
   let deployer : SignerWithAddress;
@@ -86,28 +89,15 @@ describe("StakingERC20", () => {
       notStaker,
     ] = await hre.ethers.getSigners();
 
-    const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-    stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
-
-    rewardsToken = await mockERC20Factory.connect(owner).deploy("WilderWorld", "WW");
-
-    config = await createDefaultConfigs(rewardsToken, owner, undefined, stakeToken);
-
-    const argsForDeployERC20 : IERC20DeployArgs = config;
-    const argsForDeployERC721 = {
-      stakingToken : "0x00000002",
-      name : "Empty",
-      symbol : "E",
-      baseUri : "EmptyUri",
-      rewardsToken : "0x00000001",
-      rewardsPerPeriod : 0n,
-      periodLength : 0n,
-      timeLockPeriod : 0,
+    const argsForDeployERC20 : IERC20DeployArgs = {
+      rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
+      periodLength: DEFAULT_PERIOD_LENGTH,
+      timeLockPeriod: DEFAULT_LOCK_TIME,
       contractOwner: owner,
     };
 
     const campaignConfig : DCConfig = {
-      env: "dev",
+      env: process.env.ENV_LEVEL,
       deployAdmin: deployer,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -116,21 +106,36 @@ describe("StakingERC20", () => {
       },
       owner,
       stakingERC20Config: argsForDeployERC20,
-      stakingERC721Config: argsForDeployERC721,
     };
 
-    const campaign = await runCampaign({
+    // consts with names
+    const mocksConsts = contractNames.mocks.erc20;
+    const difference = "Second";
+    const mockDBname = "Mock20";
+
+    const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
+        mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
+        mockERC20Mission(mocksConsts.contract, `${mocksConsts.instance}${difference}`, `${mockDBname}${difference}`),
         ZModulesStakingERC20DM,
       ],
     });
 
     dbAdapter = campaign.dbAdapter;
 
-    const { stakingERC20 } = campaign;
+    const { stakingERC20, mockERC20, mockERC20Second } = campaign;
+
+    stakeToken = mockERC20;
+    rewardsToken = mockERC20Second;
 
     stakingContractERC20 = stakingERC20;
+
+    config = {
+      ...campaignConfig.stakingERC20Config,
+      stakeToken,
+      rewardsToken,
+    };
 
     const stakersArr = [
       owner,
@@ -145,6 +150,8 @@ describe("StakingERC20", () => {
       await stakeToken.mint(staker.address, INIT_BALANCE);
       await stakeToken.connect(staker).approve(await stakingContractERC20.getAddress(), hre.ethers.MaxUint256);
     }
+
+    await rewardsToken.mint(owner.address, INIT_BALANCE);
   });
 
   after(async () => {
@@ -674,7 +681,7 @@ describe("StakingERC20", () => {
       await expect(
         stakingContractERC20.connect(stakerF).stake(DEFAULT_STAKED_AMOUNT)
       ).to.emit(stakingContractERC20, STAKED_EVENT)
-        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakingToken);
+        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakeToken);
     });
 
     it("Emits a Claimed event when a user claims rewards", async () => {
@@ -708,7 +715,7 @@ describe("StakingERC20", () => {
       await expect(
         stakingContractERC20.connect(stakerF).unstake(stakerData.amountStaked / 2n, false)
       ).to.emit(stakingContractERC20, UNSTAKED_EVENT)
-        .withArgs(stakerF.address, stakerData.amountStaked / 2n, config.stakingToken);
+        .withArgs(stakerF.address, stakerData.amountStaked / 2n, config.stakeToken);
     });
 
     it("Emits an Unstaked event when a user exits with unstake", async () => {
@@ -722,7 +729,7 @@ describe("StakingERC20", () => {
       await expect(
         stakingContractERC20.connect(stakerF).unstake(stakerData.amountStaked, true)
       ).to.emit(stakingContractERC20, UNSTAKED_EVENT)
-        .withArgs(stakerF.address, stakerData.amountStaked, config.stakingToken);
+        .withArgs(stakerF.address, stakerData.amountStaked, config.stakeToken);
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerF.address);
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerF.address);
@@ -772,14 +779,14 @@ describe("StakingERC20", () => {
 
       const expectedArgs = {
         rewardsToken: await stakingContractERC20.rewardsToken(),
-        stakingToken: await stakingContractERC20.stakingToken(),
+        stakeToken: await stakingContractERC20.stakingToken(),
         rewardsPerPeriod: await stakingContractERC20.rewardsPerPeriod(),
         periodLength: await stakingContractERC20.periodLength(),
         timeLockPeriod: await stakingContractERC20.timeLockPeriod(),
       };
 
       expect(expectedArgs.rewardsToken).to.eq(config.rewardsToken);
-      expect(expectedArgs.stakingToken).to.eq(config.stakingToken);
+      expect(expectedArgs.stakeToken).to.eq(config.stakeToken);
       expect(expectedArgs.rewardsPerPeriod).to.eq(config.rewardsPerPeriod);
       expect(expectedArgs.periodLength).to.eq(config.periodLength);
       expect(expectedArgs.timeLockPeriod).to.eq(config.timeLockPeriod);

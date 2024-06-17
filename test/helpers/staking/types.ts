@@ -5,7 +5,7 @@ import {
 } from "ethers";
 
 export interface BaseConfig {
-  stakingToken : string;
+  stakeToken : string;
   rewardsToken : string;
   rewardsPerPeriod : bigint;
   periodLength : bigint; // length of a single rewards period

@@ -14,6 +14,9 @@ import {
   OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR,
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
+import { DCConfig, contractNames, runZModulesCampaign } from "../src/deploy";
+import { ZModulesMatchDM } from "../src/deploy/missions/match.mission";
+import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 
 
 const getPlayerBalances = async (
@@ -73,18 +76,49 @@ describe("Match Contract",  () => {
       player6,
     ];
 
-    const MockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-    mockERC20 = await MockERC20Factory.deploy("MockToken", "MTK");
-    mockERC20Address = await mockERC20.getAddress();
+    const argsForDeployMatch = {
+      token: "string",
+      feeVault: feeVault.address,
+      owner: owner.address,
+      operators: [
+        operator1.address,
+        operator2.address,
+        operator3.address,
+      ],
+    };
+
+    const campaignConfig : DCConfig = {
+      env: process.env.ENV_LEVEL,
+      deployAdmin: owner,
+      postDeploy: {
+        tenderlyProjectSlug: "string",
+        monitorContracts: false,
+        verifyContracts: false,
+      },
+      owner,
+      matchConfig: argsForDeployMatch,
+    };
+
+    // consts with names
+    const mocksConsts = contractNames.mocks.erc20;
+    const mockDBname = "Mock20";
+
+    const campaign = await runZModulesCampaign({
+      config: campaignConfig,
+      missions: [
+        mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
+        ZModulesMatchDM,
+      ],
+    });
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
-    match = await MatchFactory.connect(owner).deploy(
-      mockERC20Address,
-      feeVault,
-      owner.address,
-      [ operator3.address ]
-    );
+
+    // TODO myself: double check, is this type changing right?
+    match = campaign.state.contracts.match as unknown as Match;
     matchAddress = await match.getAddress();
+
+    mockERC20 = campaign.state.contracts.mockERC20;
+    mockERC20Address = await mockERC20.getAddress();
 
     await allPlayers.reduce(
       async (acc, player) => {

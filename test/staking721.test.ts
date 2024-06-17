@@ -8,16 +8,23 @@ import {
   StakingERC721,
 } from "../typechain";
 import {
-  createDefaultConfigs,
   calcTotalRewards,
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
   BaseConfig,
   WITHDRAW_EVENT,
+  DEFAULT_REWARDS_PER_PERIOD,
+  DEFAULT_PERIOD_LENGTH,
+  DEFAULT_LOCK_TIME,
 } from "./helpers/staking";
 
-import { DCConfig, IERC20DeployArgs, IERC721DeployArgs, contractNames, runCampaign } from "../src/deploy";
+import {
+  DCConfig,
+  IERC721DeployArgs,
+  contractNames,
+  runZModulesCampaign,
+} from "../src/deploy";
 import { ZModulesStakingERC721DM } from "../src/deploy/missions";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
@@ -34,6 +41,8 @@ import {
   TIME_LOCK_NOT_PASSED_ERR,
   ZERO_INIT_ERR,
 } from "./helpers/errors";
+import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
+import { mockERC721Mission } from "../src/deploy/missions/mockERC721.mission";
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
@@ -89,30 +98,18 @@ describe("StakingERC721", () => {
       notStaker,
     ] = await hre.ethers.getSigners();
 
-    const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-    const mockERC721Factory = await hre.ethers.getContractFactory("MockERC721");
-
-    rewardToken = await mockERC20Factory.deploy("MEOW", "MEOW");
-    stakingToken = await mockERC721Factory.deploy("WilderWheels", "WW", baseUri);
-
-    config = await createDefaultConfigs(rewardToken, owner, stakingToken);
-
     const argsForDeployERC721 : IERC721DeployArgs = {
-      stakingToken : config.stakingToken,
       name : "StakingNFT",
       symbol : "SNFT",
       baseUri,
-      rewardsToken : config.rewardsToken,
-      rewardsPerPeriod : config.rewardsPerPeriod,
-      periodLength : config.periodLength,
-      timeLockPeriod : config.timeLockPeriod,
+      rewardsPerPeriod : DEFAULT_REWARDS_PER_PERIOD,
+      periodLength : DEFAULT_PERIOD_LENGTH,
+      timeLockPeriod : DEFAULT_LOCK_TIME,
       contractOwner: owner,
     };
 
-    const argsForDeployERC20  : IERC20DeployArgs = config;
-
     const campaignConfig : DCConfig = {
-      env: "dev",
+      env: process.env.ENV_LEVEL,
       deployAdmin: deployer,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -120,22 +117,37 @@ describe("StakingERC721", () => {
         verifyContracts: false,
       },
       owner,
-      stakingERC20Config: argsForDeployERC20,
       stakingERC721Config: argsForDeployERC721,
     };
 
-    const campaign = await runCampaign({
+    // consts with names
+    const mocksConsts = contractNames.mocks;
+    const mockDBname20 = "Mock20";
+    const mockDBname721 = "Mock721";
+
+    const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
+        mockERC20Mission(mocksConsts.erc20.contract, mocksConsts.erc20.instance, mockDBname20),
+        mockERC721Mission(mocksConsts.erc721.contract, mocksConsts.erc721.instance, mockDBname721),
         ZModulesStakingERC721DM,
       ],
     });
 
-    const { stakingERC721 } = campaign;
+    dbAdapter = campaign.dbAdapter;
+
+    const { stakingERC721, mockERC20, mockERC721  } = campaign;
+
+    rewardToken = mockERC20;
+    stakingToken = mockERC721;
 
     stakingContractERC721 = stakingERC721;
 
-    dbAdapter = campaign.dbAdapter;
+    config = {
+      ...campaignConfig.stakingERC721Config,
+      stakingToken: await mockERC721.getAddress(),
+      rewardsToken: await mockERC20.getAddress(),
+    };
 
     // Give staking contract balance to pay rewards
     await rewardToken.connect(deployer).transfer(
@@ -433,7 +445,6 @@ describe("StakingERC721", () => {
     });
 
     it("Fails to claim when not enough time has passed", async () => {
-      // TODO myself: double check the role
       await stakingToken.connect(deployer).mint(stakerC.address, tokenIdDelayed);
       await stakingToken.connect(stakerC).approve(await stakingContractERC721.getAddress(), tokenIdDelayed);
 

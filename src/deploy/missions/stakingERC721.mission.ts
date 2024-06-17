@@ -23,30 +23,52 @@ IZModulesContracts
   instanceName = contractNames.stakingERC721.instance;
 
   async deployArgs () : Promise<TDeployArgs> {
-    const {
-      stakingERC721Config: {
+
+    const envLevel = this.campaign.config.env;
+    const contractConfig = this.campaign.config.stakingERC721Config;
+
+    if (
+      envLevel === "dev" &&
+      (
+        !contractConfig.stakingToken &&
+        !contractConfig.rewardsToken
+      )
+    ) {
+      const {
+        config: {
+          stakingERC721Config: {
+            name,
+            symbol,
+            baseUri,
+            rewardsPerPeriod,
+            periodLength,
+            timeLockPeriod,
+            contractOwner,
+          },
+        },
+      } = this.campaign;
+
+      return [
         name,
         symbol,
         baseUri,
-        stakingToken,
-        rewardsToken,
+        await this.campaign.state.contracts.mockERC721.getAddress(),
+        await this.campaign.state.contracts.mockERC20.getAddress(),
         rewardsPerPeriod,
         periodLength,
         timeLockPeriod,
         contractOwner,
-      },
-    } = this.campaign.config;
-
-    return [
-      name,
-      symbol,
-      baseUri,
-      stakingToken,
-      rewardsToken,
-      rewardsPerPeriod,
-      periodLength,
-      timeLockPeriod,
-      contractOwner,
-    ];
+      ];
+    } else if (
+      envLevel === "test" ||
+      envLevel === "prod" ||
+      (
+        envLevel === "dev" &&
+        contractConfig.stakingToken &&
+        contractConfig.rewardsToken
+      )
+    ) {
+      return Object.values(this.campaign.config.stakingERC721Config);
+    }
   }
 }

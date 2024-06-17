@@ -11,7 +11,7 @@ import {
 } from "@nomicfoundation/hardhat-ethers/signers";
 
 export interface IStakingDeployArgs {
-  rewardsToken : string;
+  rewardsToken ?: string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
   timeLockPeriod : bigint;
@@ -19,20 +19,28 @@ export interface IStakingDeployArgs {
 }
 
 export interface IERC20DeployArgs extends IStakingDeployArgs {
-  stakingToken : string;
+  stakingToken ?: string;
 }
 
 export interface IERC721DeployArgs extends IStakingDeployArgs {
-  stakingToken : string;
+  stakingToken ?: string;
   name : string;
   symbol : string;
   baseUri : string;
 }
 
+export interface IMatchDeployArgs {
+  token : string;
+  feeVault : string;
+  owner : string;
+  operators : Array<string>;
+}
+
 export interface DCConfig extends IDeployCampaignConfig<SignerWithAddress> {
   owner : SignerWithAddress;
-  stakingERC20Config : IERC20DeployArgs;
-  stakingERC721Config : IERC721DeployArgs;
+  stakingERC20Config ?: IERC20DeployArgs;
+  stakingERC721Config ?: IERC721DeployArgs;
+  matchConfig ?: IMatchDeployArgs;
 }
 
 export type ZModulesContract =

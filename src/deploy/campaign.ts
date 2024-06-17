@@ -11,7 +11,12 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getZModulesMongoAdapter } from "./mongo";
 
-export const runCampaign = async ({
+// TODO myself: make fabric of missions
+export const makeMissions = async () => {
+
+};
+
+export const runZModulesCampaign = async ({
   config,
   deployer,
   dbVersion,
