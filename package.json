@@ -15,13 +15,11 @@
     "docgen": "hardhat docgen",
     "lint-sol": "yarn solhint ./contracts/**/*.sol",
     "lint-ts": "yarn eslint ./test/** ./src/**",
-    "lint": "yarn lint-sol & yarn lint-ts --no-error-on-unmatched-pattern",
-
+    "lint": "yarn lint-sol && yarn lint-ts --no-error-on-unmatched-pattern",
     "mongo:start": "docker-compose up -d",
     "mongo:stop": "docker-compose stop",
     "mongo:down": "docker-compose down",
     "mongo:drop": "ts-node src/utils/drop-db.ts",
-
     "pretest": "yarn mongo:start",
     "posttest": "yarn mongo:stop"
   },

@@ -4,13 +4,17 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IZModulesContracts } from "../types.campaign";
 
 
-export const mockERC20Mission = (name : string, instance : string, localDBName : string) => {
+export const mockERC20Mission = (name : string, instance : string, localDBName ?: string) => {
   class ZModulesMockERC20DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
   IProviderBase,
   IZModulesContracts
   > {
+
+    proxyData = {
+      isProxy: false,
+    };
 
     contractName = name;
     instanceName = instance;
@@ -26,10 +30,6 @@ export const mockERC20Mission = (name : string, instance : string, localDBName :
         "MOCK",
       ];
     }
-
-    proxyData = {
-      isProxy: false,
-    };
   }
   return ZModulesMockERC20DM;
 };

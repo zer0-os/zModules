@@ -15,8 +15,9 @@ import {
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
 import { DCConfig, contractNames, runZModulesCampaign } from "../src/deploy";
-import { ZModulesMatchDM } from "../src/deploy/missions/match.mission";
+import { ZModulesMatchDM, matchMission } from "../src/deploy/missions/match.mission";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
+import { validateConfig } from "../src/deploy/campaign/environment";
 
 
 const getPlayerBalances = async (
@@ -87,7 +88,7 @@ describe("Match Contract",  () => {
       ],
     };
 
-    const campaignConfig : DCConfig = {
+    const campaignConfig : DCConfig = await validateConfig({
       env: process.env.ENV_LEVEL,
       deployAdmin: owner,
       postDeploy: {
@@ -97,17 +98,18 @@ describe("Match Contract",  () => {
       },
       owner,
       matchConfig: argsForDeployMatch,
-    };
+    });
 
     // consts with names
     const mocksConsts = contractNames.mocks.erc20;
+    const matchConsts = contractNames.match;
     const mockDBname = "Mock20";
 
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
         mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
-        ZModulesMatchDM,
+        matchMission(matchConsts.contract, matchConsts.instance),
       ],
     });
 
@@ -572,4 +574,8 @@ describe("Match Contract",  () => {
       await match.connect(player1).transferOwnership(owner.address);
     });
   });
+
+
+  // TODO myself: test for deploy
+  // abi and stuff
 });

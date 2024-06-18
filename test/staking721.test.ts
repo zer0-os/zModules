@@ -25,7 +25,6 @@ import {
   contractNames,
   runZModulesCampaign,
 } from "../src/deploy";
-import { ZModulesStakingERC721DM } from "../src/deploy/missions";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 import {
@@ -43,6 +42,8 @@ import {
 } from "./helpers/errors";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 import { mockERC721Mission } from "../src/deploy/missions/mockERC721.mission";
+import { validateConfig } from "../src/deploy/campaign/environment";
+import { stakingERC721Mission } from "../src/deploy/missions/stakingERC721.mission";
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
@@ -108,7 +109,7 @@ describe("StakingERC721", () => {
       contractOwner: owner,
     };
 
-    const campaignConfig : DCConfig = {
+    const campaignConfig : DCConfig = await validateConfig({
       env: process.env.ENV_LEVEL,
       deployAdmin: deployer,
       postDeploy: {
@@ -118,10 +119,11 @@ describe("StakingERC721", () => {
       },
       owner,
       stakingERC721Config: argsForDeployERC721,
-    };
+    });
 
     // consts with names
     const mocksConsts = contractNames.mocks;
+    const stakingConsts = contractNames.stakingERC721;
     const mockDBname20 = "Mock20";
     const mockDBname721 = "Mock721";
 
@@ -130,7 +132,7 @@ describe("StakingERC721", () => {
       missions: [
         mockERC20Mission(mocksConsts.erc20.contract, mocksConsts.erc20.instance, mockDBname20),
         mockERC721Mission(mocksConsts.erc721.contract, mocksConsts.erc721.instance, mockDBname721),
-        ZModulesStakingERC721DM,
+        stakingERC721Mission(stakingConsts.contract, stakingConsts.instance),
       ],
     });
 
@@ -1667,14 +1669,15 @@ describe("StakingERC721", () => {
 
     it("Deployed contract should exist in the DB", async () => {
       const nameOfContract = contractNames.stakingERC721.contract;
-      const dbAddress = await stakingContractERC721.getAddress();
+      const contractAddress = await stakingContractERC721.getAddress();
       const contractFromDB = await dbAdapter.getContract(nameOfContract);
 
+      // TODO myself: abi and stuff
       expect({
         addrs: contractFromDB?.address,
         label: contractFromDB?.name,
       }).to.deep.equal({
-        addrs: dbAddress,
+        addrs: contractAddress,
         label: nameOfContract,
       });
     });

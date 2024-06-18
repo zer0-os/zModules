@@ -6,63 +6,66 @@ import {
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IZModulesContracts } from "../types.campaign";
-import { contractNames } from "../contractNames";
 
-export class ZModulesStakingERC20DM extends BaseDeployMission<
-HardhatRuntimeEnvironment,
-SignerWithAddress,
-IProviderBase,
-IZModulesContracts
-> {
+export const stakingERC20Mission = (name : string, instance : string, localDBName ?: string) => {
+  class ZModulesStakingERC20DM extends BaseDeployMission<
+  HardhatRuntimeEnvironment,
+  SignerWithAddress,
+  IProviderBase,
+  IZModulesContracts
+  > {
 
-  contractName = contractNames.stakingERC20.contract;
-  instanceName = contractNames.stakingERC20.instance;
+    proxyData = {
+      isProxy: false,
+    };
 
-  proxyData = {
-    isProxy: false,
-  };
+    contractName = name;
+    instanceName = instance;
 
-  async deployArgs () : Promise<TDeployArgs> {
 
-    const envLevel = this.campaign.config.env;
-    const contractConfig = this.campaign.config.stakingERC20Config;
+    async deployArgs () : Promise<TDeployArgs> {
 
-    if (
-      envLevel === "dev" &&
+      const envLevel = this.campaign.config.env;
+      const contractConfig = this.campaign.config.stakingERC20Config;
+
+      if (
+        envLevel === "dev" &&
       (
         !contractConfig.stakingToken &&
         !contractConfig.rewardsToken
       )
-    ) {
-      const {
-        config: {
-          stakingERC20Config: {
-            rewardsPerPeriod,
-            periodLength,
-            timeLockPeriod,
-            contractOwner,
+      ) {
+        const {
+          config: {
+            stakingERC20Config: {
+              rewardsPerPeriod,
+              periodLength,
+              timeLockPeriod,
+              contractOwner,
+            },
           },
-        },
-      } = this.campaign;
+        } = this.campaign;
 
-      return [
-        await this.campaign.state.contracts.mockERC20.getAddress(),
-        await this.campaign.state.contracts.mockERC20Second.getAddress(),
-        rewardsPerPeriod,
-        periodLength,
-        timeLockPeriod,
-        contractOwner,
-      ];
-    } else if (
-      envLevel === "test" ||
+        return [
+          await this.campaign.state.contracts.mockERC20.getAddress(),
+          await this.campaign.state.contracts.mockERC20Second.getAddress(),
+          rewardsPerPeriod,
+          periodLength,
+          timeLockPeriod,
+          contractOwner,
+        ];
+      } else if (
+        envLevel === "test" ||
       envLevel === "prod" ||
       (
         envLevel === "dev" &&
         contractConfig.stakingToken &&
         contractConfig.rewardsToken
       )
-    ) {
-      return Object.values(this.campaign.config.stakingERC20Config);
+      ) {
+        return Object.values(this.campaign.config.stakingERC20Config);
+      }
     }
   }
-}
+  return ZModulesStakingERC20DM;
+};

@@ -30,9 +30,10 @@ import {
 } from "./helpers/staking";
 import { DCConfig, IERC20DeployArgs, contractNames, runZModulesCampaign } from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
-import { ZModulesStakingERC20DM } from "../src/deploy/missions/stakingERC20.mission";
+import { stakingERC20Mission } from "../src/deploy/missions/stakingERC20.mission";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
+import { validateConfig } from "../src/deploy/campaign/environment";
 
 describe("StakingERC20", () => {
   let deployer : SignerWithAddress;
@@ -96,7 +97,7 @@ describe("StakingERC20", () => {
       contractOwner: owner,
     };
 
-    const campaignConfig : DCConfig = {
+    const campaignConfig : DCConfig = await validateConfig({
       env: process.env.ENV_LEVEL,
       deployAdmin: deployer,
       postDeploy: {
@@ -106,10 +107,11 @@ describe("StakingERC20", () => {
       },
       owner,
       stakingERC20Config: argsForDeployERC20,
-    };
+    });
 
     // consts with names
     const mocksConsts = contractNames.mocks.erc20;
+    const stakingConsts = contractNames.stakingERC20;
     const difference = "Second";
     const mockDBname = "Mock20";
 
@@ -118,7 +120,7 @@ describe("StakingERC20", () => {
       missions: [
         mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
         mockERC20Mission(mocksConsts.contract, `${mocksConsts.instance}${difference}`, `${mockDBname}${difference}`),
-        ZModulesStakingERC20DM,
+        stakingERC20Mission(stakingConsts.contract, stakingConsts.instance),
       ],
     });
 
@@ -760,23 +762,26 @@ describe("StakingERC20", () => {
   });
 
   describe("Deploy", () => {
-
     it("Deployed contract should exist in the DB", async () => {
       const nameOfContract = contractNames.stakingERC20.contract;
-      const dbAddress = await stakingContractERC20.getAddress();
+      const addressOfContract = await stakingContractERC20.getAddress();
       const contractFromDB = await dbAdapter.getContract(nameOfContract);
 
+      // TODO myself: compare other things.
+      // getArtifact from hardhat-deployer and take field as in the DB.
+      const stakingArtifact = await hre.artifacts.readArtifact(contractNames.stakingERC20.contract);
       expect({
         addrs: contractFromDB?.address,
         label: contractFromDB?.name,
+        abi: JSON.stringify(stakingArtifact.abi),
       }).to.deep.equal({
-        addrs: dbAddress,
+        addrs: addressOfContract,
         label: nameOfContract,
+        abi: contractFromDB?.abi,
       });
     });
 
     it("Should be deployed with correct args", async () => {
-
       const expectedArgs = {
         rewardsToken: await stakingContractERC20.rewardsToken(),
         stakeToken: await stakingContractERC20.stakingToken(),
@@ -793,7 +798,6 @@ describe("StakingERC20", () => {
     });
 
     it("Should have correct db and contract versions", async () => {
-
       const tag = await acquireLatestGitTag();
       const contractFromDB = await dbAdapter.getContract(contractNames.stakingERC20.contract);
       const dbDeployedV = await dbAdapter.versioner.getDeployedVersion();
@@ -807,7 +811,7 @@ describe("StakingERC20", () => {
       });
     });
 
-    it("Should made a transfer of ownership to owner", async () => {
+    it("Should transfer ownership to the address passed as owner in the config", async () => {
       const contractOwner = await stakingContractERC20.owner();
 
       expect(contractOwner).to.eq(owner);

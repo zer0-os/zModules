@@ -4,38 +4,40 @@ import { BaseDeployMission } from "@zero-tech/zdc/dist/missions/base-deploy-miss
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 import { IZModulesContracts } from "../types.campaign";
 import { TDeployArgs } from "@zero-tech/zdc/dist/missions/types";
-import { contractNames } from "../contractNames";
 
+export const matchMission = (name : string, instance : string) => {
+  class ZModulesMatchDM extends BaseDeployMission<
+  HardhatRuntimeEnvironment,
+  SignerWithAddress,
+  IProviderBase,
+  IZModulesContracts
+  > {
 
-export class ZModulesMatchDM extends BaseDeployMission<
-HardhatRuntimeEnvironment,
-SignerWithAddress,
-IProviderBase,
-IZModulesContracts
-> {
-  async deployArgs () : Promise<TDeployArgs> {
+    proxyData = {
+      isProxy: false,
+    };
 
-    let args : TDeployArgs;
+    contractName = name;
+    instanceName = instance;
 
-    if (process.env.ENV_LEVEL === "dev") {
-      this.campaign.config.matchConfig.token = this.campaign.state.contracts.mockERC20;
+    async deployArgs () : Promise<TDeployArgs> {
 
-      args =  Object.values(this.campaign.config.matchConfig);
+      let args : TDeployArgs;
 
-    } else if (
-      process.env.ENV_LEVEL === "test" ||
+      if (process.env.ENV_LEVEL === "dev") {
+        this.campaign.config.matchConfig.token = this.campaign.state.contracts.mockERC20;
+
+        args =  Object.values(this.campaign.config.matchConfig);
+
+      } else if (
+        process.env.ENV_LEVEL === "test" ||
       process.env.ENV_LEVEL === "prod"
-    ) {
-      args = Object.values(this.campaign.config.matchconfig);
+      ) {
+        args = Object.values(this.campaign.config.matchconfig);
+      }
+
+      return args;
     }
-
-    return args;
   }
-
-  contractName = contractNames.match.contract;
-  instanceName = contractNames.match.instance;
-
-  proxyData = {
-    isProxy: false,
-  };
-}
+  return ZModulesMatchDM;
+};
