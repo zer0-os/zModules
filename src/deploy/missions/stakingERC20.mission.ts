@@ -7,6 +7,7 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IZModulesContracts } from "../types.campaign";
 
+
 export const stakingERC20Mission = (name : string, instance : string, localDBName ?: string) => {
   class ZModulesStakingERC20DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
@@ -25,15 +26,13 @@ export const stakingERC20Mission = (name : string, instance : string, localDBNam
 
     async deployArgs () : Promise<TDeployArgs> {
 
-      const envLevel = this.campaign.config.env;
       const contractConfig = this.campaign.config.stakingERC20Config;
 
-      if (
-        envLevel === "dev" &&
-      (
-        !contractConfig.stakingToken &&
-        !contractConfig.rewardsToken
-      )
+      if (process.env.MOCK_TOKENS === "true" &&
+        (
+          !contractConfig.stakingToken &&
+          !contractConfig.rewardsToken
+        )
       ) {
         const {
           config: {
@@ -54,13 +53,10 @@ export const stakingERC20Mission = (name : string, instance : string, localDBNam
           timeLockPeriod,
           contractOwner,
         ];
-      } else if (
-        envLevel === "test" ||
-      envLevel === "prod" ||
+      } else if (process.env.MOCK_TOKENS === "false" ||
       (
-        envLevel === "dev" &&
         contractConfig.stakingToken &&
-        contractConfig.rewardsToken
+          contractConfig.rewardsToken
       )
       ) {
         return Object.values(this.campaign.config.stakingERC20Config);

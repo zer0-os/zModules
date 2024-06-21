@@ -24,11 +24,10 @@ export const stakingERC721Mission = (name : string, instance : string, localDBNa
 
     async deployArgs () : Promise<TDeployArgs> {
 
-      const envLevel = this.campaign.config.env;
       const contractConfig = this.campaign.config.stakingERC721Config;
 
       if (
-        envLevel === "dev" &&
+        process.env.MOCK_TOKENS === "true" &&
       (
         !contractConfig.stakingToken &&
         !contractConfig.rewardsToken
@@ -59,14 +58,11 @@ export const stakingERC721Mission = (name : string, instance : string, localDBNa
           timeLockPeriod,
           contractOwner,
         ];
-      } else if (
-        envLevel === "test" ||
-      envLevel === "prod" ||
-      (
-        envLevel === "dev" &&
-        contractConfig.stakingToken &&
-        contractConfig.rewardsToken
-      )
+      } else if (process.env.MOCK_TOKENS === "false" ||
+        (
+          contractConfig.stakingToken &&
+          contractConfig.rewardsToken
+        )
       ) {
         return Object.values(this.campaign.config.stakingERC721Config);
       }

@@ -766,10 +766,8 @@ describe("StakingERC20", () => {
       const nameOfContract = contractNames.stakingERC20.contract;
       const addressOfContract = await stakingContractERC20.getAddress();
       const contractFromDB = await dbAdapter.getContract(nameOfContract);
-
-      // TODO myself: compare other things.
-      // getArtifact from hardhat-deployer and take field as in the DB.
       const stakingArtifact = await hre.artifacts.readArtifact(contractNames.stakingERC20.contract);
+
       expect({
         addrs: contractFromDB?.address,
         label: contractFromDB?.name,
@@ -815,6 +813,62 @@ describe("StakingERC20", () => {
       const contractOwner = await stakingContractERC20.owner();
 
       expect(contractOwner).to.eq(owner);
+    });
+  });
+
+  describe("ENV tokens", () => {
+    let staking20 : StakingERC20;
+    let stakingMock : MockERC20;
+    let rewardMock : MockERC20;
+    before(async () => {
+      const stakingMockFactory = await hre.ethers.getContractFactory("MockERC20");
+      stakingMock = await stakingMockFactory.deploy("Meow", "MEOW");
+      rewardMock = await stakingMockFactory.deploy("Meow2", "MEOW2");
+
+      [
+        deployer,
+        owner,
+      ] = await hre.ethers.getSigners();
+
+      const argsForDeploy20 = {
+        stakingToken: stakingMock,
+        rewardsToken: rewardMock,
+        rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
+        periodLength: DEFAULT_PERIOD_LENGTH,
+        timeLockPeriod: DEFAULT_LOCK_TIME,
+        contractOwner: owner,
+      };
+
+      const campaignConfig : DCConfig = await validateConfig({
+        env: process.env.ENV_LEVEL,
+        deployAdmin: owner,
+        postDeploy: {
+          tenderlyProjectSlug: "string",
+          monitorContracts: false,
+          verifyContracts: false,
+        },
+        owner,
+        stakingERC20Config: argsForDeploy20,
+      });
+
+      const stakingConsts = contractNames.stakingERC20;
+      const campaign = await runZModulesCampaign({
+        config: campaignConfig,
+        missions: [
+          stakingERC20Mission(stakingConsts.contract, stakingConsts.instance),
+        ],
+      });
+
+      staking20 = campaign.state.contracts.stakingERC20;
+    });
+
+    after(async () => {
+      await dbAdapter.dropDB();
+    });
+
+    it("Should deploy contract with mock, provided separetely from campaign", async () => {
+      expect(await staking20.stakingToken()).to.eq(await stakingMock.getAddress());
+      expect(await staking20.rewardsToken()).to.eq(await rewardMock.getAddress());
     });
   });
 });

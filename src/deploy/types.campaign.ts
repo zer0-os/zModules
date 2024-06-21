@@ -30,7 +30,7 @@ export interface IERC721DeployArgs extends IStakingDeployArgs {
 }
 
 export interface IMatchDeployArgs {
-  token : string;
+  token ?: string;
   feeVault : string;
   owner : string;
   operators : Array<string>;

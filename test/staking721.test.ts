@@ -1671,14 +1671,16 @@ describe("StakingERC721", () => {
       const nameOfContract = contractNames.stakingERC721.contract;
       const contractAddress = await stakingContractERC721.getAddress();
       const contractFromDB = await dbAdapter.getContract(nameOfContract);
+      const stakingArtifact = await hre.artifacts.readArtifact(contractNames.stakingERC721.contract);
 
-      // TODO myself: abi and stuff
       expect({
         addrs: contractFromDB?.address,
         label: contractFromDB?.name,
+        abi: JSON.stringify(stakingArtifact.abi),
       }).to.deep.equal({
         addrs: contractAddress,
         label: nameOfContract,
+        abi: contractFromDB?.abi,
       });
     });
 
@@ -1718,6 +1720,69 @@ describe("StakingERC721", () => {
       await stakingContractERC721.connect(notStaker).renounceOwnership();
 
       expect(await stakingContractERC721.owner()).to.eq(hre.ethers.ZeroAddress);
+    });
+  });
+
+  describe("ENV tokens", () => {
+    let staking721 : StakingERC721;
+    let stakingMock : MockERC721;
+    let rewardMock : MockERC20;
+
+    // New campaign where we pass mock token that are deployed through Hardhat
+    before(async () => {
+      [
+        deployer,
+        owner,
+      ] = await hre.ethers.getSigners();
+
+      const stakingMockFactory = await hre.ethers.getContractFactory("MockERC721");
+      stakingMock = await stakingMockFactory.deploy("WilderWheels", "WW", baseUri);
+
+      const rewardMockFactory = await hre.ethers.getContractFactory("MockERC20");
+      rewardMock = await rewardMockFactory.deploy("Meow", "MEOW");
+
+      const argsForDeploy721 = {
+        name : "StakingNFT",
+        symbol : "SNFT",
+        baseUri,
+        stakingToken: stakingMock,
+        rewardsToken: rewardMock,
+        rewardsPerPeriod : DEFAULT_REWARDS_PER_PERIOD,
+        periodLength : DEFAULT_PERIOD_LENGTH,
+        timeLockPeriod : DEFAULT_LOCK_TIME,
+        contractOwner: owner,
+      };
+
+      const campaignConfig : DCConfig = await validateConfig({
+        env: process.env.ENV_LEVEL,
+        deployAdmin: owner,
+        postDeploy: {
+          tenderlyProjectSlug: "string",
+          monitorContracts: false,
+          verifyContracts: false,
+        },
+        owner,
+        stakingERC721Config: argsForDeploy721,
+      });
+
+      const stakingConsts = contractNames.stakingERC721;
+      const campaign = await runZModulesCampaign({
+        config: campaignConfig,
+        missions: [
+          stakingERC721Mission(stakingConsts.contract, stakingConsts.instance),
+        ],
+      });
+
+      staking721 = campaign.state.contracts.stakingERC721;
+    });
+
+    after(async () => {
+      await dbAdapter.dropDB();
+    });
+
+    it("Should deploy contract with mock, provided separetely from campaign", async () => {
+      expect(await staking721.stakingToken()).to.eq(await stakingMock.getAddress());
+      expect(await staking721.rewardsToken()).to.eq(await rewardMock.getAddress());
     });
   });
 });

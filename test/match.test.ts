@@ -15,9 +15,12 @@ import {
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
 import { DCConfig, contractNames, runZModulesCampaign } from "../src/deploy";
-import { ZModulesMatchDM, matchMission } from "../src/deploy/missions/match.mission";
+import { matchMission } from "../src/deploy/missions/match.mission";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
+import { MongoDBAdapter } from "@zero-tech/zdc";
+import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
+import { BaseConfig, BaseMatchConfig } from "./helpers/staking";
 
 
 const getPlayerBalances = async (
@@ -53,6 +56,11 @@ describe("Match Contract",  () => {
 
   let MatchFactory : Match__factory;
 
+  let dbAdapter : MongoDBAdapter;
+  let config : BaseMatchConfig;
+
+  let tokenForMatch : MockERC20;
+
   before(async () => {
     [
       owner,
@@ -78,7 +86,6 @@ describe("Match Contract",  () => {
     ];
 
     const argsForDeployMatch = {
-      token: "string",
       feeVault: feeVault.address,
       owner: owner.address,
       operators: [
@@ -113,13 +120,19 @@ describe("Match Contract",  () => {
       ],
     });
 
+    dbAdapter = campaign.dbAdapter;
+
     MatchFactory = await hre.ethers.getContractFactory("Match");
+
+    config = {
+      ...campaignConfig.matchConfig,
+    };
 
     // TODO myself: double check, is this type changing right?
     match = campaign.state.contracts.match as unknown as Match;
     matchAddress = await match.getAddress();
 
-    mockERC20 = campaign.state.contracts.mockERC20;
+    mockERC20 = campaign.state.contracts.mockERC20 as unknown as MockERC20;
     mockERC20Address = await mockERC20.getAddress();
 
     await allPlayers.reduce(
@@ -129,6 +142,10 @@ describe("Match Contract",  () => {
         await mockERC20.connect(player).approve(matchAddress, ethers.parseEther("1000"));
       }, Promise.resolve()
     );
+  });
+
+  after(async () => {
+    await dbAdapter.dropDB();
   });
 
   it("Should revert if feeVault is passed as 0x0 address", async () => {
@@ -575,7 +592,110 @@ describe("Match Contract",  () => {
     });
   });
 
+  describe("Deploy", () => {
+    it("Deployed contract should exist in the DB", async () => {
+      const nameOfContract = contractNames.match.contract;
+      const addressOfContract = await match.getAddress();
+      const contractFromDB = await dbAdapter.getContract(nameOfContract);
+      const matchArtifact = await hre.artifacts.readArtifact(contractNames.match.contract);
 
-  // TODO myself: test for deploy
-  // abi and stuff
+      expect({
+        addrs: contractFromDB?.address,
+        label: contractFromDB?.name,
+        abi: JSON.stringify(matchArtifact.abi),
+      }).to.deep.equal({
+        addrs: addressOfContract,
+        label: nameOfContract,
+        abi: contractFromDB?.abi,
+      });
+    });
+
+    it("Should be deployed with correct args", async () => {
+      const expectedArgs = {
+        token: await match.token(),
+        feeVault: await match.getFeeVault(),
+        owner: await match.owner(),
+      };
+
+      expect(expectedArgs.token).to.eq(mockERC20Address);
+      expect(expectedArgs.feeVault).to.eq(config.feeVault);
+      expect(expectedArgs.owner).to.eq(config.owner);
+
+      for (const operator of config.operators) {
+        await match.isOperator(operator);
+      }
+    });
+
+    it("Should have correct db and contract versions", async () => {
+      const tag = await acquireLatestGitTag();
+      const contractFromDB = await dbAdapter.getContract(contractNames.match.contract);
+      const dbDeployedV = await dbAdapter.versioner.getDeployedVersion();
+
+      expect({
+        dbVersion: contractFromDB?.version,
+        contractVersion: dbDeployedV?.contractsVersion,
+      }).to.deep.equal({
+        dbVersion: dbDeployedV.dbVersion,
+        contractVersion: tag,
+      });
+    });
+  });
+
+  describe("Separate tokens", () => {
+    let match2 : Match;
+    before(async () => {
+      [
+        owner,
+        operator1,
+        operator2,
+        operator3,
+        feeVault,
+      ] = await hre.ethers.getSigners();
+
+      const tokenForMatchFactory = await hre.ethers.getContractFactory("MockERC20");
+      tokenForMatch = await tokenForMatchFactory.deploy("Meow", "MEOW");
+
+      const argsForDeployMatch = {
+        token: await tokenForMatch.getAddress(),
+        feeVault: feeVault.address,
+        owner: owner.address,
+        operators: [
+          operator1.address,
+          operator2.address,
+          operator3.address,
+        ],
+      };
+
+      const campaignConfig : DCConfig = await validateConfig({
+        env: process.env.ENV_LEVEL,
+        deployAdmin: owner,
+        postDeploy: {
+          tenderlyProjectSlug: "string",
+          monitorContracts: false,
+          verifyContracts: false,
+        },
+        owner,
+        matchConfig: argsForDeployMatch,
+      });
+
+      const matchConsts = contractNames.match;
+      const campaign = await runZModulesCampaign({
+        config: campaignConfig,
+        missions: [
+          matchMission(matchConsts.contract, matchConsts.instance),
+        ],
+      });
+
+      match2 = campaign.state.contracts.match as unknown as Match;
+    });
+
+    after(async () => {
+      await dbAdapter.dropDB();
+    });
+
+    it("Should deploy contract with mock, provided separetely from campaign", async () => {
+      expect(await match2.token()).to.eq(await tokenForMatch.getAddress());
+    });
+  });
+
 });
