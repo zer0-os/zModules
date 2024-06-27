@@ -2,11 +2,11 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { IProviderBase } from "@zero-tech/zdc/dist/deployer/types";
 import { BaseDeployMission } from "@zero-tech/zdc/dist/missions/base-deploy-mission";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
-import { IZModulesContracts } from "../types.campaign";
+import { DCConfig, IMatchDeployArgs, IZModulesContracts } from "../types.campaign";
 import { TDeployArgs } from "@zero-tech/zdc/dist/missions/types";
 
 
-export const matchMission = (name : string, instance : string) => {
+export const matchMission = (_contractName : string, _instanceName : string, localDBName ?: string) => {
   class ZModulesMatchDM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -18,33 +18,41 @@ export const matchMission = (name : string, instance : string) => {
       isProxy: false,
     };
 
-    contractName = name;
-    instanceName = instance;
+    contractName = _contractName;
+    instanceName = _instanceName;
 
     async deployArgs () : Promise<TDeployArgs> {
+      const {
+        matchConfig,
+        mockTokens,
+      } = this.campaign.config as DCConfig;
 
-      let args : TDeployArgs = [];
+      const {
+        token,
+        feeVault,
+        owner,
+        operators,
+      } = matchConfig as IMatchDeployArgs;
 
-      const tokenInArgs = this.campaign.config.matchConfig.token;
+      if (mockTokens === true && !token) {
+        return [
+          await this.campaign.state.contracts.mockERC20.getAddress(),
+          feeVault,
+          owner,
+          operators,
+        ];
 
-      if (
-        process.env.MOCK_TOKENS === "true" &&
-        !tokenInArgs
-      ) {
-        args = args.concat(
-          [await this.campaign.state.contracts.mockERC20.getAddress()],
-          Object.values(this.campaign.config.matchConfig)
-        );
-
-      } else if (
-        // TODO myself: double check is this right?
-        process.env.MOCK_TOKENS === "false" ||
-        tokenInArgs
-      ) {
-        args = Object.values(this.campaign.config.matchConfig);
+      } else {
+        if (!token) {
+          throw new Error("Must provide token for Match if not mocking");
+        }
+        return [
+          token,
+          feeVault,
+          owner,
+          operators,
+        ];
       }
-
-      return args;
     }
   }
   return ZModulesMatchDM;

@@ -5,10 +5,10 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesContracts } from "../types.campaign";
+import { DCConfig, IERC721DeployArgs, IZModulesContracts } from "../types.campaign";
 
 
-export const stakingERC20Mission = (name : string, instance : string, localDBName ?: string) => {
+export const stakingERC20Mission = (_contractName : string, _instanceName : string, localDBName ?: string) => {
   class ZModulesStakingERC20DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -20,31 +20,26 @@ export const stakingERC20Mission = (name : string, instance : string, localDBNam
       isProxy: false,
     };
 
-    contractName = name;
-    instanceName = instance;
+    contractName = _contractName;
+    instanceName = _instanceName;
 
 
     async deployArgs () : Promise<TDeployArgs> {
+      const {
+        stakingERC20Config,
+        mockTokens,
+      } = this.campaign.config as DCConfig;
 
-      const contractConfig = this.campaign.config.stakingERC20Config;
+      const {
+        stakingToken,
+        rewardsToken,
+        rewardsPerPeriod,
+        periodLength,
+        timeLockPeriod,
+        contractOwner,
+      } = stakingERC20Config as IERC721DeployArgs;
 
-      if (process.env.MOCK_TOKENS === "true" &&
-        (
-          !contractConfig.stakingToken &&
-          !contractConfig.rewardsToken
-        )
-      ) {
-        const {
-          config: {
-            stakingERC20Config: {
-              rewardsPerPeriod,
-              periodLength,
-              timeLockPeriod,
-              contractOwner,
-            },
-          },
-        } = this.campaign;
-
+      if (mockTokens === true && (!stakingToken && !rewardsToken)) {
         return [
           await this.campaign.state.contracts.mockERC20.getAddress(),
           await this.campaign.state.contracts.mockERC20Second.getAddress(),
@@ -53,13 +48,20 @@ export const stakingERC20Mission = (name : string, instance : string, localDBNam
           timeLockPeriod,
           contractOwner,
         ];
-      } else if (process.env.MOCK_TOKENS === "false" ||
-      (
-        contractConfig.stakingToken &&
-          contractConfig.rewardsToken
-      )
-      ) {
-        return Object.values(this.campaign.config.stakingERC20Config);
+
+      } else {
+        if (!stakingToken || !rewardsToken) {
+          throw new Error("Must provide Staking and Reward tokens if not mocking");
+        }
+
+        return [
+          stakingToken,
+          rewardsToken,
+          rewardsPerPeriod,
+          periodLength,
+          timeLockPeriod,
+          contractOwner,
+        ];
       }
     }
   }

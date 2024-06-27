@@ -38,6 +38,7 @@ export interface IMatchDeployArgs {
 
 export interface DCConfig extends IDeployCampaignConfig<SignerWithAddress> {
   owner : SignerWithAddress;
+  mockTokens : string | boolean;
   stakingERC20Config ?: IERC20DeployArgs;
   stakingERC721Config ?: IERC721DeployArgs;
   matchConfig ?: IMatchDeployArgs;

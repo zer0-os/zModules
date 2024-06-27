@@ -13,13 +13,6 @@ export interface BaseConfig {
   contractOwner : SignerWithAddress;
 }
 
-export interface MatchConfig {
-  token : SignerWithAddress;
-  feeVault : SignerWithAddress;
-  owner : SignerWithAddress;
-  operators : Array<SignerWithAddress>;
-}
-
 // Simplify the Ethers V6 contract type
 export type ContractV6 = BaseContract & Omit<ContractInterface, keyof BaseContract>;
 

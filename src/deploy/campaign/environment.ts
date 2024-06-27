@@ -1,9 +1,14 @@
 import { DCConfig } from "../types.campaign";
 
+// TODO myself: make validation of whole .env file
+
 export const validateConfig = async (obj : DCConfig) =>  {
 
-  const env = obj.env;
-  const postDeploy = obj.postDeploy;
+  const {
+    env,
+    postDeploy,
+    mockTokens,
+  } = obj;
 
   if (env === undefined) {
     throw new Error("Must provide ENV_LEVEL");
@@ -21,5 +26,12 @@ export const validateConfig = async (obj : DCConfig) =>  {
     }
   }
 
-  return obj;
+  const toBoolean = () => {
+    if (typeof mockTokens === "string") {
+      obj.mockTokens = mockTokens.toLowerCase() === "true";
+    }
+    return obj;
+  };
+
+  return toBoolean();
 };

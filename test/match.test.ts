@@ -14,13 +14,12 @@ import {
   OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR,
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
-import { DCConfig, contractNames, runZModulesCampaign } from "../src/deploy";
+import { DCConfig, IMatchDeployArgs, contractNames, runZModulesCampaign } from "../src/deploy";
 import { matchMission } from "../src/deploy/missions/match.mission";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
-import { BaseConfig, BaseMatchConfig } from "./helpers/staking";
 
 
 const getPlayerBalances = async (
@@ -57,11 +56,13 @@ describe("Match Contract",  () => {
   let MatchFactory : Match__factory;
 
   let dbAdapter : MongoDBAdapter;
-  let config : BaseMatchConfig;
+  let config : IMatchDeployArgs | undefined;
 
   let tokenForMatch : MockERC20;
 
   before(async () => {
+    const mockTokens = process.env.MOCK_TOKENS as string;
+
     [
       owner,
       player1,
@@ -95,8 +96,9 @@ describe("Match Contract",  () => {
       ],
     };
 
-    const campaignConfig : DCConfig = await validateConfig({
+    const campaignConfig = await validateConfig({
       env: process.env.ENV_LEVEL,
+      mockTokens,
       deployAdmin: owner,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -124,15 +126,10 @@ describe("Match Contract",  () => {
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
 
-    config = {
-      ...campaignConfig.matchConfig,
-    };
+    config = campaignConfig.matchConfig;
 
-    // TODO myself: double check, is this type changing right?
-    match = campaign.state.contracts.match as unknown as Match;
+    ({ match, dbAdapter, mockERC20 } = campaign);
     matchAddress = await match.getAddress();
-
-    mockERC20 = campaign.state.contracts.mockERC20 as unknown as MockERC20;
     mockERC20Address = await mockERC20.getAddress();
 
     await allPlayers.reduce(
@@ -666,8 +663,9 @@ describe("Match Contract",  () => {
         ],
       };
 
-      const campaignConfig : DCConfig = await validateConfig({
+      const campaignConfig = await validateConfig({
         env: process.env.ENV_LEVEL,
+        mockTokens: "false",
         deployAdmin: owner,
         postDeploy: {
           tenderlyProjectSlug: "string",

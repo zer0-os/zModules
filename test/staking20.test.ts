@@ -47,7 +47,7 @@ describe("StakingERC20", () => {
 
   let stakingContractERC20 : StakingERC20;
 
-  let stakeToken : MockERC20;
+  let stakingToken : MockERC20;
   let rewardsToken : MockERC20;
 
   // We don't use `PoolConfig` anymore on the contracts but for convenience in testing
@@ -97,8 +97,10 @@ describe("StakingERC20", () => {
       contractOwner: owner,
     };
 
+    const mockTokens = process.env.MOCK_TOKENS as string;
     const campaignConfig : DCConfig = await validateConfig({
       env: process.env.ENV_LEVEL,
+      mockTokens,
       deployAdmin: deployer,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -128,15 +130,15 @@ describe("StakingERC20", () => {
 
     const { stakingERC20, mockERC20, mockERC20Second } = campaign;
 
-    stakeToken = mockERC20;
+    stakingToken = mockERC20;
     rewardsToken = mockERC20Second;
 
     stakingContractERC20 = stakingERC20;
 
     config = {
       ...campaignConfig.stakingERC20Config,
-      stakeToken,
-      rewardsToken,
+      stakingToken: await stakingToken.getAddress(),
+      rewardsToken: await rewardsToken.getAddress(),
     };
 
     const stakersArr = [
@@ -149,8 +151,8 @@ describe("StakingERC20", () => {
     ];
 
     for (const staker of stakersArr) {
-      await stakeToken.mint(staker.address, INIT_BALANCE);
-      await stakeToken.connect(staker).approve(await stakingContractERC20.getAddress(), hre.ethers.MaxUint256);
+      await stakingToken.mint(staker.address, INIT_BALANCE);
+      await stakingToken.connect(staker).approve(await stakingContractERC20.getAddress(), hre.ethers.MaxUint256);
     }
 
     await rewardsToken.mint(owner.address, INIT_BALANCE);
@@ -170,7 +172,7 @@ describe("StakingERC20", () => {
 
   describe("#stake", () => {
     it("Can stake an amount successfully", async () => {
-      const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
+      const stakeBalanceBeforeA = await stakingToken.balanceOf(stakerA.address);
 
       await stakingContractERC20.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
       stakedAtA = BigInt(await time.latest());
@@ -178,7 +180,7 @@ describe("StakingERC20", () => {
 
       amountStakedA = DEFAULT_STAKED_AMOUNT;
 
-      const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
+      const stakeBalanceAfterA = await stakingToken.balanceOf(stakerA.address);
 
       const stakerData = await stakingContractERC20.stakers(stakerA.address);
 
@@ -195,7 +197,7 @@ describe("StakingERC20", () => {
 
       const pendingRewards = await stakingContractERC20.connect(stakerA).getPendingRewards();
 
-      const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
+      const stakeBalanceBeforeA = await stakingToken.balanceOf(stakerA.address);
       const rewardsBalanceBeforeA = await rewardsToken.balanceOf(stakerA.address);
 
       await stakingContractERC20.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
@@ -209,7 +211,7 @@ describe("StakingERC20", () => {
         config.periodLength
       );
 
-      const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
+      const stakeBalanceAfterA = await stakingToken.balanceOf(stakerA.address);
       const rewardsBalanceAfterA = await rewardsToken.balanceOf(stakerA.address);
 
 
@@ -230,7 +232,7 @@ describe("StakingERC20", () => {
     it("Can stake as a new user when others are already staked", async () => {
       const pendingRewards = await stakingContractERC20.connect(stakerB).getPendingRewards();
 
-      const stakeBalanceBefore = await stakeToken.balanceOf(stakerB.address);
+      const stakeBalanceBefore = await stakingToken.balanceOf(stakerB.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerB.address);
 
       await stakingContractERC20.connect(stakerB).stake(DEFAULT_STAKED_AMOUNT);
@@ -244,7 +246,7 @@ describe("StakingERC20", () => {
         config.periodLength
       );
 
-      const stakeBalanceAfter = await stakeToken.balanceOf(stakerB.address);
+      const stakeBalanceAfter = await stakingToken.balanceOf(stakerB.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerB.address);
 
       const stakerData = await stakingContractERC20.stakers(stakerB.address);
@@ -270,12 +272,12 @@ describe("StakingERC20", () => {
         .withArgs(stakingContractERC20.target, 0n, amount);
 
       // Then after we allow funds, it will fail on balance
-      await stakeToken.connect(notStaker).approve(await stakingContractERC20.getAddress(), amount);
+      await stakingToken.connect(notStaker).approve(await stakingContractERC20.getAddress(), amount);
 
-      const balance = await stakeToken.balanceOf(notStaker.address);
+      const balance = await stakingToken.balanceOf(notStaker.address);
       await expect(
         stakingContractERC20.connect(notStaker).stake(amount)
-      ).to.be.revertedWithCustomError(stakeToken, INSUFFICIENT_BALANCE_ERR)
+      ).to.be.revertedWithCustomError(stakingToken, INSUFFICIENT_BALANCE_ERR)
         .withArgs(notStaker.address, balance, amount);
     });
 
@@ -418,7 +420,7 @@ describe("StakingERC20", () => {
       // Unstake half of the original stake
       const amount = amountStakedA / 2n;
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
-      const stakeTokenBalanceBefore = await stakeToken.balanceOf(stakerA.address);
+      const stakeTokenBalanceBefore = await stakingToken.balanceOf(stakerA.address);
 
       const pendingRewards = await stakingContractERC20.connect(stakerA).getPendingRewards();
 
@@ -428,13 +430,13 @@ describe("StakingERC20", () => {
         pendingRewards
       );
 
-      await stakeToken.connect(stakerA).approve(await stakingContractERC20.getAddress(), amount);
+      await stakingToken.connect(stakerA).approve(await stakingContractERC20.getAddress(), amount);
 
       await stakingContractERC20.connect(stakerA).unstake(amount, false);
       unstakedAtA = BigInt(await time.latest());
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
-      const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
+      const stakeTokenBalanceAfter = await stakingToken.balanceOf(stakerA.address);
 
       const expectedRewards = calcTotalRewards(
         [unstakedAtA - claimedAtA],
@@ -461,7 +463,7 @@ describe("StakingERC20", () => {
       await time.increase(config.periodLength * 11n);
 
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
-      const stakeTokenBalanceBefore = await stakeToken.balanceOf(stakerA.address);
+      const stakeTokenBalanceBefore = await stakingToken.balanceOf(stakerA.address);
 
       const pendingRewards = await stakingContractERC20.connect(stakerA).getPendingRewards();
 
@@ -474,7 +476,7 @@ describe("StakingERC20", () => {
       await stakingContractERC20.connect(stakerA).unstake(amountStakedA, false);
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
-      const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
+      const stakeTokenBalanceAfter = await stakingToken.balanceOf(stakerA.address);
 
       const expectedRewards = calcTotalRewards(
         [BigInt(await time.latest()) - unstakedAtA],
@@ -539,7 +541,7 @@ describe("StakingERC20", () => {
 
   describe("#unstake with 'exit'", () => {
     it("Allows a user to partially unstake without rewards using 'exit'", async () => {
-      const stakeBalanceBefore = await stakeToken.balanceOf(stakerC.address);
+      const stakeBalanceBefore = await stakingToken.balanceOf(stakerC.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerC.address);
 
       await time.increase(config.periodLength * 2n);
@@ -559,7 +561,7 @@ describe("StakingERC20", () => {
         config.periodLength
       );
 
-      const stakeBalanceAfter = await stakeToken.balanceOf(stakerC.address);
+      const stakeBalanceAfter = await stakingToken.balanceOf(stakerC.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerC.address);
 
       // Confirm they have pending rewards but don't receive them
@@ -576,7 +578,7 @@ describe("StakingERC20", () => {
     });
 
     it("Allows a user to fully unstake without rewards using 'exit'", async () => {
-      const stakeBalanceBefore = await stakeToken.balanceOf(stakerC.address);
+      const stakeBalanceBefore = await stakingToken.balanceOf(stakerC.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerC.address);
 
       const pendingRewards = await stakingContractERC20.connect(stakerC).getPendingRewards();
@@ -594,7 +596,7 @@ describe("StakingERC20", () => {
       );
 
       unstakedAtC = BigInt(await time.latest());
-      const stakeBalanceAfter = await stakeToken.balanceOf(stakerC.address);
+      const stakeBalanceAfter = await stakingToken.balanceOf(stakerC.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerC.address);
 
       // Confirm they have pending rewards but don't receive them
@@ -683,7 +685,7 @@ describe("StakingERC20", () => {
       await expect(
         stakingContractERC20.connect(stakerF).stake(DEFAULT_STAKED_AMOUNT)
       ).to.emit(stakingContractERC20, STAKED_EVENT)
-        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakeToken);
+        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakingToken);
     });
 
     it("Emits a Claimed event when a user claims rewards", async () => {
@@ -717,7 +719,7 @@ describe("StakingERC20", () => {
       await expect(
         stakingContractERC20.connect(stakerF).unstake(stakerData.amountStaked / 2n, false)
       ).to.emit(stakingContractERC20, UNSTAKED_EVENT)
-        .withArgs(stakerF.address, stakerData.amountStaked / 2n, config.stakeToken);
+        .withArgs(stakerF.address, stakerData.amountStaked / 2n, config.stakingToken);
     });
 
     it("Emits an Unstaked event when a user exits with unstake", async () => {
@@ -726,15 +728,15 @@ describe("StakingERC20", () => {
       const stakerData = await stakingContractERC20.stakers(stakerF.address);
 
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerF.address);
-      const stakeBalanceBefore = await stakeToken.balanceOf(stakerF.address);
+      const stakeBalanceBefore = await stakingToken.balanceOf(stakerF.address);
 
       await expect(
         stakingContractERC20.connect(stakerF).unstake(stakerData.amountStaked, true)
       ).to.emit(stakingContractERC20, UNSTAKED_EVENT)
-        .withArgs(stakerF.address, stakerData.amountStaked, config.stakeToken);
+        .withArgs(stakerF.address, stakerData.amountStaked, config.stakingToken);
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerF.address);
-      const stakeBalanceAfter = await stakeToken.balanceOf(stakerF.address);
+      const stakeBalanceAfter = await stakingToken.balanceOf(stakerF.address);
 
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + stakerData.amountStaked);
@@ -782,14 +784,14 @@ describe("StakingERC20", () => {
     it("Should be deployed with correct args", async () => {
       const expectedArgs = {
         rewardsToken: await stakingContractERC20.rewardsToken(),
-        stakeToken: await stakingContractERC20.stakingToken(),
+        stakingToken: await stakingContractERC20.stakingToken(),
         rewardsPerPeriod: await stakingContractERC20.rewardsPerPeriod(),
         periodLength: await stakingContractERC20.periodLength(),
         timeLockPeriod: await stakingContractERC20.timeLockPeriod(),
       };
 
       expect(expectedArgs.rewardsToken).to.eq(config.rewardsToken);
-      expect(expectedArgs.stakeToken).to.eq(config.stakeToken);
+      expect(expectedArgs.stakingToken).to.eq(config.stakingToken);
       expect(expectedArgs.rewardsPerPeriod).to.eq(config.rewardsPerPeriod);
       expect(expectedArgs.periodLength).to.eq(config.periodLength);
       expect(expectedArgs.timeLockPeriod).to.eq(config.timeLockPeriod);
@@ -816,7 +818,7 @@ describe("StakingERC20", () => {
     });
   });
 
-  describe("ENV tokens", () => {
+  describe("Separate tokens", () => {
     let staking20 : StakingERC20;
     let stakingMock : MockERC20;
     let rewardMock : MockERC20;
@@ -831,8 +833,8 @@ describe("StakingERC20", () => {
       ] = await hre.ethers.getSigners();
 
       const argsForDeploy20 = {
-        stakingToken: stakingMock,
-        rewardsToken: rewardMock,
+        stakingToken: await stakingMock.getAddress(),
+        rewardsToken: await rewardMock.getAddress(),
         rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
         periodLength: DEFAULT_PERIOD_LENGTH,
         timeLockPeriod: DEFAULT_LOCK_TIME,
@@ -841,6 +843,7 @@ describe("StakingERC20", () => {
 
       const campaignConfig : DCConfig = await validateConfig({
         env: process.env.ENV_LEVEL,
+        mockTokens: "false",
         deployAdmin: owner,
         postDeploy: {
           tenderlyProjectSlug: "string",

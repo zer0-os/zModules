@@ -109,8 +109,10 @@ describe("StakingERC721", () => {
       contractOwner: owner,
     };
 
+    const mockTokens = process.env.MOCK_TOKENS as string;
     const campaignConfig : DCConfig = await validateConfig({
       env: process.env.ENV_LEVEL,
+      mockTokens,
       deployAdmin: deployer,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -1723,7 +1725,7 @@ describe("StakingERC721", () => {
     });
   });
 
-  describe("ENV tokens", () => {
+  describe("Separate tokens", () => {
     let staking721 : StakingERC721;
     let stakingMock : MockERC721;
     let rewardMock : MockERC20;
@@ -1745,8 +1747,8 @@ describe("StakingERC721", () => {
         name : "StakingNFT",
         symbol : "SNFT",
         baseUri,
-        stakingToken: stakingMock,
-        rewardsToken: rewardMock,
+        stakingToken: await stakingMock.getAddress(),
+        rewardsToken: await rewardMock.getAddress(),
         rewardsPerPeriod : DEFAULT_REWARDS_PER_PERIOD,
         periodLength : DEFAULT_PERIOD_LENGTH,
         timeLockPeriod : DEFAULT_LOCK_TIME,
@@ -1755,6 +1757,7 @@ describe("StakingERC721", () => {
 
       const campaignConfig : DCConfig = await validateConfig({
         env: process.env.ENV_LEVEL,
+        mockTokens: "false",
         deployAdmin: owner,
         postDeploy: {
           tenderlyProjectSlug: "string",

@@ -4,7 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IZModulesContracts } from "../types.campaign";
 
 
-export const mockERC20Mission = (name : string, instance : string, localDBName ?: string) => {
+export const mockERC20Mission = (name : string, instance : string, localDBName : string) => {
   class ZModulesMockERC20DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,

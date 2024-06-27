@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   BaseDeployMission,
@@ -5,9 +6,9 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesContracts } from "../types.campaign";
+import { DCConfig, IERC721DeployArgs, IZModulesContracts } from "../types.campaign";
 
-export const stakingERC721Mission = (name : string, instance : string, localDBName ?: string) => {
+export const stakingERC721Mission = (_contractName : string, _instanceName : string, localDBName ?: string) => {
   class ZModulesStakingERC721DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -19,34 +20,28 @@ export const stakingERC721Mission = (name : string, instance : string, localDBNa
       isProxy: false,
     };
 
-    contractName = name;
-    instanceName = instance;
+    contractName = _contractName;
+    instanceName = _instanceName;
 
     async deployArgs () : Promise<TDeployArgs> {
+      const {
+        stakingERC721Config,
+        mockTokens,
+      } = this.campaign.config as DCConfig;
 
-      const contractConfig = this.campaign.config.stakingERC721Config;
+      const {
+        name,
+        symbol,
+        baseUri,
+        stakingToken,
+        rewardsToken,
+        rewardsPerPeriod,
+        periodLength,
+        timeLockPeriod,
+        contractOwner,
+      } = stakingERC721Config as IERC721DeployArgs;
 
-      if (
-        process.env.MOCK_TOKENS === "true" &&
-      (
-        !contractConfig.stakingToken &&
-        !contractConfig.rewardsToken
-      )
-      ) {
-        const {
-          config: {
-            stakingERC721Config: {
-              name,
-              symbol,
-              baseUri,
-              rewardsPerPeriod,
-              periodLength,
-              timeLockPeriod,
-              contractOwner,
-            },
-          },
-        } = this.campaign;
-
+      if (mockTokens === true) {
         return [
           name,
           symbol,
@@ -58,13 +53,24 @@ export const stakingERC721Mission = (name : string, instance : string, localDBNa
           timeLockPeriod,
           contractOwner,
         ];
-      } else if (process.env.MOCK_TOKENS === "false" ||
-        (
-          contractConfig.stakingToken &&
-          contractConfig.rewardsToken
-        )
-      ) {
-        return Object.values(this.campaign.config.stakingERC721Config);
+
+      } else {
+        if (!stakingToken || !rewardsToken) {
+          throw new Error("Must provide Staking and Reward tokens if not mocking");
+        }
+
+        return [
+          name,
+          symbol,
+          baseUri,
+          stakingToken,
+          rewardsToken,
+          rewardsPerPeriod,
+          periodLength,
+          timeLockPeriod,
+          contractOwner,
+        ];
+
       }
     }
   }
