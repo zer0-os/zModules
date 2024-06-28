@@ -133,15 +133,15 @@ describe("Match Contract",  () => {
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
 
+    ({ match, dbAdapter, mockERC20 } = campaign);
+    matchAddress = await match.getAddress();
+    mockERC20Address = await mockERC20.getAddress();
+
     config = {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       ...campaignConfig.matchConfig!,
       token: await mockERC20.getAddress(),
     };
-
-    ({ match, dbAdapter, mockERC20 } = campaign);
-    matchAddress = await match.getAddress();
-    mockERC20Address = await mockERC20.getAddress();
 
     await allPlayers.reduce(
       async (acc, player) => {
