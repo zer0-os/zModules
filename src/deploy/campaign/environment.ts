@@ -1,9 +1,7 @@
 import { DCConfig } from "../types.campaign";
 
-// TODO myself: make validation of whole .env file
 
 export const validateConfig = async (obj : DCConfig) =>  {
-
   const {
     env,
     postDeploy,

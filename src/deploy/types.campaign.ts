@@ -53,3 +53,16 @@ export interface IZModulesContracts extends IContractState<ZModulesContract> {
   stakingERC721 : StakingERC721;
 }
 
+export interface TestIERC721DeployArgs extends IERC721DeployArgs {
+  stakingToken : string;
+  rewardsToken : string;
+}
+
+export interface TestIERC20DeployArgs extends IERC20DeployArgs {
+  stakingToken : string;
+  rewardsToken : string;
+}
+
+export interface TestIMatchDeployArgs extends IMatchDeployArgs {
+  token : string;
+}

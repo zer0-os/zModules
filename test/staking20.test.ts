@@ -23,12 +23,17 @@ import {
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
-  BaseConfig,
   DEFAULT_REWARDS_PER_PERIOD,
   DEFAULT_PERIOD_LENGTH,
   DEFAULT_LOCK_TIME,
 } from "./helpers/staking";
-import { DCConfig, IERC20DeployArgs, contractNames, runZModulesCampaign } from "../src/deploy";
+import {
+  DCConfig,
+  IERC20DeployArgs,
+  TestIERC20DeployArgs,
+  contractNames,
+  runZModulesCampaign,
+} from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { stakingERC20Mission } from "../src/deploy/missions/stakingERC20.mission";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
@@ -50,9 +55,7 @@ describe("StakingERC20", () => {
   let stakingToken : MockERC20;
   let rewardsToken : MockERC20;
 
-  // We don't use `PoolConfig` anymore on the contracts but for convenience in testing
-  // we can leave this type where it is
-  let config : BaseConfig;
+  let config : TestIERC20DeployArgs;
 
   // Track first stake and most recent stake times
   let origStakedAtA : bigint;
@@ -99,7 +102,9 @@ describe("StakingERC20", () => {
 
     const mockTokens = process.env.MOCK_TOKENS as string;
     const campaignConfig : DCConfig = await validateConfig({
-      env: process.env.ENV_LEVEL,
+      // leave as its until next PR.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      env: process.env.ENV_LEVEL!,
       mockTokens,
       deployAdmin: deployer,
       postDeploy: {
@@ -136,7 +141,8 @@ describe("StakingERC20", () => {
     stakingContractERC20 = stakingERC20;
 
     config = {
-      ...campaignConfig.stakingERC20Config,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      ...campaignConfig.stakingERC20Config!,
       stakingToken: await stakingToken.getAddress(),
       rewardsToken: await rewardsToken.getAddress(),
     };
@@ -806,7 +812,7 @@ describe("StakingERC20", () => {
         dbVersion: contractFromDB?.version,
         contractVersion: dbDeployedV?.contractsVersion,
       }).to.deep.equal({
-        dbVersion: dbDeployedV.dbVersion,
+        dbVersion: dbDeployedV?.dbVersion,
         contractVersion: tag,
       });
     });
@@ -842,7 +848,9 @@ describe("StakingERC20", () => {
       };
 
       const campaignConfig : DCConfig = await validateConfig({
-        env: process.env.ENV_LEVEL,
+        // leave as its until next PR.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        env: process.env.ENV_LEVEL!,
         mockTokens: "false",
         deployAdmin: owner,
         postDeploy: {

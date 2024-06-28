@@ -6,7 +6,7 @@ import { DCConfig, IMatchDeployArgs, IZModulesContracts } from "../types.campaig
 import { TDeployArgs } from "@zero-tech/zdc/dist/missions/types";
 
 
-export const matchMission = (_contractName : string, _instanceName : string, localDBName ?: string) => {
+export const matchMission = (_contractName : string, _instanceName : string) => {
   class ZModulesMatchDM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,

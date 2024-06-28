@@ -8,7 +8,7 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DCConfig, IERC721DeployArgs, IZModulesContracts } from "../types.campaign";
 
-export const stakingERC721Mission = (_contractName : string, _instanceName : string, localDBName ?: string) => {
+export const stakingERC721Mission = (_contractName : string, _instanceName : string) => {
   class ZModulesStakingERC721DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,

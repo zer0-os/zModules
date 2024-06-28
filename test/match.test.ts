@@ -14,7 +14,11 @@ import {
   OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR,
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
-import { DCConfig, IMatchDeployArgs, contractNames, runZModulesCampaign } from "../src/deploy";
+import {
+  TestIMatchDeployArgs,
+  contractNames,
+  runZModulesCampaign,
+} from "../src/deploy";
 import { matchMission } from "../src/deploy/missions/match.mission";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
@@ -56,7 +60,8 @@ describe("Match Contract",  () => {
   let MatchFactory : Match__factory;
 
   let dbAdapter : MongoDBAdapter;
-  let config : IMatchDeployArgs | undefined;
+
+  let config : TestIMatchDeployArgs;
 
   let tokenForMatch : MockERC20;
 
@@ -97,7 +102,9 @@ describe("Match Contract",  () => {
     };
 
     const campaignConfig = await validateConfig({
-      env: process.env.ENV_LEVEL,
+      // leave as its until next PR.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      env: process.env.ENV_LEVEL!,
       mockTokens,
       deployAdmin: owner,
       postDeploy: {
@@ -126,7 +133,11 @@ describe("Match Contract",  () => {
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
 
-    config = campaignConfig.matchConfig;
+    config = {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      ...campaignConfig.matchConfig!,
+      token: await mockERC20.getAddress(),
+    };
 
     ({ match, dbAdapter, mockERC20 } = campaign);
     matchAddress = await match.getAddress();
@@ -139,7 +150,7 @@ describe("Match Contract",  () => {
         await mockERC20.connect(player).approve(matchAddress, ethers.parseEther("1000"));
       }, Promise.resolve()
     );
-  });
+  });4211;
 
   after(async () => {
     await dbAdapter.dropDB();
@@ -632,7 +643,7 @@ describe("Match Contract",  () => {
         dbVersion: contractFromDB?.version,
         contractVersion: dbDeployedV?.contractsVersion,
       }).to.deep.equal({
-        dbVersion: dbDeployedV.dbVersion,
+        dbVersion: dbDeployedV?.dbVersion,
         contractVersion: tag,
       });
     });
@@ -664,7 +675,9 @@ describe("Match Contract",  () => {
       };
 
       const campaignConfig = await validateConfig({
-        env: process.env.ENV_LEVEL,
+        // leave as its until next PR.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        env: process.env.ENV_LEVEL!,
         mockTokens: "false",
         deployAdmin: owner,
         postDeploy: {

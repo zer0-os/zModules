@@ -22,6 +22,7 @@ import {
 import {
   DCConfig,
   IERC721DeployArgs,
+  TestIERC721DeployArgs,
   contractNames,
   runZModulesCampaign,
 } from "../src/deploy";
@@ -58,9 +59,7 @@ describe("StakingERC721", () => {
   let rewardToken : MockERC20;
   let stakingToken : MockERC721;
 
-  // We don't use `PoolConfig` anymore on the contracts but for convenience in testing
-  // we can leave this type where it is
-  let config : BaseConfig;
+  let config : TestIERC721DeployArgs;
 
   let stakedAtA : bigint;
   let stakedAtB : bigint;
@@ -111,7 +110,9 @@ describe("StakingERC721", () => {
 
     const mockTokens = process.env.MOCK_TOKENS as string;
     const campaignConfig : DCConfig = await validateConfig({
-      env: process.env.ENV_LEVEL,
+      // leave as its until next PR.
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      env: process.env.ENV_LEVEL!,
       mockTokens,
       deployAdmin: deployer,
       postDeploy: {
@@ -148,7 +149,8 @@ describe("StakingERC721", () => {
     stakingContractERC721 = stakingERC721;
 
     config = {
-      ...campaignConfig.stakingERC721Config,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      ...campaignConfig.stakingERC721Config!,
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
     };
@@ -1713,7 +1715,7 @@ describe("StakingERC721", () => {
         dbVersion: contractFromDB?.version,
         contractVersion: dbDeployedV?.contractsVersion,
       }).to.deep.equal({
-        dbVersion: dbDeployedV.dbVersion,
+        dbVersion: dbDeployedV?.dbVersion,
         contractVersion: tag,
       });
     });
@@ -1756,7 +1758,9 @@ describe("StakingERC721", () => {
       };
 
       const campaignConfig : DCConfig = await validateConfig({
-        env: process.env.ENV_LEVEL,
+        // leave as its until next PR.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        env: process.env.ENV_LEVEL!,
         mockTokens: "false",
         deployAdmin: owner,
         postDeploy: {
