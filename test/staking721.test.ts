@@ -18,7 +18,6 @@ import {
   DEFAULT_PERIOD_LENGTH,
   DEFAULT_LOCK_TIME,
 } from "./helpers/staking";
-
 import {
   DCConfig,
   IERC721DeployArgs,
@@ -32,7 +31,6 @@ import {
   FAILED_INNER_CALL_ERR,
   FUNCTION_SELECTOR_ERR,
   INCORRECT_OWNER_TRANSFER_ERR,
-  INSUFFICIENT_APPROVAL_721_ERR,
   INVALID_OWNER_ERR,
   NONEXISTENT_TOKEN_ERR,
   NON_TRANSFERRABLE_ERR,
@@ -41,12 +39,13 @@ import {
   INSUFFICIENT_APPROVAL_721_ERR,
   OWNABLE_UNAUTHORIZED_ERR,
   ARRAY_MISMATCH_ERR, ZERO_UNSTAKE_ERR,
-  ZERO_STAKE_ERR,
+  ZERO_STAKE_ERR, ZERO_INIT_ERR,
 } from "./helpers/errors";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 import { mockERC721Mission } from "../src/deploy/missions/mockERC721.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
 import { stakingERC721Mission } from "../src/deploy/missions/stakingERC721.mission";
+
 
 describe("StakingERC721", () => {
   let deployer : SignerWithAddress;
@@ -177,11 +176,11 @@ describe("StakingERC721", () => {
 
     await stakingToken.connect(deployer).mint(owner.address, tokenIdX);
 
-    await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
-    await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
-    await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
-    await stakingToken.connect(edgeStaker).approve(await stakingERC721.getAddress(), edgeTokenId);
-    await stakingToken.connect(edgeStaker).approve(await stakingERC721.getAddress(), edgeTokenId2);
+    await stakingToken.connect(stakerA).approve(await stakingContractERC721.getAddress(), tokenIdA);
+    await stakingToken.connect(stakerA).approve(await stakingContractERC721.getAddress(), tokenIdB);
+    await stakingToken.connect(stakerA).approve(await stakingContractERC721.getAddress(), tokenIdC);
+    await stakingToken.connect(edgeStaker).approve(await stakingContractERC721.getAddress(), edgeTokenId);
+    await stakingToken.connect(edgeStaker).approve(await stakingContractERC721.getAddress(), edgeTokenId2);
     await stakingToken.connect(owner).approve(await stakingContractERC721.getAddress(), tokenIdX);
   });
 
@@ -302,14 +301,14 @@ describe("StakingERC721", () => {
 
     it("Fails when staking 0 tokens (tokenIds.length == 0)", async () => {
       await expect(
-        stakingERC721.connect(stakerA).stake([], [])
-      ).to.be.revertedWithCustomError(stakingERC721, ZERO_STAKE_ERR);
+        stakingContractERC721.connect(stakerA).stake([], [])
+      ).to.be.revertedWithCustomError(stakingContractERC721, ZERO_STAKE_ERR);
     });
 
     it("Fails when tokenIds and tokenUris are not the same length", async () => {
       await expect(
-        stakingERC721.connect(stakerA).stake([tokenIdA], [emptyUri, emptyUri])
-      ).to.be.revertedWithCustomError(stakingERC721, ARRAY_MISMATCH_ERR);
+        stakingContractERC721.connect(stakerA).stake([tokenIdA], [emptyUri, emptyUri])
+      ).to.be.revertedWithCustomError(stakingContractERC721, ARRAY_MISMATCH_ERR);
     });
 
     it("Fails when the user tries to transfer the SNFT", async () => {
@@ -621,8 +620,8 @@ describe("StakingERC721", () => {
 
     it("Fails to unstake when no `tokenIds` are passed", async () => {
       await expect(
-        stakingERC721.connect(stakerA).unstake([], false)
-      ).to.be.revertedWithCustomError(stakingERC721, ZERO_UNSTAKE_ERR);
+        stakingContractERC721.connect(stakerA).unstake([], false)
+      ).to.be.revertedWithCustomError(stakingContractERC721, ZERO_UNSTAKE_ERR);
     });
   });
 
@@ -1631,7 +1630,7 @@ describe("StakingERC721", () => {
 
   describe("Helper functions", () => {
     it("#setBaseURI() should set the base URI", async () => {
-      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      await stakingToken.connect(stakerA).approve(await stakingContractERC721.getAddress(), tokenIdA);
       await stakingContractERC721.connect(stakerA).stake([tokenIdA], [emptyUri]);
 
       const newBaseUri = "https://newbaseuri.com/";
@@ -1661,8 +1660,8 @@ describe("StakingERC721", () => {
 
     it("#setTokenURI() should revert if called by non-owner", async () => {
       await expect(
-        stakingERC721.connect(notStaker).setTokenURI(tokenIdA, "https://newtokenuri.com/")
-      ).to.be.revertedWithCustomError(stakingERC721, OWNABLE_UNAUTHORIZED_ERR)
+        stakingContractERC721.connect(notStaker).setTokenURI(tokenIdA, "https://newtokenuri.com/")
+      ).to.be.revertedWithCustomError(stakingContractERC721, OWNABLE_UNAUTHORIZED_ERR)
         .withArgs(notStaker.address);
     });
 
@@ -1852,22 +1851,22 @@ describe("StakingERC721", () => {
   describe("Edge Cases", () => {
     // eslint-disable-next-line max-len
     it("#exit from staking should yield the same rewards for partial and full exit within `unlockTimestamp` rules", async () => {
-      await rewardToken.connect(owner).transfer(stakingERC721, 10000000n);
+      await rewardToken.connect(owner).transfer(stakingContractERC721.target, 10000000n);
 
-      await stakingERC721.connect(edgeStaker).stake(
+      await stakingContractERC721.connect(edgeStaker).stake(
         [edgeTokenId, edgeTokenId2],
         [emptyUri, emptyUri]
       );
       const stakeTime = BigInt(await time.latest());
 
       // partial exit before timelock passed
-      await stakingERC721.connect(edgeStaker).unstake([edgeTokenId], true);
+      await stakingContractERC721.connect(edgeStaker).unstake([edgeTokenId], true);
 
       const timeToRewards = config.timeLockPeriod + config.periodLength * 2n;
       await time.increase(timeToRewards);
 
       // claim rewards
-      await stakingERC721.connect(edgeStaker).claim();
+      await stakingContractERC721.connect(edgeStaker).claim();
       const firstClaimTime = BigInt(await time.latest());
 
       const rewardsForPartialExit = calcTotalRewards(
@@ -1883,28 +1882,28 @@ describe("StakingERC721", () => {
       const {
         amountStaked: amountStakedFirstClaim,
         owedRewards: owedRewardsFirstClaim,
-      } = await stakingERC721.stakers(edgeStaker.address);
+      } = await stakingContractERC721.stakers(edgeStaker.address);
       expect(amountStakedFirstClaim).to.eq(1);
       expect(owedRewardsFirstClaim).to.eq(0);
 
       await time.increase(timeToRewards);
 
       // fully exit
-      await stakingERC721.connect(edgeStaker).unstake([edgeTokenId2], true);
+      await stakingContractERC721.connect(edgeStaker).unstake([edgeTokenId2], true);
 
       const {
         owedRewards: owedRewardsAfterExit,
         amountStaked: stakedAfterExit,
-      } = await stakingERC721.stakers(edgeStaker.address);
+      } = await stakingContractERC721.stakers(edgeStaker.address);
       expect(owedRewardsAfterExit).to.eq(rewardsForPartialExit);
       expect(stakedAfterExit).to.eq(0n);
 
       // even though he exited, rewards have been generated, so he should be able to claim them
       // even though he doesn't have stake in anymore
-      await stakingERC721.connect(edgeStaker).claim();
+      await stakingContractERC721.connect(edgeStaker).claim();
 
       // make sure staker struct got deleted
-      const stakerData = await stakingERC721.stakers(edgeStaker.address);
+      const stakerData = await stakingContractERC721.stakers(edgeStaker.address);
       expect(stakerData.amountStaked).to.eq(0);
       expect(stakerData.owedRewards).to.eq(0);
       expect(stakerData.unlockTimestamp).to.eq(0);

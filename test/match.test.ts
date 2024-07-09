@@ -573,7 +573,7 @@ describe("Match Contract",  () => {
     it("Should be deployed with correct args", async () => {
       const expectedArgs = {
         token: await match.token(),
-        feeVault: await match.getFeeVault(),
+        feeVault: await match.feeVault(),
         owner: await match.owner(),
       };
 
