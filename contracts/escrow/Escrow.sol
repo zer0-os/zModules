@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IEscrow } from "./IEscrow.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OwnableOperable } from "../access/OwnableOperable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 
 /**
@@ -12,7 +13,7 @@ import { OwnableOperable } from "../access/OwnableOperable.sol";
  * @notice A simple general contract for holding tokens in escrow for multiple users
  * @author Kirill Korchagin <https://github.com/Whytecrowe>, Damien Burbine <https://github.com/durienb>
  */
-contract Escrow is OwnableOperable, IEscrow {
+contract Escrow is OwnableOperable, ReentrancyGuard, IEscrow {
     using SafeERC20 for IERC20;
 
     /**
@@ -43,20 +44,27 @@ contract Escrow is OwnableOperable, IEscrow {
      * @notice Allows a user to deposit tokens into the escrow contract.
      * @param amount The amount of tokens to deposit.
      */
-    function deposit(uint256 amount) external override {
+    function deposit(uint256 amount) external override nonReentrant {
         if (amount == 0) revert ZeroAmountPassed();
 
-        token.safeTransferFrom(msg.sender, address(this), amount);
-        balances[msg.sender] += amount;
+        // this logic is here to support deflationary tokens
+        uint256 balanceBefore = IERC20(token).balanceOf(address(this));
 
-        emit Deposit(msg.sender, amount);
+        token.safeTransferFrom(msg.sender, address(this), amount);
+
+        uint256 balanceAfter = IERC20(token).balanceOf(address(this));
+        uint256 amountTransferred = balanceAfter - balanceBefore;
+
+        balances[msg.sender] += amountTransferred;
+
+        emit Deposit(msg.sender, amount, amountTransferred);
     }
 
     /**
      * @notice Allows a user to withdraw funds from the escrow contract.
      * @param amount The amount of tokens to withdraw.
      */
-    function withdraw(uint256 amount) external override {
+    function withdraw(uint256 amount) external override nonReentrant {
         if (amount == 0) revert ZeroAmountPassed();
         if (balances[msg.sender] < amount) revert InsufficientFunds(msg.sender);
 
@@ -64,18 +72,5 @@ contract Escrow is OwnableOperable, IEscrow {
         token.safeTransfer(msg.sender, amount);
 
         emit Withdrawal(msg.sender, amount);
-    }
-
-    /**
-     * @notice Refunds tokens from the escrow back to a user by the contract owner or operator.
-     * @param user The address of the user to refund tokens to.
-     * @param amount The amount of tokens to release for the user.
-     */
-    function releaseFunds(address user, uint256 amount) external override onlyAuthorized {
-        if (balances[user] < amount) revert InsufficientFunds(user);
-        balances[user] -= amount;
-        token.safeTransfer(user, amount);
-
-        emit FundsReleased(user, amount);
     }
 }

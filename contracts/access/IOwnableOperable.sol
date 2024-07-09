@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 
 interface IOwnableOperable {
@@ -23,6 +23,16 @@ interface IOwnableOperable {
      * @notice Reverted when the zero address is passed to the function
      */
     error ZeroAddressPassed();
+    /**
+     * @notice Reverted when the operator is already added
+     * @param operator The address of the operator
+     */
+    error OperatorAlreadyAssigned(address operator);
+    /**
+     * @notice Reverted when the operator is not assigned
+     * @param operator The address of the operator
+     */
+    error OperatorNotAssigned(address operator);
 
     /**
      * @notice Adds an operator to the contract. Only callable by the owner

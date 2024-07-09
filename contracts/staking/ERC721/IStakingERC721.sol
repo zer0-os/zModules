@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.22;
 
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
@@ -48,6 +48,11 @@ interface IStakingERC721 is IERC721Receiver {
      * @notice Throw when trying to transfer the representative sNFT
      */
     error NonTransferrableToken();
+
+    /**
+     * @notice Throw when the token array lengths do not match
+     */
+    error ArrayLengthMismatch();
 
     function stake(
         uint256[] calldata tokenIds,
