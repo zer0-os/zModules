@@ -24,6 +24,7 @@ import {
   IERC721DeployArgs,
   TestIERC721DeployArgs,
   contractNames,
+  missionFactory,
   runZModulesCampaign,
 } from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
@@ -121,12 +122,13 @@ describe("StakingERC721", () => {
         verifyContracts: false,
       },
       owner,
-      stakingERC721Config: argsForDeployERC721,
+      contractArguments: {
+        stakingERC721: [argsForDeployERC721],
+      },
     });
 
     // consts with names
     const mocksConsts = contractNames.mocks;
-    const stakingConsts = contractNames.stakingERC721;
     const mockDBname20 = "Mock20";
     const mockDBname721 = "Mock721";
 
@@ -135,7 +137,7 @@ describe("StakingERC721", () => {
       missions: [
         mockERC20Mission(mocksConsts.erc20.contract, mocksConsts.erc20.instance, mockDBname20),
         mockERC721Mission(mocksConsts.erc721.contract, mocksConsts.erc721.instance, mockDBname721),
-        stakingERC721Mission(stakingConsts.contract, stakingConsts.instance),
+        missionFactory(campaignConfig.contractArguments),
       ],
     });
 
@@ -149,8 +151,7 @@ describe("StakingERC721", () => {
     stakingContractERC721 = stakingERC721;
 
     config = {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      ...campaignConfig.stakingERC721Config!,
+      ...campaignConfig.contractArguments.stakingERC721[0],
       stakingToken: await mockERC721.getAddress(),
       rewardsToken: await mockERC20.getAddress(),
     };
@@ -1776,7 +1777,7 @@ describe("StakingERC721", () => {
       const campaign = await runZModulesCampaign({
         config: campaignConfig,
         missions: [
-          stakingERC721Mission(stakingConsts.contract, stakingConsts.instance),
+          stakingERC721Mission(argsForDeploy721, stakingConsts.contract, stakingConsts.instance),
         ],
       });
 

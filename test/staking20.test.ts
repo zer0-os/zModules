@@ -41,7 +41,7 @@ import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
 
-describe.only("StakingERC20", () => {
+describe("StakingERC20", () => {
   let deployer : SignerWithAddress;
   let owner : SignerWithAddress;
   let stakerA : SignerWithAddress;
@@ -129,7 +129,6 @@ describe.only("StakingERC20", () => {
       missions: [
         mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
         mockERC20Mission(mocksConsts.contract, `${mocksConsts.instance}${difference}`, `${mockDBname}${difference}`),
-        // stakingERC20Mission(stakingConsts.contract, stakingConsts.instance),
         missionFactory(campaignConfig.contractArguments),
       ],
     });
@@ -144,7 +143,6 @@ describe.only("StakingERC20", () => {
     stakingContractERC20 = stakingERC20;
 
     config = {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       ...campaignConfig.contractArguments.stakingERC20[0],
       stakingToken: await stakingToken.getAddress(),
       rewardsToken: await rewardsToken.getAddress(),

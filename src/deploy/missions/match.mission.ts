@@ -6,7 +6,7 @@ import { DCConfig, IMatchDeployArgs, IZModulesContracts } from "../types.campaig
 import { TDeployArgs } from "@zero-tech/zdc/dist/missions/types";
 
 
-export const matchMission = (_contractName : string, _instanceName : string) => {
+export const matchMission = (args : IMatchDeployArgs, _contractName : string, _instanceName : string) => {
   class ZModulesMatchDM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -18,23 +18,28 @@ export const matchMission = (_contractName : string, _instanceName : string) => 
       isProxy: false,
     };
 
+    args : TDeployArgs;
+
+    async execute () : Promise<void> {
+      this.args = await this.deployArgs();
+
+      await super.execute();
+    }
+
     contractName = _contractName;
     instanceName = _instanceName;
 
     async deployArgs () : Promise<TDeployArgs> {
       const {
-        matchConfig,
-        mockTokens,
-      } = this.campaign.config as DCConfig;
-
-      const {
         token,
         feeVault,
         owner,
         operators,
-      } = matchConfig as IMatchDeployArgs;
+      } = args;
 
-      if (mockTokens === true && !token) {
+      if (this.campaign.config.mockTokens === true
+        && (!token)
+      ) {
         return [
           await this.campaign.state.contracts.mockERC20.getAddress(),
           feeVault,
@@ -47,10 +52,7 @@ export const matchMission = (_contractName : string, _instanceName : string) => 
           throw new Error("Must provide token for Match if not mocking");
         }
         return [
-          token,
-          feeVault,
-          owner,
-          operators,
+          ...Object.values(args) as TDeployArgs,
         ];
       }
     }

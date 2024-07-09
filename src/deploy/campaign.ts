@@ -16,6 +16,7 @@ const makeContractName = instance =>
   instance.charAt(0).toUpperCase() + instance.slice(1);
 
 export const missionFactory = configs => {
+  // going through all passed configs, call missions with it.
   // eslint-disable-next-line guard-for-in
   for (const instanceName in configs) {
     try {

@@ -5,11 +5,11 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IERC721DeployArgs, IZModulesContracts } from "../types.campaign";
+import { IERC20DeployArgs, IZModulesContracts } from "../types.campaign";
 import { ethers } from "ethers";
 
 
-export const stakingERC20Mission = (args : TDeployArgs, _contractName : string, _instanceName : string) => {
+export const stakingERC20Mission = (args : IERC20DeployArgs, _contractName : string, _instanceName : string) => {
 
   class ZModulesStakingERC20DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
@@ -28,30 +28,18 @@ export const stakingERC20Mission = (args : TDeployArgs, _contractName : string, 
       await super.execute();
     }
 
-    getHashWithArgs = () =>
-      ethers.keccak256(
-        ethers.toUtf8Bytes(
-          JSON.stringify(this.args, (key, value) =>
-            typeof value === "bigint" ? value.toString() : value
-          )
-        )
-      );
-
     contractName = _contractName;
     instanceName = _instanceName;
-
-    get dbName () {
-      const dbName = `${this.contractName}_${this.getHashWithArgs()}`;
-      return dbName;
-    }
 
     async deployArgs () : Promise<TDeployArgs> {
       const {
         stakingToken,
         rewardsToken,
-      } = args as IERC721DeployArgs;
+      } = args ;
 
-      if (this.campaign.config.mockTokens === true && (!stakingToken && !rewardsToken)) {
+      if (this.campaign.config.mockTokens === true
+        && (!stakingToken && !rewardsToken)
+      ) {
         return [
           await this.campaign.state.contracts.mockERC20.getAddress(),
           await this.campaign.state.contracts.mockERC20Second.getAddress(),

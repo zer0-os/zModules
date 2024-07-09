@@ -17,6 +17,7 @@ import { getPayouts } from "./helpers/match/payouts";
 import {
   TestIMatchDeployArgs,
   contractNames,
+  missionFactory,
   runZModulesCampaign,
 } from "../src/deploy";
 import { matchMission } from "../src/deploy/missions/match.mission";
@@ -113,19 +114,20 @@ describe("Match Contract",  () => {
         verifyContracts: false,
       },
       owner,
-      matchConfig: argsForDeployMatch,
+      contractArguments: {
+        match: [argsForDeployMatch],
+      },
     });
 
     // consts with names
     const mocksConsts = contractNames.mocks.erc20;
-    const matchConsts = contractNames.match;
     const mockDBname = "Mock20";
 
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
         mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
-        matchMission(matchConsts.contract, matchConsts.instance),
+        missionFactory(campaignConfig.contractArguments),
       ],
     });
 
@@ -139,7 +141,7 @@ describe("Match Contract",  () => {
 
     config = {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      ...campaignConfig.matchConfig!,
+      ...campaignConfig.contractArguments.match[0],
       token: await mockERC20.getAddress(),
     };
 
@@ -150,7 +152,7 @@ describe("Match Contract",  () => {
         await mockERC20.connect(player).approve(matchAddress, ethers.parseEther("1000"));
       }, Promise.resolve()
     );
-  });4211;
+  });
 
   after(async () => {
     await dbAdapter.dropDB();
@@ -693,7 +695,7 @@ describe("Match Contract",  () => {
       const campaign = await runZModulesCampaign({
         config: campaignConfig,
         missions: [
-          matchMission(matchConsts.contract, matchConsts.instance),
+          matchMission(argsForDeployMatch, matchConsts.contract, matchConsts.instance),
         ],
       });
 

@@ -6,9 +6,9 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DCConfig, IERC721DeployArgs, IZModulesContracts } from "../types.campaign";
+import { IERC721DeployArgs, IZModulesContracts } from "../types.campaign";
 
-export const stakingERC721Mission = (_contractName : string, _instanceName : string) => {
+export const stakingERC721Mission = (args : IERC721DeployArgs, _contractName : string, _instanceName : string) => {
   class ZModulesStakingERC721DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -20,15 +20,16 @@ export const stakingERC721Mission = (_contractName : string, _instanceName : str
       isProxy: false,
     };
 
+    async execute () : Promise<void> {
+      this.args = await this.deployArgs();
+
+      await super.execute();
+    }
+
     contractName = _contractName;
     instanceName = _instanceName;
 
     async deployArgs () : Promise<TDeployArgs> {
-      const {
-        stakingERC721Config,
-        mockTokens,
-      } = this.campaign.config as DCConfig;
-
       const {
         name,
         symbol,
@@ -39,9 +40,11 @@ export const stakingERC721Mission = (_contractName : string, _instanceName : str
         periodLength,
         timeLockPeriod,
         contractOwner,
-      } = stakingERC721Config as IERC721DeployArgs;
+      } = args;
 
-      if (mockTokens === true) {
+      if (this.campaign.config.mockTokens === true
+        && (!stakingToken && !rewardsToken)
+      ) {
         return [
           name,
           symbol,
@@ -60,17 +63,8 @@ export const stakingERC721Mission = (_contractName : string, _instanceName : str
         }
 
         return [
-          name,
-          symbol,
-          baseUri,
-          stakingToken,
-          rewardsToken,
-          rewardsPerPeriod,
-          periodLength,
-          timeLockPeriod,
-          contractOwner,
+          ...Object.values(args) as TDeployArgs,
         ];
-
       }
     }
   }
