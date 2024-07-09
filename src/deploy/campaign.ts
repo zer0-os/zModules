@@ -11,6 +11,37 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getZModulesMongoAdapter } from "./mongo";
 
+
+const makeContractName = instance =>
+  instance.charAt(0).toUpperCase() + instance.slice(1);
+
+export const missionFactory = configs => {
+  // eslint-disable-next-line guard-for-in
+  for (const instanceName in configs) {
+    try {
+      if (!configs) {
+        throw new Error(`Configuration for ${instanceName} not found`);
+      }
+
+      // eslint-disable-next-line guard-for-in
+      for (const config of configs[instanceName]) {
+        const contractName = makeContractName(instanceName);
+        const module = require(`./missions/${instanceName}.mission`);
+
+        const functionName = `${instanceName}Mission`;
+
+        if (module[functionName]) {
+          return module[functionName](config, contractName, instanceName);
+        } else {
+          throw new Error(`Function ${functionName} not found in module ${instanceName}.mission`);
+        }
+      }
+    } catch (error) {
+      throw new Error(`Error loading module ${instanceName}`);
+    }
+  }
+};
+
 export const runZModulesCampaign = async ({
   config,
   deployer,

@@ -32,6 +32,7 @@ import {
   IERC20DeployArgs,
   TestIERC20DeployArgs,
   contractNames,
+  missionFactory,
   runZModulesCampaign,
 } from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
@@ -40,7 +41,7 @@ import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
 
-describe("StakingERC20", () => {
+describe.only("StakingERC20", () => {
   let deployer : SignerWithAddress;
   let owner : SignerWithAddress;
   let stakerA : SignerWithAddress;
@@ -113,12 +114,13 @@ describe("StakingERC20", () => {
         verifyContracts: false,
       },
       owner,
-      stakingERC20Config: argsForDeployERC20,
+      contractArguments: {
+        stakingERC20: [argsForDeployERC20],
+      },
     });
 
     // consts with names
     const mocksConsts = contractNames.mocks.erc20;
-    const stakingConsts = contractNames.stakingERC20;
     const difference = "Second";
     const mockDBname = "Mock20";
 
@@ -127,7 +129,8 @@ describe("StakingERC20", () => {
       missions: [
         mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
         mockERC20Mission(mocksConsts.contract, `${mocksConsts.instance}${difference}`, `${mockDBname}${difference}`),
-        stakingERC20Mission(stakingConsts.contract, stakingConsts.instance),
+        // stakingERC20Mission(stakingConsts.contract, stakingConsts.instance),
+        missionFactory(campaignConfig.contractArguments),
       ],
     });
 
@@ -142,7 +145,7 @@ describe("StakingERC20", () => {
 
     config = {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      ...campaignConfig.stakingERC20Config!,
+      ...campaignConfig.contractArguments.stakingERC20[0],
       stakingToken: await stakingToken.getAddress(),
       rewardsToken: await rewardsToken.getAddress(),
     };
@@ -866,7 +869,7 @@ describe("StakingERC20", () => {
       const campaign = await runZModulesCampaign({
         config: campaignConfig,
         missions: [
-          stakingERC20Mission(stakingConsts.contract, stakingConsts.instance),
+          stakingERC20Mission(argsForDeploy20, stakingConsts.contract, stakingConsts.instance),
         ],
       });
 
