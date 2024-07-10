@@ -5,10 +5,9 @@ export const validateConfig = async (obj : IZModulesConfig) =>  {
   const {
     env,
     postDeploy,
-    mockTokens,
   } = obj;
 
-  if (env === undefined) {
+  if (!env) {
     throw new Error("Must provide ENV_LEVEL");
   } else if (
     env !== "dev" &&
@@ -24,12 +23,5 @@ export const validateConfig = async (obj : IZModulesConfig) =>  {
     }
   }
 
-  const toBoolean = () => {
-    if (typeof mockTokens === "string") {
-      obj.mockTokens = mockTokens.toLowerCase() === "true";
-    }
-    return obj;
-  };
-
-  return toBoolean();
+  return obj;
 };

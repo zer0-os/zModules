@@ -5,9 +5,10 @@ import {
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IZModulesConfig, IERC721DeployArgs, IZModulesContracts } from "../types.campaign";
+import { contractNames } from "../contractNames";
 
 
-export const stakingERC20Mission = (_contractName : string, _instanceName : string) => {
+export const getStakingERC20Mission = (_instanceName ?: string) => {
   class ZModulesStakingERC20DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -18,8 +19,8 @@ export const stakingERC20Mission = (_contractName : string, _instanceName : stri
       isProxy: false,
     };
 
-    contractName = _contractName;
-    instanceName = _instanceName;
+    contractName = contractNames.stakingERC20.contract;
+    instanceName = !_instanceName ? contractNames.stakingERC20.instance : _instanceName;
 
     async deployArgs () : Promise<TDeployArgs> {
       const {
@@ -27,6 +28,8 @@ export const stakingERC20Mission = (_contractName : string, _instanceName : stri
           stakingERC20Config,
           mocks: { mockTokens },
         },
+        mock20STK,
+        mock20REW,
       } = this.campaign;
 
       const {
@@ -38,11 +41,10 @@ export const stakingERC20Mission = (_contractName : string, _instanceName : stri
         contractOwner,
       } = stakingERC20Config as IERC721DeployArgs;
 
-      if (mockTokens === true && (!stakingToken && !rewardsToken)) {
+      if (mockTokens && (!stakingToken && !rewardsToken)) {
         return [
-          // TODO dep: error here in naming! the name of token contract is assumed and not guaranteed!
-          await this.campaign.state.contracts.mockERC20.getAddress(),
-          await this.campaign.state.contracts.mockERC20Second.getAddress(),
+          await mock20STK.getAddress(),
+          await mock20REW.getAddress(),
           rewardsPerPeriod,
           periodLength,
           timeLockPeriod,

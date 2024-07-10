@@ -2,13 +2,14 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IZModulesConfig, IZModulesContracts } from "../types.campaign";
+import { contractNames } from "../contractNames";
 
 
 export const MOCK721_TOKEN_NAME_DEFAULT = "MOCK ERC 721";
 export const MOCK721_TOKEN_SYMBOL_DEFAULT = "MOCK721";
 export const MOCK721_TOKEN_BASE_URI_DEFAULT = "0://staked-wheels/";
 
-export const mockERC721Mission = (name : string, instance : string, localDBName : string) => {
+export const getMockERC721Mission = () => {
   class ZModulesMockERC721DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -19,12 +20,8 @@ export const mockERC721Mission = (name : string, instance : string, localDBName 
       isProxy: false,
     };
 
-    contractName = name;
-    instanceName = instance;
-
-    get dbName () {
-      return localDBName;
-    }
+    contractName = contractNames.mocks.erc721.contract;
+    instanceName = contractNames.mocks.erc721.instance;
 
     async deployArgs () : Promise<TDeployArgs> {
       const {
@@ -42,5 +39,6 @@ export const mockERC721Mission = (name : string, instance : string, localDBName 
       ];
     }
   }
+
   return ZModulesMockERC721DM;
 };

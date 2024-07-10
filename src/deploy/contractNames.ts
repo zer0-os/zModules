@@ -14,11 +14,11 @@ export const contractNames = {
   mocks: {
     erc20: {
       contract: "MockERC20",
-      instance: "mockERC20",
+      instance: "mock20",
     },
     erc721: {
       contract: "MockERC721",
-      instance: "mockERC721",
+      instance: "mock721",
     },
   },
 };

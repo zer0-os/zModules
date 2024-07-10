@@ -12,7 +12,6 @@ SignerWithAddress,
 IZModulesConfig,
 IZModulesContracts
 > {
-
   proxyData = {
     isProxy: false,
   };
@@ -24,9 +23,11 @@ IZModulesContracts
     const {
       config: {
         matchConfig,
-        mockTokens,
+        mocks: {
+          mockTokens,
+        },
       },
-      mockERC20,
+      mock20,
     } = this.campaign;
 
     const {
@@ -37,15 +38,14 @@ IZModulesContracts
       gameFeePercentage,
     } = matchConfig as IMatchDeployArgs;
 
-    if (mockTokens === true && !token) {
+    if (mockTokens && !token) {
       return [
-        await mockERC20.getAddress(),
+        await mock20.getAddress(),
         feeVault,
         owner,
         operators,
         gameFeePercentage,
       ];
-
     } else {
       if (!token) {
         throw new Error("Must provide token to use for Match contract if not mocking");

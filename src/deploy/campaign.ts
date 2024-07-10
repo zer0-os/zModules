@@ -18,9 +18,14 @@ export const runZModulesCampaign = async ({
   missions,
 } : {
   config : IZModulesConfig;
-  deployer ?: HardhatDeployer<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase>;
+  deployer ?: HardhatDeployer<HardhatRuntimeEnvironment, SignerWithAddress>;
   dbVersion ?: string;
-  missions : Array<TDeployMissionCtor<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase, IZModulesContracts>>;
+  missions : Array<TDeployMissionCtor<
+  HardhatRuntimeEnvironment,
+  SignerWithAddress,
+  IZModulesConfig,
+  IZModulesContracts
+  >>;
 }) => {
 
   if (!deployer) {
@@ -38,7 +43,7 @@ export const runZModulesCampaign = async ({
   const campaign = new DeployCampaign<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
-  IProviderBase,
+  IZModulesConfig,
   IZModulesContracts
   >({
     missions,
