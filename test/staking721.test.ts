@@ -41,10 +41,10 @@ import {
   ARRAY_MISMATCH_ERR, ZERO_UNSTAKE_ERR,
   ZERO_STAKE_ERR, ZERO_INIT_ERR,
 } from "./helpers/errors";
-import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
-import { mockERC721Mission } from "../src/deploy/missions/mockERC721.mission";
+import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mockERC20.mission";
+import { getMockERC721Mission } from "../src/deploy/missions/mockERC721.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
-import { stakingERC721Mission } from "../src/deploy/missions/stakingERC721.mission";
+import { getStakingERC721Mission } from "../src/deploy/missions/stakingERC721Mission";
 
 
 describe("StakingERC721", () => {
@@ -114,12 +114,13 @@ describe("StakingERC721", () => {
       contractOwner: owner,
     };
 
-    const mockTokens = process.env.MOCK_TOKENS as string;
     const campaignConfig : IZModulesConfig = await validateConfig({
       // leave as its until next PR.
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       env: process.env.ENV_LEVEL!,
-      mockTokens,
+      mocks: {
+        mockTokens: true,
+      },
       deployAdmin: deployer,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -130,35 +131,28 @@ describe("StakingERC721", () => {
       stakingERC721Config: argsForDeployERC721,
     });
 
-    // consts with names
-    const mocksConsts = contractNames.mocks;
-    const stakingConsts = contractNames.stakingERC721;
-    const mockDBname20 = "Mock20";
-    const mockDBname721 = "Mock721";
-
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
-        mockERC20Mission(mocksConsts.erc20.contract, mocksConsts.erc20.instance, mockDBname20),
-        mockERC721Mission(mocksConsts.erc721.contract, mocksConsts.erc721.instance, mockDBname721),
-        stakingERC721Mission(stakingConsts.contract, stakingConsts.instance),
+        getMockERC20Mission(TokenTypes.rewards),
+        getMockERC721Mission(),
+        getStakingERC721Mission(),
       ],
     });
 
     dbAdapter = campaign.dbAdapter;
 
-    const { stakingERC721, mockERC20, mockERC721  } = campaign;
-
-    rewardToken = mockERC20;
-    stakingToken = mockERC721;
-
-    stakingContractERC721 = stakingERC721;
+    ({
+      stakingERC721: stakingContractERC721,
+      mock20REW: rewardToken,
+      mock721: stakingToken,
+    } = campaign);
 
     config = {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       ...campaignConfig.stakingERC721Config!,
-      stakingToken: await mockERC721.getAddress(),
-      rewardsToken: await mockERC20.getAddress(),
+      stakingToken: await stakingToken.getAddress(),
+      rewardsToken: await rewardToken.getAddress(),
     };
 
     // Give staking contract balance to pay rewards
@@ -984,7 +978,7 @@ describe("StakingERC721", () => {
        * stakerA exits with A, B, C, and D
        */
       const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-      const newMockERC20 = await mockERC20Factory.deploy("WILD", "WilderWorld");
+      const newMockERC20 = await mockERC20Factory.connect(owner).deploy("WILD", "WilderWorld");
 
       const localConfig = {
         stakingToken: await stakingToken.getAddress(),
@@ -1135,7 +1129,7 @@ describe("StakingERC721", () => {
       let pendingRewardsA = await localStakingERC721.connect(stakerA).getPendingRewards();
 
       // Only transfer what we need so we can have an empty rewards contract at the end
-      await newMockERC20.connect(deployer).transfer(
+      await newMockERC20.connect(owner).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsA + 1n // 1 extra second for claim
       );
@@ -1206,7 +1200,7 @@ describe("StakingERC721", () => {
       let pendingRewardsB = await localStakingERC721.connect(stakerB).getPendingRewards();
       let rewardsBalanceBeforeB = await newMockERC20.balanceOf(stakerB.address);
 
-      await newMockERC20.connect(deployer).transfer(
+      await newMockERC20.connect(owner).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsB + 1n
       );
@@ -1335,7 +1329,7 @@ describe("StakingERC721", () => {
       let pendingRewardsC = await localStakingERC721.connect(stakerC).getPendingRewards();
       let rewardsBalanceBeforeC = await newMockERC20.balanceOf(stakerC.address);
 
-      await newMockERC20.connect(deployer).transfer(
+      await newMockERC20.connect(owner).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsC + 1n
       );
@@ -1368,7 +1362,7 @@ describe("StakingERC721", () => {
       pendingRewardsB = await localStakingERC721.connect(stakerB).getPendingRewards();
       rewardsBalanceBeforeB = await newMockERC20.balanceOf(stakerB.address);
 
-      await newMockERC20.connect(deployer).transfer(
+      await newMockERC20.connect(owner).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsB + 1n
       );
@@ -1414,7 +1408,7 @@ describe("StakingERC721", () => {
       rewardsBalanceBeforeC = await newMockERC20.balanceOf(stakerC.address);
       pendingRewardsC = await localStakingERC721.connect(stakerC).getPendingRewards();
 
-      await newMockERC20.connect(deployer).transfer(
+      await newMockERC20.connect(owner).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsC + 1n
       );
@@ -1540,7 +1534,7 @@ describe("StakingERC721", () => {
       rewardsBalanceBeforeC = await newMockERC20.balanceOf(stakerC.address);
       pendingRewardsC = await localStakingERC721.connect(stakerC).getPendingRewards();
 
-      await newMockERC20.connect(deployer).transfer(
+      await newMockERC20.connect(owner).transfer(
         await localStakingERC721.getAddress(),
         pendingRewardsC + 1n
       );
@@ -1816,7 +1810,9 @@ describe("StakingERC721", () => {
         // leave as its until next PR.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         env: process.env.ENV_LEVEL!,
-        mockTokens: "false",
+        mocks: {
+          mockTokens: false,
+        },
         deployAdmin: owner,
         postDeploy: {
           tenderlyProjectSlug: "string",
@@ -1827,11 +1823,10 @@ describe("StakingERC721", () => {
         stakingERC721Config: argsForDeploy721,
       });
 
-      const stakingConsts = contractNames.stakingERC721;
       const campaign = await runZModulesCampaign({
         config: campaignConfig,
         missions: [
-          stakingERC721Mission(stakingConsts.contract, stakingConsts.instance),
+          getStakingERC721Mission(),
         ],
       });
 

@@ -19,8 +19,8 @@ import {
   contractNames,
   runZModulesCampaign,
 } from "../src/deploy";
-import { matchMission } from "../src/deploy/missions/match.mission";
-import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
+import { ZModulesMatchDM } from "../src/deploy/missions/match.mission";
+import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mockERC20.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
@@ -54,9 +54,6 @@ describe("Match Contract",  () => {
   let feeVault : SignerWithAddress;
   let allPlayers : Array<SignerWithAddress>;
 
-  let mockERC20Address : string;
-  let matchAddress : string;
-
   let MatchFactory : Match__factory;
 
   let dbAdapter : MongoDBAdapter;
@@ -70,8 +67,7 @@ describe("Match Contract",  () => {
   const gameFeePerc = 500n; // 5%
 
   before(async () => {
-    const mockTokens = process.env.MOCK_TOKENS as string;
-
+    const mockTokens = process.env.MOCK_TOKENS === "true";
     [
       owner,
       player1,
@@ -103,13 +99,16 @@ describe("Match Contract",  () => {
         operator2.address,
         operator3.address,
       ],
+      gameFeePercentage: gameFeePercInitial,
     };
 
     const campaignConfig = await validateConfig({
       // leave as its until next PR.
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       env: process.env.ENV_LEVEL!,
-      mockTokens,
+      mocks: {
+        mockTokens,
+      },
       deployAdmin: owner,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -120,25 +119,21 @@ describe("Match Contract",  () => {
       matchConfig: argsForDeployMatch,
     });
 
-    // consts with names
-    const mocksConsts = contractNames.mocks.erc20;
-    const matchConsts = contractNames.match;
-    const mockDBname = "Mock20";
-
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
-        mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
-        matchMission(matchConsts.contract, matchConsts.instance),
+        getMockERC20Mission(TokenTypes.general),
+        ZModulesMatchDM,
       ],
     });
 
-    dbAdapter = campaign.dbAdapter;
+    ({
+      dbAdapter,
+      match,
+      [`${contractNames.mocks.erc20.instance}${TokenTypes.general}`]: mockERC20,
+    } = campaign);
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
-
-    matchAddress = await match.getAddress();
-    mockERC20Address = await mockERC20.getAddress();
 
     config = {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -150,7 +145,7 @@ describe("Match Contract",  () => {
       async (acc, player) => {
         await acc;
         await mockERC20.mint(player.address, ethers.parseEther("1000"));
-        await mockERC20.connect(player).approve(matchAddress, ethers.parseEther("1000"));
+        await mockERC20.connect(player).approve(match.target, ethers.parseEther("1000"));
       }, Promise.resolve()
     );
   });
@@ -178,7 +173,7 @@ describe("Match Contract",  () => {
   it("Should revert if feeVault is passed as 0x0 address", async () => {
     await expect(
       MatchFactory.connect(owner).deploy(
-        mockERC20Address,
+        mockERC20.target,
         ethers.ZeroAddress,
         owner.address,
         [ operator3.address ],
@@ -476,8 +471,6 @@ describe("Match Contract",  () => {
 
   describe("Access Control", () => {
     it("owner, operators assigned at deploy and operators assigned later should have appropriate rights", async () => {
-      await match.connect(owner).addOperators([operator1.address, operator2.address]);
-
       const operators = [
         owner,
         operator1,
@@ -577,7 +570,7 @@ describe("Match Contract",  () => {
         owner: await match.owner(),
       };
 
-      expect(expectedArgs.token).to.eq(mockERC20Address);
+      expect(expectedArgs.token).to.eq(mockERC20.target);
       expect(expectedArgs.feeVault).to.eq(config.feeVault);
       expect(expectedArgs.owner).to.eq(config.owner);
 
@@ -624,13 +617,16 @@ describe("Match Contract",  () => {
           operator2.address,
           operator3.address,
         ],
+        gameFeePercentage: gameFeePercInitial,
       };
 
       const campaignConfig = await validateConfig({
         // leave as its until next PR.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         env: process.env.ENV_LEVEL!,
-        mockTokens: "false",
+        mocks: {
+          mockTokens: false,
+        },
         deployAdmin: owner,
         postDeploy: {
           tenderlyProjectSlug: "string",
@@ -641,15 +637,17 @@ describe("Match Contract",  () => {
         matchConfig: argsForDeployMatch,
       });
 
-      const matchConsts = contractNames.match;
       const campaign = await runZModulesCampaign({
         config: campaignConfig,
         missions: [
-          matchMission(matchConsts.contract, matchConsts.instance),
+          ZModulesMatchDM,
         ],
       });
 
-      match2 = campaign.state.contracts.match as unknown as Match;
+      ({
+        match: match2,
+        dbAdapter,
+      } = campaign);
     });
 
     after(async () => {
@@ -660,5 +658,4 @@ describe("Match Contract",  () => {
       expect(await match2.token()).to.eq(await tokenForMatch.getAddress());
     });
   });
-
 });

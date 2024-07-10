@@ -5,7 +5,7 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
   DeflERC20Mock,
   MockERC20,
-  StakingERC20, StakingERC20__factory,
+  StakingERC20,
 } from "../typechain";
 import {
   NO_REWARDS_ERR,
@@ -36,9 +36,9 @@ import {
   runZModulesCampaign,
 } from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
-import { stakingERC20Mission } from "../src/deploy/missions/stakingERC20.mission";
+import { getStakingERC20Mission } from "../src/deploy/missions/stakingERC20.mission";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
-import { mockERC20Mission } from "../src/deploy/missions/mockERC20.mission";
+import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mockERC20.mission";
 import { validateConfig } from "../src/deploy/campaign/environment";
 
 
@@ -83,9 +83,6 @@ describe("StakingERC20", () => {
   let stakedAtF : bigint;
   let claimedAtF : bigint;
 
-
-  let stakingFactory : StakingERC20__factory;
-
   let dbAdapter : MongoDBAdapter;
 
   before(async () => {
@@ -101,6 +98,9 @@ describe("StakingERC20", () => {
       edgeStaker,
     ] = await hre.ethers.getSigners();
 
+    const stakingTokenSymbol = "STK";
+    const stakingTokenName = "StakingToken";
+
     const argsForDeployERC20 : IERC20DeployArgs = {
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
       periodLength: DEFAULT_PERIOD_LENGTH,
@@ -108,13 +108,18 @@ describe("StakingERC20", () => {
       contractOwner: owner,
     };
 
-    const mockTokens = process.env.MOCK_TOKENS as string;
     const campaignConfig : IZModulesConfig = await validateConfig({
       // leave as its until next PR.
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       env: process.env.ENV_LEVEL!,
-      mockTokens,
       deployAdmin: deployer,
+      mocks: {
+        mockTokens: true,
+        erc20: {
+          tokenName: stakingTokenName,
+          tokenSymbol: stakingTokenSymbol,
+        },
+      },
       postDeploy: {
         tenderlyProjectSlug: "string",
         monitorContracts: false,
@@ -125,28 +130,23 @@ describe("StakingERC20", () => {
     });
 
     // consts with names
-    const mocksConsts = contractNames.mocks.erc20;
     const stakingConsts = contractNames.stakingERC20;
-    const difference = "Second";
-    const mockDBname = "Mock20";
 
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
-        mockERC20Mission(mocksConsts.contract, mocksConsts.instance, mockDBname),
-        mockERC20Mission(mocksConsts.contract, `${mocksConsts.instance}${difference}`, `${mockDBname}${difference}`),
-        stakingERC20Mission(stakingConsts.contract, stakingConsts.instance),
+        getMockERC20Mission(TokenTypes.staking),
+        getMockERC20Mission(TokenTypes.rewards),
+        getStakingERC20Mission(stakingConsts.instance),
       ],
     });
 
-    dbAdapter = campaign.dbAdapter;
-
-    const { stakingERC20, mockERC20, mockERC20Second } = campaign;
-
-    stakingToken = mockERC20;
-    rewardsToken = mockERC20Second;
-
-    stakingContractERC20 = stakingERC20;
+    ({
+      stakingERC20: stakingContractERC20,
+      mock20STK: stakingToken,
+      mock20REW: rewardsToken,
+      dbAdapter,
+    } = campaign);
 
     config = {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -162,6 +162,7 @@ describe("StakingERC20", () => {
       stakerC,
       stakerD,
       stakerF,
+      edgeStaker,
     ];
 
     for (const staker of stakersArr) {
@@ -173,7 +174,7 @@ describe("StakingERC20", () => {
 
     // Always start at the same block going forward, disable auto mining for each tx
     await hre.network.provider.send("evm_setAutomine", [false]);
-    await time.increaseTo(1720000000);
+    await time.increaseTo(1800000000);
   });
 
   after(async () => {
@@ -192,7 +193,6 @@ describe("StakingERC20", () => {
     it("Can stake an amount successfully", async () => {
       const stakeBalanceBeforeA = await stakingToken.balanceOf(stakerA.address);
 
-      await stakingContractERC20.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
       const totalStakedBefore = await stakingContractERC20.totalStaked();
 
       // Always mine block before expects
@@ -205,11 +205,13 @@ describe("StakingERC20", () => {
 
       amountStakedA = DEFAULT_STAKED_AMOUNT;
 
-      const stakeBalanceAfterA = await stakingToken.balanceOf(stakerA.address);
       const totalStakedAfter = await stakingContractERC20.totalStaked();
 
-      const stakerData = await stakingContractERC20.stakers(stakerA.address);
+      const stakeBalanceAfterA = await stakingToken.balanceOf(stakerA.address);
+
       expect(stakeBalanceAfterA).to.eq(stakeBalanceBeforeA - DEFAULT_STAKED_AMOUNT);
+
+      const stakerData = await stakingContractERC20.stakers(stakerA.address);
 
       expect(stakerData.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT);
       expect(stakerData.lastUpdatedTimestamp).to.eq(stakedAtA);
@@ -232,6 +234,8 @@ describe("StakingERC20", () => {
       stakedAtA = BigInt(await time.latest());
       amountStakedA += DEFAULT_STAKED_AMOUNT;
 
+      const stakerData = await stakingContractERC20.stakers(stakerA.address);
+
       // Includes the `staker.owedRewards` calculated from second stake addition
       const pendingRewards = await stakingContractERC20.connect(stakerA).getPendingRewards();
       const totalStakedAfter = await stakingContractERC20.totalStaked();
@@ -243,12 +247,10 @@ describe("StakingERC20", () => {
         config.periodLength
       );
 
-      const stakeBalanceAfterA = await stakingToken.balanceOf(stakerA.address);
       expect(pendingRewards).to.eq(expectedRewards);
 
+      const stakeBalanceAfterA = await stakingToken.balanceOf(stakerA.address);
       const rewardsBalanceAfterA = await rewardsToken.balanceOf(stakerA.address);
-
-      const stakerData = await stakingContractERC20.stakers(stakerA.address);
 
       // They have gained pending rewards but are not yet given them
       expect(stakeBalanceAfterA).to.eq(stakeBalanceBeforeA - DEFAULT_STAKED_AMOUNT);
@@ -1068,6 +1070,7 @@ describe("StakingERC20", () => {
         let stakingContract : StakingERC20;
 
         it("should NOT give rewards from staked tokens when staking and reward tokens are the same", async () => {
+          const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
           stakingContract = await stakingFactory.deploy(
             config.rewardsToken, // same token
             config.rewardsToken, // same token
@@ -1173,8 +1176,8 @@ describe("StakingERC20", () => {
 
         it("Should correctly account staked amount on #stake()", async () => {
           const stakingTokenFactory = await hre.ethers.getContractFactory("DeflERC20Mock");
-          stakeToken = await stakingTokenFactory.deploy("Deflationary Token", "DTK");
-
+          stakeToken = await stakingTokenFactory.connect(owner).deploy("Deflationary Token", "DTK");
+          const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
           staking = await stakingFactory.deploy(
             stakeToken.target,
             config.rewardsToken,
@@ -1330,7 +1333,9 @@ describe("StakingERC20", () => {
           // leave as its until next PR.
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           env: process.env.ENV_LEVEL!,
-          mockTokens: "false",
+          mocks: {
+            mockTokens: false,
+          },
           deployAdmin: owner,
           postDeploy: {
             tenderlyProjectSlug: "string",
@@ -1345,7 +1350,7 @@ describe("StakingERC20", () => {
         const campaign = await runZModulesCampaign({
           config: campaignConfig,
           missions: [
-            stakingERC20Mission(stakingConsts.contract, stakingConsts.instance),
+            getStakingERC20Mission(stakingConsts.instance),
           ],
         });
 
