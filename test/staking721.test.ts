@@ -19,7 +19,7 @@ import {
   DEFAULT_LOCK_TIME,
 } from "./helpers/staking";
 import {
-  DCConfig,
+  IZModulesConfig,
   IERC721DeployArgs,
   TestIERC721DeployArgs,
   contractNames,
@@ -115,7 +115,7 @@ describe("StakingERC721", () => {
     };
 
     const mockTokens = process.env.MOCK_TOKENS as string;
-    const campaignConfig : DCConfig = await validateConfig({
+    const campaignConfig : IZModulesConfig = await validateConfig({
       // leave as its until next PR.
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       env: process.env.ENV_LEVEL!,
@@ -1812,7 +1812,7 @@ describe("StakingERC721", () => {
         contractOwner: owner,
       };
 
-      const campaignConfig : DCConfig = await validateConfig({
+      const campaignConfig : IZModulesConfig = await validateConfig({
         // leave as its until next PR.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         env: process.env.ENV_LEVEL!,

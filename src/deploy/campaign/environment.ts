@@ -1,7 +1,7 @@
-import { DCConfig } from "../types.campaign";
+import { IZModulesConfig } from "../types.campaign";
 
 
-export const validateConfig = async (obj : DCConfig) =>  {
+export const validateConfig = async (obj : IZModulesConfig) =>  {
   const {
     env,
     postDeploy,

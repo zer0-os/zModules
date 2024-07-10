@@ -29,7 +29,7 @@ import {
 } from "./helpers/staking";
 import { ethers } from "ethers";
 import {
-  DCConfig,
+  IZModulesConfig,
   IERC20DeployArgs,
   TestIERC20DeployArgs,
   contractNames,
@@ -109,7 +109,7 @@ describe("StakingERC20", () => {
     };
 
     const mockTokens = process.env.MOCK_TOKENS as string;
-    const campaignConfig : DCConfig = await validateConfig({
+    const campaignConfig : IZModulesConfig = await validateConfig({
       // leave as its until next PR.
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       env: process.env.ENV_LEVEL!,
@@ -1326,7 +1326,7 @@ describe("StakingERC20", () => {
           contractOwner: owner,
         };
 
-        const campaignConfig : DCConfig = await validateConfig({
+        const campaignConfig : IZModulesConfig = await validateConfig({
           // leave as its until next PR.
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           env: process.env.ENV_LEVEL!,

@@ -1,4 +1,4 @@
-import { DCConfig, IZModulesContracts } from "./types.campaign";
+import { IZModulesConfig, IZModulesContracts } from "./types.campaign";
 import * as hre from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
@@ -17,7 +17,7 @@ export const runZModulesCampaign = async ({
   dbVersion,
   missions,
 } : {
-  config : DCConfig;
+  config : IZModulesConfig;
   deployer ?: HardhatDeployer<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase>;
   dbVersion ?: string;
   missions : Array<TDeployMissionCtor<HardhatRuntimeEnvironment, SignerWithAddress, IProviderBase, IZModulesContracts>>;

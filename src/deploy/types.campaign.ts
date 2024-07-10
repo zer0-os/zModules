@@ -34,11 +34,25 @@ export interface IMatchDeployArgs {
   feeVault : string;
   owner : string;
   operators : Array<string>;
+  gameFeePercentage : bigint;
 }
 
-export interface DCConfig extends IDeployCampaignConfig<SignerWithAddress> {
+export interface IMockTokenData20 {
+  tokenName : string;
+  tokenSymbol : string;
+}
+
+export interface IMockTokenData721 extends IMockTokenData20 {
+  baseTokenURI : string;
+}
+
+export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
   owner : SignerWithAddress;
-  mockTokens : string | boolean;
+  mocks : {
+    mockTokens : boolean;
+    erc20 ?: IMockTokenData20;
+    erc721 ?: IMockTokenData721;
+  };
   stakingERC20Config ?: IERC20DeployArgs;
   stakingERC721Config ?: IERC721DeployArgs;
   matchConfig ?: IMatchDeployArgs;

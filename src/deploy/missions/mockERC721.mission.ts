@@ -1,17 +1,20 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { BaseDeployMission, IProviderBase, TDeployArgs } from "@zero-tech/zdc";
+import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesContracts } from "../types.campaign";
+import { IZModulesConfig, IZModulesContracts } from "../types.campaign";
 
+
+export const MOCK721_TOKEN_NAME_DEFAULT = "MOCK ERC 721";
+export const MOCK721_TOKEN_SYMBOL_DEFAULT = "MOCK721";
+export const MOCK721_TOKEN_BASE_URI_DEFAULT = "0://staked-wheels/";
 
 export const mockERC721Mission = (name : string, instance : string, localDBName : string) => {
   class ZModulesMockERC721DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
-  IProviderBase,
+  IZModulesConfig,
   IZModulesContracts
   > {
-
     proxyData = {
       isProxy: false,
     };
@@ -24,11 +27,18 @@ export const mockERC721Mission = (name : string, instance : string, localDBName 
     }
 
     async deployArgs () : Promise<TDeployArgs> {
+      const {
+        config: {
+          mocks: {
+            erc721,
+          },
+        },
+      } = this.campaign;
 
       return [
-        this.contractName,
-        "MOCK",
-        "0://staked-wheels/",
+        !!erc721 ? erc721.tokenName : MOCK721_TOKEN_NAME_DEFAULT,
+        !!erc721 ? erc721.tokenSymbol : MOCK721_TOKEN_SYMBOL_DEFAULT,
+        !!erc721 ? erc721.baseTokenURI : MOCK721_TOKEN_BASE_URI_DEFAULT,
       ];
     }
   }
