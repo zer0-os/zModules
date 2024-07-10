@@ -4,12 +4,12 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   DeployCampaign,
   HardhatDeployer,
-  IProviderBase,
   TDeployMissionCtor,
   getLogger,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getZModulesMongoAdapter } from "./mongo";
+
 
 export const runZModulesCampaign = async ({
   config,
