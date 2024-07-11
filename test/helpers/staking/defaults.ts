@@ -11,7 +11,7 @@ import {
   DEFAULT_LOCK_TIME,
   DEFAULT_PERIOD_LENGTH,
   DEFAULT_REWARDS_PER_PERIOD,
-} from "./constants";
+} from "../constants";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 export const createDefaultConfigs = async (

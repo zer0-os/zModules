@@ -10,20 +10,16 @@ import {
   SignerWithAddress,
 } from "@nomicfoundation/hardhat-ethers/signers";
 
-export interface IStakingDeployArgs {
+export interface IERC20DeployArgs {
+  stakingToken ?: string;
   rewardsToken ?: string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
   timeLockPeriod : bigint;
-  contractOwner : SignerWithAddress;
+  contractOwner : string;
 }
 
-export interface IERC20DeployArgs extends IStakingDeployArgs {
-  stakingToken ?: string;
-}
-
-export interface IERC721DeployArgs extends IStakingDeployArgs {
-  stakingToken ?: string;
+export interface IERC721DeployArgs extends IERC20DeployArgs {
   name : string;
   symbol : string;
   baseUri : string;
@@ -38,7 +34,6 @@ export interface IMatchDeployArgs {
 }
 
 export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
-  owner : SignerWithAddress;
   mockTokens : boolean;
   stakingERC20Config ?: IERC20DeployArgs;
   stakingERC721Config ?: IERC721DeployArgs;
