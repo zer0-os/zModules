@@ -5,6 +5,10 @@
   "keywords": [],
   "author": "Zero CPT",
   "license": "MIT",
+  "engines": {
+    "node": ">=18",
+    "npm": ">=10"
+  },
   "scripts": {
     "typechain": "hardhat typechain",
     "compile": "hardhat compile",
