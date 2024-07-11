@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission } from "@zero-tech/zdc/dist/missions/base-deploy-mission";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
-import { IZModulesConfig, IZModulesContracts, IMatchDeployArgs } from "../types.campaign";
+import { IZModulesConfig, IZModulesContracts, IMatchDeployArgs } from "../campaign/types.campaign";
 import { TDeployArgs } from "@zero-tech/zdc/dist/missions/types";
 import { contractNames } from "../contractNames";
 

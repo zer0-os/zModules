@@ -1,4 +1,4 @@
-import { IZModulesConfig } from "../types.campaign";
+import { IZModulesConfig } from "./types.campaign";
 
 
 export const validateConfig = async (obj : IZModulesConfig) =>  {

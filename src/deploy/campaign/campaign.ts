@@ -8,7 +8,7 @@ import {
   getLogger,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getZModulesMongoAdapter } from "./mongo";
+import { getZModulesMongoAdapter } from "../mongo";
 
 
 export const runZModulesCampaign = async ({

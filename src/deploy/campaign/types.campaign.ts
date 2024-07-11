@@ -5,7 +5,7 @@ import {
 import {
   StakingERC20,
   StakingERC721,
-} from "../../typechain";
+} from "../../../typechain";
 import {
   SignerWithAddress,
 } from "@nomicfoundation/hardhat-ethers/signers";
