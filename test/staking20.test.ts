@@ -39,7 +39,7 @@ import { MongoDBAdapter } from "@zero-tech/zdc";
 import { getStakingERC20Mission } from "../src/deploy/missions/stakingERC20.mission";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mockERC20.mission";
-import { validateConfig } from "../src/deploy/campaign/environment";
+import { getCampaignConfig } from "../src/deploy/campaign/environment";
 
 
 describe("StakingERC20", () => {
@@ -102,22 +102,18 @@ describe("StakingERC20", () => {
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
-      contractOwner: owner,
+      contractOwner: owner.address,
     };
 
-    const campaignConfig : IZModulesConfig = await validateConfig({
-      // leave as its until next PR.
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      env: process.env.ENV_LEVEL!,
+    const campaignConfig = getCampaignConfig({
       deployAdmin: deployer,
       mockTokens: true,
       postDeploy: {
-        tenderlyProjectSlug: "string",
+        tenderlyProjectSlug: "dummy-slug",
         monitorContracts: false,
         verifyContracts: false,
       },
-      owner,
-      stakingERC20Config: argsForDeployERC20,
+      stk20Config: argsForDeployERC20,
     });
 
     // consts with names
@@ -1317,13 +1313,10 @@ describe("StakingERC20", () => {
           rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
           periodLength: DEFAULT_PERIOD_LENGTH,
           timeLockPeriod: DEFAULT_LOCK_TIME,
-          contractOwner: owner,
+          contractOwner: owner.address,
         };
 
-        const campaignConfig : IZModulesConfig = await validateConfig({
-          // leave as its until next PR.
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          env: process.env.ENV_LEVEL!,
+        const campaignConfig : IZModulesConfig = getCampaignConfig({
           mockTokens: false,
           deployAdmin: owner,
           postDeploy: {
@@ -1331,8 +1324,7 @@ describe("StakingERC20", () => {
             monitorContracts: false,
             verifyContracts: false,
           },
-          owner,
-          stakingERC20Config: argsForDeploy20,
+          stk20Config: argsForDeploy20,
         });
 
         const stakingConsts = contractNames.stakingERC20;

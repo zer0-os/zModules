@@ -43,7 +43,7 @@ import {
 } from "./helpers/errors";
 import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mockERC20.mission";
 import { getMockERC721Mission } from "../src/deploy/missions/mockERC721.mission";
-import { validateConfig } from "../src/deploy/campaign/environment";
+import { getCampaignConfig } from "../src/deploy/campaign/environment";
 import { getStakingERC721Mission } from "../src/deploy/missions/stakingERC721Mission";
 
 
@@ -111,13 +111,10 @@ describe("StakingERC721", () => {
       rewardsPerPeriod : DEFAULT_REWARDS_PER_PERIOD,
       periodLength : DEFAULT_PERIOD_LENGTH,
       timeLockPeriod : DEFAULT_LOCK_TIME,
-      contractOwner: owner,
+      contractOwner: owner.address,
     };
 
-    const campaignConfig : IZModulesConfig = await validateConfig({
-      // leave as its until next PR.
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      env: process.env.ENV_LEVEL!,
+    const campaignConfig = getCampaignConfig({
       mockTokens: true,
       deployAdmin: deployer,
       postDeploy: {
@@ -125,8 +122,7 @@ describe("StakingERC721", () => {
         monitorContracts: false,
         verifyContracts: false,
       },
-      owner,
-      stakingERC721Config: argsForDeployERC721,
+      stk721Config: argsForDeployERC721,
     });
 
     const campaign = await runZModulesCampaign({
@@ -1803,13 +1799,10 @@ describe("StakingERC721", () => {
         rewardsPerPeriod : DEFAULT_REWARDS_PER_PERIOD,
         periodLength : DEFAULT_PERIOD_LENGTH,
         timeLockPeriod : DEFAULT_LOCK_TIME,
-        contractOwner: owner,
+        contractOwner: owner.address,
       };
 
-      const campaignConfig : IZModulesConfig = await validateConfig({
-        // leave as its until next PR.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        env: process.env.ENV_LEVEL!,
+      const campaignConfig : IZModulesConfig = getCampaignConfig({
         mockTokens: false,
         deployAdmin: owner,
         postDeploy: {
@@ -1817,8 +1810,7 @@ describe("StakingERC721", () => {
           monitorContracts: false,
           verifyContracts: false,
         },
-        owner,
-        stakingERC721Config: argsForDeploy721,
+        stk721Config: argsForDeploy721,
       });
 
       const campaign = await runZModulesCampaign({

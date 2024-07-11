@@ -21,7 +21,7 @@ import {
 } from "../src/deploy";
 import { ZModulesMatchDM } from "../src/deploy/missions/match.mission";
 import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mockERC20.mission";
-import { validateConfig } from "../src/deploy/campaign/environment";
+import { getCampaignConfig } from "../src/deploy/campaign/environment";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 
@@ -102,10 +102,7 @@ describe("Match Contract",  () => {
       gameFeePercentage: gameFeePercInitial,
     };
 
-    const campaignConfig = await validateConfig({
-      // leave as its until next PR.
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      env: process.env.ENV_LEVEL!,
+    const campaignConfig = getCampaignConfig({
       mockTokens,
       deployAdmin: owner,
       postDeploy: {
@@ -113,7 +110,6 @@ describe("Match Contract",  () => {
         monitorContracts: false,
         verifyContracts: false,
       },
-      owner,
       matchConfig: argsForDeployMatch,
     });
 
@@ -620,10 +616,7 @@ describe("Match Contract",  () => {
         gameFeePercentage: gameFeePercInitial,
       };
 
-      const campaignConfig = await validateConfig({
-        // leave as its until next PR.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        env: process.env.ENV_LEVEL!,
+      const campaignConfig = getCampaignConfig({
         mockTokens: false,
         deployAdmin: owner,
         postDeploy: {
@@ -631,7 +624,6 @@ describe("Match Contract",  () => {
           monitorContracts: false,
           verifyContracts: false,
         },
-        owner,
         matchConfig: argsForDeployMatch,
       });
 
