@@ -27,7 +27,7 @@ export const getStakingERC721Mission = () => {
       const {
         config: {
           stakingERC721Config,
-          mocks: { mockTokens },
+          mockTokens,
         },
         mock20REW,
         mock721,

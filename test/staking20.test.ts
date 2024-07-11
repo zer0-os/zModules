@@ -98,9 +98,6 @@ describe("StakingERC20", () => {
       edgeStaker,
     ] = await hre.ethers.getSigners();
 
-    const stakingTokenSymbol = "STK";
-    const stakingTokenName = "StakingToken";
-
     const argsForDeployERC20 : IERC20DeployArgs = {
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
       periodLength: DEFAULT_PERIOD_LENGTH,
@@ -113,13 +110,7 @@ describe("StakingERC20", () => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       env: process.env.ENV_LEVEL!,
       deployAdmin: deployer,
-      mocks: {
-        mockTokens: true,
-        erc20: {
-          tokenName: stakingTokenName,
-          tokenSymbol: stakingTokenSymbol,
-        },
-      },
+      mockTokens: true,
       postDeploy: {
         tenderlyProjectSlug: "string",
         monitorContracts: false,
@@ -135,8 +126,8 @@ describe("StakingERC20", () => {
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
-        getMockERC20Mission(TokenTypes.staking),
-        getMockERC20Mission(TokenTypes.rewards),
+        getMockERC20Mission({ tokenType: TokenTypes.staking }),
+        getMockERC20Mission({ tokenType: TokenTypes.rewards }),
         getStakingERC20Mission(stakingConsts.instance),
       ],
     });
@@ -1333,9 +1324,7 @@ describe("StakingERC20", () => {
           // leave as its until next PR.
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           env: process.env.ENV_LEVEL!,
-          mocks: {
-            mockTokens: false,
-          },
+          mockTokens: false,
           deployAdmin: owner,
           postDeploy: {
             tenderlyProjectSlug: "string",

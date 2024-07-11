@@ -118,9 +118,7 @@ describe("StakingERC721", () => {
       // leave as its until next PR.
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       env: process.env.ENV_LEVEL!,
-      mocks: {
-        mockTokens: true,
-      },
+      mockTokens: true,
       deployAdmin: deployer,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -134,7 +132,9 @@ describe("StakingERC721", () => {
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
-        getMockERC20Mission(TokenTypes.rewards),
+        getMockERC20Mission({
+          tokenType: TokenTypes.rewards,
+        }),
         getMockERC721Mission(),
         getStakingERC721Mission(),
       ],
@@ -1810,9 +1810,7 @@ describe("StakingERC721", () => {
         // leave as its until next PR.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         env: process.env.ENV_LEVEL!,
-        mocks: {
-          mockTokens: false,
-        },
+        mockTokens: false,
         deployAdmin: owner,
         postDeploy: {
           tenderlyProjectSlug: "string",

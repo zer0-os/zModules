@@ -106,9 +106,7 @@ describe("Match Contract",  () => {
       // leave as its until next PR.
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       env: process.env.ENV_LEVEL!,
-      mocks: {
-        mockTokens,
-      },
+      mockTokens,
       deployAdmin: owner,
       postDeploy: {
         tenderlyProjectSlug: "string",
@@ -122,7 +120,9 @@ describe("Match Contract",  () => {
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
       missions: [
-        getMockERC20Mission(TokenTypes.general),
+        getMockERC20Mission({
+          tokenType: TokenTypes.general,
+        }),
         ZModulesMatchDM,
       ],
     });
@@ -624,9 +624,7 @@ describe("Match Contract",  () => {
         // leave as its until next PR.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         env: process.env.ENV_LEVEL!,
-        mocks: {
-          mockTokens: false,
-        },
+        mockTokens: false,
         deployAdmin: owner,
         postDeploy: {
           tenderlyProjectSlug: "string",

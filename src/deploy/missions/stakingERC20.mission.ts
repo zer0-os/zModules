@@ -26,7 +26,7 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
       const {
         config: {
           stakingERC20Config,
-          mocks: { mockTokens },
+          mockTokens,
         },
         mock20STK,
         mock20REW,

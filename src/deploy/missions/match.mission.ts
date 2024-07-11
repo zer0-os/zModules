@@ -23,9 +23,7 @@ IZModulesContracts
     const {
       config: {
         matchConfig,
-        mocks: {
-          mockTokens,
-        },
+        mockTokens,
       },
       mock20,
     } = this.campaign;

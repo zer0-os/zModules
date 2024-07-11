@@ -21,7 +21,15 @@ export const TokenTypes : ITokenTypes = {
 export const MOCK20_TOKEN_NAME_DEFAULT = "MOCK ERC 20";
 export const MOCK20_TOKEN_SYMBOL_DEFAULT = "MOCK20";
 
-export const getMockERC20Mission = (tokenType : TTokenType) => {
+export const getMockERC20Mission = ({
+  tokenType,
+  tokenName,
+  tokenSymbol,
+} : {
+  tokenType : TTokenType;
+  tokenName ?: string;
+  tokenSymbol ?: string;
+}) => {
   class ZModulesMockERC20DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -40,17 +48,9 @@ export const getMockERC20Mission = (tokenType : TTokenType) => {
     }
 
     async deployArgs () : Promise<TDeployArgs> {
-      const {
-        config: {
-          mocks: {
-            erc20,
-          },
-        },
-      } = this.campaign;
-
       return [
-        !!erc20 ? erc20.tokenName : MOCK20_TOKEN_NAME_DEFAULT,
-        !!erc20 ? erc20.tokenSymbol : MOCK20_TOKEN_SYMBOL_DEFAULT,
+        !!tokenName ? tokenName : MOCK20_TOKEN_NAME_DEFAULT,
+        !!tokenSymbol ? tokenSymbol : MOCK20_TOKEN_SYMBOL_DEFAULT,
       ];
     }
   }
