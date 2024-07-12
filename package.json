@@ -28,7 +28,8 @@
     "mongo:down": "docker-compose down",
     "mongo:drop": "ts-node src/utils/drop-db.ts",
     "pretest": "yarn mongo:start",
-    "posttest": "yarn mongo:stop"
+    "posttest": "yarn mongo:stop",
+    "run-local-campaign": "hardhat run src/deploy/run-campaign.ts --network hardhat"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
