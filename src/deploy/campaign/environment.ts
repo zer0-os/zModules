@@ -76,18 +76,24 @@ export const getStaking20DeployConfig = (
   config ?: IERC20DeployArgs
 ) : IERC20DeployArgs | undefined => {
   let configReturn;
-  if (env === "dev") {
+  if (env === "dev" && process.env.STAKING20_USE_DEV_ENV_VALUES !== "true") {
     configReturn = config;
   } else {
     if (
-      !process.env.STAKING20_STAKING_TOKEN ||
-      !process.env.STAKING20_REWARDS_TOKEN ||
       !process.env.STAKING20_REWARDS_PER_PERIOD ||
       !process.env.STAKING20_PERIOD_LENGTH ||
       !process.env.STAKING20_TIMELOCK_PERIOD ||
       !process.env.STAKING20_CONTRACT_OWNER
     ) {
       throw new Error("Missing required env variables for StakingERC20!");
+    }
+
+    if (
+      env === "prod" &&
+        (!process.env.STAKING20_STAKING_TOKEN ||
+          !process.env.STAKING20_REWARDS_TOKEN)
+    ) {
+      throw new Error("Missing required env tokens for StakingERC20!");
     }
 
     configReturn = {
@@ -120,21 +126,27 @@ export const getStaking721DeployConfig = (
   config ?: IERC721DeployArgs
 ) : IERC721DeployArgs | undefined => {
   let configReturn;
-  if (env === "dev") {
+  if (env === "dev" && process.env.STAKING721_USE_DEV_ENV_VALUES !== "true") {
     configReturn = config;
   } else {
     if (
       !process.env.STAKING721_TOKEN_NAME ||
       !process.env.STAKING721_TOKEN_SYMBOL ||
       !process.env.STAKING721_BASE_URI ||
-      !process.env.STAKING721_STAKING_TOKEN ||
-      !process.env.STAKING721_REWARDS_TOKEN ||
       !process.env.STAKING721_REWARDS_PER_PERIOD ||
       !process.env.STAKING721_PERIOD_LENGTH ||
       !process.env.STAKING721_TIMELOCK_PERIOD ||
       !process.env.STAKING721_CONTRACT_OWNER
     ) {
       throw new Error("Missing required env variables for StakingERC721!");
+    }
+
+    if (
+      env === "prod" &&
+      (!process.env.STAKING721_STAKING_TOKEN ||
+        !process.env.STAKING721_REWARDS_TOKEN)
+    ) {
+      throw new Error("Missing required env tokens for StakingERC721!");
     }
 
     configReturn = {
@@ -170,17 +182,20 @@ export const getMatchDeployConfig = (
   config ?: IMatchDeployArgs
 ) : IMatchDeployArgs | undefined => {
   let configReturn;
-  if (env === "dev") {
+  if (env === "dev" && process.env.MATCH_USE_DEV_ENV_VALUES !== "true") {
     configReturn = config;
   } else {
     if (
-      !process.env.MATCH_PAYMENT_TOKEN ||
       !process.env.MATCH_FEE_VAULT_ADDRESS ||
       !process.env.MATCH_OPERATOR_ADDRESSES ||
       !process.env.MATCH_GAME_FEE_PERCENTAGE ||
       !process.env.MATCH_CONTRACT_OWNER_ADDRESS
     ) {
       throw new Error("Missing required env variables for Match!");
+    }
+
+    if (env === "prod" && !process.env.MATCH_PAYMENT_TOKEN) {
+      throw new Error("Missing required env filled token for Match!");
     }
 
     const decoded = atob(process.env.MATCH_OPERATOR_ADDRESSES);
