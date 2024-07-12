@@ -1746,10 +1746,10 @@
     eslint-plugin-prefer-arrow "^1.2.3"
     typescript "^5.0.2"
 
-"@zero-tech/zdc@0.1.5":
-  version "0.1.5"
-  resolved "https://registry.yarnpkg.com/@zero-tech/zdc/-/zdc-0.1.5.tgz#4a19003107679e2ba660a8fef75dd7874a1f7992"
-  integrity sha512-y5811hdgX+pf9owoG0W2uMPnySfoAK4yvAV/cmmgPSTOUURyGQ0fbc02fGJ+coMUgdjmfYHk2glH0gSjK040uw==
+"@zero-tech/zdc@0.1.6":
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/@zero-tech/zdc/-/zdc-0.1.6.tgz#131d13a128c494b7b5d32c208f3afdb775bf3ba2"
+  integrity sha512-BemYIVUs95pk0fx/otWbtLGiCJyor0SNmNKH/46iNXoSzYdeCbPFx05GsXjAE6yhu9buwHybdDRXjSj/YcQpXg==
   dependencies:
     axios "^1.6.5"
     mongodb "^6.3.0"
