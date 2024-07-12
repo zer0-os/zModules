@@ -249,7 +249,7 @@ export const validateEnv = (env : string) =>  {
       "Cannot use local mongo URI in 'prod' or 'test' environment!"
     );
 
-  if (!process.env.MONGO_DB_URI || !process.env.MONGO_DB_NAME || !process.env.ARCHIVE_PREVIOUS_DB_VERSION) {
+  if (!process.env.MONGO_DB_URI || !process.env.MONGO_DB_NAME) {
     throw new Error(`Must provide proper MONGO data used for ${env} environment!`);
   }
 
