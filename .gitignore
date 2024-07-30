@@ -9,10 +9,12 @@ lerna-debug.log*
 
 # IDE files
 .idea
+.vscode
 
 
 node_modules
 .env
+*.env
 
 # Hardhat files
 /cache
