@@ -41,19 +41,18 @@ contract StakingBase is Ownable, IStakingBase {
      */
     uint256 public immutable periodLength;
 
-    /**
-     * @notice The amount of time required to pass to be able to claim or unstake
-     */
-    uint256 public immutable timeLockPeriod;
+    // /**
+    //  * @notice The amount of time required to pass to be able to claim or unstake
+    //  */
+    // uint256 public immutable timeLockPeriod;
 
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
-        uint256 _periodLength,
-        uint256 _timeLockPeriod,
-        address contractOwner
-    ) Ownable(contractOwner) {
+        uint256 _periodLength, // TODO also have max # periods? e.g. 365 days
+        address _contractOwner
+    ) Ownable(_contractOwner) {
         if (
             _stakingToken.code.length == 0 ||
             address(_rewardsToken).code.length == 0 ||
@@ -65,7 +64,7 @@ contract StakingBase is Ownable, IStakingBase {
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
         periodLength = _periodLength;
-        timeLockPeriod = _timeLockPeriod;
+        // timeLockPeriod = _timeLockPeriod;
     }
 
     /**
@@ -136,7 +135,7 @@ contract StakingBase is Ownable, IStakingBase {
         } else {
             // Log the time at which this stake becomes claimable or unstakable
             // This is only done once per user
-            staker.unlockTimestamp = block.timestamp + timeLockPeriod;
+            staker.unlockTimestamp = block.timestamp; // + timeLockPeriod;
         }
     }
 

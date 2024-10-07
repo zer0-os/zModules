@@ -49,7 +49,7 @@ interface IStakingERC721 is IERC721Receiver {
      */
     error NonTransferrableToken();
 
-    function stake(
+    function stakeWithoutLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenURIs
     ) external;

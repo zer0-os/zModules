@@ -94,7 +94,7 @@ describe("StakingERC721", () => {
       config.rewardsToken,
       config.rewardsPerPeriod,
       config.periodLength,
-      config.timeLockPeriod,
+      // config.timeLockPeriod,
       owner.address
     ) as StakingERC721;
 
@@ -112,6 +112,31 @@ describe("StakingERC721", () => {
     await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
     await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
     await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
+  });
+
+  it.only("calcs the RM correctly", async () => {
+    await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [60n]);
+    // stakedAtA = BigInt(await time.latest());
+
+    // const rm = await stakingERC721.rewardsMultipliers(tokenIdA);
+    // console.log(rm);
+
+    const func = await stakingERC721.calculateF(60);
+    console.log(func)
+
+      // balanceAtStakeOne = await stakingERC721.balanceOf(stakerA.address);
+
+      // const stakerData = await stakingERC721.stakers(stakerA.address);
+
+      // const tokenUri = await stakingERC721.tokenURI(tokenIdA);
+      // expect(tokenUri).to.eq(baseUri + tokenIdA);
+
+      // // User has staked their NFT and gained an SNFT
+      // expect(await stakingToken.balanceOf(stakerA.address)).to.eq(2); // still has tokenIdB and tokenIdC
+      // expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(1);
+      // expect(stakerData.amountStaked).to.eq(1);
+      // expect(stakerData.unlockTimestamp).to.eq(stakedAtA + config.timeLockPeriod);
+      // expect(stakerData.lastUpdatedTimestamp).to.eq(stakedAtA);
   });
 
   it("Should NOT deploy with zero values passed", async () => {
