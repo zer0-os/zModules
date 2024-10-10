@@ -116,9 +116,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 ++i;
             }
         }
-
-        // staker.amountStaked += tokenIds.length;
-        // staker.lastUpdatedTimestamp = block.timestamp;
     }
 
     /**
@@ -126,38 +123,27 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @param tokenIds Array of tokenIds to be staked by the caller
      * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used!
      */
-    /**
-     * Stakes with array of locking period params as well, then can call the same flow basically
-     * just need to make sure we can handle each uniquely and that the rewards are calculated correctly
-     */
-
     function stakeWithoutLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris
     ) external override {
-        // Staker storage staker = stakers[msg.sender];
-
-        // do we still process rewards when 0 stake lock?
-        // if so we neeed to check everu past stake to see if 0 lock time stake exists
+        // TODO do we still process rewards when 0 stake lock?
+        // if so we neeed to check every past stake to see if 0 lock time stake exists
         // _checkRewards(staker);
 
-        // uint256 i;
-        // for (i; i < tokenIds.length;) {
-        //     _stake(tokenIds[i], tokenUris[i], 0);
+        uint256 i;
+        for (i; i < tokenIds.length;) {
+            _stake(tokenIds[i], tokenUris[i], 0);
 
-        //     unchecked {
-        //         ++i;
-        //     }
-        // }
-
-        // staker.amountStaked += tokenIds.length;
-        // staker.lastUpdatedTimestamp = block.timestamp; // we dont need this anymore probably
+            unchecked {
+                ++i;
+            }
+        }
     }
 
-    // TODO provide unstakeMany that loops unstake with array of tokenIds
 
     /**
-     * @notice Unstake one or more of what the user has staked
+     * @notice Unstake one or more specific ERC721 tokens
      * @param tokenIds Array of tokenIds to be unstaked by the caller
      */
     function unstake(uint256[] memory tokenIds) external override {
@@ -191,9 +177,57 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         // if (staker.amountStaked == 0) {
         //     delete stakers[msg.sender];
         // } else {
-        //     staker.lastUpdatedTimestamp = block.timestamp;
         // }
     }
+
+    /**
+     * @notice Unstake all the staked tokens associated with the calling user
+     * @dev Will fail if caller does not own the sNFT created when staking
+     * @param exit If exit is `true`, also unstake tokens that are still locked and forego
+     * any rewards for them
+     */
+    function unstakeAll(bool exit) public {
+        Staker storage staker = tokenStakers[msg.sender];
+
+        uint256 i;
+        for(i; i < staker.tokenIds.length;) {
+
+            uint256 tokenId = staker.tokenIds[i];
+
+            // Should only transfer if token is unlocked
+            // If exit is true, we go ahead with unstake regardless of lock or not
+            // _baseClaim(tokenId, staker, exit);
+
+            /**
+             * if token is unlocked
+             *   claim
+             *   unstake
+             * else
+             *   if (exit)
+             *     unstake anyways
+             * 
+             */
+
+            //TODO = block timestamp in places? verify this, could be weird case because we only use
+            // > or < in checks throughout these contracts
+
+            // If the token is unlocked, claim and unstake
+            if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
+                _baseClaim(tokenId, staker);
+                _unstake(tokenId);
+            } else if (exit) { // if not unlocked but `exit` is true, unstake
+                _unstake(tokenId);
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    // TODO unstakeAll (that are available) and also unstakeAll with forfeiting some rewards?
+    // TODO provide unstakeMany that loops unstake with array of tokenIds
+
 
     ////////////////////////////////////
     /* Token Functions */
@@ -250,12 +284,10 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         Staker storage staker = tokenStakers[msg.sender];
 
         staker.stakedTimestamps[tokenId] = block.timestamp;
+        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
         staker.lockDurations[tokenId] = lockPeriod;
-
-        ++staker.amountStaked;
-
         staker.tokenIds.push(tokenId);
-        staker.lastUpdatedTimestamp = block.timestamp;
+        ++staker.amountStaked;
 
         // Transfer their NFT to this contract
         IERC721(stakingToken).safeTransferFrom(

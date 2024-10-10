@@ -120,7 +120,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // );
 
         // staker.amountStaked += amount;
-        // staker.lastUpdatedTimestamp = block.timestamp;
 
         // emit Staked(msg.sender, amount, stakingToken);
     }
@@ -150,7 +149,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         //     delete stakers[msg.sender];
         // } else {
         //     staker.amountStaked -= amount;
-        //     staker.lastUpdatedTimestamp = block.timestamp;
         // }
 
         // Return the user's initial stake

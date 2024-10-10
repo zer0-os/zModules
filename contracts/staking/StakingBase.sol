@@ -32,12 +32,16 @@ contract StakingBase is Ownable, IStakingBase {
     //     _;
     // }
 
-    struct Staker {
+    struct Staker { 
+        // TODO maybe these mappings should be independent state variables?
+        // reduce the need for passing the Staker struct around
+        // but also having them in this struct means not having to check ownership repeatedly
+        // make 2D mappings ? address => tokenId => data
         uint256 amountStaked;
-        uint256 lastUpdatedTimestamp;
         uint256[] tokenIds; // for indexing when bulk claiming / revoking
         mapping(uint256 tokenId => uint256 stakedTimestamp) stakedTimestamps;
         mapping(uint256 tokenId => uint256 lockDuration) lockDurations;
+        mapping(uint256 tokenId => uint256 lastClaimedTimestamp) lastClaimedTimestamps;
     }
 
     function getStakedTimestamp() external view returns (uint256) {
@@ -100,11 +104,19 @@ contract StakingBase is Ownable, IStakingBase {
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claim() external override {
-        // Require the time lock to have passed
+    function claimAll() external override {
         Staker storage staker = tokenStakers[msg.sender];
 
-        _baseClaim(staker);
+        uint256 i;
+        for (i; i < staker.tokenIds.length;) {
+            // TODO better way? dont want loop in _baseClaim but need Staker in baseClaim
+            _baseClaim(staker.tokenIds[i], staker);
+
+            unchecked {
+                ++i;
+            }
+        }
+
     }
 
     // TODO only have either claim(tokenId) or claimAll(), it will mess with last updated timestamp otherwise
@@ -125,12 +137,17 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     /**
-     * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
+     * @notice Return the time in seconds remaining for a stake to be claimed or unstaked
      */
-    function getRemainingLockTime() external view override returns (uint256) {
+    function getRemainingLockTime(uint256 tokenId) external view override returns (uint256) {
         // Return the time remaining for the stake to be claimed or unstaked
         // TODO fix
-        // Staker storage staker = stakers[msg.sender];
+        Staker storage staker = tokenStakers[msg.sender];
+
+        uint256 stakedTimestamp = staker.stakedTimestamps[tokenId];
+
+        // if 0, wrong token or not staked
+
         // if (block.timestamp > staker.unlockTimestamp) {
         //     return 0;
         // }
@@ -142,7 +159,7 @@ contract StakingBase is Ownable, IStakingBase {
      * @notice View the pending rewards balance for a user
      */
     function getPendingRewards(uint256 tokenId) external view returns (uint256) { // TODO return override
-        return _getPendingRewards(tokenId);
+        return _getPendingRewards(tokenId, false);
     }
 
     /**
@@ -172,49 +189,45 @@ contract StakingBase is Ownable, IStakingBase {
         // }
     }
 
-    function _baseClaim(Staker storage staker) internal {
+    function _baseClaim(uint256 tokenId, Staker storage staker) internal {
+
         uint256 rewards = 0;
 
-        // iterate over all tokenIds in the staker struct
-        // if token is unlocked, calculate rewards accrued between lastUpdatedtimestamp and now at X rate
-        // mark lastUpdatedTimestamp as now
-        // add rewards to total rewards, transfer
-        uint256 i;
-        for (i; i < staker.tokenIds.length;) {
-            uint256 tokenId = staker.tokenIds[i];
+        // only comes from Staker right now, so no need to double check ownership
+        // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
+        // call to claim without actually being the owner
 
-            uint256 unlockedTimestamp = staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId];
-
-            // Do not distribute rewards for stakes that are still locked
-            if (unlockedTimestamp > block.timestamp) {
-                continue;
-            }
-            uint256 secondsPerDay = 86400;
-            uint256 secondsPerYear = secondsPerDay * 365;
-
-            rewards += 
-                rewardsPerPeriod * 5**((block.timestamp - staker.stakedTimestamps[tokenId]) / secondsPerYear) / periodLength;
-
-            unchecked {
-                ++i;
-            }
+        // Do not distribute rewards for stakes that are still locked
+        // TODO move this check outside of baseClaim to match what `unstake` does
+        if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
+            revert TimeLockNotPassed();
         }
 
-        staker.lastUpdatedTimestamp = block.timestamp;
-        // staker.owedRewards = 0;
+        // TODO consider adding reentrant guard to be more specific
+        // TODO move outside baseclaim to match unstake
+        if (staker.lastClaimedTimestamps[tokenId] == block.timestamp) {
+            revert CannotClaim();
+        }
 
-        // Disallow rewards when balance is 0
-        if (_getContractRewardsBalance() == 0) {
+
+        rewards = _getPendingRewards(tokenId, true);
+
+        // if we adjust before _getPendingRewards, we get 0 rewards
+        // if we adjust after, reentrancy
+
+        // staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+
+        if (_getContractRewardsBalance() < rewards) {
             revert NoRewardsLeftInContract();
         }
 
-        // rewardsToken.safeTransfer(msg.sender, rewards);
-
-        // emit Claimed(msg.sender, rewards, address(rewardsToken));
+        rewardsToken.safeTransfer(msg.sender, rewards);
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
     function _getPendingRewards(
-        uint256 tokenId
+        uint256 tokenId,
+        bool isClaim
     ) internal view returns (uint256) {
         Staker storage staker = tokenStakers[msg.sender];
         // Return any existing pending rewards value plus the
@@ -231,15 +244,27 @@ contract StakingBase is Ownable, IStakingBase {
         console.log("periods passed", (block.timestamp - staker.stakedTimestamps[tokenId]) / periodLength);
 
         // will be in seconds, divide to be in days
-        uint256 lengthOfStakeInDays = (block.timestamp - staker.stakedTimestamps[tokenId]) / 86400;
-        uint256 lockDurationInSeconds = staker.lockDurations[tokenId] * 86400;
+        // On first claim, `lastClaimedTimestamps` for a token will be the same as its stake timestamp
+        uint256 timeSinceLastClaim = (block.timestamp - staker.lastClaimedTimestamps[tokenId]) / 86400;
+        uint256 lockDuration = staker.lockDurations[tokenId];
 
-        // linear function for stakes that didn't lock
+        // If we are reading pending rewards from the `_baseClaim` flow, we update last claimed timestamp
+        // if (isClaim) {
+        // TODO figure this out, because cant mark as `view` if modify state
+        //     staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+        // }
 
-        // ax^2 + bx + c
+        // TODO make 1e16 scalar an adjustable state variable
+        if (lockDuration == 0) {
+            // Linear rewards for those who didn't lock their stake
+            return rewardsPerPeriod * timeSinceLastClaim * 1e16;
+        } else {
+            // Exponential rewards for those that did
+            return rewardsPerPeriod * timeSinceLastClaim**(2) * 1e16;
+        }
+
         // return lengthOfStakeInDays * rewardsPerPeriod^(2 + (lockDurationInSeconds / secondsPerYear));
         // return lockDurationInSeconds * rewardsPerPeriod**2 + 2 * lengthOfStakeInDays;
-        return rewardsPerPeriod * lengthOfStakeInDays**(2) * 1e16; // 1e16 is scalar here, make this scalar adjustable
         // if did not lock, just return rewardsPerPeriod * lengthOfStakeInDays
     }
 
@@ -247,8 +272,9 @@ contract StakingBase is Ownable, IStakingBase {
         return rewardsToken.balanceOf(address(this));
     }
 
-    // function _onlyUnlocked(Staker memory staker, uint256 tokenId) internal view {
-    //     // User is not staked or has not passed the time lock
-        
-    // }
+    function _onlyUnlocked(Staker storage staker, uint256 tokenId) internal view {
+        if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] < block.timestamp) {
+            revert TimeLockNotPassed();
+        }
+    }
 }

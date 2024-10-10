@@ -130,6 +130,28 @@ describe("StakingERC721", () => {
 
     console.log(pendingRewards.toString());
 
+    // now call to claimAll
+    const balanceBefore = await rewardToken.balanceOf(stakerA.address);
+
+    await stakingERC721.connect(stakerA).claimAll();
+
+    const balanceAfter = await rewardToken.balanceOf(stakerA.address);
+    console.log("before: ", balanceBefore)
+    console.log("after: ", balanceAfter);
+
+    // await time.increase(lock / 2n);
+
+    // const unstakeBalBefore = await rewardToken.balanceOf(stakerA.address);
+
+    // await stakingERC721.connect(stakerA).unstakeAll(false);
+
+    // const unstakeBalAfter = await rewardToken.balanceOf(stakerA.address);
+
+    // console.log("before: ", unstakeBalBefore);
+    // console.log("after: ", unstakeBalAfter);
+
+    // move time forward and unstake
+    
       // balanceAtStakeOne = await stakingERC721.balanceOf(stakerA.address);
 
       // const stakerData = await stakingERC721.stakers(stakerA.address);
