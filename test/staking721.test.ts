@@ -15,6 +15,7 @@ import {
   UNSTAKED_EVENT,
   BaseConfig,
   WITHDRAW_EVENT,
+  DAY_IN_SECONDS,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -114,15 +115,20 @@ describe("StakingERC721", () => {
     await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
   });
 
-  it.only("calcs the RM correctly", async () => {
-    await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [60n]);
-    // stakedAtA = BigInt(await time.latest());
+  it.only("calcs correctly", async () => {
+    const lock = 28n * DAY_IN_SECONDS;
 
-    // const rm = await stakingERC721.rewardsMultipliers(tokenIdA);
-    // console.log(rm);
+    await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [lock]);
 
-    const func = await stakingERC721.calculateF(60);
-    console.log(func)
+    await time.increase(lock);
+
+    const staker = await stakingERC721.tokenStakers(stakerA.address);
+
+    const ts = await stakingERC721.connect(stakerA).getStakedTimestamp();
+
+    const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards(tokenIdA);
+
+    console.log(pendingRewards.toString());
 
       // balanceAtStakeOne = await stakingERC721.balanceOf(stakerA.address);
 

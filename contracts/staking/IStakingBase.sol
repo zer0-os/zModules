@@ -14,12 +14,12 @@ interface IStakingBase {
      * @param lastUpdatedTimestamp The timestamp at which the staker last interacted with the contract
      * @param amountStaked The amount of token(s) staked by the user
      */
-    struct Staker {
-        uint256 unlockTimestamp;
-        uint256 owedRewards;
-        uint256 lastUpdatedTimestamp;
-        uint256 amountStaked;
-    }
+    // struct Staker { // TODO Staker struct might need to be different for ERC20 and ERC721
+    //     uint256 unlockTimestamp; // TODO this is now per stake
+    //     uint256 owedRewards; // TODO dont think we need this anymore
+    //     uint256 lastUpdatedTimestamp;
+    //     uint256 amountStaked;
+    // }
 
     /**
      * @notice Emitted when the contract owner withdraws leftover rewards
@@ -66,7 +66,7 @@ interface IStakingBase {
 
     function withdrawLeftoverRewards() external;
 
-    function getPendingRewards() external view returns (uint256);
+    // function getPendingRewards() external view returns (uint256);
 
     function getContractRewardsBalance() external view returns (uint256);
 }

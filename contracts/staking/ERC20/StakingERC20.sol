@@ -103,26 +103,26 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to stake
      */
     function stake(uint256 amount) external override {
-        Staker storage staker = stakers[msg.sender];
+        // Staker storage staker = stakers[msg.sender];
 
-        if (amount == 0) {
-            revert ZeroStake();
-        }
+        // if (amount == 0) {
+        //     revert ZeroStake();
+        // }
 
-        // Don't call on new stakes anymore, every stake is independent now due to locking
-        // only call on the unlocked total, so maybe keep for if (lockTime = 0)
-        _checkRewards(staker);
+        // // Don't call on new stakes anymore, every stake is independent now due to locking
+        // // only call on the unlocked total, so maybe keep for if (lockTime = 0)
+        // _checkRewards(staker);
 
-        IERC20(stakingToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
+        // IERC20(stakingToken).safeTransferFrom(
+        //     msg.sender,
+        //     address(this),
+        //     amount
+        // );
 
-        staker.amountStaked += amount;
-        staker.lastUpdatedTimestamp = block.timestamp;
+        // staker.amountStaked += amount;
+        // staker.lastUpdatedTimestamp = block.timestamp;
 
-        emit Staked(msg.sender, amount, stakingToken);
+        // emit Staked(msg.sender, amount, stakingToken);
     }
 
     /**
@@ -131,27 +131,27 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param exit If true, the user will unstake without claiming rewards (optional)
      */
     function unstake(uint256 amount, bool exit) external override {
-        Staker storage staker = stakers[msg.sender];
+        // Staker storage staker = stakers[msg.sender];
 
-        if (!exit) _onlyUnlocked(staker.unlockTimestamp);
+        // // if (!exit) _onlyUnlocked(staker.unlockTimestamp);
 
-        if (amount > staker.amountStaked) {
-            revert UnstakeMoreThanStake();
-        }
+        // if (amount > staker.amountStaked) {
+        //     revert UnstakeMoreThanStake();
+        // }
 
-        if (!exit) {
-            _baseClaim(staker);
-        } else {
-            // Snapshot their pending rewards
-            staker.owedRewards = _getPendingRewards(staker);
-        }
+        // if (!exit) {
+        //     _baseClaim(staker);
+        // } else {
+        //     // Snapshot their pending rewards
+        //     staker.owedRewards = _getPendingRewards(staker);
+        // }
 
-        if (staker.amountStaked - amount == 0) {
-            delete stakers[msg.sender];
-        } else {
-            staker.amountStaked -= amount;
-            staker.lastUpdatedTimestamp = block.timestamp;
-        }
+        // if (staker.amountStaked - amount == 0) {
+        //     delete stakers[msg.sender];
+        // } else {
+        //     staker.amountStaked -= amount;
+        //     staker.lastUpdatedTimestamp = block.timestamp;
+        // }
 
         // Return the user's initial stake
         IERC20(stakingToken).safeTransfer(msg.sender, amount);

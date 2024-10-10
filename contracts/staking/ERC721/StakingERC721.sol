@@ -30,18 +30,24 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      */
     uint256 internal _totalSupply;
 
-    // constants [1, 2, 3, 4, 5]
-    // uint8[] public immutable MULTIPLIER_RATES;
+    
 
+    // stake
+    //  set when it was staked
+    //  set how long it will be locked
+
+    // claim
+    //  set when it was claimed
+
+    // unstake
+    //  unset when it was staked
+    //  unset how long it will be locked
+
+    // mapping(address user => ERC721Staker) public tokenStakers;
     // TODO consider joining these mappings into a single struct since they both index
     // from tokenId
 
-    // Mapping to hold what the RM is for each stake
-    // TODO solidity math on this, we need to scale it correctly
-    mapping(uint256 tokenId => uint256 rewardsMultiplier) public rewardsMultipliers;
-
-    // mapping of when a token was staked
-    mapping(uint256 tokenId => uint256 timestamp) public stakedTimestamps;
+    // only the owner of a stake holds the sNFT, no need to store owner
 
     /**
      * @dev Revert if a call is not from the SNFT owner
@@ -62,7 +68,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
         address _contractOwner
-        // uint8[] memory _multiplierRates
     )
         ERC721(name, symbol)
         StakingBase(
@@ -76,8 +81,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         if (bytes(baseUri).length > 0) {
             baseURI = baseUri;
         }
-
-        // MULTIPLIER_RATES = _multiplierRates;
     }
 
     /**
@@ -96,11 +99,10 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function stakeWithLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,
-        uint256[] calldata lockPeriods
+        uint256[] calldata lockPeriods // in days or in s? probably easier coming in as days
     ) external {
-        // does uint64 make a difference here? padded anyways?
         // Stake with lock period and receive RM > 1 (not sure how value is done yet)
-        Staker storage staker = stakers[msg.sender];
+        // Staker storage staker = stakers[msg.sender];
 
         // do we still process rewards when 0 stake lock?
         // if so we neeed to check everu past stake to see if 0 lock time stake exists
@@ -115,8 +117,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             }
         }
 
-        staker.amountStaked += tokenIds.length;
-        staker.lastUpdatedTimestamp = block.timestamp;
+        // staker.amountStaked += tokenIds.length;
+        // staker.lastUpdatedTimestamp = block.timestamp;
     }
 
     /**
@@ -133,61 +135,64 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256[] calldata tokenIds,
         string[] calldata tokenUris
     ) external override {
-        Staker storage staker = stakers[msg.sender];
+        // Staker storage staker = stakers[msg.sender];
 
         // do we still process rewards when 0 stake lock?
         // if so we neeed to check everu past stake to see if 0 lock time stake exists
         // _checkRewards(staker);
 
-        uint256 i;
-        for (i; i < tokenIds.length;) {
-            // hardcode 60 for testing only, remove TODO
-            _stake(tokenIds[i], tokenUris[i], 60);
+        // uint256 i;
+        // for (i; i < tokenIds.length;) {
+        //     _stake(tokenIds[i], tokenUris[i], 0);
 
-            unchecked {
-                ++i;
-            }
-        }
+        //     unchecked {
+        //         ++i;
+        //     }
+        // }
 
-        staker.amountStaked += tokenIds.length;
-        staker.lastUpdatedTimestamp = block.timestamp; // we dont need this anymore probably
+        // staker.amountStaked += tokenIds.length;
+        // staker.lastUpdatedTimestamp = block.timestamp; // we dont need this anymore probably
     }
+
+    // TODO provide unstakeMany that loops unstake with array of tokenIds
 
     /**
      * @notice Unstake one or more of what the user has staked
      * @param tokenIds Array of tokenIds to be unstaked by the caller
-     * @param exit Flag for if the user would like to exit without rewards
      */
-    function unstake(uint256[] memory tokenIds, bool exit) external override {
-        Staker storage staker = stakers[msg.sender];
+    function unstake(uint256[] memory tokenIds) external override {
+        // onlySNFTOwner
+        // onlyUnlocked
 
-        if (!exit) _onlyUnlocked(staker.unlockTimestamp);
+        // Staker storage staker = stakers[msg.sender];
 
-        uint256 i;
-        for (i; i < tokenIds.length; ) {
-            _unstake(tokenIds[i]);
+        // // if (!exit) _onlyUnlocked(staker.unlockTimestamp);
 
-            unchecked {
-                ++i;
-            }
-        }
+        // uint256 i;
+        // for (i; i < tokenIds.length;) {
+        //     _unstake(tokenIds[i]);
 
-        if (!exit) {
-            _baseClaim(staker);
-        } else {
-            // Snapshot their pending rewards
-            staker.owedRewards = _getPendingRewards(staker);
-        }
+        //     unchecked {
+        //         ++i;
+        //     }
+        // }
+
+        // if (!exit) {
+        //     _baseClaim(staker);
+        // } else {
+        //     // Snapshot their pending rewards
+        //     staker.owedRewards = _getPendingRewards(staker);
+        // }
 
         // if `numStaked < tokenIds.length` it will have already failed above
         // so we don't need to check that here
-        staker.amountStaked -= tokenIds.length;
+        // staker.amountStaked -= tokenIds.length;
 
-        if (staker.amountStaked == 0) {
-            delete stakers[msg.sender];
-        } else {
-            staker.lastUpdatedTimestamp = block.timestamp;
-        }
+        // if (staker.amountStaked == 0) {
+        //     delete stakers[msg.sender];
+        // } else {
+        //     staker.lastUpdatedTimestamp = block.timestamp;
+        // }
     }
 
     ////////////////////////////////////
@@ -237,46 +242,20 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             super.supportsInterface(interfaceId);
     }
 
-    /////// math
-
-    function calculateF(uint256 x) public pure returns (uint256) {
-        // Calculate 5^(x / 365)
-        // Save for two decimal places of precision
-        uint256 exponent = x * 1e18 / 365; // Scale up for precision
-
-        // uint256 result = Math.pow(5, exponent / 1e18); // Adjust scaling back down
-        // so two decimals of precision, 0.16 in this case for input of 60 
-
-        // so this is percent of total
-        return (exponent / 1e16);
-    }
-
-
-
-    function getRewardsMultiplier(uint256 tokenId) public view returns (uint256) {
-        // will be 0 for a token that is not staked
-        return rewardsMultipliers[tokenId];
-    }
-
     ////////////////////////////////////
     /* Internal Staking Functions */
     ////////////////////////////////////
 
-    // TODO 256 for lock period? only need values [1, 365] days
-    // 86400s in a day, CREATE UNLOCK TIMESTAMP from this
     function _stake(uint256 tokenId, string memory tokenUri, uint256 lockPeriod) internal {
-        if (lockPeriod == 0) {
-          // because tokenId is unique we dont need a specific stakeId
-            rewardsMultipliers[tokenId] = 1;
-        } else {
-            uint256 inSeconds = lockPeriod * 86400;
-            uint256 unlockTimestamp = block.timestamp + inSeconds;
-            // this number is WHEN they can unlock
-            rewardsMultipliers[tokenId];
-        }
+        Staker storage staker = tokenStakers[msg.sender];
 
-        // Mark when the token was staked. This is needed for future calculations of RM
-        stakedTimestamps[tokenId] = block.timestamp;
+        staker.stakedTimestamps[tokenId] = block.timestamp;
+        staker.lockDurations[tokenId] = lockPeriod;
+
+        ++staker.amountStaked;
+
+        staker.tokenIds.push(tokenId);
+        staker.lastUpdatedTimestamp = block.timestamp;
 
         // Transfer their NFT to this contract
         IERC721(stakingToken).safeTransferFrom(
@@ -291,7 +270,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         emit Staked(msg.sender, tokenId, stakingToken);
     }
 
-    function _unstake(uint256 tokenId) internal onlySNFTOwner(tokenId) {
+    function _unstake(
+        uint256 tokenId
+    ) internal onlySNFTOwner(tokenId) {
         _burn(tokenId);
         --_totalSupply;
 

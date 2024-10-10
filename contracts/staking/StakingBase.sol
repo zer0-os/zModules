@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingBase } from "./IStakingBase.sol";
 
+import { console } from "hardhat/console.sol";
 
 /**
  * @title StakingBase
@@ -16,10 +17,39 @@ import { IStakingBase } from "./IStakingBase.sol";
 contract StakingBase is Ownable, IStakingBase {
     using SafeERC20 for IERC20;
 
+    // mapping of when a token was staked
+    // mapping(uint256 tokenId => uint256 timestamp) public stakedTimestamps;
+
+    // mapping of how long a token is locked for
+    // mapping(uint256 tokenId => uint256 lockDuration) public lockDurations;
+
+    // TODO may also have to record last claim time for a user, otherwise each claim is from beginning
+
+    // modifier onlyUnlocked(uint256 tokenId) {
+    //     if (stakedTimestamps[tokenId] + lockDurations[tokenId] < block.timestamp) {
+    //         revert TimeLockNotPassed();
+    //     }
+    //     _;
+    // }
+
+    struct Staker {
+        uint256 amountStaked;
+        uint256 lastUpdatedTimestamp;
+        uint256[] tokenIds; // for indexing when bulk claiming / revoking
+        mapping(uint256 tokenId => uint256 stakedTimestamp) stakedTimestamps;
+        mapping(uint256 tokenId => uint256 lockDuration) lockDurations;
+    }
+
+    function getStakedTimestamp() external view returns (uint256) {
+        return tokenStakers[msg.sender].tokenIds.length;
+    }
+
+    mapping(address user => Staker tokenStaker) public tokenStakers;
+
     /**
      * @notice Mapping of each staker to that staker's data in the `Staker` struct
      */
-    mapping(address staker => Staker stakerData) public stakers;
+    // mapping(address staker => Staker stakerData) public stakers;
 
     /**
      * @notice The staking token for this pool
@@ -72,11 +102,13 @@ contract StakingBase is Ownable, IStakingBase {
      */
     function claim() external override {
         // Require the time lock to have passed
-        Staker storage staker = stakers[msg.sender];
+        Staker storage staker = tokenStakers[msg.sender];
 
-        _onlyUnlocked(staker.unlockTimestamp);
         _baseClaim(staker);
     }
+
+    // TODO only have either claim(tokenId) or claimAll(), it will mess with last updated timestamp otherwise
+    // unless we have lastClaimedTimestamp as part of stake data?
 
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
@@ -97,19 +129,20 @@ contract StakingBase is Ownable, IStakingBase {
      */
     function getRemainingLockTime() external view override returns (uint256) {
         // Return the time remaining for the stake to be claimed or unstaked
-        Staker memory staker = stakers[msg.sender];
-        if (block.timestamp > staker.unlockTimestamp) {
-            return 0;
-        }
+        // TODO fix
+        // Staker storage staker = stakers[msg.sender];
+        // if (block.timestamp > staker.unlockTimestamp) {
+        //     return 0;
+        // }
 
-        return staker.unlockTimestamp - block.timestamp;
+        // return staker.unlockTimestamp - block.timestamp;
     }
 
     /**
      * @notice View the pending rewards balance for a user
      */
-    function getPendingRewards() external view override returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender]);
+    function getPendingRewards(uint256 tokenId) external view returns (uint256) { // TODO return override
+        return _getPendingRewards(tokenId);
     }
 
     /**
@@ -129,53 +162,93 @@ contract StakingBase is Ownable, IStakingBase {
     ////////////////////////////////////
 
     function _checkRewards(Staker storage staker) internal {
-        if (staker.amountStaked > 0) {
-            // It isn't their first stake, snapshot pending rewards
-            staker.owedRewards = _getPendingRewards(staker);
-        } else {
-            // Log the time at which this stake becomes claimable or unstakable
-            // This is only done once per user
-            staker.unlockTimestamp = block.timestamp; // + timeLockPeriod;
-        }
+        // if (staker.amountStaked > 0) {
+        //     // It isn't their first stake, snapshot pending rewards
+        //     staker.owedRewards = _getPendingRewards(staker);
+        // } else {
+        //     // Log the time at which this stake becomes claimable or unstakable
+        //     // This is only done once per user
+        //     staker.unlockTimestamp = block.timestamp; // + timeLockPeriod;
+        // }
     }
 
     function _baseClaim(Staker storage staker) internal {
-        uint256 rewards = _getPendingRewards(staker);
+        uint256 rewards = 0;
+
+        // iterate over all tokenIds in the staker struct
+        // if token is unlocked, calculate rewards accrued between lastUpdatedtimestamp and now at X rate
+        // mark lastUpdatedTimestamp as now
+        // add rewards to total rewards, transfer
+        uint256 i;
+        for (i; i < staker.tokenIds.length;) {
+            uint256 tokenId = staker.tokenIds[i];
+
+            uint256 unlockedTimestamp = staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId];
+
+            // Do not distribute rewards for stakes that are still locked
+            if (unlockedTimestamp > block.timestamp) {
+                continue;
+            }
+            uint256 secondsPerDay = 86400;
+            uint256 secondsPerYear = secondsPerDay * 365;
+
+            rewards += 
+                rewardsPerPeriod * 5**((block.timestamp - staker.stakedTimestamps[tokenId]) / secondsPerYear) / periodLength;
+
+            unchecked {
+                ++i;
+            }
+        }
 
         staker.lastUpdatedTimestamp = block.timestamp;
-        staker.owedRewards = 0;
+        // staker.owedRewards = 0;
 
         // Disallow rewards when balance is 0
         if (_getContractRewardsBalance() == 0) {
             revert NoRewardsLeftInContract();
         }
 
-        rewardsToken.safeTransfer(msg.sender, rewards);
+        // rewardsToken.safeTransfer(msg.sender, rewards);
 
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
+        // emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
     function _getPendingRewards(
-        Staker memory staker
+        uint256 tokenId
     ) internal view returns (uint256) {
+        Staker storage staker = tokenStakers[msg.sender];
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
-        return
-            staker.owedRewards +
-            (rewardsPerPeriod *
-                staker.amountStaked *
-                ((block.timestamp - staker.lastUpdatedTimestamp) /
-                    periodLength));
+        // TODO figure out for just one stake first
+
+        // seconds in a day * days per year
+        uint256 secondsPerYear = 86400 * 365;
+
+        console.log("rpp", rewardsPerPeriod);
+        console.log("timeStaked", staker.stakedTimestamps[tokenId]);
+        console.log("block.timestamp", block.timestamp);
+        console.log("periodLength", periodLength);
+        console.log("periods passed", (block.timestamp - staker.stakedTimestamps[tokenId]) / periodLength);
+
+        // will be in seconds, divide to be in days
+        uint256 lengthOfStakeInDays = (block.timestamp - staker.stakedTimestamps[tokenId]) / 86400;
+        uint256 lockDurationInSeconds = staker.lockDurations[tokenId] * 86400;
+
+        // linear function for stakes that didn't lock
+
+        // ax^2 + bx + c
+        // return lengthOfStakeInDays * rewardsPerPeriod^(2 + (lockDurationInSeconds / secondsPerYear));
+        // return lockDurationInSeconds * rewardsPerPeriod**2 + 2 * lengthOfStakeInDays;
+        return rewardsPerPeriod * lengthOfStakeInDays**(2) * 1e16; // 1e16 is scalar here, make this scalar adjustable
+        // if did not lock, just return rewardsPerPeriod * lengthOfStakeInDays
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {
         return rewardsToken.balanceOf(address(this));
     }
 
-    function _onlyUnlocked(uint256 unlockTimestamp) internal view {
-        // User is not staked or has not passed the time lock
-        if (unlockTimestamp == 0 || block.timestamp < unlockTimestamp) {
-            revert TimeLockNotPassed();
-        }
-    }
+    // function _onlyUnlocked(Staker memory staker, uint256 tokenId) internal view {
+    //     // User is not staked or has not passed the time lock
+        
+    // }
 }
