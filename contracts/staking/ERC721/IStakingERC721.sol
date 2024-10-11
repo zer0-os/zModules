@@ -45,16 +45,27 @@ interface IStakingERC721 is IERC721Receiver {
     error InvalidOwner();
 
     /**
+     * @notice Throw when call to unstake makes no changes
+     */
+    error InvalidUnstake();
+
+    /**
      * @notice Throw when trying to transfer the representative sNFT
      */
     error NonTransferrableToken();
+
+    function stakeWithLock(
+        uint256[] calldata tokenIds,
+        string[] calldata tokenUris,
+        uint256[] calldata lockPeriods
+    ) external;
 
     function stakeWithoutLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenURIs
     ) external;
 
-    function unstake(uint256[] memory tokenIds) external;
+    function unstake(uint256[] memory tokenIds, bool exit) external;
 
     function unstakeAll(bool exit) external;
 

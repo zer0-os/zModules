@@ -94,7 +94,7 @@ describe("StakingERC721", () => {
       config.stakingToken,
       config.rewardsToken,
       config.rewardsPerPeriod,
-      config.periodLength,
+      // config.periodLength,
       // config.timeLockPeriod,
       owner.address
     ) as StakingERC721;
@@ -116,7 +116,7 @@ describe("StakingERC721", () => {
   });
 
   it.only("calcs correctly", async () => {
-    const lock = 28n * DAY_IN_SECONDS;
+    const lock = 10n * DAY_IN_SECONDS;
 
     await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [lock]);
 
@@ -139,16 +139,16 @@ describe("StakingERC721", () => {
     console.log("before: ", balanceBefore)
     console.log("after: ", balanceAfter);
 
-    // await time.increase(lock / 2n);
+    await time.increase(lock / 2n);
 
-    // const unstakeBalBefore = await rewardToken.balanceOf(stakerA.address);
+    const unstakeBalBefore = await rewardToken.balanceOf(stakerA.address);
 
-    // await stakingERC721.connect(stakerA).unstakeAll(false);
+    await stakingERC721.connect(stakerA).unstakeAll(false);
 
-    // const unstakeBalAfter = await rewardToken.balanceOf(stakerA.address);
+    const unstakeBalAfter = await rewardToken.balanceOf(stakerA.address);
 
-    // console.log("before: ", unstakeBalBefore);
-    // console.log("after: ", unstakeBalAfter);
+    console.log("before: ", unstakeBalBefore);
+    console.log("after: ", unstakeBalAfter);
 
     // move time forward and unstake
     

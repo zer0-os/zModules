@@ -17,6 +17,11 @@ import { console } from "hardhat/console.sol";
 contract StakingBase is Ownable, IStakingBase {
     using SafeERC20 for IERC20;
 
+    /**
+     * @notice The multiplier multiplier used in rewards calculations
+     */
+    uint256 MULTIPLIER = 1e16;
+
     // mapping of when a token was staked
     // mapping(uint256 tokenId => uint256 timestamp) public stakedTimestamps;
 
@@ -32,6 +37,30 @@ contract StakingBase is Ownable, IStakingBase {
     //     _;
     // }
 
+
+
+
+    /**
+     * TODO Resolve
+     * 
+     * Rewards could be done several ways. Two options are
+     * 
+     * 1) A rewards multiplier is calculated when a user stakes. The value is exponential and 
+     * based on their lock duration. e.g. Lock 10 = RM 2, lock 20 = RM 5
+     * 
+     * 2) Rewards themselves are on an exponential curve. This means if you lock for any amount
+     * of time you are on this curve, but your rewards increase at marginally increasing rate
+     * so if you stake for 10 then claim you get x, but if you wait until 20 to claim you get 
+     * more than 2x.
+     * 
+     * Effectively these are similar but the difference is in follow up claims or unstakes
+     * 
+     *    In 1) a second claim regardless of how long would always use the RM for that stake
+     * but in 2)
+     */
+
+
+
     struct Staker { 
         // TODO maybe these mappings should be independent state variables?
         // reduce the need for passing the Staker struct around
@@ -39,6 +68,7 @@ contract StakingBase is Ownable, IStakingBase {
         // make 2D mappings ? address => tokenId => data
         uint256 amountStaked;
         uint256[] tokenIds; // for indexing when bulk claiming / revoking
+        mapping(uint256 tokenId => uint256 rewardsMultiplier) rewardsMultipliers;
         mapping(uint256 tokenId => uint256 stakedTimestamp) stakedTimestamps;
         mapping(uint256 tokenId => uint256 lockDuration) lockDurations;
         mapping(uint256 tokenId => uint256 lastClaimedTimestamp) lastClaimedTimestamps;
@@ -70,10 +100,10 @@ contract StakingBase is Ownable, IStakingBase {
      */
     uint256 public immutable rewardsPerPeriod;
 
-    /**
-     * @notice The length of a time period
-     */
-    uint256 public immutable periodLength;
+    // /**
+    //  * @notice The length of a time period
+    //  */
+    // uint256 public immutable periodLength;
 
     // /**
     //  * @notice The amount of time required to pass to be able to claim or unstake
@@ -84,20 +114,20 @@ contract StakingBase is Ownable, IStakingBase {
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
-        uint256 _periodLength, // TODO also have max # periods? e.g. 365 days
+        // uint256 _periodLength, // TODO also have max # periods? e.g. 365 days
         address _contractOwner
     ) Ownable(_contractOwner) {
         if (
             _stakingToken.code.length == 0 ||
             address(_rewardsToken).code.length == 0 ||
-            _rewardsPerPeriod == 0 ||
-            _periodLength == 0
+            _rewardsPerPeriod == 0
+            // _periodLength == 0
         ) revert InitializedWithZero();
 
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
-        periodLength = _periodLength;
+        // periodLength = _periodLength;
         // timeLockPeriod = _timeLockPeriod;
     }
 
@@ -174,6 +204,15 @@ contract StakingBase is Ownable, IStakingBase {
         return _getContractRewardsBalance();
     }
 
+    function setMultiplier(uint256 _multiplier) public onlyOwner {
+        MULTIPLIER = _multiplier;
+        // TODO emit ScalarSet
+    }
+
+    function getScalar() public view returns (uint256) {
+        return MULTIPLIER;
+    }
+
     ////////////////////////////////////
     /* Internal Functions */
     ////////////////////////////////////
@@ -209,13 +248,11 @@ contract StakingBase is Ownable, IStakingBase {
             revert CannotClaim();
         }
 
-
         rewards = _getPendingRewards(tokenId, true);
 
-        // if we adjust before _getPendingRewards, we get 0 rewards
-        // if we adjust after, reentrancy
+        console.log("new pending rewards", rewards);
 
-        // staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
 
         if (_getContractRewardsBalance() < rewards) {
             revert NoRewardsLeftInContract();
@@ -237,16 +274,19 @@ contract StakingBase is Ownable, IStakingBase {
         // seconds in a day * days per year
         uint256 secondsPerYear = 86400 * 365;
 
-        console.log("rpp", rewardsPerPeriod);
-        console.log("timeStaked", staker.stakedTimestamps[tokenId]);
-        console.log("block.timestamp", block.timestamp);
-        console.log("periodLength", periodLength);
-        console.log("periods passed", (block.timestamp - staker.stakedTimestamps[tokenId]) / periodLength);
+        // console.log("rpp", rewardsPerPeriod);
+        // console.log("timeStaked", staker.stakedTimestamps[tokenId]);
+        // console.log("block.timestamp", block.timestamp);
+        // console.log("periodLength", periodLength);
+        // console.log("periods passed", (block.timestamp - staker.stakedTimestamps[tokenId]) / periodLength);
 
         // will be in seconds, divide to be in days
         // On first claim, `lastClaimedTimestamps` for a token will be the same as its stake timestamp
         uint256 timeSinceLastClaim = (block.timestamp - staker.lastClaimedTimestamps[tokenId]) / 86400;
         uint256 lockDuration = staker.lockDurations[tokenId];
+
+
+        // maybe always calc from start but if lastClaim != start
 
         // If we are reading pending rewards from the `_baseClaim` flow, we update last claimed timestamp
         // if (isClaim) {
@@ -257,10 +297,11 @@ contract StakingBase is Ownable, IStakingBase {
         // TODO make 1e16 scalar an adjustable state variable
         if (lockDuration == 0) {
             // Linear rewards for those who didn't lock their stake
-            return rewardsPerPeriod * timeSinceLastClaim * 1e16;
+            return rewardsPerPeriod * timeSinceLastClaim * MULTIPLIER;
         } else {
             // Exponential rewards for those that did
-            return rewardsPerPeriod * timeSinceLastClaim**(2) * 1e16;
+            // TODO maybe use this number to create a multiplier we can always use in the future?
+            return rewardsPerPeriod * timeSinceLastClaim**(2) * MULTIPLIER;
         }
 
         // return lengthOfStakeInDays * rewardsPerPeriod^(2 + (lockDurationInSeconds / secondsPerYear));
@@ -272,8 +313,11 @@ contract StakingBase is Ownable, IStakingBase {
         return rewardsToken.balanceOf(address(this));
     }
 
+    function _checkUnlocked(Staker storage staker, uint256 tokenId) internal view returns (bool) {
+        return staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] < block.timestamp;
+    }
     function _onlyUnlocked(Staker storage staker, uint256 tokenId) internal view {
-        if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] < block.timestamp) {
+        if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
             revert TimeLockNotPassed();
         }
     }

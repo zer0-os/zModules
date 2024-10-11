@@ -9,7 +9,9 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 
 // import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { Math } from "./Math.sol";
+import { Math } from "./Math.sol"; // TODO need?
+
+import { console } from "hardhat/console.sol";
 
 
 /**
@@ -30,25 +32,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      */
     uint256 internal _totalSupply;
 
-    
-
-    // stake
-    //  set when it was staked
-    //  set how long it will be locked
-
-    // claim
-    //  set when it was claimed
-
-    // unstake
-    //  unset when it was staked
-    //  unset how long it will be locked
-
-    // mapping(address user => ERC721Staker) public tokenStakers;
-    // TODO consider joining these mappings into a single struct since they both index
-    // from tokenId
-
-    // only the owner of a stake holds the sNFT, no need to store owner
-
     /**
      * @dev Revert if a call is not from the SNFT owner
      */
@@ -66,7 +49,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
-        uint256 _periodLength,
+        // uint256 _periodLength,
         address _contractOwner
     )
         ERC721(name, symbol)
@@ -74,7 +57,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             _stakingToken,
             _rewardsToken,
             _rewardsPerPeriod,
-            _periodLength,
+            // _periodLength,
             _contractOwner
         )
     {
@@ -84,30 +67,18 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     }
 
     /**
-     * user stakes without lock with no existing stakes
-     * user stakes without lock with existing stakes
-     * user stakes with lock with no existing stakes
-     * user stakes with lock with existing stakes
+     * @notice Stake one or more ERC721 tokens with a lock period
+     * @dev These are two separate functions intentionally for the sake of user clarity
      * 
-     * stakes have to be uniquely identifiable,. need stakeID or similar in mapping to RM
-     * 
-     *  user specifies how many days to lock for, we calc future timestamp of when that is
-     * then RM is some value based on that, positively correlated so bigger lock == bigger RM
+     * @param tokenIds The id(s) of the tokens to stake
+     * @param tokenUris The associated metadata URIs of the tokens to stake
+     * @param lockPeriods The lock durations, in seconds, for each token
      */
-
-    
     function stakeWithLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,
-        uint256[] calldata lockPeriods // in days or in s? probably easier coming in as days
-    ) external {
-        // Stake with lock period and receive RM > 1 (not sure how value is done yet)
-        // Staker storage staker = stakers[msg.sender];
-
-        // do we still process rewards when 0 stake lock?
-        // if so we neeed to check everu past stake to see if 0 lock time stake exists
-        // _checkRewards(staker);
-
+        uint256[] calldata lockPeriods
+    ) external override {
         uint256 i;
         for (i; i < tokenIds.length;) {
             _stake(tokenIds[i], tokenUris[i], lockPeriods[i]);
@@ -119,7 +90,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     }
 
     /**
-     * @notice Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in return
+     * @notice Stake one or more ERC721 tokens without a lock period
+     * @dev These are two separate functions intentionally for the sake of user clarity
+     * 
      * @param tokenIds Array of tokenIds to be staked by the caller
      * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used!
      */
@@ -127,10 +100,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256[] calldata tokenIds,
         string[] calldata tokenUris
     ) external override {
-        // TODO do we still process rewards when 0 stake lock?
-        // if so we neeed to check every past stake to see if 0 lock time stake exists
-        // _checkRewards(staker);
-
         uint256 i;
         for (i; i < tokenIds.length;) {
             _stake(tokenIds[i], tokenUris[i], 0);
@@ -146,87 +115,25 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Unstake one or more specific ERC721 tokens
      * @param tokenIds Array of tokenIds to be unstaked by the caller
      */
-    function unstake(uint256[] memory tokenIds) external override {
-        // onlySNFTOwner
-        // onlyUnlocked
-
-        // Staker storage staker = stakers[msg.sender];
-
-        // // if (!exit) _onlyUnlocked(staker.unlockTimestamp);
-
-        // uint256 i;
-        // for (i; i < tokenIds.length;) {
-        //     _unstake(tokenIds[i]);
-
-        //     unchecked {
-        //         ++i;
-        //     }
-        // }
-
-        // if (!exit) {
-        //     _baseClaim(staker);
-        // } else {
-        //     // Snapshot their pending rewards
-        //     staker.owedRewards = _getPendingRewards(staker);
-        // }
-
-        // if `numStaked < tokenIds.length` it will have already failed above
-        // so we don't need to check that here
-        // staker.amountStaked -= tokenIds.length;
-
-        // if (staker.amountStaked == 0) {
-        //     delete stakers[msg.sender];
-        // } else {
-        // }
+    function unstake(
+        uint256[] memory tokenIds,
+        bool exit
+    ) external override {
+        _unstakeMany(tokenIds, exit);
     }
 
     /**
-     * @notice Unstake all the staked tokens associated with the calling user
-     * @dev Will fail if caller does not own the sNFT created when staking
-     * @param exit If exit is `true`, also unstake tokens that are still locked and forego
-     * any rewards for them
+     * @notice Unstake all the tokens staked by a user, unless they are still locked.
+     * 
+     * @dev If the caller does not own the sNFT for a stake it will fail.
+     * @param exit Flag for unstaking a token regardless of if it is unlocked or not. 
+     * if a token is not unlocked but `exit` is true, it will be unstaked without reward
      */
     function unstakeAll(bool exit) public {
-        Staker storage staker = tokenStakers[msg.sender];
-
-        uint256 i;
-        for(i; i < staker.tokenIds.length;) {
-
-            uint256 tokenId = staker.tokenIds[i];
-
-            // Should only transfer if token is unlocked
-            // If exit is true, we go ahead with unstake regardless of lock or not
-            // _baseClaim(tokenId, staker, exit);
-
-            /**
-             * if token is unlocked
-             *   claim
-             *   unstake
-             * else
-             *   if (exit)
-             *     unstake anyways
-             * 
-             */
-
-            //TODO = block timestamp in places? verify this, could be weird case because we only use
-            // > or < in checks throughout these contracts
-
-            // If the token is unlocked, claim and unstake
-            if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
-                _baseClaim(tokenId, staker);
-                _unstake(tokenId);
-            } else if (exit) { // if not unlocked but `exit` is true, unstake
-                _unstake(tokenId);
-            }
-
-            unchecked {
-                ++i;
-            }
-        }
+        // Pull list of tokenIds from caller internally and just provide empty array
+        uint256[] memory temp;
+        _unstakeMany(temp, exit);
     }
-
-    // TODO unstakeAll (that are available) and also unstakeAll with forfeiting some rewards?
-    // TODO provide unstakeMany that loops unstake with array of tokenIds
 
 
     ////////////////////////////////////
@@ -300,6 +207,48 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _safeMint(msg.sender, tokenId, tokenUri);
 
         emit Staked(msg.sender, tokenId, stakingToken);
+    }
+
+    function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
+        Staker storage staker = tokenStakers[msg.sender];
+
+        // Use the staker's list of tokenIds if none are given
+        uint256[] memory tokenIds = _tokenIds.length > 0 ? _tokenIds : staker.tokenIds;
+
+        uint256 amountBefore = staker.amountStaked;
+
+        uint256 i;
+        for(i; i < tokenIds.length;) {
+
+            // If the token is unlocked, claim and unstake
+            if (_checkUnlocked(staker, tokenIds[i])) {
+                _baseClaim(tokenIds[i], staker);
+                _unstake(tokenIds[i]);
+                --staker.amountStaked;
+            } else if (exit) {
+                // if `exit` is true we unstake anyways without reward
+                _unstake(tokenIds[i]);
+                --staker.amountStaked;
+            }
+
+            // If the token is not unlocked and we are not exitting, no action is taken
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        // It is possible for a user to call this function with no unlocked stakes and with exit set to false
+        // This will result in a successfull tx that has no change, so to avoid allowing the user to do this we
+        // revert here. This will be read by any systems that try to call `estimateGas` and fail appropriately
+        if (staker.amountStaked == amountBefore) {
+            revert InvalidUnstake();
+        }
+
+        // If call was a complete exit, delete the staker struct for this user as well
+        if (staker.amountStaked == 0) {
+            delete tokenStakers[msg.sender];
+        }
     }
 
     function _unstake(

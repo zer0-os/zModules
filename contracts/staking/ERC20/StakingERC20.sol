@@ -85,15 +85,12 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
-        uint256 _periodLength,
-        // uint256 _timeLockPeriod,
         address contractOwner
     )
         StakingBase(
             _stakingToken,
             _rewardsToken,
             _rewardsPerPeriod,
-            _periodLength,
             contractOwner
         )
     {}
