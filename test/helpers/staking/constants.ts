@@ -6,8 +6,7 @@ export const DEFAULT_STAKE_ERC721 = 1;
 export const DEFAULT_STAKE_ERC20 = 1;
 
 export const DEFAULT_REWARDS_PER_PERIOD = 10n;
-export const DEFAULT_PERIOD_LENGTH = 17n;
-export const DEFAULT_LOCK_TIME = 189n; // timestamp values
+export const DEFAULT_LOCK_PERIOD = 10n;
 
 // Events
 export const STAKED_EVENT = "Staked";

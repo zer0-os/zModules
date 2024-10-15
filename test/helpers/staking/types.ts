@@ -7,8 +7,6 @@ export interface BaseConfig {
   stakingToken : string;
   rewardsToken : string;
   rewardsPerPeriod : bigint;
-  periodLength : bigint; // length of a single rewards period
-  timeLockPeriod : bigint; // The length of the time lock in seconds
 }
 
 // Simplify the Ethers V6 contract type

@@ -8,8 +8,6 @@ import {
 } from "./types";
 
 import {
-  DEFAULT_LOCK_TIME,
-  DEFAULT_PERIOD_LENGTH,
   DEFAULT_REWARDS_PER_PERIOD,
 } from "./constants";
 
@@ -23,16 +21,12 @@ export const createDefaultConfigs = async (
       stakingToken: await erc721.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
-      periodLength: DEFAULT_PERIOD_LENGTH,
-      timeLockPeriod: DEFAULT_LOCK_TIME,
     } as BaseConfig;
   } else if (stakeERC20) {
     return {
       stakingToken: await stakeERC20.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
-      periodLength: DEFAULT_PERIOD_LENGTH,
-      timeLockPeriod: DEFAULT_LOCK_TIME,
     } as BaseConfig;
   }
 

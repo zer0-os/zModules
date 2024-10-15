@@ -8,9 +8,7 @@ import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extension
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 
-// import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { Math } from "./Math.sol"; // TODO need?
-
+// TODO remove when complete
 import { console } from "hardhat/console.sol";
 
 
@@ -21,7 +19,6 @@ import { console } from "hardhat/console.sol";
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
-    using Math for uint256;
     /**
      * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
      */
@@ -49,7 +46,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
-        // uint256 _periodLength,
         address _contractOwner
     )
         ERC721(name, symbol)
@@ -57,7 +53,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             _stakingToken,
             _rewardsToken,
             _rewardsPerPeriod,
-            // _periodLength,
             _contractOwner
         )
     {
@@ -123,7 +118,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     }
 
     /**
-     * @notice Unstake all the tokens staked by a user, unless they are still locked.
+     * @notice Unstake all the tokens staked by a user unless they are locked and `exit` is false
      * 
      * @dev If the caller does not own the sNFT for a stake it will fail.
      * @param exit Flag for unstaking a token regardless of if it is unlocked or not. 
@@ -188,8 +183,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     ////////////////////////////////////
 
     function _stake(uint256 tokenId, string memory tokenUri, uint256 lockPeriod) internal {
-        Staker storage staker = tokenStakers[msg.sender];
+        Staker storage staker = stakers[msg.sender];
 
+        // TODO do we need to hold on to original staked timestamp?
         staker.stakedTimestamps[tokenId] = block.timestamp;
         staker.lastClaimedTimestamps[tokenId] = block.timestamp;
         staker.lockDurations[tokenId] = lockPeriod;
@@ -210,7 +206,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     }
 
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
-        Staker storage staker = tokenStakers[msg.sender];
+        Staker storage staker = stakers[msg.sender];
 
         // Use the staker's list of tokenIds if none are given
         uint256[] memory tokenIds = _tokenIds.length > 0 ? _tokenIds : staker.tokenIds;
@@ -231,23 +227,22 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 --staker.amountStaked;
             }
 
-            // If the token is not unlocked and we are not exitting, no action is taken
-
             unchecked {
                 ++i;
             }
         }
 
-        // It is possible for a user to call this function with no unlocked stakes and with exit set to false
+        // If the token is not unlocked and user is not exiting, no action is taken
         // This will result in a successfull tx that has no change, so to avoid allowing the user to do this we
-        // revert here. This will be read by any systems that try to call `estimateGas` and fail appropriately
+        // revert here. This will be read by any systems that tries to call `estimateGas` and fail appropriately
+        // ahead of time so the user avoids wasting funds here
         if (staker.amountStaked == amountBefore) {
             revert InvalidUnstake();
         }
 
         // If call was a complete exit, delete the staker struct for this user as well
         if (staker.amountStaked == 0) {
-            delete tokenStakers[msg.sender];
+            delete stakers[msg.sender];
         }
     }
 

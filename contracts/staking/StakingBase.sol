@@ -22,13 +22,13 @@ contract StakingBase is Ownable, IStakingBase {
      */
     uint256 MULTIPLIER = 1e16;
 
-    // mapping of when a token was staked
-    // mapping(uint256 tokenId => uint256 timestamp) public stakedTimestamps;
+    /**
+     * @notice Mapping of each staker to that staker's data in the `Staker` struct
+     */
+    mapping(address user => Staker staker) public stakers;
 
-    // mapping of how long a token is locked for
-    // mapping(uint256 tokenId => uint256 lockDuration) public lockDurations;
-
-    // TODO may also have to record last claim time for a user, otherwise each claim is from beginning
+    // TODO still want to use this?
+    // could do stakers[msg.sender].stakedTimestamps[tokenId]
 
     // modifier onlyUnlocked(uint256 tokenId) {
     //     if (stakedTimestamps[tokenId] + lockDurations[tokenId] < block.timestamp) {
@@ -58,32 +58,6 @@ contract StakingBase is Ownable, IStakingBase {
      *    In 1) a second claim regardless of how long would always use the RM for that stake
      * but in 2)
      */
-
-
-
-    struct Staker { 
-        // TODO maybe these mappings should be independent state variables?
-        // reduce the need for passing the Staker struct around
-        // but also having them in this struct means not having to check ownership repeatedly
-        // make 2D mappings ? address => tokenId => data
-        uint256 amountStaked;
-        uint256[] tokenIds; // for indexing when bulk claiming / revoking
-        mapping(uint256 tokenId => uint256 rewardsMultiplier) rewardsMultipliers;
-        mapping(uint256 tokenId => uint256 stakedTimestamp) stakedTimestamps;
-        mapping(uint256 tokenId => uint256 lockDuration) lockDurations;
-        mapping(uint256 tokenId => uint256 lastClaimedTimestamp) lastClaimedTimestamps;
-    }
-
-    function getStakedTimestamp() external view returns (uint256) {
-        return tokenStakers[msg.sender].tokenIds.length;
-    }
-
-    mapping(address user => Staker tokenStaker) public tokenStakers;
-
-    /**
-     * @notice Mapping of each staker to that staker's data in the `Staker` struct
-     */
-    // mapping(address staker => Staker stakerData) public stakers;
 
     /**
      * @notice The staking token for this pool
@@ -135,7 +109,7 @@ contract StakingBase is Ownable, IStakingBase {
      * @notice Claim rewards for the calling user based on their staked amount
      */
     function claimAll() external override {
-        Staker storage staker = tokenStakers[msg.sender];
+        Staker storage staker = stakers[msg.sender];
 
         uint256 i;
         for (i; i < staker.tokenIds.length;) {
@@ -172,7 +146,7 @@ contract StakingBase is Ownable, IStakingBase {
     function getRemainingLockTime(uint256 tokenId) external view override returns (uint256) {
         // Return the time remaining for the stake to be claimed or unstaked
         // TODO fix
-        Staker storage staker = tokenStakers[msg.sender];
+        Staker storage staker = stakers[msg.sender];
 
         uint256 stakedTimestamp = staker.stakedTimestamps[tokenId];
 
@@ -188,29 +162,48 @@ contract StakingBase is Ownable, IStakingBase {
     /**
      * @notice View the pending rewards balance for a user
      */
-    function getPendingRewards(uint256 tokenId) external view returns (uint256) { // TODO return override
+    function getPendingRewards(uint256 tokenId) external view override returns (uint256) {
         return _getPendingRewards(tokenId, false);
     }
 
     /**
      * @notice View the rewards balance in this pool
      */
-    function getContractRewardsBalance()
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getContractRewardsBalance() external view override returns (uint256) {
         return _getContractRewardsBalance();
     }
 
     function setMultiplier(uint256 _multiplier) public onlyOwner {
         MULTIPLIER = _multiplier;
-        // TODO emit ScalarSet
+        // TODO emit MultiplierSet
     }
 
-    function getScalar() public view returns (uint256) {
+    function getMultiplier() public view override returns (uint256) {
         return MULTIPLIER;
+    }
+
+    // Staker getters
+    // ERC721 specific staker getter funcs
+    // TODO ERC20 same funcs if we create sNFT the same way
+
+    function getAmountStaked() public view override returns(uint256) {
+        return stakers[msg.sender].amountStaked;
+    }
+
+    function getStakedTokenIds() public view override returns(uint256[] memory) {
+        return stakers[msg.sender].tokenIds;
+    }
+
+    function getLockDuration(uint256 tokenId) public view override returns (uint256) {
+        return stakers[msg.sender].lockDurations[tokenId];
+    }
+
+    function getStakedTimestamp(uint256 tokenId) public view override returns (uint256) {
+        return stakers[msg.sender].stakedTimestamps[tokenId];
+    }
+
+    function getlastClaimedTimestamp(uint256 tokenId) public view override returns (uint256) {
+        return stakers[msg.sender].lastClaimedTimestamps[tokenId];
     }
 
     ////////////////////////////////////
@@ -266,7 +259,7 @@ contract StakingBase is Ownable, IStakingBase {
         uint256 tokenId,
         bool isClaim
     ) internal view returns (uint256) {
-        Staker storage staker = tokenStakers[msg.sender];
+        Staker storage staker = stakers[msg.sender];
         // Return any existing pending rewards value plus the
         // calculated rewards based on the last updated timestamp
         // TODO figure out for just one stake first

@@ -7,17 +7,33 @@ pragma solidity ^0.8.20;
  * @notice Interface for the base staking contract
  */
 interface IStakingBase {
+
     /**
-     * @notice Struct to track a set of data for each staker
-     * @param unlockTimestamp The timestamp at which the stake can be unstaked
-     * @param owedRewards The amount of rewards snapshotted and not yet paid to the user
-     * @param amountStaked The amount of token(s) staked by the user
+     * @notice Struct to track an individual staker's data
      */
-    // struct Staker { // TODO Staker struct might need to be different for ERC20 and ERC721
-    //     uint256 unlockTimestamp; // TODO this is now per stake
-    //     uint256 owedRewards; // TODO dont think we need this anymore
-    //     uint256 amountStaked;
-    // }
+    struct Staker {
+        // TODO this will be different for ERC20, need different structs?
+        // TODO maybe these mappings should be independent state variables?
+        // reduce the need for passing the Staker struct around
+        // but also having them in this struct means not having to check ownership repeatedly
+        // make 2D mappings ? address => tokenId => data
+        uint256 amountStaked;
+        uint256[] tokenIds; // for indexing when bulk claiming / revoking
+
+        // TODO maybe for ERC20 we can create an sNFT for staker mappings
+        // as each stake will have to be unique now, lock is per stake not
+        // per user anymore
+        mapping(uint256 tokenId => uint256 lockDuration) lockDurations;
+        mapping(uint256 tokenId => uint256 stakedTimestamp) stakedTimestamps;
+        mapping(uint256 tokenId => uint256 lastClaimedTimestamp) lastClaimedTimestamps;
+    }
+
+    // TODO gas implications of having one struct with mappings etc.
+    // looks about the same from reading online
+    // one mapping and struct vs several 2D mappings
+    // one mapping == no ownership checks
+    // but 2d mappings have the same thing if they are mapped by address?
+    // main difference is number of state variables
 
     /**
      * @notice Emitted when the contract owner withdraws leftover rewards
@@ -70,7 +86,21 @@ interface IStakingBase {
 
     function withdrawLeftoverRewards() external;
 
-    // function getPendingRewards() external view returns (uint256);
+    function getPendingRewards(uint256 tokenId) external view returns (uint256);
 
     function getContractRewardsBalance() external view returns (uint256);
+
+    function setMultiplier(uint256 _multiplier) external;
+
+    function getMultiplier() external view returns (uint256);
+
+    function getAmountStaked() external view returns (uint256);
+
+    function getStakedTokenIds() external view returns(uint256[] memory);
+
+    function getLockDuration(uint256 tokenId) external view returns (uint256);
+
+    function getStakedTimestamp(uint256 tokenId) external view returns (uint256);
+
+    function getlastClaimedTimestamp(uint256 tokenId) external view returns (uint256);
 }

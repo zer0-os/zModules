@@ -9,6 +9,7 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
  * @notice Interface for the StakingERC721 contract
  */
 interface IStakingERC721 is IERC721Receiver {
+
     /**
      * @notice Emitted when the base URI is updated
      * @param baseURI The new base URI
