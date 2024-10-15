@@ -256,9 +256,11 @@ describe("StakingERC721", () => {
   // #getlastClaimedTimestamp
   // #setMultiplier
   // #getMultiplier
+  // stakes that did not lock get less than stakes that locked for the same duration of time
+  //  - TODO figure out claim?
 
 
-  describe.only("Stake", () => {
+  describe("Stake", () => {
     it("Can stake a single NFT using #stakeWithoutLock", async () => {
       // User starts with tokenA, tokenB, and tokenC
       // User stakes tokenA only
