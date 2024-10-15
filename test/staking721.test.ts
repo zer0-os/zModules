@@ -15,7 +15,7 @@ import {
   UNSTAKED_EVENT,
   BaseConfig,
   WITHDRAW_EVENT,
-  DEFAULT_LOCK_PERIOD,
+  DEFAULT_LOCK_PERIOD as DEFAULT_LOCK,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -49,9 +49,12 @@ describe("StakingERC721", () => {
   // we can leave this type where it is
   let config : BaseConfig;
 
-  // 
+  // Keep timestamps for users
   let firstStakedAtA : bigint;
   let secondStakedAtA : bigint;
+
+  let firstStakedAtB : bigint;
+  let secondStakedAtB : bigint;
 
   let claimedAt : bigint;
   let unstakedAt : bigint;
@@ -243,7 +246,7 @@ describe("StakingERC721", () => {
   //  - stake one
   //  - stake multiple
   //  - fails when ...
-  // #stakeWithLock
+  // #stakeWithLock // can use same multiple different lock durations
   //  - stake one
   //  - stake multiple
   // #getAmountStaked
@@ -256,7 +259,7 @@ describe("StakingERC721", () => {
 
 
   describe.only("Stake", () => {
-    it("Can stake a single NFT with #stakeWithoutLock", async () => {
+    it("Can stake a single NFT using #stakeWithoutLock", async () => {
       // User starts with tokenA, tokenB, and tokenC
       // User stakes tokenA only
       const supplyBefore = await stakingERC721.totalSupply();
@@ -292,7 +295,43 @@ describe("StakingERC721", () => {
       expect(claimTimestamp).to.eq(firstStakedAtA);
     });
 
-    it("Can stake multiple NFTs with #stakeWithoutLock", async () => {
+    it("Can stake a single NFT using #stakeWithLock", async () => {
+      // User starts with tokenD, tokenE, and tokenF
+      // User stakes tokenD only
+      const supplyBefore = await stakingERC721.totalSupply();
+
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], [DEFAULT_LOCK]);
+      firstStakedAtB = BigInt(await time.latest());
+
+      const supplyAfter = await stakingERC721.totalSupply();
+
+      // Get balance of sNFTs
+      balanceAtStakeOne = await stakingERC721.balanceOf(stakerB.address);
+
+      const amountStaked = await stakingERC721.connect(stakerB).getAmountStaked();
+      const tokenIds = await stakingERC721.connect(stakerB).getStakedTokenIds();
+      const lockDuration = await stakingERC721.connect(stakerB).getLockDuration(tokenIdD);
+      const stakeTimestamp = await stakingERC721.connect(stakerB).getStakedTimestamp(tokenIdD);
+      const claimTimestamp = await stakingERC721.connect(stakerB).getlastClaimedTimestamp(tokenIdD);
+
+      const tokenUri = await stakingERC721.tokenURI(tokenIdD);
+      expect(tokenUri).to.eq(baseUri + tokenIdD);
+
+      // User has staked their NFT and gained an sNFT
+      expect(supplyAfter).to.eq(supplyBefore + 1n);
+
+      // User still has tokenIdB and tokenIdC
+      expect(await stakingToken.balanceOf(stakerB.address)).to.eq(2);
+      expect(await stakingERC721.balanceOf(stakerB.address)).to.eq(1);
+
+      expect(amountStaked).to.eq(1);
+      expect(tokenIds).to.contain(tokenIdD)
+      expect(lockDuration).to.eq(DEFAULT_LOCK);
+      expect(stakeTimestamp).to.eq(firstStakedAtB);
+      expect(claimTimestamp).to.eq(firstStakedAtB);
+    });
+
+    it("Can stake multiple NFTs using #stakeWithoutLock", async () => {
       const supplyBefore = await stakingERC721.totalSupply();
 
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB, tokenIdC], [emptyUri, emptyUri]);
@@ -331,7 +370,45 @@ describe("StakingERC721", () => {
       expect(claimTimestampC).to.eq(secondStakedAtA);
     });
 
-    // TODO need single and multipler cases for #stakeWithLock
+    it("Can stake multiple NFTs using #stakeWithLock", async () => {
+      const supplyBefore = await stakingERC721.totalSupply();
+
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdE, tokenIdF], [emptyUri, emptyUri], [DEFAULT_LOCK, DEFAULT_LOCK]);
+      secondStakedAtB = BigInt(await time.latest());
+
+      const supplyAfter = await stakingERC721.totalSupply();
+
+      balanceAtStakeTwo = await stakingERC721.balanceOf(stakerB.address);
+
+      const amountStaked = await stakingERC721.connect(stakerB).getAmountStaked();
+      const tokenIds = await stakingERC721.connect(stakerB).getStakedTokenIds();
+
+      const lockDurationB = await stakingERC721.connect(stakerB).getLockDuration(tokenIdE);
+      const stakeTimestampB = await stakingERC721.connect(stakerB).getStakedTimestamp(tokenIdE);
+      const claimTimestampB = await stakingERC721.connect(stakerB).getlastClaimedTimestamp(tokenIdE);
+
+      const lockDurationC = await stakingERC721.connect(stakerB).getLockDuration(tokenIdF);
+      const stakeTimestampC = await stakingERC721.connect(stakerB).getStakedTimestamp(tokenIdF);
+      const claimTimestampC = await stakingERC721.connect(stakerB).getlastClaimedTimestamp(tokenIdF);
+
+      expect(supplyAfter).to.eq(supplyBefore + 2n);
+
+      // User has staked their remaining NFTs and gained two SNFTs
+      expect(await stakingToken.balanceOf(stakerB.address)).to.eq(0);
+      expect(await stakingERC721.balanceOf(stakerB.address)).to.eq(3);
+
+      expect(amountStaked).to.eq(3);
+      expect(tokenIds).to.contain(tokenIdE)
+      expect(tokenIds).to.contain(tokenIdF)
+
+      expect(lockDurationB).to.eq(DEFAULT_LOCK);
+      expect(stakeTimestampB).to.eq(secondStakedAtB);
+      expect(claimTimestampB).to.eq(secondStakedAtB);
+
+      expect(lockDurationC).to.eq(DEFAULT_LOCK);
+      expect(stakeTimestampC).to.eq(secondStakedAtB);
+      expect(claimTimestampC).to.eq(secondStakedAtB);
+    });
 
     it("Fails when the user tries to transfer the sNFT", async () => {
       expect(await stakingERC721.totalSupply()).to.be.gt(1n);
@@ -358,7 +435,7 @@ describe("StakingERC721", () => {
         .withArgs(unmintedTokenId);
 
       await expect(
-        stakingERC721.connect(stakerA).stakeWithLock([unmintedTokenId], [emptyUri], [DEFAULT_LOCK_PERIOD])
+        stakingERC721.connect(stakerA).stakeWithLock([unmintedTokenId], [emptyUri], [DEFAULT_LOCK])
       ).to.be.revertedWithCustomError(stakingERC721, NONEXISTENT_TOKEN_ERR)
         .withArgs(unmintedTokenId);
     });
@@ -371,7 +448,7 @@ describe("StakingERC721", () => {
         .withArgs(stakerA.address, tokenIdA, await stakingERC721.getAddress());
 
       await expect(
-        stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [DEFAULT_LOCK_PERIOD])
+        stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [DEFAULT_LOCK])
       ).to.be.revertedWithCustomError(stakingERC721, INCORRECT_OWNER_TRANSFER_ERR)
         .withArgs(stakerA.address, tokenIdA, await stakingERC721.getAddress());
     });
@@ -384,7 +461,7 @@ describe("StakingERC721", () => {
         .withArgs(stakingERC721.target, unStakedTokenId);
       
         await expect(
-          stakingERC721.connect(stakerA).stakeWithLock([unStakedTokenId], [emptyUri], [DEFAULT_LOCK_PERIOD])
+          stakingERC721.connect(stakerA).stakeWithLock([unStakedTokenId], [emptyUri], [DEFAULT_LOCK])
         ).to.be.revertedWithCustomError(stakingERC721, INSUFFICIENT_APPROVAL_721_ERR)
           .withArgs(stakingERC721.target, unStakedTokenId);
     });
