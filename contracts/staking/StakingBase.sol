@@ -6,10 +6,8 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-
 import { IStakingBase } from "./IStakingBase.sol";
 
 import { console } from "hardhat/console.sol";
@@ -32,17 +30,6 @@ contract StakingBase is ERC721URIStorage, Ownable, IStakingBase {
     //     _;
     // }
 
-
-    // /**
-    //  * @dev Revert if a call is not from the SNFT owner
-    //  */
-    // modifier onlySNFTOwner(uint256 tokenId) {
-    //     if (ownerOf(tokenId) != msg.sender) {
-    //         revert InvalidOwner();
-    //     }
-    //     _;
-    // }
-
     /**
      * TODO Resolve
      * 
@@ -58,9 +45,20 @@ contract StakingBase is ERC721URIStorage, Ownable, IStakingBase {
      * 
      * Effectively these are similar but the difference is in follow up claims or unstakes
      * 
-     *    In 1) a second claim regardless of how long would always use the RM for that stake
-     * but in 2)
+     * In 1) a second claim regardless of how long would always use the RM for that stake
+     * but in 2) every claim is subject to the exponential formula for the time between lastClaim
+     * and now
      */
+
+    /**
+     * @notice Revert if a call is not from the SNFT owner
+     */
+    modifier onlySNFTOwner(uint256 tokenId) {
+        if (ownerOf(tokenId) != msg.sender) {
+            revert InvalidOwner();
+        }
+        _;
+    }
 
     /**
      * @notice The multiplier multiplier used in rewards calculations
@@ -96,16 +94,6 @@ contract StakingBase is ERC721URIStorage, Ownable, IStakingBase {
      * @notice The rewards of the pool per period length
      */
     uint256 public immutable rewardsPerPeriod;
-
-    /**
-     * @notice Revert if a call is not from the SNFT owner
-     */
-    modifier onlySNFTOwner(uint256 tokenId) {
-        if (ownerOf(tokenId) != msg.sender) {
-            revert InvalidOwner();
-        }
-        _;
-    }
 
     constructor(
         string memory name,
@@ -383,6 +371,47 @@ contract StakingBase is ERC721URIStorage, Ownable, IStakingBase {
 
     function _getContractRewardsBalance() internal view returns (uint256) {
         return rewardsToken.balanceOf(address(this));
+    }
+
+    /**
+     * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
+     */
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    ) internal override returns (address) {
+        address from = _ownerOf(tokenId);
+
+        if (from != address(0) && to != address(0)) {
+            revert NonTransferrableToken();
+        }
+
+        return super._update(to, tokenId, auth);
+    }
+
+    function _safeMint(
+        address to,
+        uint256 tokenId,
+        string memory tokenUri
+    ) internal {
+        ++_totalSupply;
+        super._safeMint(to, tokenId);
+        _setTokenURI(tokenId, tokenUri);
+    }
+
+    function _mint(
+        address to,
+        uint256 tokenId,
+        string memory tokenUri
+    ) internal {
+        ++_totalSupply;
+        super._mint(to, tokenId);
+        _setTokenURI(tokenId, tokenUri);
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
     }
 
     function _checkUnlocked(Staker storage staker, uint256 tokenId) internal view returns (bool) {

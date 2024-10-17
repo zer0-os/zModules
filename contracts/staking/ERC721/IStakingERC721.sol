@@ -45,11 +45,6 @@ interface IStakingERC721 is IERC721Receiver {
      */
     error InvalidUnstake();
 
-    /**
-     * @notice Throw when trying to transfer the representative sNFT
-     */
-    error NonTransferrableToken();
-
     function stakeWithLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,

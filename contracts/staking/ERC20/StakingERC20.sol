@@ -119,18 +119,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         if (amount == 0) {
             revert ZeroStake();
         }
-
-        Staker storage staker = stakers[msg.sender];
-
-        IERC20(stakingToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
-
-        staker.amountStaked += amount;
-
-        emit Staked(msg.sender, amount, stakingToken);
+        _stake(amount, lockDuration);
     }
 
     /**
@@ -192,12 +181,41 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     //     emit Unstaked(msg.sender, amount, stakingToken);
     }
 
-    // function onERC721Received(
-    //     address,
-    //     address,
-    //     uint256,
-    //     bytes calldata
-    // ) external pure override returns (bytes4) {
-    //     return this.onERC721Received.selector;
-    // }
+    ////////////////////////////////////
+    /* Internal Staking Functions */
+    ////////////////////////////////////
+
+    function _stake(uint256 amount, uint256 lockDuration) internal {
+        Staker storage staker = stakers[msg.sender];
+
+        IERC20(stakingToken).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+
+        // TODO think about ways to generate this ID
+        // make sure nobody who doesnt actually own the sNFT can call to 
+        // claim or unstake
+        uint256 tokenId = uint256(
+            keccak256(
+                abi.encodePacked(msg.sender, block.timestamp, amount)
+            )
+        );
+
+        // TODO If we want to use sNFT to prove ownership in ERC20 case,
+        // user is required to recreate it at some point to provide the tokenId
+        // to claim or unstake.
+
+        staker.stakedTimestamps[tokenId] = block.timestamp;
+        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+        staker.lockDurations[tokenId] = lockDuration;
+        staker.tokenIds.push(tokenId);
+        staker.amountStaked += amount; // Total amount they've staked, regardless of lock
+
+        // Mint user sNFT
+        _safeMint(msg.sender, tokenId, baseURI); // cant use empty string
+
+        emit Staked(msg.sender, amount, stakingToken);
+    }
 }

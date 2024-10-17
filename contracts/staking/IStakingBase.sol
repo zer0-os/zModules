@@ -86,6 +86,11 @@ interface IStakingBase {
     error InitializedWithZero();
 
     /**
+     * @notice Throw when trying to transfer the representative sNFT
+     */
+    error NonTransferrableToken();
+
+    /**
      * @notice Emitted when the base URI is updated
      * @param baseURI The new base URI
      */

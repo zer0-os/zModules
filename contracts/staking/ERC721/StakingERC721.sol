@@ -195,15 +195,8 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     /* Internal Staking Functions */
     ////////////////////////////////////
 
-    function _stake(uint256 tokenId, string memory tokenUri, uint256 lockPeriod) internal {
+    function _stake(uint256 tokenId, string memory tokenUri, uint256 lockDuration) internal {
         Staker storage staker = stakers[msg.sender];
-
-        // TODO do we need to hold on to original staked timestamp?
-        staker.stakedTimestamps[tokenId] = block.timestamp;
-        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
-        staker.lockDurations[tokenId] = lockPeriod;
-        staker.tokenIds.push(tokenId);
-        ++staker.amountStaked;
 
         // Transfer their NFT to this contract
         IERC721(stakingToken).safeTransferFrom(
@@ -211,6 +204,13 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             address(this),
             tokenId
         );
+
+        // TODO do we need to hold on to original staked timestamp?
+        staker.stakedTimestamps[tokenId] = block.timestamp;
+        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+        staker.lockDurations[tokenId] = lockDuration;
+        staker.tokenIds.push(tokenId);
+        ++staker.amountStaked;
 
         // Mint user sNFT
         _safeMint(msg.sender, tokenId, tokenUri);
@@ -273,46 +273,5 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         );
 
         emit Unstaked(msg.sender, tokenId, stakingToken);
-    }
-
-    function _safeMint(
-        address to,
-        uint256 tokenId,
-        string memory tokenUri
-    ) internal {
-        ++_totalSupply;
-        super._safeMint(to, tokenId);
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    function _mint(
-        address to,
-        uint256 tokenId,
-        string memory tokenUri
-    ) internal {
-        ++_totalSupply;
-        super._mint(to, tokenId);
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
-
-    /**
-     * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
-     */
-    function _update(
-        address to,
-        uint256 tokenId,
-        address auth
-    ) internal override returns (address) {
-        address from = _ownerOf(tokenId);
-
-        if (from != address(0) && to != address(0)) {
-            revert NonTransferrableToken();
-        }
-
-        return super._update(to, tokenId, auth);
     }
 }
