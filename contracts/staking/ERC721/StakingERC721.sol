@@ -30,7 +30,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     uint256 internal _totalSupply;
 
     /**
-     * @dev Revert if a call is not from the SNFT owner
+     * @notice Revert if a call is not from the SNFT owner
      */
     modifier onlySNFTOwner(uint256 tokenId) {
         if (ownerOf(tokenId) != msg.sender) {
@@ -103,6 +103,18 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 ++i;
             }
         }
+    }
+
+    /**
+     * @notice Claim rewards for a specific token
+     * 
+     * @param tokenId The token ID to claim rewards for
+     * 
+     */
+    function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
+        // if we just pass this storage struct, do we save anything?
+        // its storage but does it get loaded in memory?
+        _baseClaim(tokenId, stakers[msg.sender]);
     }
 
 

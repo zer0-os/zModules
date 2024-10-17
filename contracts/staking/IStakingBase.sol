@@ -88,6 +88,8 @@ interface IStakingBase {
 
     function getPendingRewards(uint256 tokenId) external view returns (uint256);
 
+    function getAllPendingRewards() external view returns (uint256);
+
     function getContractRewardsBalance() external view returns (uint256);
 
     function setMultiplier(uint256 _multiplier) external;

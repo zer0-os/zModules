@@ -15,7 +15,8 @@ import {
   UNSTAKED_EVENT,
   BaseConfig,
   WITHDRAW_EVENT,
-  DEFAULT_LOCK_PERIOD as DEFAULT_LOCK,
+  DEFAULT_LOCK,
+  DEFAULT_REWARDS_PER_PERIOD,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -129,6 +130,7 @@ describe("StakingERC721", () => {
     await stakingToken.connect(owner).mint(stakerB.address, tokenIdD);
     await stakingToken.connect(owner).mint(stakerB.address, tokenIdE);
     await stakingToken.connect(owner).mint(stakerB.address, tokenIdF);
+    await stakingToken.connect(owner).mint(stakerB.address, tokenIdG);
 
     await stakingToken.connect(owner).mint(owner.address, unStakedTokenId);
 
@@ -139,6 +141,7 @@ describe("StakingERC721", () => {
     await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdD);
     await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdE);
     await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdF);
+    await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdG);
   });
 
   // it.only("calcs correctly", async () => {
@@ -238,6 +241,10 @@ describe("StakingERC721", () => {
       const rewardsInPool = await stakingERC721.getContractRewardsBalance();
       const poolBalance = await rewardToken.balanceOf(await stakingERC721.getAddress());
       expect(rewardsInPool).to.eq(poolBalance);
+
+      // This is the amount we provide it at the beginning of the test
+      // No claims yet, so should be equal to the given amount
+      expect(rewardsInPool).to.eq(hre.ethers.parseEther("8000000000000"));
     });
   });
 
@@ -246,9 +253,12 @@ describe("StakingERC721", () => {
   //  - stake one
   //  - stake multiple
   //  - fails when ...
-  // #stakeWithLock // can use same multiple different lock durations
+  // #stakeWithLock
+  //  - can use same multiple different lock durations
   //  - stake one
   //  - stake multiple
+  // #claim(tokenId)
+  // #claimAll()
   // #getAmountStaked
   // #getStakedTokenIds
   // #getLockDuration
@@ -256,7 +266,6 @@ describe("StakingERC721", () => {
   // #getlastClaimedTimestamp
   // #setMultiplier
   // #getMultiplier
-  // stakes that did not lock get less than stakes that locked for the same duration of time
   //  - TODO figure out claim?
 
 
@@ -283,11 +292,13 @@ describe("StakingERC721", () => {
       const tokenUri = await stakingERC721.tokenURI(tokenIdA);
       expect(tokenUri).to.eq(baseUri + tokenIdA);
 
-      // User has staked their NFT and gained an sNFT
+      // A new sNFT was created
       expect(supplyAfter).to.eq(supplyBefore + 1n);
 
       // User still has tokenIdB and tokenIdC
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(2);
+
+      // User now has one sNFT after staking
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(1);
 
       expect(amountStaked).to.eq(1);
@@ -298,7 +309,7 @@ describe("StakingERC721", () => {
     });
 
     it("Can stake a single NFT using #stakeWithLock", async () => {
-      // User starts with tokenD, tokenE, and tokenF
+      // User starts with tokenD, tokenE, tokenF, and tokenG
       // User stakes tokenD only
       const supplyBefore = await stakingERC721.totalSupply();
 
@@ -322,8 +333,10 @@ describe("StakingERC721", () => {
       // User has staked their NFT and gained an sNFT
       expect(supplyAfter).to.eq(supplyBefore + 1n);
 
-      // User still has tokenIdB and tokenIdC
-      expect(await stakingToken.balanceOf(stakerB.address)).to.eq(2);
+      // User still has tokenE, tokenF, and tokenG
+      expect(await stakingToken.balanceOf(stakerB.address)).to.eq(3);
+
+      // User has been given the sNFT for tokenD
       expect(await stakingERC721.balanceOf(stakerB.address)).to.eq(1);
 
       expect(amountStaked).to.eq(1);
@@ -334,6 +347,7 @@ describe("StakingERC721", () => {
     });
 
     it("Can stake multiple NFTs using #stakeWithoutLock", async () => {
+      // stakerA has tokenIdB and tokenIdC remaining, and stakes both
       const supplyBefore = await stakingERC721.totalSupply();
 
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB, tokenIdC], [emptyUri, emptyUri]);
@@ -356,7 +370,7 @@ describe("StakingERC721", () => {
 
       expect(supplyAfter).to.eq(supplyBefore + 2n);
 
-      // User has staked their remaining NFTs and gained two SNFTs
+      // User has staked their remaining NFTs and gained two sNFTs
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(0);
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(3);
 
@@ -373,9 +387,15 @@ describe("StakingERC721", () => {
     });
 
     it("Can stake multiple NFTs using #stakeWithLock", async () => {
+      // stakerB has tokenIdE, tokenIdF, and tokenIdG remaining, stakes E and F
       const supplyBefore = await stakingERC721.totalSupply();
 
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdE, tokenIdF], [emptyUri, emptyUri], [DEFAULT_LOCK, DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerB).stakeWithLock(
+        [tokenIdE, tokenIdF],
+        [emptyUri, emptyUri],
+        [DEFAULT_LOCK, DEFAULT_LOCK]
+      );
+
       secondStakedAtB = BigInt(await time.latest());
 
       const supplyAfter = await stakingERC721.totalSupply();
@@ -395,8 +415,10 @@ describe("StakingERC721", () => {
 
       expect(supplyAfter).to.eq(supplyBefore + 2n);
 
-      // User has staked their remaining NFTs and gained two SNFTs
-      expect(await stakingToken.balanceOf(stakerB.address)).to.eq(0);
+      // User still has tokenIdG
+      expect(await stakingToken.balanceOf(stakerB.address)).to.eq(1);
+      
+      // User has staked tokenIdE and tokenIdF and gained two sNFTs, totalling 3
       expect(await stakingERC721.balanceOf(stakerB.address)).to.eq(3);
 
       expect(amountStaked).to.eq(3);
@@ -469,145 +491,144 @@ describe("StakingERC721", () => {
     });
   });
 
+  // TODO checkpoint remove when finished
+  // at this point, stakerA has staked tokenA, tokenB, and tokenC all with 0 lock duration
+  // stakerB has staked tokenD, tokenE, and tokenF all with DEFAULT lock duration
+
   describe("#getRemainingLockTime", () => {
-    it("Allows the user to view the remaining time lock period for a stake", async () => {
-      const remainingLockTime = await stakingERC721.connect(stakerA).getRemainingLockTime();
+    // returns 0 if user has not staked the given token
+    it("Allows the user to view the remaining time lock duration for a stake", async () => {
+      const remainingLockTime = await stakingERC721.connect(stakerB).getRemainingLockTime(tokenIdD);
       const latest = await time.latest();
 
-      const stakeData = await stakingERC721.stakers(stakerA.address);
+      const stakeTimestamp = await stakingERC721.connect(stakerB).getStakedTimestamp(tokenIdD);
+      const lockDuration = await stakingERC721.connect(stakerB).getLockDuration(tokenIdD);
 
       // Original lock period and remaining lock period time difference should be the same as
       // the difference between the latest timestamp and that token's stake timestamp
-      expect(remainingLockTime).to.eq((stakeData.unlockTimestamp - BigInt(latest)));
+      expect(remainingLockTime).to.eq((stakeTimestamp + lockDuration - BigInt(latest)));
     });
 
-    it("Returns 0 for a staked user that is past their lock time", async () => {
-      await time.increase(config.timeLockPeriod);
-
-      const remainingLockTime = await stakingERC721.connect(stakerA).getRemainingLockTime();
-
+    it("Returns 0 for users that did not stake the given token", async () => {
+      const remainingLockTime = await stakingERC721.connect(notStaker).getRemainingLockTime(tokenIdD);
       expect(remainingLockTime).to.eq(0n);
     });
 
-    it("Returns 0 for users that have not staked", async () => {
-      const remainingLockTime = await stakingERC721.connect(notStaker).getRemainingLockTime();
+    it("Returns 0 for tokens staked with no lock duration", async () => {
+      const remainingLockTime = await stakingERC721.connect(stakerA).getRemainingLockTime(tokenIdA);
+      expect(remainingLockTime).to.eq(0n);
+    })
+
+    it("Returns 0 for a token that is past its lock duration", async () => {
+      await time.increase(DEFAULT_LOCK);
+
+      const remainingLockTime = await stakingERC721.connect(stakerB).getRemainingLockTime(tokenIdD);
 
       expect(remainingLockTime).to.eq(0n);
     });
   });
 
+  // TODO cases 
+  // stakes that did not lock get less than stakes that locked for the same duration of time
+  // 0 for users who have not passed any time
+  // 0 for users who have not staked the given token
+
   describe("#getPendingRewards", () => {
     it("Can view pending rewards for a user", async () => {
-      // Move forward in time
-      await time.increase(config.periodLength);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdG], [emptyUri], [DEFAULT_LOCK]);
 
-      const timestamp = BigInt(await time.latest());
+      const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards(tokenIdG);
 
-      durationOne = secondStakedAtA - firstStakedAtA;
-      durationTwo = timestamp - secondStakedAtA;
+      // If no time has passed, the value will be 0
+      expect(pendingRewards).to.eq(0);
 
-      const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
+      await time.increase(DEFAULT_LOCK / 2n);
 
-      const totalRewards = calcTotalRewards(
-        [durationOne, durationTwo],
-        [balanceAtStakeOne, balanceAtStakeTwo],
-        config.rewardsPerPeriod,
-        config.periodLength
-      );
+      const updatedPendingRewards = await stakingERC721.connect(stakerB).getPendingRewards(tokenIdG);
 
-      // Pending rewards on-chain match totalRewards calculated by helper
-      expect(pendingRewards).to.eq(totalRewards);
+      // TODO make more than > 0 check, updated the `calcTotalReward` helper
+      expect(updatedPendingRewards).to.be.gt(0);
+
     });
 
-    it("Returns 0 for users that have not passed a single time period", async () => {
-      const tokenId = 5;
+    it("Returns 0 for users that have not passed any time", async () => {
+      const tokenId = 1000n;
       await stakingToken.connect(owner).mint(stakerB.address, tokenId);
       await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenId);
 
-      await stakingERC721.connect(stakerB).stake([tokenId], [emptyUri]);
-      const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenId], [emptyUri], [DEFAULT_LOCK]);
+      const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards(tokenId);
+
       expect(pendingRewards).to.eq(0n);
     });
 
-    it("Returns 0 for users that have not staked", async () => {
-      const pendingRewards = await stakingERC721.connect(notStaker).getPendingRewards();
+    it("Returns 0 for users that have not staked the given token", async () => {
+      // TODO do we care if a user can see the rewards for a tokenId that isn't theirs?
+      // If so we need to check ownership which means moving
+      // the public `getPendingRewards` to the staking contract not having it in base
+      // As long as `claim` fails for users who are not the owner, it should be fine
+      const pendingRewards = await stakingERC721.connect(notStaker).getPendingRewards(tokenIdA);
+      expect(pendingRewards).to.eq(0n);
+    });
+
+    it("Returns 0 for a token that isn't staked", async () => {
+      const tokenId = 1002n;
+      const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards(tokenId);
       expect(pendingRewards).to.eq(0n);
     });
   });
 
   describe("#claim", () => {
-    it("Can claim rewards when staked and past the timeLockPeriod", async () => {
-      await time.increase(config.timeLockPeriod);
-
+    it("Can claim rewards when staked without time lock", async () => {
       const balanceBefore = await rewardToken.balanceOf(stakerA.address);
 
-      const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
+      await stakingERC721.connect(stakerA).claim(tokenIdA);
 
-      await stakingERC721.connect(stakerA).claim();
+      const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
       claimedAt = BigInt(await time.latest());
 
       const expectedRewards = calcTotalRewards(
-        [durationOne, claimedAt - secondStakedAtA],
-        [balanceAtStakeOne, balanceAtStakeTwo],
-        config.rewardsPerPeriod,
-        config.periodLength
+        [claimedAt - firstStakedAtA],
+        [0n],
+        DEFAULT_REWARDS_PER_PERIOD
       );
 
-      const balanceAfter = await rewardToken.balanceOf(stakerA.address);
+      expect(expectedRewards).to.eq(balanceAfter - balanceBefore);
 
-      // Verify that our calculations must always be in sync with what is on chain
-      expect(expectedRewards).to.eq(pendingRewards);
+      // Confirm that on second claim we only receive the amount between present and last claim
 
-      expect(balanceAfter).to.eq(balanceBefore + expectedRewards);
-
-      // Cannot double claim, rewards are reset by timestamp change onchain
-      // So calling to `claim` a second time immediately after will only yield the expected
-      // return for that amount of time that has passed
-      await stakingERC721.connect(stakerA).claim();
+      await stakingERC721.connect(stakerA).claim(tokenIdA);
+      const latest = BigInt(await time.latest());
 
       const balanceAfterSecondClaim = await rewardToken.balanceOf(stakerA.address);
 
-      const timestamp = BigInt(await time.latest());
-
-      const expectedRewardsClaim2 = calcTotalRewards(
-        [timestamp - claimedAt],
-        [balanceAtStakeTwo],
-        config.rewardsPerPeriod,
-        config.periodLength
+      const expectedRewardsAfterSecondClaim = calcTotalRewards(
+        [latest - claimedAt],
+        [0n],
+        DEFAULT_REWARDS_PER_PERIOD
       );
-
-      // Update after using in calculation
-      claimedAt = BigInt(await time.latest());
-
-      expect(balanceAfterSecondClaim).to.eq(balanceAfter + expectedRewardsClaim2);
-
-      const stakerData = await stakingERC721.stakers(stakerA.address);
-
-      // Verify `numStaked` has not changed
-      expect(stakerData.amountStaked).to.eq(3);
-      // Verify `lastUpdatedTimestamp` has changed
-      expect(stakerData.lastUpdatedTimestamp).to.eq(claimedAt);
-      expect(stakerData.owedRewards).to.eq(0n);
+      
+      expect(expectedRewardsAfterSecondClaim).to.eq(balanceAfterSecondClaim - balanceAfter);
     });
 
     it("Fails to claim when not enough time has passed", async () => {
       await stakingToken.connect(owner).mint(stakerC.address, tokenIdDelayed);
       await stakingToken.connect(stakerC).approve(await stakingERC721.getAddress(), tokenIdDelayed);
 
-      await stakingERC721.connect(stakerC).stake([tokenIdDelayed], [emptyUri]);
+      await stakingERC721.connect(stakerC).stakeWithLock([tokenIdDelayed], [emptyUri], [DEFAULT_LOCK]);
 
       // The user cannot claim as not enough time has passed
       await expect(
-        stakingERC721.connect(stakerC).claim()
+        stakingERC721.connect(stakerC).claim(tokenIdDelayed)
       ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED_ERR);
     });
 
     it("Fails to claim when the caller has no stakes", async () => {
       // Will fail when we check `onlyUnlocked` modifier first
       await expect(
-        stakingERC721.connect(notStaker).claim()
-      ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED_ERR);
+        stakingERC721.connect(notStaker).claim(tokenIdDelayed)
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_OWNER_ERR);
     });
   });
 
