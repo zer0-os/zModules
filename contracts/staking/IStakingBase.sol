@@ -59,6 +59,11 @@ interface IStakingBase {
     );
 
     /**
+     * @notice Throw when caller is not the sNFT owner
+     */
+    error InvalidOwner();
+
+    /**
      * @notice Throw when the lock period has not passed
      */
     error TimeLockNotPassed();
@@ -79,6 +84,18 @@ interface IStakingBase {
      * @notice Throw when passing zero values to set a state var
      */
     error InitializedWithZero();
+
+    /**
+     * @notice Emitted when the base URI is updated
+     * @param baseURI The new base URI
+     */
+    event BaseURIUpdated(string baseURI);
+
+    // token functions
+    function setBaseURI(string memory baseUri) external;
+    function setTokenURI(uint256 tokenId, string memory tokenUri) external;
+    function totalSupply() external view returns (uint256);
+    function getInterfaceId() external pure returns (bytes4);
 
     function claimAll() external;
 

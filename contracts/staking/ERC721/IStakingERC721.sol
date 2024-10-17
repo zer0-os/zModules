@@ -10,11 +10,11 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
  */
 interface IStakingERC721 is IERC721Receiver {
 
-    /**
-     * @notice Emitted when the base URI is updated
-     * @param baseURI The new base URI
-     */
-    event BaseURIUpdated(string baseURI);
+    // /**
+    //  * @notice Emitted when the base URI is updated
+    //  * @param baseURI The new base URI
+    //  */
+    // event BaseURIUpdated(string baseURI);
 
     /**
      * @notice Emit when a user stakes a token
@@ -39,11 +39,6 @@ interface IStakingERC721 is IERC721Receiver {
         uint256 indexed tokenId,
         address indexed stakingToken
     );
-
-    /**
-     * @notice Throw when caller is not the sNFT owner
-     */
-    error InvalidOwner();
 
     /**
      * @notice Throw when call to unstake makes no changes
@@ -72,11 +67,11 @@ interface IStakingERC721 is IERC721Receiver {
 
     function unstakeAll(bool exit) external;
 
-    function setBaseURI(string memory baseUri) external;
+    // function setBaseURI(string memory baseUri) external;
 
-    function setTokenURI(uint256 tokenId, string memory tokenUri) external;
+    // function setTokenURI(uint256 tokenId, string memory tokenUri) external;
 
-    function totalSupply() external view returns (uint256);
+    // function totalSupply() external view returns (uint256);
 
-    function getInterfaceId() external pure returns (bytes4);
+    // function getInterfaceId() external pure returns (bytes4);
 }

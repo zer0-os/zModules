@@ -5,6 +5,11 @@ pragma solidity ^0.8.20;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+
 import { IStakingBase } from "./IStakingBase.sol";
 
 import { console } from "hardhat/console.sol";
@@ -14,18 +19,8 @@ import { console } from "hardhat/console.sol";
  * @notice A set of common elements that are used in any Staking contract
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
-contract StakingBase is Ownable, IStakingBase {
+contract StakingBase is ERC721URIStorage, Ownable, IStakingBase {
     using SafeERC20 for IERC20;
-
-    /**
-     * @notice The multiplier multiplier used in rewards calculations
-     */
-    uint256 MULTIPLIER = 1e16;
-
-    /**
-     * @notice Mapping of each staker to that staker's data in the `Staker` struct
-     */
-    mapping(address user => Staker staker) public stakers;
 
     // TODO still want to use this?
     // could do stakers[msg.sender].stakedTimestamps[tokenId]
@@ -68,6 +63,26 @@ contract StakingBase is Ownable, IStakingBase {
      */
 
     /**
+     * @notice The multiplier multiplier used in rewards calculations
+     */
+    uint256 MULTIPLIER = 1e16;
+
+    /**
+     * @notice Mapping of each staker to that staker's data in the `Staker` struct
+     */
+    mapping(address user => Staker staker) public stakers;
+
+    /**
+     * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
+     */
+    string internal baseURI;
+
+    /**
+     * @notice Total supply of all tokens
+     */
+    uint256 internal _totalSupply;
+
+    /**
      * @notice The staking token for this pool
      */
     address public immutable stakingToken;
@@ -82,19 +97,35 @@ contract StakingBase is Ownable, IStakingBase {
      */
     uint256 public immutable rewardsPerPeriod;
 
+    /**
+     * @notice Revert if a call is not from the SNFT owner
+     */
+    modifier onlySNFTOwner(uint256 tokenId) {
+        if (ownerOf(tokenId) != msg.sender) {
+            revert InvalidOwner();
+        }
+        _;
+    }
+
     constructor(
+        string memory name,
+        string memory symbol,
+        string memory baseUri,
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
-        // uint256 _periodLength, // TODO also have max # periods? e.g. 365 days
         address _contractOwner
-    ) Ownable(_contractOwner) {
+    ) ERC721(name, symbol) Ownable(_contractOwner) {
         if (
             _stakingToken.code.length == 0 ||
             address(_rewardsToken).code.length == 0 ||
             _rewardsPerPeriod == 0
             // _periodLength == 0
         ) revert InitializedWithZero();
+
+        if (bytes(baseUri).length > 0) {
+            baseURI = baseUri;
+        }
 
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
@@ -224,6 +255,53 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     ////////////////////////////////////
+    /* Token Functions */
+    ////////////////////////////////////
+
+    function setBaseURI(string memory baseUri) external override onlyOwner {
+        baseURI = baseUri;
+        emit BaseURIUpdated(baseUri);
+    }
+
+    function setTokenURI(
+        uint256 tokenId,
+        string memory tokenUri
+    ) external virtual override onlyOwner {
+        _setTokenURI(tokenId, tokenUri);
+    }
+
+    function getInterfaceId() external pure override returns (bytes4) {
+        return type(IStakingBase).interfaceId;
+    }
+
+    // function onERC721Received(
+    //     address,
+    //     address,
+    //     uint256,
+    //     bytes calldata
+    // ) external pure returns (bytes4) { // return override
+    //     return this.onERC721Received.selector;
+    // }
+
+    function totalSupply() public view override returns (uint256) {
+        return _totalSupply;
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view override returns (string memory) {
+        return super.tokenURI(tokenId);
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override returns (bool) {
+        return
+            interfaceId == type(IStakingBase).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    ////////////////////////////////////
     /* Internal Functions */
     ////////////////////////////////////
 
@@ -318,3 +396,4 @@ contract StakingBase is Ownable, IStakingBase {
     //     }
     // }
 }
+
