@@ -18,6 +18,9 @@ interface IStakingBase {
         // but also having them in this struct means not having to check ownership repeatedly
         // make 2D mappings ? address => tokenId => data
         uint256 amountStaked;
+        uint256 owedRewards;
+        uint256 unlockedTimestamp; // For ERC20 locks are per user, not per stake
+        uint256 lastClaimedTimestamp; // For ERC20
         uint256[] tokenIds; // for indexing when bulk claiming / revoking
 
         // TODO maybe for ERC20 we can create an sNFT for staker mappings

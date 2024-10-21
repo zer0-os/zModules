@@ -149,7 +149,73 @@ describe("StakingERC721", () => {
     await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdG);
   });
 
-  it.only("calcs correctly", async () => {
+  it.only("formula checks", async () => {
+    /**
+     * Stake 0 at T :: 1000 for 100 days
+
+     * Stake 1 at T+25 :: 400 more
+
+		 * At T25, before adding new stake time remaining is 75 days
+		 * At T25, after adding new stake time remaining is below by calc
+			
+     * 100 days * (
+        (
+          1000 * ( (100 - 25) / 100 )
+        ) 
+        + 
+        (
+          400 * ( (100 - 100) / 100)
+        )
+        /
+        1400
+        )
+     */
+
+    // At T0 stake
+    const stakeTime = 0;
+    const stakeAmount = 1000;
+    const lockPeriod = 100; // days
+
+    // At T25 stake again
+    const stakeAdded = 900;
+    const daysRemaining = 75;
+
+    // T25 before stake added time remaining is 75 days
+    // T25 after stake added time remaining is
+
+    // previous is weighed at % of time was left
+    // incoming is always weighed at 100%
+
+    const newTimeRemaininbg = 
+      lockPeriod * ( 
+        (stakeAmount * (daysRemaining / lockPeriod) ) 
+        +
+        (stakeAdded * ( lockPeriod / lockPeriod ))
+      ) / (stakeAmount + stakeAdded)
+
+    console.log(daysRemaining)
+    console.log(newTimeRemaininbg)
+
+    // TODO would this math work when we add a lot of new stakes? 5 or 10?
+    // because it's adding a percentage of a percentage each time, and so will become smaller?
+
+    // new time remaining is ~12 days longer
+    // when we increase the amount we are staking, we should see an increase in
+    // the time remaining, before was 400, lets make it 750
+
+    /** Days added to remaining days after x is added to stake
+     * x = 400, y = 75 + ~7.14
+     * x = 500, y = 75 + ~8.33
+     * x = 750, y = 75 + ~10.7
+     * x = 950, y = 75 + ~12.17
+     * x = 1000 (same as original stake), y = 75 + 12.5
+     * x = 1200, y = 75 + ~13.6
+     * x = 2400, y = 75 + ~17.6
+     */
+
+  })
+
+  it("calcs correctly", async () => {
 
     await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [DEFAULT_LOCK]);
     await stakingERC721.connect(stakerB).stakeWithoutLock([tokenIdD], [emptyUri]);

@@ -96,29 +96,29 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     {}
 
     /**
-     * @notice Stake an amount of the ERC20 staking token specified
+     * @notice Stake an amount of ERC20 with a lock period By locking, 
+     * a user cannot access their funds until the lock period is over, but they
+     * receive a higher rewards rate for doing so
+     * 
+     * @param amount The amount to stake
+     * @param lockDuration The duration of the lock period
+     */
+    function stakeWithLock(uint256 amount, uint256 lockDuration) external {
+        if (amount == 0) {
+            revert ZeroStake();
+        }
+
+        _stake(amount, lockDuration);
+    }
+
+    /**
+     * @notice Stake an amount of ERC20 with no lock period. By not locking, a 
+     * user can access their funds any time, but they forfeit a higher rewards rate
+     * 
      * @param amount The amount to stake
      */
-    function stake(uint256 amount) external override {
-        // Staker storage staker = stakers[msg.sender];
-
-        // if (amount == 0) {
-        //     revert ZeroStake();
-        // }
-
-        // // Don't call on new stakes anymore, every stake is independent now due to locking
-        // // only call on the unlocked total, so maybe keep for if (lockTime = 0)
-        // _checkRewards(staker);
-
-        // IERC20(stakingToken).safeTransferFrom(
-        //     msg.sender,
-        //     address(this),
-        //     amount
-        // );
-
-        // staker.amountStaked += amount;
-
-        // emit Staked(msg.sender, amount, stakingToken);
+    function stakeWithoutLock(uint256 amount) external override {
+        _stake(amount, 0);
     }
 
     /**
@@ -152,5 +152,95 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         IERC20(stakingToken).safeTransfer(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount, stakingToken);
+    }
+
+    function _stake(uint256 amount, uint256 lockDuration) internal {
+        if (amount == 0) {
+            revert ZeroStake();
+        }
+
+        Staker storage staker = stakers[msg.sender];
+
+        SafeERC20.safeTransferFrom(IERC20(stakingToken), msg.sender, address(this), amount);
+
+        // Stakes can be turned into locked stakes, but not the other way around
+        // so if a stake starts as unlocked then the user decides to lock at a later date,
+        // we snapshot their rewards and then mark the new timestamp and accrue at higher rate
+        // if a stake starts as locked, the user can add to the locked stake but not add unlocked stakes
+            // if they add to the locked stake, the lock period is reset to current timestamp, snapshot rewards so far
+
+        // TODO CASES
+        // if stake with no lock into empty pool
+        // if stake with lock into empty pool
+        // if stake with no lock into existing pool where tokens were not locked
+        // if stake with lock into existing pool where tokens were not locked
+        // if stake with no lock into existing pool where tokens were locked
+        // if stake with lock into existing pool where tokens were locked 
+
+        // TODO consider adding an ability to unlock a stake so users can access their funds if they want to,
+        // but they forfeit the rewards they would have earned if they had kept it locked, so it gets rewards
+        // as though it was never locked in the first place
+
+        // if we DONT move timestamp forward after snapshot
+            // they have the opportunity to double dip on rewards, possibly?
+        // if we DO move timestamp
+            // they get less because exponential curve
+                // time T-1 to Present will grant rewards at an increasing rate higher than
+                // time T to Present
+
+        if (staker.amountStaked > 0) {
+            // case: not first stake
+            /**
+             * if (incoming stake is has lock duration {
+             *      if (previous stake was locked) {
+             *          // case A
+             *          // revert? cannot modify lock if lock already established
+             *          OR just ignore the lock duration
+             *              snapshot rewards from T-1 to T at LOCKED rate
+             *              add to owedRewards
+             *              MODIFY existing timestamp to be now
+             *      } else {
+             *          // case B, previous stake not locked
+             *          snapshot rewards from T-1 to T at NOT LOCKED rate
+             *          add those to `owedRewards`
+             *          ADD incoming lock
+             *          then reset timestamp to mark as current
+             *      }
+             * } else { // incoming stake does not have lock duration
+             *      if (previous stake was locked) {
+             *          // case C
+             *          snapshot rewards at locked rate from T-1 to T
+             *          add to `amountStaked`
+             *          mark TS current, moving unlock timestamp forward
+             *      } else {
+             *          // case D, previous stake not locked
+             *          snapshot owedRewards at NOT LOCKED rate
+             *          add to `owedRewards`
+             *          then reset timestamp to mark as current
+             *      }
+             * }    
+             */
+        } else {
+            // first stake, so we know pending rewards will be 0 in either case
+            // no need to snapshot anything
+        }
+
+        staker.amountStaked += amount;
+
+        // set user level timestamp NOT indexed mapping for `tokenId`
+        staker.lastClaimedTimestamp = block.timestamp;
+
+        // TODO what should happen to the lock period?
+
+
+        if (lockDuration == 0) {
+
+        }
+
+
+        // transfer their funds to contract
+        // mark their stake
+        
+        emit Staked(msg.sender, amount, stakingToken);
     }
 }

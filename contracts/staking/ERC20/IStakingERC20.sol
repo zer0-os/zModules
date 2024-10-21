@@ -40,7 +40,9 @@ interface IStakingERC20 {
      */
     error ZeroStake();
 
-    function stake(uint256 amount) external;
+    function stakeWithLock(uint256 amount, uint256 lockDuration) external;
+
+    function stakeWithoutLock(uint256 amount) external;
 
     function unstake(uint256 amount, bool exit) external;
 }
