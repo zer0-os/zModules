@@ -184,8 +184,15 @@ describe("StakingERC20", () => {
       expect(stakerDataSecond.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT * 2n);
       expect(stakerDataSecond.lastTimestamp).to.eq(stakedAtA);
       expect(stakerDataSecond.unlockedTimestamp).to.eq(0n);
-      
+
       expect(stakerDataSecond.owedRewards).to.not.eq(0n);
+    });
+
+    it.only("getPendingRewards", async () => {
+      // total UNLOCKED rewards, available immediately
+      console.log("round two")
+      const pending = await contract.connect(stakerA).getPendingRewards();
+      console.log(pending);
     });
 
     it("Can stake a second time as the same user successfully", async () => {

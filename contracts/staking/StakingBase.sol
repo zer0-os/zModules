@@ -162,8 +162,11 @@ contract StakingBase is Ownable, IStakingBase {
      * @notice View the pending rewards balance for a user
      */
     function getPendingRewards() external view override returns (uint256) {
-        return 1;
-        // return _getPendingRewards
+        return _getPendingRewards(stakers[msg.sender], false);
+    }
+
+    function getLockedPendingRewards() external view returns (uint256) {
+        return _getPendingRewards(stakers[msg.sender], true);
     }
 
     function getAllPendingRewards() external view override returns (uint256) {
@@ -268,20 +271,20 @@ contract StakingBase is Ownable, IStakingBase {
             return 0;
         }
 
-        if (locked && (block.timestamp > staker.unlockedTimestamp)) {
-            // console.log("B");
-            return rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
-        } else {
-            // console.log("C");
-            // console.log("rewardsPerPeriod: ", rewardsPerPeriod);
-            // console.log("staker.amountStaked: ", staker.amountStaked);
-            // console.log("block.timestamp: ", block.timestamp);
-            // console.log("staker.lastTimestamp: ", staker.lastTimestamp);
-            uint256 rtval = rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
-            // console.log("rtval: ", rtval);
+        // if (locked && (block.timestamp > staker.unlockedTimestamp)) {
+        //     // console.log("B");
+        //     return staker.owedRewardsLocked + rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
+        // } else {
+        //     // console.log("C");
+        //     // console.log("rewardsPerPeriod: ", rewardsPerPeriod);
+        //     // console.log("staker.amountStaked: ", staker.amountStaked);
+        //     // console.log("block.timestamp: ", block.timestamp);
+        //     // console.log("staker.lastTimestamp: ", staker.lastTimestamp);
+        //     uint256 rtval = rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
+        //     // console.log("rtval: ", rtval);
 
-            return rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
-        }
+        //     return staker.owedRewards + rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
+        // }
 
         // TODO figure out how we want to resolve rewards
         // A) A rewards multiplier is calculated on exponential curve at time of first lock based on lock length
@@ -299,18 +302,19 @@ contract StakingBase is Ownable, IStakingBase {
     // TODO an optional function for rewards different from what is used in 
     // StakingBase. Could be simpler, leaving here for eval later
     function formulaOne(uint256 lock) public pure returns(uint256) {
+        uint256 lockReal = lock == 0 ? 1 : lock;
         // maxRM = 5
         // periodLength = 365 days
         // precisionMultiplier = 1000
         // scalar = 1e18
-        return 1e18 * 5 * ( (lock * 1000 ) / 365) / 1e18;
+        return 1e18 * 5 * ( (lockReal * 1000 ) / 365) / 1e18;
     }
 
     function formulaTwo(Staker storage staker) internal returns(uint256) {
         if (staker.unlockedTimestamp == 0) {
-            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp) * MULTIPLIER) / 86400;
+            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / 86400; // No need for use of MULTIPLIER yet
         } else {
-            return staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked) * MULTIPLIER ) / 86400;
+            return staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / 86400;
         }
     }
 
