@@ -186,7 +186,7 @@ describe("StakingERC721", () => {
     // previous is weighed at % of time was left
     // incoming is always weighed at 100%
 
-    const newTimeRemaininbg = 
+    const newTimeRemaining = 
       lockPeriod * ( 
         (stakeAmount * (daysRemaining / lockPeriod) ) 
         +
@@ -194,7 +194,34 @@ describe("StakingERC721", () => {
       ) / (stakeAmount + stakeAdded)
 
     console.log(daysRemaining)
-    console.log(newTimeRemaininbg)
+    console.log(newTimeRemaining)
+    console.log("diff: ", newTimeRemaining - daysRemaining);
+    // adding `stakeAdded` amount makes `x` new days added, do we add same number of days on third stake?
+
+    // at T+50 there is newTimeRemaining - 25 days that were added
+    console.log(newTimeRemaining - 25)
+    const t50 = newTimeRemaining - 25; // ~61
+
+    let newStakedAmount = stakeAmount + stakeAdded;
+
+    // stake a third time
+    // TODO what if new stake added is A LOT and the previous stake gets weighed at > 1.0?
+
+    const thirdStakeTimeRemaining = lockPeriod * ( 
+      (newStakedAmount * (t50 / newTimeRemaining) ) // denominator is time left total
+      + 
+      (stakeAdded * (newTimeRemaining / newTimeRemaining) ) ) / (newStakedAmount + stakeAdded);
+
+    console.log(t50);
+    console.log(thirdStakeTimeRemaining);
+    console.log("diff: ", thirdStakeTimeRemaining - t50);
+
+    // 4th stake at T+75
+    const t75 = thirdStakeTimeRemaining - 25;
+    newStakedAmount += stakeAdded;
+
+    const fourthTimeRemaining = 0;
+
 
     // TODO would this math work when we add a lot of new stakes? 5 or 10?
     // because it's adding a percentage of a percentage each time, and so will become smaller?

@@ -11,16 +11,25 @@ interface IStakingBase {
     /**
      * @notice Struct to track an individual staker's data
      */
-    struct Staker {
+    struct Staker { // Consider breaking into multple structs. Base only should have "CoreStaker"
         // TODO this will be different for ERC20, need different structs?
         // TODO maybe these mappings should be independent state variables?
         // reduce the need for passing the Staker struct around
         // but also having them in this struct means not having to check ownership repeatedly
         // make 2D mappings ? address => tokenId => data
         uint256 amountStaked;
-        uint256 owedRewards;
+        uint256 amountStakedLocked; // TODO two pools, one for locked one for unlocked
+
+        uint256 rewardsMultiplier; // Set on stake based on duration of given lock
+
+        uint256 owedRewards; // rewards from locked stakes, accessible when lock is finished
+        uint256 owedRewardsLocked; // rewards from unlocked stakes, accessible any time
+
         uint256 unlockedTimestamp; // For ERC20 locks are per user, not per stake
-        uint256 lastClaimedTimestamp; // For ERC20
+
+        uint256 lastTimestamp; // For ERC20, last touchpoint claim OR stake
+        uint256 lastTimestampLocked; // For ERC20, last touchpoint claim OR stake on locked values
+
         uint256[] tokenIds; // for indexing when bulk claiming / revoking
 
         // TODO maybe for ERC20 we can create an sNFT for staker mappings
@@ -89,7 +98,7 @@ interface IStakingBase {
 
     function withdrawLeftoverRewards() external;
 
-    function getPendingRewards(uint256 tokenId) external view returns (uint256);
+    function getPendingRewards() external view returns (uint256);
 
     function getAllPendingRewards() external view returns (uint256);
 

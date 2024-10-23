@@ -159,28 +159,27 @@ contract StakingBase is Ownable, IStakingBase {
     // this function would still provide utility on front end I think
 
     /**
-     * @notice View the pending rewards balance for a user and a given tokenId
-     * 
-     * @param tokenId The token ID of the staked token
+     * @notice View the pending rewards balance for a user
      */
-    function getPendingRewards(uint256 tokenId) external view override returns (uint256) {
-        return _getPendingRewards(tokenId);
+    function getPendingRewards() external view override returns (uint256) {
+        return 1;
+        // return _getPendingRewards
     }
 
     function getAllPendingRewards() external view override returns (uint256) {
-        uint256 i;
-        uint256 rewards;
+        // uint256 i;
+        // uint256 rewards;
 
-        // TODO dont need amountStaked, just use tokenIds.length
-        Staker storage staker = stakers[msg.sender];
+        // // TODO dont need amountStaked, just use tokenIds.length
+        // Staker storage staker = stakers[msg.sender];
 
-        for (i; i < staker.tokenIds.length;) {
-            rewards += _getPendingRewards(staker.tokenIds[i]);
+        // for (i; i < staker.tokenIds.length;) {
+        //     rewards += _getPendingRewards(staker.tokenIds[i]);
 
-            unchecked {
-                ++i;
-            }
-        }
+        //     unchecked {
+        //         ++i;
+        //     }
+        // }
     }
 
     /**
@@ -220,6 +219,7 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     function getlastClaimedTimestamp(uint256 tokenId) public view override returns (uint256) {
+        // In ERC721 still last*Claimed*, not just lastTimestamp
         return stakers[msg.sender].lastClaimedTimestamps[tokenId];
     }
 
@@ -227,6 +227,7 @@ contract StakingBase is Ownable, IStakingBase {
     /* Internal Functions */
     ////////////////////////////////////
 
+    // For ERC721
     function _baseClaim(uint256 tokenId, Staker storage staker) internal {
         // only comes from Staker right now, so no need to double check ownership
         // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
@@ -234,73 +235,88 @@ contract StakingBase is Ownable, IStakingBase {
 
         // Do not distribute rewards for stakes that are still locked
         // TODO move this check outside of baseClaim to match what `unstake` does
-        if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
-            revert TimeLockNotPassed();
-        }
+        // if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
+        //     revert TimeLockNotPassed();
+        // }
 
-        // TODO consider adding reentrant guard to be more specific
-        // TODO move outside baseclaim to match unstake
-        if (staker.lastClaimedTimestamps[tokenId] == block.timestamp) {
-            revert CannotClaim();
-        }
+        // // TODO consider adding reentrant guard to be more specific
+        // // TODO move outside baseclaim to match unstake
+        // if (staker.lastClaimedTimestamps[tokenId] == block.timestamp) {
+        //     revert CannotClaim();
+        // }
+        // uint256 rewards;
 
-        uint256 rewards = _getPendingRewards(tokenId);
+        // // if ()
+        // uint256 rewards = _getPendingRewards(staker);
 
-        if (_getContractRewardsBalance() < rewards) {
-            revert NoRewardsLeftInContract();
-        }
+        // if (_getContractRewardsBalance() < rewards) {
+        //     revert NoRewardsLeftInContract();
+        // }
 
-        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+        // staker.lastClaimedTimestamps[tokenId] = block.timestamp;
 
-        rewardsToken.safeTransfer(msg.sender, rewards);
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
+        // rewardsToken.safeTransfer(msg.sender, rewards);
+        // emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
-    function _getPendingRewards(
-        uint256 tokenId
-    ) internal view returns (uint256) {
-        Staker storage staker = stakers[msg.sender];
+    // TODO might need to make empty and virtual if we can't figure out a combined func that works for ERC721 and ERC20
+    function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
 
-        // console.log("rpp", rewardsPerPeriod);
-        // console.log("timeStaked", staker.stakedTimestamps[tokenId]);
-        // console.log("block.timestamp", block.timestamp);
-        // console.log("periodLength", periodLength);
-        // console.log("periods passed", (block.timestamp - staker.stakedTimestamps[tokenId]) / periodLength);
-
-        // console.log("block.timestamp", block.timestamp);
-        // console.log("staker.lastClaimedTimestamp / 86400", staker.lastClaimedTimestamps[tokenId] / 86400);
-
-        // If staker has not staked this token, return 0
-        if (staker.stakedTimestamps[tokenId] == 0) {
+        // user has no stake, return 0
+        if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
+            console.log("A");
             return 0;
         }
 
-        // On first claim, `lastClaimedTimestamps` for a token will be the same as its stake timestamp
-        uint256 timeSinceLastClaim = (block.timestamp - staker.lastClaimedTimestamps[tokenId]);
-        // console.log("timeSinceLastClaim", timeSinceLastClaim);
-
-        uint256 lockDuration = staker.lockDurations[tokenId];
-        // console.log("lockDuration", lockDuration);
-
-        if (lockDuration == 0) {
-            // Linear rewards for those who didn't lock their stake
-            return (rewardsPerPeriod * timeSinceLastClaim * MULTIPLIER) / 86400;
+        if (locked && (block.timestamp > staker.unlockedTimestamp)) {
+            // console.log("B");
+            return rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
         } else {
-            // Exponential rewards for those that locked
-            // console.log("rewardsPerPeriod", rewardsPerPeriod);
-            // console.log("timeSinceLastClaim", timeSinceLastClaim);
-            // console.log("rv2: ", rewardsPerPeriod * timeSinceLastClaim**(2) * MULTIPLIER);
+            // console.log("C");
+            // console.log("rewardsPerPeriod: ", rewardsPerPeriod);
+            // console.log("staker.amountStaked: ", staker.amountStaked);
+            // console.log("block.timestamp: ", block.timestamp);
+            // console.log("staker.lastTimestamp: ", staker.lastTimestamp);
+            uint256 rtval = rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
+            // console.log("rtval: ", rtval);
 
-            // Rewards are reduced at a per day rate, so we divide by 86400 (s per day)
-
-            // TODO does this need to use lockDuration in the formula?
-            // TODO for ERC20 the amount they stake should also be relevant
-            return (rewardsPerPeriod * timeSinceLastClaim**(2) * MULTIPLIER) / 86400;
+            return rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
         }
 
-        // return lengthOfStakeInDays * rewardsPerPeriod^(2 + (lockDurationInSeconds / secondsPerYear));
-        // return lockDurationInSeconds * rewardsPerPeriod**2 + 2 * lengthOfStakeInDays;
-        // if did not lock, just return rewardsPerPeriod * lengthOfStakeInDays
+        // TODO figure out how we want to resolve rewards
+        // A) A rewards multiplier is calculated on exponential curve at time of first lock based on lock length
+            // If no lock, RM = 1
+            // If follow up stakes lock, calc RM and set then
+            // On claim or unstake rewards are always multiplied like (RPP * amountStaked * timeElapsed * RM)
+        // B) Every claim or unstake rewards are calculated based on exponential curve and the last touch point
+            // this puts everything on a curve, which is good and bad. Two claims back to back vs one claim at just the second timestamp
+            // will be larger, but will make rewards smaller when user stake multiple times
+        uint256 lockDuration = staker.unlockedTimestamp == 0 ? 1 : staker.unlockedTimestamp;
+
+        return rewardsPerPeriod * formulaOne(lockDuration);
+    }
+
+    // TODO an optional function for rewards different from what is used in 
+    // StakingBase. Could be simpler, leaving here for eval later
+    function formulaOne(uint256 lock) public pure returns(uint256) {
+        // maxRM = 5
+        // periodLength = 365 days
+        // precisionMultiplier = 1000
+        // scalar = 1e18
+        return 1e18 * 5 * ( (lock * 1000 ) / 365) / 1e18;
+    }
+
+    function formulaTwo(Staker storage staker) internal returns(uint256) {
+        if (staker.unlockedTimestamp == 0) {
+            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp) * MULTIPLIER) / 86400;
+        } else {
+            return staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked) * MULTIPLIER ) / 86400;
+        }
+    }
+
+    // Calculate the RM based on the lock
+    function _formulaThree(uint256 lockDuration) public returns(uint256) {
+
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

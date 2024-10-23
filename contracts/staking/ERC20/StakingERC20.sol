@@ -6,12 +6,17 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 
+import { console } from "hardhat/console.sol";
+
 /**
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC20 is StakingBase, IStakingERC20 {
+    // TODO when ERC20Voter token is ready add here to give stakers the 
+    // ability to vote in a DAO
+
     using SafeERC20 for IERC20;
 
     /**
@@ -99,21 +104,19 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @notice Stake an amount of ERC20 with a lock period By locking, 
      * a user cannot access their funds until the lock period is over, but they
      * receive a higher rewards rate for doing so
+     * @dev This function and the below `stakeWithoutLock` are intentionally separate for clarity
      * 
      * @param amount The amount to stake
      * @param lockDuration The duration of the lock period
      */
     function stakeWithLock(uint256 amount, uint256 lockDuration) external {
-        if (amount == 0) {
-            revert ZeroStake();
-        }
-
         _stake(amount, lockDuration);
     }
 
     /**
      * @notice Stake an amount of ERC20 with no lock period. By not locking, a 
      * user can access their funds any time, but they forfeit a higher rewards rate
+     * @dev This function and the below `stakeWithoutLock` are intentionally separate for clarity
      * 
      * @param amount The amount to stake
      */
@@ -154,6 +157,59 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         emit Unstaked(msg.sender, amount, stakingToken);
     }
 
+    // TODO consider adding an ability to unlock a stake so users can access their funds if they want to,
+    // but they forfeit the rewards they would have earned if they had kept it locked, so it gets rewards
+    // as though it was never locked in the first place
+    function _unlock() internal {
+        // unlock a stake for a user, removing their extra rewards
+        // but allowing them to access their funds immediately
+    }
+
+
+
+    // TODO both additional claims AND additional stakes can reduce long term ROI
+        // as exponential from last touch point. Consider changing the rewards math to be simpler
+        // e.g. establish multiplier upon initial stake and always just use that multiplier
+        // This could be gamed because you if your multiplier is only based on the length of stake
+
+        // you could stake 1 for 1 year to get a big multiplier, then add 10000 at the end and claim it rapidly to
+        // get that large multiplier on 10001 total, UNLESS we snapshot rewards properly on new stakes
+        // you get (RM * stakeBalance * lengthOfStake) assigned to you when you make a new stake, then going forward
+        // rewards are calculated only at your new balance based on your last touchpoint
+
+/**
+         * TODO CASES
+         * [x] first stake EVER, want lock
+         *      set amountStakedLocked
+         *      set unlockedTimestamp
+         *      set lastTimestamp
+         * [x] first stake EVER, do not want lock
+         *      set amountStaked
+         *      set lastTimestamp
+         * 
+         * [] NOT first stake, have never locked, lock
+         *      update owedRewards with weighted sum math
+         *      set amountStakedLocked
+         *      set unlockedTimestamp
+         *      update lastTimestamp
+         * 
+         * [] NOT first stake, have never locked, no lock
+         *      update owedRewards with weighted sum math
+         *      update amountStaked
+         *      update lastTimestamp
+         *
+         *
+         * [] NOT first stake, have locked, add more to lock
+         *      updated owedRewards
+         * [] NOT first stake, have locked, add to unlocked
+         */
+
+    // Adjust the appropriate number of days for a stake
+    function weightedSumFunction() public returns(uint256) {
+        // TODO implement
+        return 1;
+    }
+
     function _stake(uint256 amount, uint256 lockDuration) internal {
         if (amount == 0) {
             revert ZeroStake();
@@ -161,86 +217,43 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         Staker storage staker = stakers[msg.sender];
 
+        if (lockDuration == 0) {
+            // console.log("1");
+            // incoming stake isnt locking
+            // add to not locked pool after updating the rewards they are owed
+            staker.owedRewards += _getPendingRewards(staker, false); // Will be 0 on first stake
+            staker.lastTimestamp = block.timestamp;
+            // console.log("valafter : ", staker.owedRewards);
+
+            staker.amountStaked += amount;
+        } else {
+            // console.log("2");
+
+            // incoming stake is locking
+            if (staker.unlockedTimestamp == 0) {
+                // console.log("3");
+
+                // first time locking stake
+                staker.unlockedTimestamp = block.timestamp + lockDuration;
+            } else {
+                // console.log("4");
+
+                // If adding balance to a staking pool that exists
+                // we use the weighted sum of % days left and total 
+                // balance of new amount staked to determine how many days
+                // to add to the `unlockedTimestamp` of a user
+                staker.unlockedTimestamp = weightedSumFunction();
+            }
+
+            staker.lastTimestampLocked = block.timestamp;
+            staker.owedRewardsLocked += _getPendingRewards(staker, true);
+            staker.amountStakedLocked += amount;
+        }
+
+        // Transfers users funds to this contract
+        // TODO a vault instead? would be more expensive
         SafeERC20.safeTransferFrom(IERC20(stakingToken), msg.sender, address(this), amount);
 
-        // Stakes can be turned into locked stakes, but not the other way around
-        // so if a stake starts as unlocked then the user decides to lock at a later date,
-        // we snapshot their rewards and then mark the new timestamp and accrue at higher rate
-        // if a stake starts as locked, the user can add to the locked stake but not add unlocked stakes
-            // if they add to the locked stake, the lock period is reset to current timestamp, snapshot rewards so far
-
-        // TODO CASES
-        // if stake with no lock into empty pool
-        // if stake with lock into empty pool
-        // if stake with no lock into existing pool where tokens were not locked
-        // if stake with lock into existing pool where tokens were not locked
-        // if stake with no lock into existing pool where tokens were locked
-        // if stake with lock into existing pool where tokens were locked 
-
-        // TODO consider adding an ability to unlock a stake so users can access their funds if they want to,
-        // but they forfeit the rewards they would have earned if they had kept it locked, so it gets rewards
-        // as though it was never locked in the first place
-
-        // if we DONT move timestamp forward after snapshot
-            // they have the opportunity to double dip on rewards, possibly?
-        // if we DO move timestamp
-            // they get less because exponential curve
-                // time T-1 to Present will grant rewards at an increasing rate higher than
-                // time T to Present
-
-        if (staker.amountStaked > 0) {
-            // case: not first stake
-            /**
-             * if (incoming stake is has lock duration {
-             *      if (previous stake was locked) {
-             *          // case A
-             *          // revert? cannot modify lock if lock already established
-             *          OR just ignore the lock duration
-             *              snapshot rewards from T-1 to T at LOCKED rate
-             *              add to owedRewards
-             *              MODIFY existing timestamp to be now
-             *      } else {
-             *          // case B, previous stake not locked
-             *          snapshot rewards from T-1 to T at NOT LOCKED rate
-             *          add those to `owedRewards`
-             *          ADD incoming lock
-             *          then reset timestamp to mark as current
-             *      }
-             * } else { // incoming stake does not have lock duration
-             *      if (previous stake was locked) {
-             *          // case C
-             *          snapshot rewards at locked rate from T-1 to T
-             *          add to `amountStaked`
-             *          mark TS current, moving unlock timestamp forward
-             *      } else {
-             *          // case D, previous stake not locked
-             *          snapshot owedRewards at NOT LOCKED rate
-             *          add to `owedRewards`
-             *          then reset timestamp to mark as current
-             *      }
-             * }    
-             */
-        } else {
-            // first stake, so we know pending rewards will be 0 in either case
-            // no need to snapshot anything
-        }
-
-        staker.amountStaked += amount;
-
-        // set user level timestamp NOT indexed mapping for `tokenId`
-        staker.lastClaimedTimestamp = block.timestamp;
-
-        // TODO what should happen to the lock period?
-
-
-        if (lockDuration == 0) {
-
-        }
-
-
-        // transfer their funds to contract
-        // mark their stake
-        
         emit Staked(msg.sender, amount, stakingToken);
     }
 }

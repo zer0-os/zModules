@@ -25,6 +25,7 @@ import {
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
   BaseConfig,
+  DEFAULT_LOCK,
 } from "./helpers/staking";
 
 describe("StakingERC20", () => {
@@ -91,8 +92,8 @@ describe("StakingERC20", () => {
       config.stakingToken,
       config.rewardsToken,
       config.rewardsPerPeriod,
-      config.periodLength,
-      config.timeLockPeriod,
+      // config.periodLength,
+      // config.timeLockPeriod,
       owner.address
     ) as StakingERC20;
 
@@ -131,6 +132,10 @@ describe("StakingERC20", () => {
   });
 
   describe("#getContractRewardsBalance", () => {
+    it("test math", async () => {
+      const t = await contract.formulaOne(365);
+      console.log(t);
+    })
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await contract.getContractRewardsBalance();
       const poolBalance = await rewardsToken.balanceOf(await contract.getAddress());
@@ -139,10 +144,11 @@ describe("StakingERC20", () => {
   });
 
   describe("#stake", () => {
-    it("Can stake an amount successfully", async () => {
+    it.only("Can stake without a lock successfully", async () => {
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
 
-      await contract.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
+      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+
       stakedAtA = BigInt(await time.latest());
       origStakedAtA = stakedAtA;
 
@@ -155,9 +161,31 @@ describe("StakingERC20", () => {
       expect(stakeBalanceAfterA).to.eq(stakeBalanceBeforeA - DEFAULT_STAKED_AMOUNT);
 
       expect(stakerData.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT);
-      expect(stakerData.lastUpdatedTimestamp).to.eq(stakedAtA);
-      expect(stakerData.unlockTimestamp).to.eq(stakedAtA + config.timeLockPeriod);
+      expect(stakerData.lastTimestamp).to.eq(stakedAtA);
+      expect(stakerData.unlockedTimestamp).to.eq(0n);
       expect(stakerData.owedRewards).to.eq(0n);
+
+
+      // Do a followup stake after some period
+      await time.increase(DEFAULT_LOCK); // USE DEFAULT LOCK EVEN THOUGH NOT LOCKING
+
+      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      stakedAtA = BigInt(await time.latest());
+      origStakedAtA = stakedAtA;
+
+      amountStakedA = DEFAULT_STAKED_AMOUNT * 2n;
+
+      const stakeBalanceAfterASecond = await stakeToken.balanceOf(stakerA.address);
+
+      const stakerDataSecond = await contract.stakers(stakerA.address);
+
+      expect(stakeBalanceAfterASecond).to.eq(stakeBalanceAfterA - DEFAULT_STAKED_AMOUNT);
+
+      expect(stakerDataSecond.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT * 2n);
+      expect(stakerDataSecond.lastTimestamp).to.eq(stakedAtA);
+      expect(stakerDataSecond.unlockedTimestamp).to.eq(0n);
+      
+      expect(stakerDataSecond.owedRewards).to.not.eq(0n);
     });
 
     it("Can stake a second time as the same user successfully", async () => {
