@@ -20,5 +20,9 @@ export const WITHDRAW_EVENT = "LeftoverRewardsWithdrawn";
 // TODO test this event
 export const BASE_URI_UPDATED_EVENT  = "BaseURIUpdated";
 
-export const INIT_BALANCE = ethers.parseEther("1000000000000");
-export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10000n;
+// Init balance is 10,000 token
+export const INIT_BALANCE = ethers.parseEther("10000");
+
+// TODO maybe don't scale with parseEther at first?
+// Default stake = 1000 token
+export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10n;

@@ -148,6 +148,58 @@ describe("StakingERC20", () => {
   });
 
   describe.only("#stake", () => {
+    it.only("onchain math for lock updates", async () => {
+      // At T0 stake
+      const stakeTime = 0;
+      const stakeAmount = hre.ethers.parseEther("1000")
+      const lockPeriod = 100n * 86400n; // 100 days
+
+      await contract.connect(stakerA).stakeWithLock(stakeAmount, lockPeriod);
+
+      await time.increase(lockPeriod / 4n);
+
+      const currTimeRemaining = await contract.connect(stakerA).currRemainingLock();
+      console.log(currTimeRemaining.toString());
+
+      // At T25 stake again
+      const stakeAdded = hre.ethers.parseEther("900");
+
+      const newRemainingTimeContract = await contract.connect(stakerA).weightedSumFunction(stakeAdded);
+      console.log(newRemainingTimeContract.toString());
+      // await contract.connect(stakerA).stakeWithLock(stakeAdded, lockPeriod);
+
+      // SHOULD be 75 days remaining
+      const timeRemaining = 75n * 86400n;
+
+      // T25 before stake added time remaining is 75 days
+      // T25 after stake added time remaining is
+
+      // previous is weighed at % of time was left
+      // incoming is always weighed at 100%
+
+      const newTimeRemaining = 
+        lockPeriod * ( 
+          (stakeAmount * (1000n * timeRemaining / lockPeriod) ) 
+          +
+          (stakeAdded)
+        ) / (stakeAmount + stakeAdded)
+
+      console.log(timeRemaining)
+      console.log(newTimeRemaining)
+      console.log("diff: ", newTimeRemaining - timeRemaining);
+      console.log("")
+
+      // await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+
+      // // +25
+      // await time.increase(DEFAULT_LOCK / 4n);
+      
+      // const currRemainingTime = await contract.connect(stakerA).currRemainingLock();
+      // // new remaining time IF we stake at 
+      // const newRemainingTime = await contract.connect(stakerA).weightedSumFunction(hre.ethers.parseEther("900"))
+      // console.log(newRemainingTime);
+    });
+
     it("Can stake without a lock successfully", async () => {
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
 
@@ -245,7 +297,7 @@ describe("StakingERC20", () => {
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
     });
 
-    it.only("Calculates updated lock duration correctly", async () => {
+    it("Calculates updated lock duration correctly", async () => {
       await contract.connect(stakerB).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
       stakedAtB = BigInt(await time.latest());
       origStakedAtB = stakedAtB;
@@ -255,12 +307,13 @@ describe("StakingERC20", () => {
 
       console.log(stakerData.unlockedTimestamp.toString());
 
+      const wSum = await contract.weightedSumFunction(DEFAULT_STAKED_AMOUNT);
+
       // Default lock is 100n, so 75% remaining
       // Do this with numbers calculated from example message in chat
       await time.increase(25n);
 
       await contract.connect(stakerB).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
-
     });
 
     it("Can stake as a new user when others are already staked", async () => {

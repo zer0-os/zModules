@@ -204,18 +204,58 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
          * [] NOT first stake, have locked, add to unlocked
          */
 
-    // Adjust the appropriate number of days for a stake
-    function weightedSumFunction(uint256 incomingAmount) public returns(uint256) {
-        // TODO implement
+    function currRemainingLock() public view returns(uint256) {
         Staker storage staker = stakers[msg.sender];
 
-        // lockDuration * ( (stake1Balance * %remainingDays) + (stake2Balance) * 1.0) ) / (stake1Balance + stake2Balance)
-
-        
-        uint256 currBalance = staker.amountStakedLocked;
         uint256 lockDuration = staker.lockDuration;
-        // uint256 daysLeftPercent = 
-        return 1;
+
+        // if lock is 100 and (bts - s.lt) = 25, remaining = 75
+        uint256 remainingLockTime = lockDuration  - (block.timestamp - staker.lastTimestampLocked);
+        return remainingLockTime;
+    }
+
+    // function testRemainingLockTime() public view returns(uint256) {
+    //     // testing the scaling with solidity math
+    //     Staker storage staker = stakers[msg.sender];
+
+    //     uint256 lockDuration = staker.lockDuration;
+
+    //     // if lock is 100 and (bts - s.lt) = 25, remaining = 75
+    //     uint256 remainingLockTime = lockDuration  - (block.timestamp - staker.lastTimestampLocked);
+
+    //     uint256 newRemainingTime = 
+    //         staker.lockDuration * 
+    //             ( 
+    //                 (staker.amountStakedLocked * (1000 * remainingLockTime / staker.lockDuration)) 
+    //                 + 
+    //                 (900 * 1) // just showing for math
+    //             ) 
+    //             / (staker.amountStakedLocked + 900);
+
+    //     return newRemainingTime;
+    // }
+
+    // Adjust the appropriate number of days for a stake
+    function weightedSumFunction(uint256 incomingAmount) public view returns(uint256) {
+        Staker storage staker = stakers[msg.sender];
+
+        // Formula for adjusting a users lock timestamp based on a new incoming stake value
+        // and the percentage of time they have passed in the defined stake lock
+        // lockDuration * ( (amountStaked * %lockRemaining) + (incomingAmount) ) / (amountStaked + incomingAmount)
+        // Effectively equivalent to a weighted sum of the remaining time and the new incoming stake weighted at 100%
+        // f(x) = aW_1 + bW_2 * k
+        uint256 newRemainingTime = 
+            staker.lockDuration * ( 
+                (staker.amountStakedLocked * 
+                    (1000 * 
+                        (
+                            staker.lockDuration - (block.timestamp - staker.lastTimestampLocked)
+                        ) / staker.lockDuration
+                    ) / 1000)
+                +
+                (incomingAmount)) / (staker.amountStakedLocked + incomingAmount);
+
+        return newRemainingTime;
     }
 
     function _stake(uint256 amount, uint256 lockDuration) internal {
