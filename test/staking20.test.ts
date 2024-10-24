@@ -26,6 +26,7 @@ import {
   UNSTAKED_EVENT,
   BaseConfig,
   DEFAULT_LOCK,
+  DAY_IN_SECONDS,
 } from "./helpers/staking";
 
 describe("StakingERC20", () => {
@@ -148,56 +149,35 @@ describe("StakingERC20", () => {
   });
 
   describe.only("#stake", () => {
-    it.only("onchain math for lock updates", async () => {
-      // At T0 stake
-      const stakeTime = 0;
+    it.only("Updates the amount of remaining time on follow up locks appropriately", async () => {
       const stakeAmount = hre.ethers.parseEther("1000")
-      const lockPeriod = 100n * 86400n; // 100 days
+      const lockPeriod = 100n * DAY_IN_SECONDS;
 
       await contract.connect(stakerA).stakeWithLock(stakeAmount, lockPeriod);
 
       await time.increase(lockPeriod / 4n);
 
+      const stakerData = await contract.stakers(stakerA.address);
+      console.log("unlockTimestamp: ", stakerData.unlockedTimestamp);
+
       const currTimeRemaining = await contract.connect(stakerA).currRemainingLock();
-      console.log(currTimeRemaining.toString());
+      console.log("currTimeRemain: ", currTimeRemaining.toString());
 
       // At T25 stake again
       const stakeAdded = hre.ethers.parseEther("900");
 
       const newRemainingTimeContract = await contract.connect(stakerA).weightedSumFunction(stakeAdded);
-      console.log(newRemainingTimeContract.toString());
+      console.log("newTimeRemain: ", newRemainingTimeContract.toString());
       // await contract.connect(stakerA).stakeWithLock(stakeAdded, lockPeriod);
+      console.log("diff: ", newRemainingTimeContract - currTimeRemaining);
 
-      // SHOULD be 75 days remaining
-      const timeRemaining = 75n * 86400n;
+      await contract.connect(stakerA).stakeWithLock(stakeAdded, lockPeriod);
 
-      // T25 before stake added time remaining is 75 days
-      // T25 after stake added time remaining is
+      const stakerData2 = await contract.stakers(stakerA.address);
+      console.log("newUnlockTimestamp: ", stakerData2.unlockedTimestamp);
+      console.log("timestampDiff: ", stakerData2.unlockedTimestamp - stakerData.unlockedTimestamp);
 
-      // previous is weighed at % of time was left
-      // incoming is always weighed at 100%
-
-      const newTimeRemaining = 
-        lockPeriod * ( 
-          (stakeAmount * (1000n * timeRemaining / lockPeriod) ) 
-          +
-          (stakeAdded)
-        ) / (stakeAmount + stakeAdded)
-
-      console.log(timeRemaining)
-      console.log(newTimeRemaining)
-      console.log("diff: ", newTimeRemaining - timeRemaining);
       console.log("")
-
-      // await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
-
-      // // +25
-      // await time.increase(DEFAULT_LOCK / 4n);
-      
-      // const currRemainingTime = await contract.connect(stakerA).currRemainingLock();
-      // // new remaining time IF we stake at 
-      // const newRemainingTime = await contract.connect(stakerA).weightedSumFunction(hre.ethers.parseEther("900"))
-      // console.log(newRemainingTime);
     });
 
     it("Can stake without a lock successfully", async () => {
