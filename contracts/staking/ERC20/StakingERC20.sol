@@ -204,13 +204,13 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
          * [] NOT first stake, have locked, add to unlocked
          */
 
-    function currRemainingLock() public view returns(uint256) {
+    function viewRemainingLockTime() public view returns(uint256) {
         Staker storage staker = stakers[msg.sender];
         return staker.lockDuration  - (block.timestamp - staker.lastTimestampLocked);
     }
 
     // Adjust the appropriate number of days for a stake
-    function weightedSumFunction(uint256 incomingAmount) public view returns(uint256) {
+    function _updateRemainingLockTime(uint256 incomingAmount) internal view returns(uint256) {
         Staker storage staker = stakers[msg.sender];
 
         // Formula for adjusting a users lock timestamp based on a new incoming stake value
@@ -268,7 +268,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // balance of new amount staked to determine how many days
                 // to add to the `unlockedTimestamp` of a user
                 uint256 _currRemainingLock = staker.lockDuration - (block.timestamp - staker.lastTimestampLocked);
-                uint256 newRemainingLock = weightedSumFunction(amount);
+                uint256 newRemainingLock = _updateRemainingLockTime(amount);
                 staker.unlockedTimestamp += (newRemainingLock - _currRemainingLock); 
             }
 

@@ -148,36 +148,32 @@ describe("StakingERC20", () => {
     });
   });
 
-  describe.only("#stake", () => {
-    it.only("Updates the amount of remaining time on follow up locks appropriately", async () => {
-      const stakeAmount = hre.ethers.parseEther("1000")
-      const lockPeriod = 100n * DAY_IN_SECONDS;
-
-      await contract.connect(stakerA).stakeWithLock(stakeAmount, lockPeriod);
-
-      await time.increase(lockPeriod / 4n);
+  describe("#stake", () => {
+    it("Updates the amount of remaining time on follow up locks appropriately", async () => {
+      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      stakedAtA = BigInt(await time.latest());
+      amountStakedLockedA = DEFAULT_STAKED_AMOUNT;
 
       const stakerData = await contract.stakers(stakerA.address);
-      console.log("unlockTimestamp: ", stakerData.unlockedTimestamp);
 
-      const currTimeRemaining = await contract.connect(stakerA).currRemainingLock();
-      console.log("currTimeRemain: ", currTimeRemaining.toString());
+      expect(stakerData.lastTimestampLocked).to.eq(stakedAtA);
+      expect(stakerData.unlockedTimestamp).to.eq(stakedAtA + DEFAULT_LOCK);
+      expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT);
 
-      // At T25 stake again
+      await time.increase(DEFAULT_LOCK / 4n);
+
       const stakeAdded = hre.ethers.parseEther("900");
-
-      const newRemainingTimeContract = await contract.connect(stakerA).weightedSumFunction(stakeAdded);
-      console.log("newTimeRemain: ", newRemainingTimeContract.toString());
-      // await contract.connect(stakerA).stakeWithLock(stakeAdded, lockPeriod);
-      console.log("diff: ", newRemainingTimeContract - currTimeRemaining);
-
-      await contract.connect(stakerA).stakeWithLock(stakeAdded, lockPeriod);
+      await contract.connect(stakerA).stakeWithLock(stakeAdded, 1n);
+      stakedAtA = BigInt(await time.latest());
+      amountStakedLockedA += DEFAULT_STAKED_AMOUNT;
 
       const stakerData2 = await contract.stakers(stakerA.address);
-      console.log("newUnlockTimestamp: ", stakerData2.unlockedTimestamp);
-      console.log("timestampDiff: ", stakerData2.unlockedTimestamp - stakerData.unlockedTimestamp);
 
-      console.log("")
+      expect(stakerData2.lastTimestampLocked).to.eq(stakedAtA);
+
+      // TODO add helper function that calcs the same to compare to
+      expect(stakerData2.unlockedTimestamp).to.gt(stakerData.unlockedTimestamp);
+      expect(stakerData2.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT + stakeAdded);
     });
 
     it("Can stake without a lock successfully", async () => {
