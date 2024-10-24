@@ -267,7 +267,7 @@ contract StakingBase is Ownable, IStakingBase {
 
         // user has no stake, return 0
         if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
-            console.log("A");
+            // console.log("A");
             return 0;
         }
 

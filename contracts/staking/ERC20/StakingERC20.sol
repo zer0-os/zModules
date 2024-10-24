@@ -205,8 +205,16 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
          */
 
     // Adjust the appropriate number of days for a stake
-    function weightedSumFunction() public returns(uint256) {
+    function weightedSumFunction(uint256 incomingAmount) public returns(uint256) {
         // TODO implement
+        Staker storage staker = stakers[msg.sender];
+
+        // lockDuration * ( (stake1Balance * %remainingDays) + (stake2Balance) * 1.0) ) / (stake1Balance + stake2Balance)
+
+        
+        uint256 currBalance = staker.amountStakedLocked;
+        uint256 lockDuration = staker.lockDuration;
+        // uint256 daysLeftPercent = 
         return 1;
     }
 
@@ -234,6 +242,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // console.log("3");
 
                 // first time locking stake
+                staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
             } else {
                 // console.log("4");
@@ -242,7 +251,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // we use the weighted sum of % days left and total 
                 // balance of new amount staked to determine how many days
                 // to add to the `unlockedTimestamp` of a user
-                staker.unlockedTimestamp = weightedSumFunction();
+                staker.unlockedTimestamp = weightedSumFunction(amount);
             }
 
             staker.lastTimestampLocked = block.timestamp;

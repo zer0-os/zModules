@@ -25,6 +25,7 @@ interface IStakingBase {
         uint256 owedRewards; // rewards from locked stakes, accessible when lock is finished
         uint256 owedRewardsLocked; // rewards from unlocked stakes, accessible any time
 
+        uint256 lockDuration;
         uint256 unlockedTimestamp; // For ERC20 locks are per user, not per stake
 
         uint256 lastTimestamp; // For ERC20, last touchpoint claim OR stake
