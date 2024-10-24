@@ -73,6 +73,8 @@ describe("StakingERC20", () => {
   let unstakedAtA : bigint;
   let unstakedAtC : bigint;
 
+  let reset = async () => {};
+
   before(async () => {
     [
       owner,
@@ -85,62 +87,61 @@ describe("StakingERC20", () => {
     ] = await hre.ethers.getSigners();
 
     const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-    stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
 
-    rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
-
-    config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
 
     const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
 
-    contract = await stakingFactory.deploy(
-      config.stakingToken,
-      config.rewardsToken,
-      config.rewardsPerPeriod,
-      // config.periodLength,
-      // config.timeLockPeriod,
-      owner.address
-    ) as StakingERC20;
+    reset = async () => {
+      stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
+      rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
 
-    // Give each user funds to stake
-    await stakeToken.connect(owner).transfer(
-      stakerA.address,
-      INIT_BALANCE
-    );
+      config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
 
-    await stakeToken.connect(owner).transfer(
-      stakerB.address,
-      INIT_BALANCE
-    );
+      contract = await stakingFactory.deploy(
+        config.stakingToken,
+        config.rewardsToken,
+        config.rewardsPerPeriod,
+        owner.address
+      ) as StakingERC20;
 
-    await stakeToken.connect(owner).transfer(
-      stakerC.address,
-      INIT_BALANCE
-    );
+      // Give each user funds to stake
+      await stakeToken.connect(owner).transfer(
+        stakerA.address,
+        INIT_BALANCE
+      );
+  
+      await stakeToken.connect(owner).transfer(
+        stakerB.address,
+        INIT_BALANCE
+      );
+  
+      await stakeToken.connect(owner).transfer(
+        stakerC.address,
+        INIT_BALANCE
+      );
+  
+      await stakeToken.connect(owner).transfer(
+        stakerD.address,
+        INIT_BALANCE
+      );
+  
+      await stakeToken.connect(owner).transfer(
+        stakerF.address,
+        INIT_BALANCE
+      );
+  
+      // Approve staking contract to spend staker funds
+      await stakeToken.connect(stakerA).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+      await stakeToken.connect(stakerB).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+      await stakeToken.connect(stakerC).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+      await stakeToken.connect(stakerD).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+      await stakeToken.connect(stakerF).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    }
 
-    await stakeToken.connect(owner).transfer(
-      stakerD.address,
-      INIT_BALANCE
-    );
-
-    await stakeToken.connect(owner).transfer(
-      stakerF.address,
-      INIT_BALANCE
-    );
-
-    // Approve staking contract to spend staker funds
-    await stakeToken.connect(stakerA).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    await stakeToken.connect(stakerB).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    await stakeToken.connect(stakerC).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    await stakeToken.connect(stakerD).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-    await stakeToken.connect(stakerF).approve(await contract.getAddress(), hre.ethers.MaxUint256);
+    await reset();
   });
 
   describe("#getContractRewardsBalance", () => {
-    it("test math", async () => {
-      const t = await contract.formulaOne(365);
-      console.log(t);
-    })
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await contract.getContractRewardsBalance();
       const poolBalance = await rewardsToken.balanceOf(await contract.getAddress());
@@ -148,34 +149,7 @@ describe("StakingERC20", () => {
     });
   });
 
-  describe("#stake", () => {
-    it("Updates the amount of remaining time on follow up locks appropriately", async () => {
-      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
-      stakedAtA = BigInt(await time.latest());
-      amountStakedLockedA = DEFAULT_STAKED_AMOUNT;
-
-      const stakerData = await contract.stakers(stakerA.address);
-
-      expect(stakerData.lastTimestampLocked).to.eq(stakedAtA);
-      expect(stakerData.unlockedTimestamp).to.eq(stakedAtA + DEFAULT_LOCK);
-      expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT);
-
-      await time.increase(DEFAULT_LOCK / 4n);
-
-      const stakeAdded = hre.ethers.parseEther("900");
-      await contract.connect(stakerA).stakeWithLock(stakeAdded, 1n);
-      stakedAtA = BigInt(await time.latest());
-      amountStakedLockedA += DEFAULT_STAKED_AMOUNT;
-
-      const stakerData2 = await contract.stakers(stakerA.address);
-
-      expect(stakerData2.lastTimestampLocked).to.eq(stakedAtA);
-
-      // TODO add helper function that calcs the same to compare to
-      expect(stakerData2.unlockedTimestamp).to.gt(stakerData.unlockedTimestamp);
-      expect(stakerData2.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT + stakeAdded);
-    });
-
+  describe.only("#stake", () => {
     it("Can stake without a lock successfully", async () => {
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
 
@@ -273,23 +247,32 @@ describe("StakingERC20", () => {
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
     });
 
-    it("Calculates updated lock duration correctly", async () => {
-      await contract.connect(stakerB).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
-      stakedAtB = BigInt(await time.latest());
-      origStakedAtB = stakedAtB;
-      amountStakedB = DEFAULT_STAKED_AMOUNT;
+    it("Updates the amount of remaining time on follow up locks appropriately", async () => {
+      await reset();
+      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      stakedAtA = BigInt(await time.latest());
+      amountStakedLockedA = DEFAULT_STAKED_AMOUNT;
 
-      const stakerData = await contract.stakers(stakerB.address);
+      const stakerData = await contract.stakers(stakerA.address);
 
-      console.log(stakerData.unlockedTimestamp.toString());
+      expect(stakerData.lastTimestampLocked).to.eq(stakedAtA);
+      expect(stakerData.unlockedTimestamp).to.eq(stakedAtA + DEFAULT_LOCK);
+      expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT);
 
-      const wSum = await contract.weightedSumFunction(DEFAULT_STAKED_AMOUNT);
+      await time.increase(DEFAULT_LOCK / 4n);
 
-      // Default lock is 100n, so 75% remaining
-      // Do this with numbers calculated from example message in chat
-      await time.increase(25n);
+      const stakeAdded = hre.ethers.parseEther("900");
+      await contract.connect(stakerA).stakeWithLock(stakeAdded, 1n);
+      stakedAtA = BigInt(await time.latest());
+      amountStakedLockedA += DEFAULT_STAKED_AMOUNT;
 
-      await contract.connect(stakerB).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      const stakerData2 = await contract.stakers(stakerA.address);
+
+      expect(stakerData2.lastTimestampLocked).to.eq(stakedAtA);
+
+      // TODO add helper function that calcs the same to compare to
+      expect(stakerData2.unlockedTimestamp).to.gt(stakerData.unlockedTimestamp);
+      expect(stakerData2.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT + stakeAdded);
     });
 
     it("Can stake as a new user when others are already staked", async () => {

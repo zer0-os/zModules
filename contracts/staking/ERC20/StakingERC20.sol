@@ -218,6 +218,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // lockDuration * ( (amountStaked * %lockRemaining) + (incomingAmount) ) / (amountStaked + incomingAmount)
         // Effectively equivalent to a weighted sum of the remaining time and the new incoming stake weighted at 100%
         // f(x) = aW_1 + bW_2 * k
+
+        console.log("here");
         uint256 newRemainingLock = 
             staker.lockDuration * ( 
                 (
@@ -261,7 +263,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
             } else {
-                // console.log("4");
+                console.log("4");
 
                 // If adding balance to a staking pool that exists
                 // we use the weighted sum of % days left and total 
