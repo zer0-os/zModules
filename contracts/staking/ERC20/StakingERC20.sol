@@ -109,11 +109,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     // rewards are calculated only at your new balance based on your last touchpoint
 
 
-    function viewRemainingLockTime() public view returns(uint256) {
-        Staker storage staker = stakers[msg.sender];
-        return staker.lockDuration  - (block.timestamp - staker.lastTimestampLocked);
-    }
-
     // Adjust the appropriate number of days for a stake
     function _updateRemainingLockTime(uint256 incomingAmount) internal view returns(uint256) {
         Staker storage staker = stakers[msg.sender];

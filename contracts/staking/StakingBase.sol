@@ -136,6 +136,14 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     /**
+     * @notice Return the time in seconds remaining for the staker's lock duration
+     */
+    function getRemainingLockTime() external view returns(uint256) {
+        Staker storage staker = stakers[msg.sender];
+        return staker.lockDuration  - (block.timestamp - staker.lastTimestampLocked);
+    }
+
+    /**
      * @notice Return the time in seconds remaining for a stake to be claimed or unstaked
      */
     function getRemainingLockTime(uint256 tokenId) external view override returns (uint256) {
@@ -202,23 +210,45 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     // Staker getters
-    // ERC721 specific staker getter funcs
-    // TODO ERC20 same funcs if we create sNFT the same way
+    // TODO Some are shared but many are token specific, consider
+    // moving these to the contracts that need them instead to avoid bloat
+    // for useless ERC20 functions in ERC721 contract or vice versa
 
     function getAmountStaked() public view override returns(uint256) {
+        // ERC721s OR unlocked ERC20 amount
         return stakers[msg.sender].amountStaked;
     }
 
+    function getAmountStakedLocked() public view override returns(uint256) {
+        // Locked ERC20 amount or locked ERC721s
+        return stakers[msg.sender].amountStakedLocked;
+    }
+
     function getStakedTokenIds() public view override returns(uint256[] memory) {
+        // Staked ERC721 tokenIds
         return stakers[msg.sender].tokenIds;
     }
 
     function getLockDuration(uint256 tokenId) public view override returns (uint256) {
+        // Lock duration for a specific ERC721 tokenId
         return stakers[msg.sender].lockDurations[tokenId];
+    }
+
+    function getLockDuration() public view override returns (uint256) {
+        // Lock duration for a user's ERC20 stake
+        return stakers[msg.sender].lockDuration;
     }
 
     function getStakedTimestamp(uint256 tokenId) public view override returns (uint256) {
         return stakers[msg.sender].stakedTimestamps[tokenId];
+    }
+
+    function getLastTimestamp() public view override returns (uint256) {
+        return stakers[msg.sender].lastTimestamp;
+    }
+
+    function getLastTimestampStaked() public view override returns (uint256) {
+        return stakers[msg.sender].lastTimestampLocked;
     }
 
     function getlastClaimedTimestamp(uint256 tokenId) public view override returns (uint256) {

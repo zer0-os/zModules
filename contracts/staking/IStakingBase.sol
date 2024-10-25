@@ -110,12 +110,20 @@ interface IStakingBase {
     function getMultiplier() external view returns (uint256);
 
     function getAmountStaked() external view returns (uint256);
+    
+    function getAmountStakedLocked() external view returns (uint256);
 
     function getStakedTokenIds() external view returns(uint256[] memory);
 
     function getLockDuration(uint256 tokenId) external view returns (uint256);
+    
+    function getLockDuration() external view returns (uint256);
 
     function getStakedTimestamp(uint256 tokenId) external view returns (uint256);
+    
+    function getLastTimestamp() external view returns (uint256);
+    
+    function getLastTimestampStaked() external view returns (uint256);
 
     function getlastClaimedTimestamp(uint256 tokenId) external view returns (uint256);
 }
