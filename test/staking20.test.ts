@@ -230,6 +230,12 @@ describe("StakingERC20", () => {
     it("Can stake a second time with a lock as the same user successfully", async () => {
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerA.address);
 
+      // If we don't increase time between two stakes it breaks
+      // what is the smallest amount we can increase and it passes?
+      // 20n passes, DIS / 20 = 4319 seconds = ~72 minutes
+      // Any less and it fails
+      // await time.increase(4319);
+
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
       stakedAtA = BigInt(await time.latest());
       amountStakedA += DEFAULT_STAKED_AMOUNT;
@@ -243,7 +249,7 @@ describe("StakingERC20", () => {
 
       expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT * 2n);
       expect(stakerData.lastTimestampLocked).to.eq(stakedAtA);
-      // expect(stakerData.unlockedTimestamp).to.eq(stakedAtA + DEFAULT_LOCK); // TODO impl lock period change
+      expect(stakerData.unlockedTimestamp).to.eq(stakedAtA + DEFAULT_LOCK); // TODO impl lock period change
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
     });
 
@@ -272,40 +278,57 @@ describe("StakingERC20", () => {
 
       // TODO add helper function that calcs the same to compare to
       expect(stakerData2.unlockedTimestamp).to.gt(stakerData.unlockedTimestamp);
+      expect(stakerData2.unlockedTimestamp).to.eq(stakedAtA + DEFAULT_LOCK);
       expect(stakerData2.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT + stakeAdded);
     });
 
-    it("Can stake as a new user when others are already staked", async () => {
+    it("Can stake as a new user without lock when others are already staked", async () => {
       const pendingRewards = await contract.connect(stakerB).getPendingRewards();
 
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerB.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerB.address);
 
-      await contract.connect(stakerB).stake(DEFAULT_STAKED_AMOUNT);
+      await contract.connect(stakerB).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
       stakedAtB = BigInt(await time.latest());
+      amountStakedB += DEFAULT_STAKED_AMOUNT;
       origStakedAtB = stakedAtB;
-
-      const expectedRewards = calcTotalRewards(
-        [stakedAtB - origStakedAtB], // Will be 0
-        [DEFAULT_STAKED_AMOUNT],
-        config.rewardsPerPeriod,
-        config.periodLength
-      );
 
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerB.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerB.address);
 
       const stakerData = await contract.stakers(stakerB.address);
 
-      expect(pendingRewards).to.eq(expectedRewards);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
 
       expect(stakerData.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT);
-      expect(stakerData.unlockTimestamp).to.eq(origStakedAtB + config.timeLockPeriod);
+      expect(stakerData.unlockedTimestamp).to.eq(0n);
 
-      expect(stakerData.lastUpdatedTimestamp).to.eq(stakedAtB);
-      expect(stakerData.owedRewards).to.eq(expectedRewards);
+      expect(stakerData.lastTimestamp).to.eq(stakedAtB);
+      expect(stakerData.owedRewards).to.eq(0n);
+    });
+
+    it("Can stake as a new user with a lock when others are already staked", async () => {
+      const stakeBalanceBefore = await stakeToken.balanceOf(stakerB.address);
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerB.address);
+
+      await contract.connect(stakerB).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      stakedAtB = BigInt(await time.latest());
+      amountStakedLockedB += DEFAULT_STAKED_AMOUNT;
+
+      const stakeBalanceAfter = await stakeToken.balanceOf(stakerB.address);
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerB.address);
+
+      const stakerData = await contract.stakers(stakerB.address);
+
+      expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
+
+      expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT);
+      expect(stakerData.unlockedTimestamp).to.eq(stakedAtB + DEFAULT_LOCK);
+
+      expect(stakerData.lastTimestampLocked).to.eq(stakedAtB);
+      expect(stakerData.owedRewards).to.eq(0n);
     });
 
     it("Fails when the staker doesn't have the funds to stake", async () => {
@@ -313,7 +336,7 @@ describe("StakingERC20", () => {
 
       // First, it will fail on allowance
       await expect(
-        contract.connect(notStaker).stake(amount)
+        contract.connect(notStaker).stakeWithoutLock(amount)
       ).to.be.revertedWithCustomError(rewardsToken, INSUFFICIENT_ALLOWANCE_ERR)
         .withArgs(contract.target, 0n, amount);
 
@@ -322,7 +345,7 @@ describe("StakingERC20", () => {
 
       const balance = await stakeToken.balanceOf(notStaker.address);
       await expect(
-        contract.connect(notStaker).stake(amount)
+        contract.connect(notStaker).stakeWithLock(amount, DEFAULT_LOCK)
       ).to.be.revertedWithCustomError(stakeToken, INSUFFICIENT_BALANCE_ERR)
         .withArgs(notStaker.address, balance, amount);
     });
@@ -330,7 +353,11 @@ describe("StakingERC20", () => {
     it("Fails when the staker tries to stake 0", async () => {
       // TODO Should we bother preventing this case?
       await expect(
-        contract.connect(stakerA).stake(0n)
+        contract.connect(stakerA).stakeWithoutLock(0n)
+      ).to.be.revertedWithCustomError(contract, ZERO_STAKE_ERR);
+
+      await expect(
+        contract.connect(stakerA).stakeWithLock(0n, DEFAULT_LOCK)
       ).to.be.revertedWithCustomError(contract, ZERO_STAKE_ERR);
     });
   });

@@ -19,73 +19,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
     using SafeERC20 for IERC20;
 
-    /**
-     * We want to add functionality that allows users to lock their stake for a period of time
-     * they get a reward bonus multiplier for doing so, and the longer they lock, the higher the multiplier
-     * 
-     * Do we still want `_timeLockPeriod` as part of the constructor here? Where a minimum amount of time has to pass before
-     * a user can claim their rewards? Or do we want to remove that and replace it with the lock periodthey specify?
-     * 
-     * Are they REQUIRED to lock for any period of time? Or is it optional?
-     * 
-     * If locking is optional we can remove `timeLockPeriod` entirely
-     * If locking is not optional, then `timeLockPeriod` can be used to represent the minimum locking time
-     * 
-     * 
-     * Do we want the lock multiplier to be some curve function? Or just a fixed array of values
-     *  If using the simplest approach like neo recommended, just having an array of  some simple values makes more sense
-     * 
-     * 
-     * How do we handle second and third stakes?
-     *  Locked independently? Or do they all share the same lock period?
-     * 
-     *  e.g. stake 1 for 30 days and get lock multiplier of X, then add and reset the 30 day waiting period by now the 
-     *  multiplier is X+1
-     * 
-     * or
-     * 
-     * the second and further stakes are locked independently of each other, so a user could have an array of lock periods
-     * and multipliers
-     * 
-     * Stakes dont care about each other, so no existing rewards come from the previous stake
-     * e.g. staked A for 30 days, multiplier is X
-     * staked B for 60 days, multiplier is Y
-     * 
-     * TODO how much should RM increase based on lock time? 30 days = 1 RM? It should scale so its exponential in value to incentivize
-     * longer lock times
-     * 
-     * RMs should be configurable, simplest to have them all start at a base value
-     * 
-     * RMs (We could scale these appropriately so even if the number is larger its not the same as just X*Y)
-     * MAYBE we do `1/x` multiplier where `x` starts at 365 and the longer your stake is, the smaller `x` becomes so the multiplier is larger
-     * that  way when you reach 1/1 you're at the "full" rewards amount
-     * 1, 2, 3, 5, 8, 11, 19, 30, 49, 79
-     * 
-     * Days
-     * 30, 60, 90, 120, 150, 180, 210, 240, 270, 300
-     * 
-     * A) Has never staked
-     *  1) Does incoming stake have lock time?
-     *      - if yes, set lock and RM for that duration appropriately
-     *      - if no, set lock to 0 and RM to 1
-     * 
-     * B) Has staked before
-     *  1) Does incoming stake have lock time?
-     *      - if so, set lock for this amount and set RM appropriately (each stake is independent?)
-     *      - if not, combine with 0 lock value
-     *    
-     * 
-     * case 1: user who has never staked enters stake for 20 that is not locked, RM is 1, can claim or unlock at any time
-     * case 2: user who has never staked enters stake for 20 that is locked for 30 days, RM is 2, can claim or unlock at any time
-     * 
-     * case 3: user who HAS staked WITHOUT locking enters another stake for more, this is combined with stake that has 1 RM
-     * case 4: user who HAS staked WITH locking enters another stake, this is NOT combined with existing stake
-     * 
-     * Can users contribute to existing stake that is locked? 
-     *  i.e. you have A locked for X time, then you add B amount after T elapses, so now stake is A+B but lock time resets
-     *  rewards generated so far are assigned to the user, but not yet actually transferred to them
-     */
-
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
@@ -165,44 +98,16 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // but allowing them to access their funds immediately
     }
 
-
-
     // TODO both additional claims AND additional stakes can reduce long term ROI
-        // as exponential from last touch point. Consider changing the rewards math to be simpler
-        // e.g. establish multiplier upon initial stake and always just use that multiplier
-        // This could be gamed because you if your multiplier is only based on the length of stake
+    // as exponential from last touch point. Consider changing the rewards math to be simpler
+    // e.g. establish multiplier upon initial stake and always just use that multiplier
+    // This could be gamed because you if your multiplier is only based on the length of stake
 
-        // you could stake 1 for 1 year to get a big multiplier, then add 10000 at the end and claim it rapidly to
-        // get that large multiplier on 10001 total, UNLESS we snapshot rewards properly on new stakes
-        // you get (RM * stakeBalance * lengthOfStake) assigned to you when you make a new stake, then going forward
-        // rewards are calculated only at your new balance based on your last touchpoint
+    // you could stake 1 for 1 year to get a big multiplier, then add 10000 at the end and claim it rapidly to
+    // get that large multiplier on 10001 total, UNLESS we snapshot rewards properly on new stakes
+    // you get (RM * stakeBalance * lengthOfStake) assigned to you when you make a new stake, then going forward
+    // rewards are calculated only at your new balance based on your last touchpoint
 
-/**
-         * TODO CASES
-         * [x] first stake EVER, want lock
-         *      set amountStakedLocked
-         *      set unlockedTimestamp
-         *      set lastTimestamp
-         * [x] first stake EVER, do not want lock
-         *      set amountStaked
-         *      set lastTimestamp
-         * 
-         * [] NOT first stake, have never locked, lock
-         *      update owedRewards with weighted sum math
-         *      set amountStakedLocked
-         *      set unlockedTimestamp
-         *      update lastTimestamp
-         * 
-         * [] NOT first stake, have never locked, no lock
-         *      update owedRewards with weighted sum math
-         *      update amountStaked
-         *      update lastTimestamp
-         *
-         *
-         * [] NOT first stake, have locked, add more to lock
-         *      updated owedRewards
-         * [] NOT first stake, have locked, add to unlocked
-         */
 
     function viewRemainingLockTime() public view returns(uint256) {
         Staker storage staker = stakers[msg.sender];
@@ -219,7 +124,19 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // Effectively equivalent to a weighted sum of the remaining time and the new incoming stake weighted at 100%
         // f(x) = aW_1 + bW_2 * k
 
-        console.log("here");
+        console.log("staker.lockDuration : ", staker.lockDuration);
+        console.log("staker.amountStakedLocked : ", staker.amountStakedLocked);
+        console.log("block.timestamp : ", block.timestamp);
+        console.log("staker.lastTimestampLocked : ", staker.lastTimestampLocked);
+        console.log("incomingAmount : ", incomingAmount);
+
+        // Failing regular test
+
+        // x * (100) + (90) / 200
+
+
+        // Passing specialized test that resets
+
         uint256 newRemainingLock = 
             staker.lockDuration * ( 
                 (
@@ -263,15 +180,18 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
             } else {
-                console.log("4");
+                // console.log("4");
 
                 // If adding balance to a staking pool that exists
                 // we use the weighted sum of % days left and total 
                 // balance of new amount staked to determine how many days
                 // to add to the `unlockedTimestamp` of a user
-                uint256 _currRemainingLock = staker.lockDuration - (block.timestamp - staker.lastTimestampLocked);
-                uint256 newRemainingLock = _updateRemainingLockTime(amount);
-                staker.unlockedTimestamp += (newRemainingLock - _currRemainingLock); 
+                // uint256 _currRemainingLock = staker.lockDuration - (block.timestamp - staker.lastTimestampLocked);
+                // uint256 newRemainingLock = _updateRemainingLockTime(amount);
+
+                // TODO resolve with neo what to do, for now just simple shift to start
+                // same lock duration but at current timestamp
+                staker.unlockedTimestamp = block.timestamp + staker.lockDuration;
             }
 
             staker.lastTimestampLocked = block.timestamp;
