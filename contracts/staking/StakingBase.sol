@@ -274,11 +274,13 @@ contract StakingBase is Ownable, IStakingBase {
             // this puts everything on a curve, which is good and bad. Two claims back to back vs one claim at just the second timestamp
             // will be larger, but will make rewards smaller when user stake multiple times
         if (locked) {
+            // div 100,000 at end to moderate (2 extra decimals of precision because multiplier is scaled in size for decimals)
             return staker.rewardsMultiplier * (
-                staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / 86400
-            ) / 10;
+                staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / 86400 / 100000
+            );
         } else {
-            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / 86400;
+            // div 1000 at end to moderate
+            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / 86400 / 1000;
         }
     }
 

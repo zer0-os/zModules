@@ -403,6 +403,7 @@ describe("StakingERC20", () => {
 
       console.log(pendingRewards)
       console.log(pendingRewardsLocked)
+      console.log("")
     });
 
     it("Allows the user to view the pending rewards for a stake with a lock", async () => {
