@@ -95,8 +95,6 @@ interface IStakingBase {
 
     function claimAll() external;
 
-    function getRemainingLockTime(uint256 tokenId) external returns (uint256);
-
     function withdrawLeftoverRewards() external;
 
     function getPendingRewards() external view returns (uint256);

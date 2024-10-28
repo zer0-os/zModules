@@ -142,6 +142,25 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _unstakeMany(temp, exit);
     }
 
+    /**
+     * @notice Return the time in seconds remaining for a stake to be claimed or unstaked
+     */
+    function getRemainingLockTime(uint256 tokenId) external view override returns (uint256) {
+        // Return the time remaining for the stake to be claimed or unstaked
+        Staker storage staker = stakers[msg.sender];
+
+        // TODO Staked timestamp is 0 if the user has not staked this token
+        // return 0? return maxUint256?
+        uint256 stakedTimestamp = staker.stakedTimestamps[tokenId];
+        uint256 lockDuration = staker.lockDurations[tokenId];
+
+        if (block.timestamp < stakedTimestamp + lockDuration) {
+            return stakedTimestamp + lockDuration - block.timestamp;
+        }
+
+        return 0;
+    }
+
 
     ////////////////////////////////////
     /* Token Functions */

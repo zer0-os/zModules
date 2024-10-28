@@ -45,4 +45,6 @@ interface IStakingERC20 {
     function stakeWithoutLock(uint256 amount) external;
 
     function unstake(uint256 amount, bool exit) external;
+
+    function getRemainingLockTime() external view returns (uint256);
 }

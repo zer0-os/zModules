@@ -135,33 +135,6 @@ contract StakingBase is Ownable, IStakingBase {
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
-    /**
-     * @notice Return the time in seconds remaining for the staker's lock duration
-     */
-    function getRemainingLockTime() external view returns(uint256) {
-        Staker storage staker = stakers[msg.sender];
-        return staker.lockDuration  - (block.timestamp - staker.lastTimestampLocked);
-    }
-
-    /**
-     * @notice Return the time in seconds remaining for a stake to be claimed or unstaked
-     */
-    function getRemainingLockTime(uint256 tokenId) external view override returns (uint256) {
-        // Return the time remaining for the stake to be claimed or unstaked
-        Staker storage staker = stakers[msg.sender];
-
-        // TODO Staked timestamp is 0 if the user has not staked this token
-        // return 0? return maxUint256?
-        uint256 stakedTimestamp = staker.stakedTimestamps[tokenId];
-        uint256 lockDuration = staker.lockDurations[tokenId];
-
-        if (block.timestamp < stakedTimestamp + lockDuration) {
-            return stakedTimestamp + lockDuration - block.timestamp;
-        }
-
-        return 0;
-    }
-
     // TODO add a "hasStaked" view function to check if they have staked a token?
     // view functions don't themselves cost gas but if used in a different tx it will
     // this function would still provide utility on front end I think
@@ -173,24 +146,15 @@ contract StakingBase is Ownable, IStakingBase {
         return _getPendingRewards(stakers[msg.sender], false);
     }
 
-    function getLockedPendingRewards() external view returns (uint256) {
+    // TODO Should these be 0 until rewards are available?
+    // or should this show what would be available immediately even though
+    // they cant access it?
+    function getPendingRewardsLocked() external view returns (uint256) {
         return _getPendingRewards(stakers[msg.sender], true);
     }
 
     function getAllPendingRewards() external view override returns (uint256) {
-        // uint256 i;
-        // uint256 rewards;
-
-        // // TODO dont need amountStaked, just use tokenIds.length
-        // Staker storage staker = stakers[msg.sender];
-
-        // for (i; i < staker.tokenIds.length;) {
-        //     rewards += _getPendingRewards(staker.tokenIds[i]);
-
-        //     unchecked {
-        //         ++i;
-        //     }
-        // }
+        return _getPendingRewards(stakers[msg.sender], false) + _getPendingRewards(stakers[msg.sender], true);
     }
 
     /**
@@ -301,21 +265,6 @@ contract StakingBase is Ownable, IStakingBase {
             return 0;
         }
 
-        // if (locked && (block.timestamp > staker.unlockedTimestamp)) {
-        //     // console.log("B");
-        //     return staker.owedRewardsLocked + rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
-        // } else {
-        //     // console.log("C");
-        //     // console.log("rewardsPerPeriod: ", rewardsPerPeriod);
-        //     // console.log("staker.amountStaked: ", staker.amountStaked);
-        //     // console.log("block.timestamp: ", block.timestamp);
-        //     // console.log("staker.lastTimestamp: ", staker.lastTimestamp);
-        //     uint256 rtval = rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
-        //     // console.log("rtval: ", rtval);
-
-        //     return staker.owedRewards + rewardsPerPeriod * staker.amountStaked * (block.timestamp - staker.lastTimestamp);
-        // }
-
         // TODO figure out how we want to resolve rewards
         // A) A rewards multiplier is calculated on exponential curve at time of first lock based on lock length
             // If no lock, RM = 1
@@ -324,33 +273,24 @@ contract StakingBase is Ownable, IStakingBase {
         // B) Every claim or unstake rewards are calculated based on exponential curve and the last touch point
             // this puts everything on a curve, which is good and bad. Two claims back to back vs one claim at just the second timestamp
             // will be larger, but will make rewards smaller when user stake multiple times
-        uint256 lockDuration = staker.unlockedTimestamp == 0 ? 1 : staker.unlockedTimestamp;
-
-        return rewardsPerPeriod * formulaOne(lockDuration);
+        if (locked) {
+            return staker.rewardsMultiplier * (
+                staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / 86400
+            ) / 10;
+        } else {
+            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / 86400;
+        }
     }
 
     // TODO an optional function for rewards different from what is used in 
     // StakingBase. Could be simpler, leaving here for eval later
-    function formulaOne(uint256 lock) public pure returns(uint256) {
-        uint256 lockReal = lock == 0 ? 1 : lock;
-        // maxRM = 5
+
+    function _calcRewardsMultiplier(uint256 lock) internal pure returns(uint256) {
+        // maxRM = 10
         // periodLength = 365 days
-        // precisionMultiplier = 1000
+        // precisionMultiplier = 10
         // scalar = 1e18
-        return 1e18 * 5 * ( (lockReal * 1000 ) / 365) / 1e18;
-    }
-
-    function formulaTwo(Staker storage staker) internal returns(uint256) {
-        if (staker.unlockedTimestamp == 0) {
-            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / 86400; // No need for use of MULTIPLIER yet
-        } else {
-            return staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / 86400;
-        }
-    }
-
-    // Calculate the RM based on the lock
-    function _formulaThree(uint256 lockDuration) public returns(uint256) {
-
+        return 1e14 * 10 * ( (lock * 10 ) / 365) / 1e18;
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

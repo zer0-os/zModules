@@ -90,6 +90,17 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         emit Unstaked(msg.sender, amount, stakingToken);
     }
 
+    /**
+     * @notice Return the time in seconds remaining for the staker's lock duration
+     */
+    function getRemainingLockTime() public view override returns(uint256) {
+        Staker storage staker = stakers[msg.sender];
+
+        if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
+
+        return staker.unlockedTimestamp - block.timestamp;
+    }
+
     // TODO consider adding an ability to unlock a stake so users can access their funds if they want to,
     // but they forfeit the rewards they would have earned if they had kept it locked, so it gets rewards
     // as though it was never locked in the first place
@@ -109,7 +120,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     // rewards are calculated only at your new balance based on your last touchpoint
 
 
-    // Adjust the appropriate number of days for a stake
+    // Adjust the remaining lock time based on a new incoming stake value
     function _updateRemainingLockTime(uint256 incomingAmount) internal view returns(uint256) {
         Staker storage staker = stakers[msg.sender];
 
@@ -124,13 +135,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         console.log("block.timestamp : ", block.timestamp);
         console.log("staker.lastTimestampLocked : ", staker.lastTimestampLocked);
         console.log("incomingAmount : ", incomingAmount);
-
-        // Failing regular test
-
-        // x * (100) + (90) / 200
-
-
-        // Passing specialized test that resets
 
         uint256 newRemainingLock = 
             staker.lockDuration * ( 
@@ -174,6 +178,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // first time locking stake
                 staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
+                staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
             } else {
                 // console.log("4");
 
