@@ -118,7 +118,54 @@ contract StakingBase is Ownable, IStakingBase {
                 ++i;
             }
         }
+    }
 
+    /**
+     * @notice Claim all of the user's rewards that are currently available
+     */
+    function claim() external {
+        // TODO make for erc721 too
+        // transfer a user their owed rewards + any available pending rewards
+        // if funds are locked, only transfer if they are past lock duration
+        Staker storage staker = stakers[msg.sender];
+
+        // already owed rewards + non-locked rewards
+        // console.log("Owed rewards: ", staker.owedRewards);
+        // console.log("Pending rewards: ", _getPendingRewards(staker, false));
+        // console.log("rewards: ", staker.owedRewards + _getPendingRewards(staker, false));
+
+        uint256 rewards = staker.owedRewards + _getPendingRewards(staker, false);
+
+        staker.owedRewards = 0;
+        staker.lastTimestamp = block.timestamp;
+
+        // even if it is 0, it enters this block but adds 0 anyways
+        // only reason to with `if` is gas
+        if (staker.unlockedTimestamp != 0 && staker.unlockedTimestamp < block.timestamp) {
+            // console.log("unlocked");
+
+            // console.log("Owed rewards locked: ", staker.owedRewardsLocked);
+            // console.log("Pending rewards locked: ", _getPendingRewards(staker, true));
+            // console.log("rewards locked: ", staker.owedRewardsLocked + _getPendingRewards(staker, true));
+
+            // They can only receive rewards from locked funds when they are past lock period
+            rewards += staker.owedRewardsLocked + _getPendingRewards(staker, true);
+            staker.owedRewardsLocked = 0;
+            staker.lastTimestampLocked = block.timestamp;
+        }
+
+        // Do not transfer 0 rewards
+        if (rewards == 0) revert NoRewards();
+
+        if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
+
+        // console.log("Total rewards: ", rewards);
+
+        // Because we update update timestamps before transfer, any reentrancy attempt
+        // will use the current timestamps and calculate to 0
+        rewardsToken.safeTransfer(msg.sender, rewards);
+
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
     /**

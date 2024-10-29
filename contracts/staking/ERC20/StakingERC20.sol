@@ -181,26 +181,19 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
             } else {
                 // console.log("4");
-
-                // If adding balance to a staking pool that exists
-                // we use the weighted sum of % days left and total 
-                // balance of new amount staked to determine how many days
-                // to add to the `unlockedTimestamp` of a user
-                // uint256 _currRemainingLock = staker.lockDuration - (block.timestamp - staker.lastTimestampLocked);
-                // uint256 newRemainingLock = _updateRemainingLockTime(amount);
-
                 // TODO resolve with neo what to do, for now just simple shift to start
-                // same lock duration but at current timestamp
                 staker.unlockedTimestamp = block.timestamp + staker.lockDuration;
             }
 
-            staker.lastTimestampLocked = block.timestamp;
+            // Must always update this before we update `lastTimestampLocked`
             staker.owedRewardsLocked += _getPendingRewards(staker, true);
+            staker.lastTimestampLocked = block.timestamp;
             staker.amountStakedLocked += amount;
         }
 
         // Transfers users funds to this contract
         // TODO a vault instead? would be more expensive
+        // User must have approved this contract to transfer their funds
         SafeERC20.safeTransferFrom(IERC20(stakingToken), msg.sender, address(this), amount);
 
         emit Staked(msg.sender, amount, stakingToken);

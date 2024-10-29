@@ -83,6 +83,11 @@ interface IStakingBase {
     error CannotClaim();
 
     /**
+     * @notice Throw when trying to claim but user has no rewards
+     */
+    error NoRewards();
+
+    /**
      * @notice Throw when there are no rewards remaining in the pool
      * to give to stakers
      */

@@ -23,3 +23,11 @@ export const calcRewardsAmount = (
   const exponent = lockDuration > 0n ? 2n : 1n;
   return (rewardsPerPeriod * timeSinceLastClaim**exponent * DEFAULT_MULTIPLIER) / DAY_IN_SECONDS;
 }
+
+export const calcUnlockedRewards = (
+  duration : bigint,
+  balance : bigint,
+  rewardsPerPeriod : bigint,
+) => {
+  return balance * (rewardsPerPeriod * duration) / DAY_IN_SECONDS / 1000n;
+}

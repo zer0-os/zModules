@@ -16,11 +16,12 @@ export const OWNABLE_UNAUTHORIZED_ERR = "OwnableUnauthorizedAccount";
 // StakingERC20
 export const ZERO_STAKE_ERR = "ZeroStake";
 export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
+export const NO_REWARDS_ERR = "NoRewards";
 
 // StakingERC721
 export const TIME_LOCK_NOT_PASSED_ERR = "TimeLockNotPassed";
 export const INVALID_OWNER_ERR = "InvalidOwner";
-export const NO_REWARDS_ERR = "NoRewardsLeftInContract";
+export const NO_REWARDS_BALANCE_ERR = "NoRewardsLeftInContract";
 export const NON_TRANSFERRABLE_ERR = "NonTransferrableToken";
 export const ZERO_INIT_ERR = "InitializedWithZero";
 

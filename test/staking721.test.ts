@@ -27,7 +27,7 @@ import {
   INCORRECT_OWNER_TRANSFER_ERR,
   INVALID_OWNER_ERR,
   NONEXISTENT_TOKEN_ERR,
-  NO_REWARDS_ERR,
+  NO_REWARDS_BALANCE_ERR,
   TIME_LOCK_NOT_PASSED_ERR, INSUFFICIENT_APPROVAL_721_ERR, OWNABLE_UNAUTHORIZED_ERR,
 } from "./helpers/errors";
 
@@ -1130,7 +1130,7 @@ describe("StakingERC721", () => {
         // fail first
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
       } catch (e : unknown) {
-        expect((e as Error).message).to.include(NO_REWARDS_ERR);
+        expect((e as Error).message).to.include(NO_REWARDS_BALANCE_ERR);
       }
 
       try {
@@ -1205,7 +1205,7 @@ describe("StakingERC721", () => {
 
       await expect(
         localStakingERC721.connect(stakerA).claim()
-      ).to.be.revertedWithCustomError(stakingERC721, NO_REWARDS_ERR);
+      ).to.be.revertedWithCustomError(stakingERC721, NO_REWARDS_BALANCE_ERR);
 
       // Reset
       await localStakingERC721.connect(stakerA).unstake([tokenIdA], true);
@@ -1854,7 +1854,7 @@ describe("StakingERC721", () => {
       // Cannot claim when the contract has no more rewards to distribute
       await expect(
         localStakingERC721.connect(stakerA).claim()
-      ).to.be.revertedWithCustomError(localStakingERC721, NO_REWARDS_ERR);
+      ).to.be.revertedWithCustomError(localStakingERC721, NO_REWARDS_BALANCE_ERR);
 
       rewardsBalanceBeforeA = await newMockERC20.balanceOf(stakerA.address);
 
@@ -1936,7 +1936,7 @@ describe("StakingERC721", () => {
     it("#withdrawLeftoverRewards() should revert if contract balance is 0", async () => {
       await expect(
         stakingERC721.connect(owner).withdrawLeftoverRewards()
-      ).to.be.revertedWithCustomError(stakingERC721, NO_REWARDS_ERR);
+      ).to.be.revertedWithCustomError(stakingERC721, NO_REWARDS_BALANCE_ERR);
     });
 
     it("#withdrawLeftoverRewards() should only be callable by the owner", async () => {
