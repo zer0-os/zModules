@@ -1,5 +1,5 @@
 import { DAY_IN_SECONDS, DEFAULT_MULTIPLIER } from "./constants";
-
+import * as hre from "hardhat";
 
 export const calcTotalRewards = (
   durations : Array<bigint>,

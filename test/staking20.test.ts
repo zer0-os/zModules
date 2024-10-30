@@ -444,7 +444,7 @@ describe("StakingERC20", () => {
         pendingRewards * 2n // account for +1s timestamp execution
       );
 
-      console.log("before-ts: ", await time.latest())
+      // console.log("before-ts: ", await time.latest())
 
       await contract.connect(stakerA).claim();
       claimedAtA = BigInt(await time.latest());
@@ -461,15 +461,19 @@ describe("StakingERC20", () => {
 
     it("Allows the user to claim their locked rewards only when passed their lock", async () => {
       await reset();
-      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
 
+      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
       const stakedAt = BigInt(await time.latest());
 
-      const stakerDataBefore = await contract.stakers(stakerA.address);
-      console.log(stakedAt);
-      console.log(stakerDataBefore.lastTimestampLocked)
-
       await time.increase(DEFAULT_LOCK / 4n);
+
+      // Fails when the contract does not have balance to match rewards
+      await expect(
+        contract.connect(stakerA).claim()
+      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
+
+      // Provide rewards to give
+      await rewardsToken.connect(owner).transfer(await contract.getAddress(), hre.ethers.parseEther("5000"));
 
       // Fails when claiming too early
       await expect(
@@ -477,13 +481,6 @@ describe("StakingERC20", () => {
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
 
       await time.increase(DEFAULT_LOCK);
-
-      // Fails when the contract does not have balance to match rewards
-      await expect(
-        contract.connect(stakerA).claim()
-      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
-
-      await rewardsToken.connect(owner).transfer(await contract.getAddress(), hre.ethers.parseEther("50000000"));
 
       const balanceBefore = await rewardsToken.balanceOf(stakerA.address);
 
@@ -494,19 +491,15 @@ describe("StakingERC20", () => {
 
       const stakerData = await contract.stakers(stakerA.address);
 
-      console.log(stakedAt)
-      console.log(claimedAt)
-      console.log(stakerData.lastTimestampLocked); // should == claimedAt
-
       const expectedRewards = calcUnlockedRewards(
         claimedAt - stakedAt,
         DEFAULT_STAKED_AMOUNT,
         config.rewardsPerPeriod
       );
 
+      // TODO difference of ~103 wei, rounding error?
       const match = stakerData.rewardsMultiplier * expectedRewards / 100n;
 
-      // TODO difference of 19 wei?
       expect(balanceAfter).to.be.gt(balanceBefore);
     });
 
@@ -518,20 +511,23 @@ describe("StakingERC20", () => {
 
     it("Fails when the contract has no rewards", async () => {
       // call to claim without first transferring rewards to the contract
+      // No rewards left
+      await contract.connect(owner).withdrawLeftoverRewards();
+
       await expect(
         contract.connect(stakerA).claim()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
     });
 
     it("Fails when the user has not passed their lock time", async () => {
-      await contract.connect(stakerC).stake(DEFAULT_STAKED_AMOUNT);
+      await contract.connect(stakerC).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+
+      // Provide rewards to give
+      await rewardsToken.connect(owner).transfer(await contract.getAddress(), hre.ethers.parseEther("5000"));
 
       await expect(
         contract.connect(stakerC).claim()
       ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
-
-      // Reset
-      await contract.connect(stakerC).unstake(DEFAULT_STAKED_AMOUNT, true);
     });
   });
 
