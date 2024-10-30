@@ -28,6 +28,17 @@ export const calcUnlockedRewards = (
   duration : bigint,
   balance : bigint,
   rewardsPerPeriod : bigint,
+  divisor : bigint = 1000n,
 ) => {
-  return balance * (rewardsPerPeriod * duration) / DAY_IN_SECONDS / 1000n;
+  return balance * (rewardsPerPeriod * duration) / DAY_IN_SECONDS / divisor;
+}
+
+export const calcLockedRewards = (
+  duration : bigint,
+  balance : bigint,
+  rewardsPerPeriod : bigint,
+  rewardsMultiplier : bigint,
+  divisor : bigint = 100000n,
+) => {
+  return rewardsMultiplier * calcUnlockedRewards(duration, balance, rewardsPerPeriod, divisor);
 }

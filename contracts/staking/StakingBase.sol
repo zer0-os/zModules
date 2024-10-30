@@ -310,14 +310,6 @@ contract StakingBase is Ownable, IStakingBase {
             return 0;
         }
 
-        // TODO figure out how we want to resolve rewards
-        // A) A rewards multiplier is calculated on exponential curve at time of first lock based on lock length
-            // If no lock, RM = 1
-            // If follow up stakes lock, calc RM and set then
-            // On claim or unstake rewards are always multiplied like (RPP * amountStaked * timeElapsed * RM)
-        // B) Every claim or unstake rewards are calculated based on exponential curve and the last touch point
-            // this puts everything on a curve, which is good and bad. Two claims back to back vs one claim at just the second timestamp
-            // will be larger, but will make rewards smaller when user stake multiple times
         if (locked) {
             // div 100,000 at end to moderate (2 extra decimals of precision because multiplier is scaled in size for decimals)
             return staker.rewardsMultiplier * (

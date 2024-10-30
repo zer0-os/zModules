@@ -14,7 +14,7 @@ export const OWNABLE_INVALID_OWNER_ERR = "OwnableInvalidOwner";
 export const OWNABLE_UNAUTHORIZED_ERR = "OwnableUnauthorizedAccount";
 
 // StakingERC20
-export const ZERO_STAKE_ERR = "ZeroStake";
+export const ZERO_VALUE_ERR = "ZeroValue";
 export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
 export const ZERO_REWARDS_ERR = "ZeroRewards";
 

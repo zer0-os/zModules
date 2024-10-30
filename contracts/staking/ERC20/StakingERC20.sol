@@ -60,34 +60,44 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     /**
      * @notice Unstake some or all of a user's stake
      * @param amount The amount to withdraw
-     * @param exit If true, the user will unstake without claiming rewards (optional)
      */
-    function unstake(uint256 amount, bool exit) external override {
-        // Staker storage staker = stakers[msg.sender];
+    function unstake(uint256 amount) external override {
+        Staker storage staker = stakers[msg.sender];
 
-        // // if (!exit) _onlyUnlocked(staker.unlockTimestamp);
+        if (amount == 0) {
+            revert ZeroValue();
+        }
 
-        // if (amount > staker.amountStaked) {
-        //     revert UnstakeMoreThanStake();
-        // }
+        if (amount > staker.amountStaked) {
+            revert UnstakeMoreThanStake();
+        }
 
-        // if (!exit) {
-        //     _baseClaim(staker);
-        // } else {
-        //     // Snapshot their pending rewards
-        //     staker.owedRewards = _getPendingRewards(staker);
-        // }
+        uint256 rewards = staker.owedRewards + _getPendingRewards(staker, false);
 
-        // if (staker.amountStaked - amount == 0) {
-        //     delete stakers[msg.sender];
-        // } else {
-        //     staker.amountStaked -= amount;
-        // }
+        if (staker.amountStaked - amount == 0) {
+            delete stakers[msg.sender];
+        } else {
+            staker.owedRewards = 0;
+            staker.amountStaked -= amount;
+            staker.lastTimestamp = block.timestamp;
+        }
+
+        if (rewards > 0) {
+            // Revert if we are unable to pay user their rewards
+            if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
+
+            // Transfer the user's rewards
+            rewardsToken.safeTransfer(msg.sender, rewards);
+        }
 
         // Return the user's initial stake
         IERC20(stakingToken).safeTransfer(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount, stakingToken);
+    }
+
+    function unstakeLocked(uint256 amount, bool exit) public override {
+        // implement or unify with single unstake
     }
 
     /**
@@ -154,7 +164,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
     function _stake(uint256 amount, uint256 lockDuration) internal {
         if (amount == 0) {
-            revert ZeroStake();
+            revert ZeroValue();
         }
 
         Staker storage staker = stakers[msg.sender];
