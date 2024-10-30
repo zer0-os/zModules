@@ -58,46 +58,23 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     }
 
     /**
-     * @notice Unstake some or all of a user's stake
+     * @notice Unstake some or all of a user's non-locked stake
+     * 
      * @param amount The amount to withdraw
      */
     function unstake(uint256 amount) external override {
-        Staker storage staker = stakers[msg.sender];
-
-        if (amount == 0) {
-            revert ZeroValue();
-        }
-
-        if (amount > staker.amountStaked) {
-            revert UnstakeMoreThanStake();
-        }
-
-        uint256 rewards = staker.owedRewards + _getPendingRewards(staker, false);
-
-        if (staker.amountStaked - amount == 0) {
-            delete stakers[msg.sender];
-        } else {
-            staker.owedRewards = 0;
-            staker.amountStaked -= amount;
-            staker.lastTimestamp = block.timestamp;
-        }
-
-        if (rewards > 0) {
-            // Revert if we are unable to pay user their rewards
-            if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
-
-            // Transfer the user's rewards
-            rewardsToken.safeTransfer(msg.sender, rewards);
-        }
-
-        // Return the user's initial stake
-        IERC20(stakingToken).safeTransfer(msg.sender, amount);
-
-        emit Unstaked(msg.sender, amount, stakingToken);
+        _unstake(amount, false, false);
     }
 
+    /**
+     * @notice Unstake funds that were locked
+     * @dev Will revert if funds are still within their lock period and not exitting
+     * 
+     * @param amount The amount to withdraw 
+     * @param exit Boolean if user wants to forfeit rewards
+     */
     function unstakeLocked(uint256 amount, bool exit) public override {
-        // implement or unify with single unstake
+        _unstake(amount, true, exit);
     }
 
     /**
@@ -117,6 +94,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     function _unlock() internal {
         // unlock a stake for a user, removing their extra rewards
         // but allowing them to access their funds immediately
+        // move staked amoun to regular amount after snapshot of balance
     }
 
     // TODO both additional claims AND additional stakes can reduce long term ROI
@@ -207,5 +185,84 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         SafeERC20.safeTransferFrom(IERC20(stakingToken), msg.sender, address(this), amount);
 
         emit Staked(msg.sender, amount, stakingToken);
+    }
+
+    function _unstake(uint256 amount, bool locked, bool exit) internal {
+        if (amount == 0) {
+            revert ZeroValue();
+        }
+
+        Staker storage staker = stakers[msg.sender];
+
+        uint256 rewards;
+
+        if (locked) {
+            if (amount > staker.amountStakedLocked) {
+                revert UnstakeMoreThanStake();
+            }
+
+            if (staker.unlockedTimestamp > block.timestamp) {
+                // Only allow use of exit on still locked funds, redundant on unlocked funds
+                if (exit) {                    
+                    // Because the `_getPendingRewards` function call uses a stakers non-locked values,
+                    // we need to temporarily modify those to be the staked values when calculating
+                    // then reset to what they were before
+                    uint256 temp = staker.amountStaked;
+                    staker.amountStaked = staker.amountStakedLocked;
+
+                    uint256 tempTimestamp = staker.lastTimestamp;
+                    staker.lastTimestamp = staker.lastTimestampLocked;
+
+                    rewards = staker.owedRewards + _getPendingRewards(staker, false);
+
+                    // Reset their amount staked to the correct value
+                    staker.amountStaked = temp;
+                    staker.lastTimestamp = tempTimestamp;
+                } else {
+                    revert TimeLockNotPassed();
+                }
+            } else {
+                // If staker's funds are unlocked, we ignore exit
+                rewards = staker.owedRewardsLocked + _getPendingRewards(staker, true);
+            }
+
+            // If removal of all locked funds and there are no non-locked funds, delete
+            if (staker.amountStakedLocked - amount == 0 && staker.amountStaked == 0) {
+                delete stakers[msg.sender];
+            } else {
+                // Otherwise update locked values
+                staker.owedRewardsLocked = 0;
+                staker.amountStakedLocked -= amount;
+                staker.lastTimestampLocked = block.timestamp;
+            }
+        } else {
+            if (amount > staker.amountStaked) {
+                revert UnstakeMoreThanStake();
+            }
+            rewards = staker.owedRewards + _getPendingRewards(staker, false);
+
+            // If removal of all non-locked funds and there are no locked funds, delete
+            if (staker.amountStaked - amount == 0 && staker.amountStakedLocked == 0) {
+                delete stakers[msg.sender];
+            } else {
+                // Otherwise update non-locked values
+                staker.owedRewards = 0;
+                staker.amountStaked -= amount;
+                staker.lastTimestamp = block.timestamp;
+            }
+        }
+
+        if (rewards > 0) {
+            // Revert if we are unable to pay user their rewards
+            if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
+
+            // Transfer the user's rewards
+            rewardsToken.safeTransfer(msg.sender, rewards);
+        }
+
+        // Return the user's initial stake
+        IERC20(stakingToken).safeTransfer(msg.sender, amount);
+
+        emit Unstaked(msg.sender, amount, stakingToken);
     }
 }

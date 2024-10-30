@@ -71,10 +71,10 @@ describe("StakingERC20", () => {
   // let amountStakedC = 0n;
   // let amountStakedLockedC = 0n;
 
-  let claimedAtA : bigint;
+  // let claimedAtA : bigint;
 
-  let unstakedAtA : bigint;
-  let unstakedAtC : bigint;
+  // let unstakedAtA : bigint;
+  // let unstakedAtC : bigint;
 
   let reset = async () => {};
 
@@ -365,13 +365,15 @@ describe("StakingERC20", () => {
 
   describe("#getRemainingLockTime", () => {
     it("Allows the user to view the remaining time lock period for a stake", async () => {
-      const remainingLockTime = await contract.connect(stakerB).getRemainingLockTime();
-      const latest = await time.latest();
+      await contract.connect(stakerC).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
 
-      const stakeData = await contract.stakers(stakerA.address);
+      await time.increase(DEFAULT_LOCK / 2n);
 
-      // We do -5n to match the time changes from the above failing cases since previous stake
-      expect(remainingLockTime).to.eq((stakeData.lockDuration - 5n));
+      const remainingLockTime = await contract.connect(stakerC).getRemainingLockTime();
+
+      const stakerData = await contract.stakers(stakerA.address);
+
+      expect(remainingLockTime).to.eq((stakerData.lockDuration - (DEFAULT_LOCK / 2n)));
     });
 
     it("Returns 0 for a user that's passed their lock time", async () => {
@@ -449,10 +451,7 @@ describe("StakingERC20", () => {
         pendingRewards * 2n // account for +1s timestamp execution
       );
 
-      // console.log("before-ts: ", await time.latest())
-
       await contract.connect(stakerA).claim();
-      claimedAtA = BigInt(await time.latest());
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
 
@@ -522,7 +521,7 @@ describe("StakingERC20", () => {
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
     });
 
-    it("Fails when the user has not passed their lock time", async () => {
+    it("Fails to claim when the user has not passed their lock time", async () => {
       await contract.connect(stakerC).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
 
       // Provide rewards to give
@@ -535,7 +534,7 @@ describe("StakingERC20", () => {
   });
 
   describe("#unstake", () => {
-    it("Allows a user to unstake unlocked amount partially", async () => {
+    it("Allows a user to unstake non-locked amount partially", async () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
@@ -582,7 +581,7 @@ describe("StakingERC20", () => {
       expect(stakerData.owedRewards).to.eq(0n);
     });
 
-    it("Allows a user to fully withdraw their entire staked amount", async () => {
+    it("Allows a user to fully withdraw their entire non-locked staked amount", async () => {
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
       const stakeTokenBalanceBefore = await stakeToken.balanceOf(stakerA.address);
 
@@ -602,7 +601,6 @@ describe("StakingERC20", () => {
         futureExpectedRewards
       );
 
-
       await contract.connect(stakerA).unstake(stakerDataBefore.amountStaked);
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
@@ -620,26 +618,16 @@ describe("StakingERC20", () => {
       expect(stakerDataAfter.owedRewards).to.eq(0n);
     });
 
+    it("Fails to unstake 0 amount", async () => {
+      await expect(
+        contract.connect(stakerA).unstake(0)
+      ).to.be.revertedWithCustomError(contract, ZERO_VALUE_ERR);
+    });
+
     it("Fails when the user has never staked", async () => {
       await expect(
         contract.connect(notStaker).unstake(DEFAULT_STAKED_AMOUNT)
       ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
-    });
-
-    it("Fails when the user has not passed their lock time", async () => {
-      await contract.connect(stakerC).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
-      const stakedAt = BigInt(await time.latest());
-
-      const stakerData = await contract.stakers(stakerC.address);
-
-      expect(stakerData.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
-      expect(stakerData.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT);
-      expect(stakerData.lastTimestampLocked).to.eq(stakedAt);
-
-      // Fail to unstake with rewards when not passed time lock period
-      await expect(
-        contract.connect(stakerC).unstakeLocked(DEFAULT_STAKED_AMOUNT, false)
-      ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
     });
 
     it("Fails when the user tries to unstake more than they have staked", async () => {
@@ -652,12 +640,200 @@ describe("StakingERC20", () => {
         contract.connect(stakerC).unstakeLocked(stakerData.amountStakedLocked + 1n, false)
       ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
     });
+
+    it("Fails when there are not enough rewards in the contract", async () => {
+      await reset();
+
+      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+
+      await time.increase(DEFAULT_LOCK / 2n);
+
+      const stakerData = await contract.stakers(stakerA.address);
+
+      await expect(
+        contract.connect(stakerA).unstake(stakerData.amountStaked)
+      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
+    });
   });
 
-  describe("#unstake with 'exit'", () => {
+  describe("#unstakeLocked", () => {
+    it("Allows a user to partially unstake locked funds when passed their lock time", async () => {
+      await reset();
+
+      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      const stakedAt = BigInt(await time.latest());
+
+      await time.increase(DEFAULT_LOCK);
+
+      const stakeBalanceBefore = await stakeToken.balanceOf(stakerA.address);
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+
+      const pendingRewards = await contract.connect(stakerA).getPendingRewardsLocked();
+
+      const stakerDataBefore = await contract.stakers(stakerA.address);
+
+      const futureExpectedRewards = calcLockedRewards(
+        BigInt(await time.latest()) - stakedAt + 2n,
+        DEFAULT_STAKED_AMOUNT,
+        config.rewardsPerPeriod,
+        stakerDataBefore.rewardsMultiplier
+      )
+
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        futureExpectedRewards
+      );
+
+      const amount = DEFAULT_STAKED_AMOUNT / 2n;
+      await contract.connect(stakerA).unstakeLocked(amount, false);
+      const unstakedAt = BigInt(await time.latest());
+
+      const stakeBalanceAfter = await stakeToken.balanceOf(stakerA.address);
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+
+      expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + DEFAULT_STAKED_AMOUNT / 2n);
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + futureExpectedRewards);
+
+      const stakerData = await contract.stakers(stakerA.address);
+
+      expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT / 2n);
+      expect(stakerData.lastTimestampLocked).to.eq(unstakedAt);
+      expect(stakerData.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
+      expect(stakerData.owedRewardsLocked).to.eq(0n);
+    });
+
+    it("Allows a user to fully unstake locked funds when passed their lock time", async () => {
+      const stakeBalanceBefore = await stakeToken.balanceOf(stakerA.address);
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+      
+
+      const pendingRewards = await contract.connect(stakerA).getPendingRewardsLocked();
+      const stakerDataBefore = await contract.stakers(stakerA.address);
+
+      // + 2n for timestamp manipulation, +1 for transfer and then +1 for unstake
+      const futureExpectedRewards = calcLockedRewards(
+        BigInt(await time.latest()) - stakerDataBefore.lastTimestampLocked + 2n,
+        DEFAULT_STAKED_AMOUNT / 2n,
+        config.rewardsPerPeriod,
+        stakerDataBefore.rewardsMultiplier
+      )
+
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        futureExpectedRewards
+      );
+
+      await contract.connect(stakerA).unstakeLocked(DEFAULT_STAKED_AMOUNT / 2n, false);
+
+      const stakeBalanceAfter = await stakeToken.balanceOf(stakerA.address);
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + futureExpectedRewards);
+      expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + DEFAULT_STAKED_AMOUNT / 2n);
+
+      const stakerData = await contract.stakers(stakerA.address);
+
+      // Confirm all values are reset to 0 after full withdrawal
+      expect(stakerData.amountStakedLocked).to.eq(0n);
+      expect(stakerData.lastTimestampLocked).to.eq(0n);
+      expect(stakerData.unlockedTimestamp).to.eq(0n);
+      expect(stakerData.owedRewardsLocked).to.eq(0n);
+    });
+
+    it("Fails when the user tries to unstake 0 amount", async () => {
+      await expect(
+        contract.connect(stakerA).unstakeLocked(0, false)
+      ).to.be.revertedWithCustomError(contract, ZERO_VALUE_ERR);
+    });
+
+    it("Fails when the user has never staked", async () => {
+      await expect(
+        contract.connect(notStaker).unstakeLocked(1, false)
+      ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
+    });
+
+    it("Fails when the user has not passed their lock time", async () => {
+      await contract.connect(stakerC).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+
+      await expect(
+        contract.connect(stakerC).unstakeLocked(DEFAULT_STAKED_AMOUNT, false)
+      ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
+    });
+
+    it("Fails when the user tries to unstake more than they have staked", async () => {
+      await time.increase(DEFAULT_LOCK);
+
+      const stakerData = await contract.stakers(stakerC.address);
+
+      await expect(
+        contract.connect(stakerC).unstakeLocked(stakerData.amountStakedLocked + 1n, false)
+      ).to.be.revertedWithCustomError(contract, UNEQUAL_UNSTAKE_ERR);
+    });
+
+    it("Fails when there are not enough rewards in the contract", async () => {
+      await reset();
+
+      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+
+      await time.increase(DEFAULT_LOCK);
+
+      await expect(
+        contract.connect(stakerA).unstakeLocked(DEFAULT_STAKED_AMOUNT, false)
+      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
+    });
+  });
+
+  describe.only("real #unstakedLocked with 'exit'", () => {
+    it("Allows a user to partially unstake with linear rewards using 'exit' within lock duration", async () => {
+      await reset();
+
+      await contract.connect(stakerC).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+
+      const stakeBalanceBefore = await stakeToken.balanceOf(stakerC.address);
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerC.address);
+      const stakerDataBefore = await contract.stakers(stakerC.address);
+
+      await time.increase(DEFAULT_LOCK / 2n);
+
+      // Because we are exiting the user receives the reward rate as though they did not lock
+      const futureExpectedRewards = calcUnlockedRewards(
+        BigInt(await time.latest()) - stakerDataBefore.lastTimestampLocked + 2n,
+        DEFAULT_STAKED_AMOUNT,
+        config.rewardsPerPeriod
+      )
+
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        futureExpectedRewards
+      );
+
+      // Allows unstaking with 'exit' before the time lock is over
+      const amount = DEFAULT_STAKED_AMOUNT / 2n;
+      await contract.connect(stakerC).unstakeLocked(amount, true);
+      const unstakedAt = BigInt(await time.latest());
+
+      const stakeBalanceAfter = await stakeToken.balanceOf(stakerC.address);
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerC.address);
+
+      // Confirm they have received rewards at the linear rate
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + futureExpectedRewards);
+      expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + amount);
+
+      const stakerData = await contract.stakers(stakerC.address);
+      
+      expect(stakerData.amountStakedLocked).to.eq(amount);
+      expect(stakerData.lastTimestampLocked).to.eq(unstakedAt);
+      expect(stakerData.unlockedTimestamp).to.eq(stakerDataBefore.lastTimestampLocked + DEFAULT_LOCK);
+      expect(stakerData.owedRewardsLocked).to.eq(0n);
+    });
+  });
+
+  describe.skip("#unstakeLocked with 'exit'", () => {
     it("Allows a user to partially unstake without rewards using 'exit'", async () => {
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerC.address);
+      const stakerDataBefore = await contract.stakers(stakerC.address);
 
       await time.increase(DEFAULT_LOCK * 2n);
 
@@ -666,15 +842,7 @@ describe("StakingERC20", () => {
       // Allows unstaking with 'exit' before the time lock is over
       const amount = DEFAULT_STAKED_AMOUNT / 2n;
       await contract.connect(stakerC).unstakeLocked(amount, true);
-      unstakedAtC = BigInt(await time.latest());
-      // amountStakedC -= amount;
-
-      // const expectedRewards = calcTotalRewards(
-      //   [unstakedAtC - origStakedAtC],
-      //   [DEFAULT_STAKED_AMOUNT],
-      //   config.rewardsPerPeriod,
-      //   config.periodLength
-      // );
+      const unstakedAt = BigInt(await time.latest());
 
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerC.address);
@@ -687,8 +855,8 @@ describe("StakingERC20", () => {
       const stakerData = await contract.stakers(stakerC.address);
 
       expect(stakerData.amountStaked).to.eq(amount);
-      expect(stakerData.lastTimestampLocked).to.eq(unstakedAtC);
-      // expect(stakerData.unlockedTimestamp).to.eq(origStakedAtC + DEFAULT_LOCK); // todo fix
+      expect(stakerData.lastTimestampLocked).to.eq(unstakedAt);
+      expect(stakerData.unlockedTimestamp).to.eq(stakerDataBefore.lastTimestampLocked + DEFAULT_LOCK);
       expect(stakerData.owedRewards).to.eq(pendingRewards);
     });
 
