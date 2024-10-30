@@ -14,7 +14,7 @@ import {
   ZERO_STAKE_ERR,
   UNEQUAL_UNSTAKE_ERR,
   OWNABLE_UNAUTHORIZED_ERR,
-  NO_REWARDS_ERR,
+  ZERO_REWARDS_ERR,
 } from "./helpers/errors";
 import {
   WITHDRAW_EVENT,
@@ -467,6 +467,13 @@ describe("StakingERC20", () => {
 
       await time.increase(DEFAULT_LOCK / 4n);
 
+      // Fails when claiming too early
+      await expect(
+        contract.connect(stakerA).claim()
+      ).to.be.revertedWithCustomError(contract, ZERO_REWARDS_ERR);
+
+      await time.increase(DEFAULT_LOCK);
+
       // Fails when the contract does not have balance to match rewards
       await expect(
         contract.connect(stakerA).claim()
@@ -474,13 +481,6 @@ describe("StakingERC20", () => {
 
       // Provide rewards to give
       await rewardsToken.connect(owner).transfer(await contract.getAddress(), hre.ethers.parseEther("5000"));
-
-      // Fails when claiming too early
-      await expect(
-        contract.connect(stakerA).claim()
-      ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
-
-      await time.increase(DEFAULT_LOCK);
 
       const balanceBefore = await rewardsToken.balanceOf(stakerA.address);
 
@@ -506,13 +506,11 @@ describe("StakingERC20", () => {
     it("Fails when the user has never staked", async () => {
       await expect(
         contract.connect(notStaker).claim()
-      ).to.be.revertedWithCustomError(contract, NO_REWARDS_ERR);
+      ).to.be.revertedWithCustomError(contract, ZERO_REWARDS_ERR);
     });
 
     it("Fails when the contract has no rewards", async () => {
-      // call to claim without first transferring rewards to the contract
-      // No rewards left
-      await contract.connect(owner).withdrawLeftoverRewards();
+      await contract.withdrawLeftoverRewards();
 
       await expect(
         contract.connect(stakerA).claim()
@@ -527,7 +525,7 @@ describe("StakingERC20", () => {
 
       await expect(
         contract.connect(stakerC).claim()
-      ).to.be.revertedWithCustomError(contract, TIME_LOCK_NOT_PASSED_ERR);
+      ).to.be.revertedWithCustomError(contract, ZERO_REWARDS_ERR);
     });
   });
 

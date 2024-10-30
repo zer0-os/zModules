@@ -85,7 +85,7 @@ interface IStakingBase {
     /**
      * @notice Throw when trying to claim but user has no rewards
      */
-    error NoRewards();
+    error ZeroRewards();
 
     /**
      * @notice Throw when there are no rewards remaining in the pool

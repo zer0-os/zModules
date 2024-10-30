@@ -139,8 +139,6 @@ contract StakingBase is Ownable, IStakingBase {
         staker.owedRewards = 0;
         staker.lastTimestamp = block.timestamp;
 
-        // even if it is 0, it enters this block but adds 0 anyways
-        // only reason to with `if` is gas
         if (staker.unlockedTimestamp != 0 && staker.unlockedTimestamp < block.timestamp) {
             // console.log("unlocked");
 
@@ -155,7 +153,7 @@ contract StakingBase is Ownable, IStakingBase {
         }
 
         // Do not transfer 0 rewards
-        if (rewards == 0) revert NoRewards();
+        if (rewards == 0) revert ZeroRewards();
 
         if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
 

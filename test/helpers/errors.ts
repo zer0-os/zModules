@@ -16,7 +16,7 @@ export const OWNABLE_UNAUTHORIZED_ERR = "OwnableUnauthorizedAccount";
 // StakingERC20
 export const ZERO_STAKE_ERR = "ZeroStake";
 export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
-export const NO_REWARDS_ERR = "NoRewards";
+export const ZERO_REWARDS_ERR = "ZeroRewards";
 
 // StakingERC721
 export const TIME_LOCK_NOT_PASSED_ERR = "TimeLockNotPassed";
