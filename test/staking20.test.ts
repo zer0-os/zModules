@@ -784,7 +784,7 @@ describe("StakingERC20", () => {
     });
   });
 
-  describe.only("real #unstakedLocked with 'exit'", () => {
+  describe("real #unstakedLocked with 'exit'", () => {
     it("Allows a user to partially unstake with linear rewards using 'exit' within lock duration", async () => {
       await reset();
 
@@ -827,6 +827,15 @@ describe("StakingERC20", () => {
       expect(stakerData.unlockedTimestamp).to.eq(stakerDataBefore.lastTimestampLocked + DEFAULT_LOCK);
       expect(stakerData.owedRewardsLocked).to.eq(0n);
     });
+
+    // allows fully unstake
+    // allows partial unstake and locked funds are left alone
+    // allows fully unstake and non-locked funds are left alone
+    
+    // fails when 0
+    // fails when never staked
+    // fails when not enough rewards in contract
+
   });
 
   describe.skip("#unstakeLocked with 'exit'", () => {

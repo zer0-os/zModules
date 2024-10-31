@@ -202,7 +202,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             }
 
             if (staker.unlockedTimestamp > block.timestamp) {
-                // Only allow use of exit on still locked funds, redundant on unlocked funds
+                // Only allow use of exit on funds that are still locked
                 if (exit) {                    
                     // Because the `_getPendingRewards` function call uses a stakers non-locked values,
                     // we need to temporarily modify those to be the staked values when calculating
@@ -218,6 +218,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                     // Reset their amount staked to the correct value
                     staker.amountStaked = temp;
                     staker.lastTimestamp = tempTimestamp;
+
+                    // TODO OR do we set rewards 0 for exit?
                 } else {
                     revert TimeLockNotPassed();
                 }
