@@ -16,7 +16,8 @@ interface IStakingERC20 {
     event Staked(
         address indexed staker,
         uint256 indexed amount,
-        address indexed stakingToken
+        uint256 indexed lockDuration,
+        address stakingToken
     );
 
     /**

@@ -129,22 +129,12 @@ contract StakingBase is Ownable, IStakingBase {
         // if funds are locked, only transfer if they are past lock duration
         Staker storage staker = stakers[msg.sender];
 
-        // already owed rewards + non-locked rewards
-        // console.log("Owed rewards: ", staker.owedRewards);
-        // console.log("Pending rewards: ", _getPendingRewards(staker, false));
-        // console.log("rewards: ", staker.owedRewards + _getPendingRewards(staker, false));
-
         uint256 rewards = staker.owedRewards + _getPendingRewards(staker, false);
 
         staker.owedRewards = 0;
         staker.lastTimestamp = block.timestamp;
 
         if (staker.unlockedTimestamp != 0 && staker.unlockedTimestamp < block.timestamp) {
-            // console.log("unlocked");
-
-            // console.log("Owed rewards locked: ", staker.owedRewardsLocked);
-            // console.log("Pending rewards locked: ", _getPendingRewards(staker, true));
-            // console.log("rewards locked: ", staker.owedRewardsLocked + _getPendingRewards(staker, true));
 
             // They can only receive rewards from locked funds when they are past lock period
             rewards += staker.owedRewardsLocked + _getPendingRewards(staker, true);
@@ -156,8 +146,6 @@ contract StakingBase is Ownable, IStakingBase {
         if (rewards == 0) revert ZeroRewards();
 
         if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
-
-        // console.log("Total rewards: ", rewards);
 
         // Because we update update timestamps before transfer, any reentrancy attempt
         // will use the current timestamps and calculate to 0
@@ -180,10 +168,6 @@ contract StakingBase is Ownable, IStakingBase {
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
-    // TODO add a "hasStaked" view function to check if they have staked a token?
-    // view functions don't themselves cost gas but if used in a different tx it will
-    // this function would still provide utility on front end I think
-
     /**
      * @notice View the pending rewards balance for a user
      */
@@ -191,13 +175,16 @@ contract StakingBase is Ownable, IStakingBase {
         return _getPendingRewards(stakers[msg.sender], false);
     }
 
-    // TODO Should these be 0 until rewards are available?
-    // or should this show what would be available immediately even though
-    // they cant access it?
+    /**
+     * @notice View the pending locked rewards balance for a user
+     */
     function getPendingRewardsLocked() external view returns (uint256) {
         return _getPendingRewards(stakers[msg.sender], true);
     }
 
+    /**
+     * @notice View the total pending rewards balance for a user
+     */
     function getAllPendingRewards() external view override returns (uint256) {
         return _getPendingRewards(stakers[msg.sender], false) + _getPendingRewards(stakers[msg.sender], true);
     }
@@ -211,7 +198,7 @@ contract StakingBase is Ownable, IStakingBase {
 
     function setMultiplier(uint256 _multiplier) public onlyOwner {
         MULTIPLIER = _multiplier;
-        // TODO emit MultiplierSet
+        emit MultiplierSet(msg.sender, _multiplier);
     }
 
     function getMultiplier() public view override returns (uint256) {
@@ -256,7 +243,7 @@ contract StakingBase is Ownable, IStakingBase {
         return stakers[msg.sender].lastTimestamp;
     }
 
-    function getLastTimestampStaked() public view override returns (uint256) {
+    function getLastTimestampLocked() public view override returns (uint256) {
         return stakers[msg.sender].lastTimestampLocked;
     }
 
@@ -306,7 +293,6 @@ contract StakingBase is Ownable, IStakingBase {
 
         // user has no stake, return 0
         if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
-            // console.log("A");
             return 0;
         }
 
@@ -320,9 +306,6 @@ contract StakingBase is Ownable, IStakingBase {
             return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / 86400 / 1000;
         }
     }
-
-    // TODO an optional function for rewards different from what is used in 
-    // StakingBase. Could be simpler, leaving here for eval later
 
     function _calcRewardsMultiplier(uint256 lock) internal pure returns(uint256) {
         // maxRM = 10
@@ -339,11 +322,4 @@ contract StakingBase is Ownable, IStakingBase {
     function _checkUnlocked(Staker storage staker, uint256 tokenId) internal view returns (bool) {
         return staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] < block.timestamp;
     }
-    // function _onlyUnlocked(uint256 tokenId) internal view {
-    //     // TODO what if msg.sender isnt owner? or token isnt staked?
-    //     // does NOT revert, but failure in earlier call to owner check reverts first so doesnt matter
-    //     if (stakers[msg.sender].stakedTimestamps[tokenId] + stakers[msg.sender].lockDurations[tokenId] > block.timestamp) {
-    //         revert TimeLockNotPassed();
-    //     }
-    // }
 }

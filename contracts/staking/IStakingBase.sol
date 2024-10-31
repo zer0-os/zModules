@@ -72,6 +72,16 @@ interface IStakingBase {
     );
 
     /**
+     * @notice Emit when the multiplier is set
+     * @param owner The address of the contract owner
+     * @param multiplier The new multiplier value
+     */
+    event MultiplierSet(
+        address indexed owner,
+        uint256 indexed multiplier
+    );
+
+    /**
      * @notice Throw when the lock period has not passed
      */
     error TimeLockNotPassed();
@@ -126,7 +136,7 @@ interface IStakingBase {
     
     function getLastTimestamp() external view returns (uint256);
     
-    function getLastTimestampStaked() external view returns (uint256);
+    function getLastTimestampLocked() external view returns (uint256);
 
     function getlastClaimedTimestamp(uint256 tokenId) external view returns (uint256);
 }
