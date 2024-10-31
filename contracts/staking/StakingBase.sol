@@ -135,6 +135,7 @@ contract StakingBase is Ownable, IStakingBase {
         staker.lastTimestamp = block.timestamp;
 
         if (staker.unlockedTimestamp != 0 && staker.unlockedTimestamp < block.timestamp) {
+            console.log("unlockedTimestamp", staker.unlockedTimestamp);
 
             // They can only receive rewards from locked funds when they are past lock period
             rewards += staker.owedRewardsLocked + _getPendingRewards(staker, true);
@@ -144,6 +145,7 @@ contract StakingBase is Ownable, IStakingBase {
 
         // Do not transfer 0 rewards
         if (rewards == 0) revert ZeroRewards();
+        console.log("rewards", rewards);
 
         if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
 

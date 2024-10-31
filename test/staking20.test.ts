@@ -784,7 +784,7 @@ describe("StakingERC20", () => {
     });
   });
 
-  describe("real #unstakedLocked with 'exit'", () => {
+  describe("#unstakeLocked with 'exit'", () => {
     it("Allows a user to partially unstake using 'exit' within lock duration", async () => {
       await reset();
 
@@ -1030,30 +1030,44 @@ describe("StakingERC20", () => {
 
   describe("Events", () => {
     it("Emits a Staked event when a user stakes", async () => {
+      await reset(); 
+
+      // const futureStakedAt = BigInt(await time.latest());
       await expect(
         contract.connect(stakerF).stakeWithoutLock(DEFAULT_STAKED_AMOUNT)
       ).to.emit(contract, STAKED_EVENT)
-        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, config.stakingToken);
+        .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, 0n, config.stakingToken);
+      console.log(await time.latest())
     });
 
     it("Emits a Claimed event when a user claims rewards", async () => {
-      await time.increase(config.timeLockPeriod);
+      console.log(await time.latest())
+
+      // await time.increase(DEFAULT_LOCK);
+      const stakeTime = BigInt(await time.latest());
 
       const pendingRewards = await contract.connect(stakerF).getPendingRewards();
 
+      const futureExpectedRewards = calcUnlockedRewards(
+        BigInt(await time.latest()) + 1n - stakeTime,
+        DEFAULT_STAKED_AMOUNT,
+        config.rewardsPerPeriod
+      );
+
       await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
-        pendingRewards
+        futureExpectedRewards
       );
+      console.log(futureExpectedRewards)
 
       await expect(
         contract.connect(stakerF).claim()
       ).to.emit(contract, CLAIMED_EVENT)
-        .withArgs(stakerF.address, pendingRewards, config.rewardsToken);
+        .withArgs(stakerF.address, futureExpectedRewards, config.rewardsToken);
     });
 
     it("Emits an Unstaked event when a user unstakes", async () => {
-      await time.increase(config.periodLength * 3n);
+      await time.increase(DEFAULT_LOCK / 2n);
 
       const pendingRewards = await contract.connect(stakerF).getPendingRewards();
 
@@ -1065,13 +1079,13 @@ describe("StakingERC20", () => {
       const stakerData = await contract.stakers(stakerF.address);
 
       await expect(
-        contract.connect(stakerF).unstake(stakerData.amountStaked / 2n, false)
+        contract.connect(stakerF).unstake(stakerData.amountStaked / 2n)
       ).to.emit(contract, UNSTAKED_EVENT)
         .withArgs(stakerF.address, stakerData.amountStaked / 2n, config.stakingToken);
     });
 
     it("Emits an Unstaked event when a user exits with unstake", async () => {
-      await time.increase(DEFAULT_LOCK * 7n);
+      await time.increase(DEFAULT_LOCK);
 
       const stakerData = await contract.stakers(stakerF.address);
 
@@ -1098,11 +1112,7 @@ describe("StakingERC20", () => {
     });
 
     it("Emits 'LeftoverRewardsWithdrawn' event when the admin withdraws", async () => {
-      const amount = 1000n;
-      await rewardsToken.connect(owner).transfer(
-        await contract.getAddress(),
-        amount
-      );
+      const amount = rewardsToken.balanceOf(await contract.getAddress());
 
       await expect(
         contract.connect(owner).withdrawLeftoverRewards()
