@@ -11,10 +11,10 @@ interface IStakingBase {
     /**
      * @notice Struct to track an individual staker's data
      */
-    struct Staker { // Consider breaking into multple structs. Base only should have "CoreStaker"
-        // TODO this will be different for ERC20, need different structs?
-        // TODO maybe these mappings should be independent state variables?
-        // reduce the need for passing the Staker struct around
+    struct Staker { 
+        // TODO Consider breaking into multple structs. Base only should have "CoreStaker"
+
+        // mappings state vars? reduces the need for passing the Staker struct around
         // but also having them in this struct means not having to check ownership repeatedly
         // make 2D mappings ? address => tokenId => data
         uint256 amountStaked;
@@ -107,8 +107,6 @@ interface IStakingBase {
      * @notice Throw when passing zero values to set a state var
      */
     error InitializedWithZero();
-
-    function claimAll() external;
 
     function withdrawLeftoverRewards() external;
 

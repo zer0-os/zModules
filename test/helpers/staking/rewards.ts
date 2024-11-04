@@ -24,6 +24,20 @@ export const calcRewardsAmount = (
   return (rewardsPerPeriod * timeSinceLastClaim**exponent * DEFAULT_MULTIPLIER) / DAY_IN_SECONDS;
 }
 
+export const calcTotalUnlockedRewards = (
+  durations : Array<bigint>,
+  balances : Array<bigint>,
+  rewardsPerPeriod : bigint,
+) : bigint => {
+  let totalRewards = 0n;
+
+  for (let i = 0; i < durations.length; i++) {
+    totalRewards += calcUnlockedRewards(durations[i], balances[i], rewardsPerPeriod);
+  }
+
+  return totalRewards;
+}
+
 export const calcUnlockedRewards = (
   duration : bigint,
   balance : bigint,

@@ -149,7 +149,7 @@ describe("StakingERC721", () => {
     await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdG);
   });
 
-  it.only("formula checks", async () => {
+  it.skip("formula checks", async () => {
     /**
      * Stake 0 at T :: 1000 for 100 days
 

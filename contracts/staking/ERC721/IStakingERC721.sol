@@ -68,6 +68,8 @@ interface IStakingERC721 is IERC721Receiver {
 
     function claim(uint256 tokenId) external;
 
+    function claimAll() external;
+
     function unstake(uint256[] memory tokenIds, bool exit) external;
 
     function unstakeAll(bool exit) external;

@@ -27,46 +27,6 @@ contract StakingBase is Ownable, IStakingBase {
      */
     mapping(address user => Staker staker) public stakers;
 
-    // TODO still want to use this?
-    // could do stakers[msg.sender].stakedTimestamps[tokenId]
-
-    // modifier onlyUnlocked(uint256 tokenId) {
-    //     if (stakedTimestamps[tokenId] + lockDurations[tokenId] < block.timestamp) {
-    //         revert TimeLockNotPassed();
-    //     }
-    //     _;
-    // }
-
-
-    // /**
-    //  * @dev Revert if a call is not from the SNFT owner
-    //  */
-    // modifier onlySNFTOwner(uint256 tokenId) {
-    //     if (ownerOf(tokenId) != msg.sender) {
-    //         revert InvalidOwner();
-    //     }
-    //     _;
-    // }
-
-    /**
-     * TODO Resolve
-     * 
-     * Rewards could be done several ways. Two options are
-     * 
-     * 1) A rewards multiplier is calculated when a user stakes. The value is exponential and 
-     * based on their lock duration. e.g. Lock 10 = RM 2, lock 20 = RM 5
-     * 
-     * 2) Rewards themselves are on an exponential curve. This means if you lock for any amount
-     * of time you are on this curve, but your rewards increase at marginally increasing rate
-     * so if you stake for 10 then claim you get x, but if you wait until 20 to claim you get 
-     * more than 2x.
-     * 
-     * Effectively these are similar but the difference is in follow up claims or unstakes
-     * 
-     *    In 1) a second claim regardless of how long would always use the RM for that stake
-     * but in 2)
-     */
-
     /**
      * @notice The staking token for this pool
      */
@@ -102,61 +62,6 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     /**
-     * @notice Claim rewards for the calling user based on their staked amount
-     */
-    function claimAll() external override {
-        // because we access the array of tokenIds by msg.sender, we know ownership
-        // we don't have to check because we will only ever  iterate over domains the user has
-        Staker storage staker = stakers[msg.sender];
-
-        uint256 i;
-        for (i; i < staker.tokenIds.length;) {
-            // TODO better way? dont want loop in _baseClaim but need Staker in baseClaim
-            _baseClaim(staker.tokenIds[i], staker);
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @notice Claim all of the user's rewards that are currently available
-     */
-    function claim() external {
-        // TODO make for erc721 too
-        // transfer a user their owed rewards + any available pending rewards
-        // if funds are locked, only transfer if they are past lock duration
-        Staker storage staker = stakers[msg.sender];
-
-        uint256 rewards = staker.owedRewards + _getPendingRewards(staker, false);
-
-        staker.owedRewards = 0;
-        staker.lastTimestamp = block.timestamp;
-
-        if (staker.unlockedTimestamp != 0 && staker.unlockedTimestamp < block.timestamp) {
-            console.log("unlockedTimestamp", staker.unlockedTimestamp);
-
-            // They can only receive rewards from locked funds when they are past lock period
-            rewards += staker.owedRewardsLocked + _getPendingRewards(staker, true);
-            staker.owedRewardsLocked = 0;
-            staker.lastTimestampLocked = block.timestamp;
-        }
-
-        // Do not transfer 0 rewards
-        if (rewards == 0) revert ZeroRewards();
-        console.log("rewards", rewards);
-
-        if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
-
-        // Because we update update timestamps before transfer, any reentrancy attempt
-        // will use the current timestamps and calculate to 0
-        rewardsToken.safeTransfer(msg.sender, rewards);
-
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
-    }
-
-    /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
@@ -183,6 +88,8 @@ contract StakingBase is Ownable, IStakingBase {
     function getPendingRewardsLocked() external view returns (uint256) {
         return _getPendingRewards(stakers[msg.sender], true);
     }
+
+    // TODO reimplement fixed version for ERC721
 
     /**
      * @notice View the total pending rewards balance for a user
@@ -258,39 +165,7 @@ contract StakingBase is Ownable, IStakingBase {
     /* Internal Functions */
     ////////////////////////////////////
 
-    // For ERC721
-    function _baseClaim(uint256 tokenId, Staker storage staker) internal {
-        // only comes from Staker right now, so no need to double check ownership
-        // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
-        // call to claim without actually being the owner
-
-        // Do not distribute rewards for stakes that are still locked
-        // TODO move this check outside of baseClaim to match what `unstake` does
-        // if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
-        //     revert TimeLockNotPassed();
-        // }
-
-        // // TODO consider adding reentrant guard to be more specific
-        // // TODO move outside baseclaim to match unstake
-        // if (staker.lastClaimedTimestamps[tokenId] == block.timestamp) {
-        //     revert CannotClaim();
-        // }
-        // uint256 rewards;
-
-        // // if ()
-        // uint256 rewards = _getPendingRewards(staker);
-
-        // if (_getContractRewardsBalance() < rewards) {
-        //     revert NoRewardsLeftInContract();
-        // }
-
-        // staker.lastClaimedTimestamps[tokenId] = block.timestamp;
-
-        // rewardsToken.safeTransfer(msg.sender, rewards);
-        // emit Claimed(msg.sender, rewards, address(rewardsToken));
-    }
-
-    // TODO might need to make empty and virtual if we can't figure out a combined func that works for ERC721 and ERC20
+    // TODO make for both ERC721 and ERC20? or empty with virtual?
     function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
 
         // user has no stake, return 0

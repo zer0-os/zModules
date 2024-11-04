@@ -109,12 +109,28 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Claim rewards for a specific token
      * 
      * @param tokenId The token ID to claim rewards for
-     * 
      */
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
-        // if we just pass this storage struct, do we save anything?
-        // its storage but does it get loaded in memory?
         _baseClaim(tokenId, stakers[msg.sender]);
+    }
+
+    /**
+     * @notice Claim rewards for the calling user based on their staked amount
+     */
+    function claimAll() external override {
+        // because we access the array of tokenIds by msg.sender, we know ownership
+        // we don't have to check because we will only ever  iterate over domains the user has
+        Staker storage staker = stakers[msg.sender];
+
+        uint256 i;
+        for (i; i < staker.tokenIds.length;) {
+            // TODO better way? dont want loop in _baseClaim but need Staker in baseClaim
+            _baseClaim(staker.tokenIds[i], staker);
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
 
@@ -234,6 +250,36 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _safeMint(msg.sender, tokenId, tokenUri);
 
         emit Staked(msg.sender, tokenId, stakingToken);
+    }
+
+    // For ERC721
+    function _baseClaim(uint256 tokenId, Staker storage staker) internal {
+        // only comes from Staker right now, so no need to double check ownership
+        // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
+        // call to claim without actually being the owner
+
+        // Do not distribute rewards for stakes that are still locked
+        // TODO move this check outside of baseClaim to match what `unstake` does
+        if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
+            revert TimeLockNotPassed();
+        }
+
+        // // TODO move outside baseclaim to match unstake
+        if (staker.lastClaimedTimestamps[tokenId] == block.timestamp) {
+            revert CannotClaim();
+        }
+        uint256 rewards;
+
+        // uint256 rewards = _getPendingRewards(staker);
+
+        if (_getContractRewardsBalance() < rewards) {
+            revert NoRewardsLeftInContract();
+        }
+
+        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+
+        // rewardsToken.safeTransfer(msg.sender, rewards);
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {

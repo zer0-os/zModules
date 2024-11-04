@@ -30,6 +30,7 @@ import {
   DAY_IN_SECONDS,
   calcUnlockedRewards,
   calcLockedRewards,
+  calcTotalUnlockedRewards,
 } from "./helpers/staking";
 
 describe("StakingERC20", () => {
@@ -394,25 +395,55 @@ describe("StakingERC20", () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      const stakedAt = BigInt(await time.latest());
 
       await time.increase(DEFAULT_LOCK / 4n);
 
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
 
-      // TODO add help expected value when updated
-      expect(pendingRewards).to.be.gt(0n);
+      const futureExpectedRewards = calcUnlockedRewards(
+        BigInt(await time.latest()) - stakedAt,
+        DEFAULT_STAKED_AMOUNT,
+        config.rewardsPerPeriod,
+      );
 
-      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
-      
-      // Confirm owed rewards upon second stake are snapshotted based
-      // on balance for previous period
+      expect(pendingRewards).to.eq(futureExpectedRewards);
+
       const stakerData = await contract.stakers(stakerA.address);
 
-      expect(stakerData.owedRewards).to.be.gt(0n);
+      // Because we haven't added any additional stake, `owedRewards` is not updated yet
+      expect(stakerData.owedRewards).to.eq(0n);
+
+      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      const stakedAtTwo = BigInt(await time.latest());
 
       await time.increase(DEFAULT_LOCK / 4n);
 
+      // // period 1 bal default, period 2 bal default * 2
+      // const futureExpectedRewardsSecond = calcUnlockedRewards(
+      //   BigInt(await time.latest()) - stakedAt,
+      //   DEFAULT_STAKED_AMOUNT * 2n,
+      //   config.rewardsPerPeriod,
+      // );
+
+      // TODO math on exact flow here
+
+      const realExpectedRewards = calcTotalUnlockedRewards(
+        [BigInt(await time.latest()) - stakedAtTwo, stakedAtTwo - stakedAt - 1n],
+        [DEFAULT_STAKED_AMOUNT * 2n, DEFAULT_STAKED_AMOUNT],
+        config.rewardsPerPeriod
+      )
+
+      // TODO return 0 if check immediately after stake
       const pendingRewardsAfter = await contract.connect(stakerA).getPendingRewards();
+
+      const stakerDataAfter = await contract.stakers(stakerA.address);
+
+      // expect(pendingRewardsAfter).to.eq(futureExpectedRewardsSecond);
+      expect(stakerDataAfter.owedRewards)//eq(futureExpectedRewardsSecond);
+
+      // await time.increase(DEFAULT_LOCK / 4n);
+
       // Pending rewards are updated like `periodA * balanceA + periodB * balanceB`
       // console.log(pendingRewardsAfter);
       // TODO
@@ -1037,13 +1068,9 @@ describe("StakingERC20", () => {
         contract.connect(stakerF).stakeWithoutLock(DEFAULT_STAKED_AMOUNT)
       ).to.emit(contract, STAKED_EVENT)
         .withArgs(stakerF.address, DEFAULT_STAKED_AMOUNT, 0n, config.stakingToken);
-      console.log(await time.latest())
     });
 
     it("Emits a Claimed event when a user claims rewards", async () => {
-      console.log(await time.latest())
-
-      // await time.increase(DEFAULT_LOCK);
       const stakeTime = BigInt(await time.latest());
 
       const pendingRewards = await contract.connect(stakerF).getPendingRewards();
@@ -1058,7 +1085,7 @@ describe("StakingERC20", () => {
         await contract.getAddress(),
         futureExpectedRewards
       );
-      console.log(futureExpectedRewards)
+      // console.log(futureExpectedRewards) TODO debugging, this math is wrong
 
       await expect(
         contract.connect(stakerF).claim()

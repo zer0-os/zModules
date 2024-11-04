@@ -59,6 +59,40 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     }
 
     /**
+     * @notice Claim all of the user's rewards that are currently available
+     */
+    function claim() external {
+        // transfer a user their owed rewards + any available pending rewards
+        // if funds are locked, only transfer if they are past lock duration
+        Staker storage staker = stakers[msg.sender];
+
+        uint256 rewards = staker.owedRewards + _getPendingRewards(staker, false);
+
+        staker.owedRewards = 0;
+        staker.lastTimestamp = block.timestamp;
+
+        if (staker.unlockedTimestamp != 0 && staker.unlockedTimestamp < block.timestamp) {
+
+            // They can only receive rewards from locked funds when they are past lock period
+            rewards += staker.owedRewardsLocked + _getPendingRewards(staker, true);
+            staker.owedRewardsLocked = 0;
+            staker.lastTimestampLocked = block.timestamp;
+        }
+
+        // Do not transfer 0 rewards
+        if (rewards == 0) revert ZeroRewards();
+        // console.log("rewards", rewards);
+
+        if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
+
+        // Because we update update timestamps before transfer, any reentrancy attempt
+        // will use the current timestamps and calculate to 0
+        rewardsToken.safeTransfer(msg.sender, rewards);
+
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
+    }
+
+    /**
      * @notice Unstake some or all of a user's non-locked stake
      * 
      * @param amount The amount to withdraw
