@@ -81,7 +81,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         // Do not transfer 0 rewards
         if (rewards == 0) revert ZeroRewards();
-        // console.log("rewards", rewards);
 
         if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
 
@@ -97,8 +96,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * 
      * @param amount The amount to withdraw
      */
-    function unstake(uint256 amount) external override {
-        _unstake(amount, false, false);
+    function unstake(uint256 amount, bool exit) external override {
+        _unstake(amount, false, exit);
     }
 
     /**
@@ -200,6 +199,23 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         emit Staked(msg.sender, amount, lockDuration, stakingToken);
     }
 
+    // completely exit staking contract and give the user their funds back
+    function exit() external override {
+        Staker storage staker = stakers[msg.sender];
+
+        uint256 amount = staker.amountStaked + staker.amountStakedLocked;
+
+        // If nothing to return, dont bother
+        if (amount == 0) {
+            revert ZeroValue();
+        }
+
+        delete stakers[msg.sender];
+
+        // Return the user's initial stake
+        IERC20(stakingToken).safeTransfer(msg.sender, amount);
+    }
+
     function _unstake(uint256 amount, bool locked, bool exit) internal {
         if (amount == 0) {
             revert ZeroValue();
@@ -216,7 +232,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
             if (staker.unlockedTimestamp > block.timestamp) {
                 // Only allow use of exit on funds that are still locked
-                if (exit) {           
+                if (exit) {          
                     rewards = 0;
                 } else {
                     revert TimeLockNotPassed();

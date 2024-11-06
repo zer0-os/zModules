@@ -146,6 +146,9 @@ describe("StakingERC20", () => {
   });
 
   describe("#getContractRewardsBalance", () => {
+    it.only("zero hash", async () => {
+      console.log(hre.ethers.ZeroHash);
+    })
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await contract.getContractRewardsBalance();
       const poolBalance = await rewardsToken.balanceOf(await contract.getAddress());
