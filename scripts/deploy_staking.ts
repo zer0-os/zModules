@@ -4,7 +4,7 @@ import {
   StakingERC20,
   StakingERC20__factory,
 } from "../typechain";
-import { TST_ADDRESS } from "./constants";
+import { ZCHAIN_TST_ADDRESS } from "./constants";
 
 async function main() {
   const [userD] = await hre.ethers.getSigners();
@@ -12,8 +12,8 @@ async function main() {
   const factory = new StakingERC20__factory(userD);
 
   const contract = await factory.deploy(
-    TST_ADDRESS,
-    TST_ADDRESS,
+    ZCHAIN_TST_ADDRESS,
+    ZCHAIN_TST_ADDRESS,
     6,
     userD.address
 

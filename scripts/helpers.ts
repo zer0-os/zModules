@@ -1,3 +1,4 @@
+import * as hre from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   MockERC20,
@@ -5,13 +6,44 @@ import {
   StakingERC20,
   StakingERC20__factory,
   PolygonZkEVMBridgeV2,
-  PolygonZkEVMBridgeV2__factory
+  PolygonZkEVMBridgeV2__factory,
+  MockERC20Upgradeable__factory,
+  MockERC20Upgradeable,
+  MockERC721__factory,
+  MockERC721,
 } from "../typechain";
-import { BRIDGE_ADDRESS, STAKING_ERC20_ADDRESS, TST_ADDRESS } from "./constants";
+import { BRIDGE_ADDRESS, SEP_TNFT_ADDRESS, SEP_UPGR_TST_ADDRESS, STAKING_ERC20_ADDRESS, ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "./constants";
 
 export const getToken = (signer ?: SignerWithAddress) => {
   const tokenFactory = new MockERC20__factory(signer);
-  const token = tokenFactory.attach(TST_ADDRESS) as MockERC20;
+  const token = tokenFactory.attach(ZCHAIN_TST_ADDRESS) as MockERC20;
+
+  return token;
+}
+
+export const getERC721Token = (signer ?: SignerWithAddress) => {
+  const tokenFactory = new MockERC721__factory(signer);
+  const token = tokenFactory.attach(SEP_TNFT_ADDRESS) as MockERC721;
+
+  return token;
+}
+
+export const getUpgradeableToken = async (signer ?: SignerWithAddress) => {
+  let token : MockERC20;
+
+  if (hre.network.name == "hardhat") {
+    const tx = await hre.upgrades.deployProxy(
+      new MockERC20__factory(signer),
+      ["TestToken", "TST"]
+    );
+
+    token = await tx.waitForDeployment() as unknown as MockERC20Upgradeable;
+  } else {
+    const address = hre.network.name === "sepolia" ? SEP_UPGR_TST_ADDRESS : ZCHAIN_UPGR_TST_ADDRESS;
+    const tokenFactory = new MockERC20Upgradeable__factory(signer);
+
+    token = tokenFactory.attach(address) as MockERC20Upgradeable;
+  }
 
   return token;
 }
@@ -24,6 +56,7 @@ export const getStakingERC20 = (signer ?: SignerWithAddress) => {
 };
 
 // TODO export const getStakingERC721
+// and for other zmodules contracts yet to be deployed
 
 export const getBridge = (signer ?: SignerWithAddress) => {
   const factory = new PolygonZkEVMBridgeV2__factory(signer);

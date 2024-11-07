@@ -3,8 +3,7 @@ import * as hre from "hardhat";
 import abi from "./bridge_abi.json";
 
 import * as axios from "axios";
-import { BRIDGE_ADDRESS } from "./constants";
-
+import { BRIDGE_ADDRESS, SEP_NET_ID } from "./constants";
 
 
 async function main() {
@@ -16,12 +15,40 @@ async function main() {
 
   // Sent from sep bridge to zchain bridge
 
-  const result = await api.get(
-    "/bridges/" + BRIDGE_ADDRESS,
-    { params: { limit: 100, offset: 0 } }
-  );
+  // const txhash = "0x668b6310080bc7a89947ba49fb27fff13cb1ea5b86ebc495b8160db88c7b7125"
 
-  console.log(result.data)
+  // for (let i = 1; i < 5; i++) {
+    setTimeout(() => {}, 1000);
+    const result = await api.get(
+      "/bridge",
+      {
+        params: {
+          deposit_cnt: 8,
+          // net_id: 1
+        }
+      }
+    );
+
+    // if (result.status != 500 && result.data.deposit.tx_hash === txhash) {
+    //   console.log(i)
+    console.log(result.data)
+    // }
+  // }
+
+  // const result = await api.get(
+  //   "/bridge",
+  //   // "/bridges/" + BRIDGE_ADDRESS,
+  //   {
+  //     params: {
+  //       deposit_cnt: 2,
+  //       // net_id: 1
+  //       // limit: 100,
+  //       // offset: 0
+  //     }
+  //   }
+  // );
+
+  // console.log(result.data)
   // console.log(`Is message claimable? ${result.data.deposits[]}`);
   // const latestDeposit = result.data.deposits[result.data.deposits.length - 1];
 

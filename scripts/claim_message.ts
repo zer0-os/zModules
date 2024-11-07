@@ -5,6 +5,7 @@ import abi from "./bridge_abi.json";
 import * as axios from "axios";
 import { PolygonZkEVMBridgeV2, PolygonZkEVMBridgeV2__factory } from "../typechain";
 import { BRIDGE_ADDRESS } from "./constants";
+import { getBridge } from "./helpers";
 
 async function main() {
   const [userA, userD] = await hre.ethers.getSigners();
@@ -13,64 +14,66 @@ async function main() {
     baseURL: process.env.BRIDGE_API_URL,
   });
 
-  // Sent from sep bridge to zchain bridge
   const result = await api.get(
-    "/bridges/" + BRIDGE_ADDRESS,
-    { 
-      params: { 
-        limit: 100, 
-        offset: 0 
+    "/bridge",
+    {
+      params: {
+        deposit_cnt: 1,
+        net_id: 1
       }
     }
   );
 
-  const latestDeposit = result.data.deposits[result.data.deposits.length - 1];
+  // console.log(result.data)
 
-  // if ready_to_claim
+  const deposit = result.data.deposit
+
+  if (!deposit.ready_for_claim) process.exit(1);
 
   const res = await api.get(
     "/merkle-proof",
     {
       params: {
-        deposit_cnt: latestDeposit.deposit_cnt,
-        net_id: latestDeposit.orig_net,
+        deposit_cnt: deposit.deposit_cnt,
+        net_id: deposit.network_id, // sep id? zchain id? other?
       },
     }
   );
+
+  console.log(res.data);
 
   const proof = res.data.proof;
   const mainExitRoot = res.data.main_exit_root;
   const rollupExitRoot = res.data.rollup_exit_root;
 
-  // Get bridge on zchain
-  const factory = new hre.ethers.ContractFactory(abi.abi, abi.bytecode) as PolygonZkEVMBridgeV2__factory;
-  const bridge = await factory.attach(BRIDGE_ADDRESS) as PolygonZkEVMBridgeV2;
+  const bridge = getBridge(userD);
 
-  try {
-    const tx = await bridge.connect(userA).claimMessage(
+  // orig address is sep ztoken address
+
+    const tx = await bridge.connect(userA).claimAsset(
       proof.merkle_proof,
       proof.rollup_merkle_proof,
-      latestDeposit.global_index,
+      0, // global index is empty string, use 0
       proof.main_exit_root,
       proof.rollup_exit_root,
-      latestDeposit.orig_net,
-      latestDeposit.orig_addr,
-      latestDeposit.dest_net,
-      latestDeposit.dest_addr,
-      latestDeposit.amount,
-      latestDeposit.metadata,
+      deposit.orig_net,
+      deposit.orig_addr,
+      deposit.orig_net,
+      deposit.dest_addr,
+      deposit.amount,
+      deposit.metadata,
       {
         gasLimit: 5000000
       }
     )
-  } catch(e) {
-    console.log(e);
-  }
+  // } catch(e) {
+  //   console.log(e);
+  // }
   
 
-  // const receipt = await tx.wait(3);
+  const receipt = await tx.wait(3);
 
-  // console.log(receipt);
+  console.log(receipt);
 }
 
 main().catch((error) => {
