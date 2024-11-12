@@ -1,0 +1,1 @@
+export type KindType = "transparent" | "uups" | "beacon";

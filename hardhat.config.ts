@@ -73,8 +73,8 @@ const config : HardhatUserConfig = {
       timeout: 10000000,
       
       accounts: [
-        // `${process.env.PRIVATE_KEY_A}`,
         `${process.env.PRIVATE_KEY_D}`,
+        `${process.env.PRIVATE_KEY_E}`,
       ],
       // // Must have to avoid instead failing as `invalid length for result data` error
       // throwOnCallFailures: false, // not sure if this even works
@@ -83,7 +83,8 @@ const config : HardhatUserConfig = {
       url: `${process.env.SEPOLIA_RPC_URL}`,
       timeout: 10000000,
       accounts: [ // Comment out for CI, uncomment this when using Sepolia
-        `${process.env.PRIVATE_KEY_D}`
+        `${process.env.PRIVATE_KEY_D}`,
+        `${process.env.PRIVATE_KEY_E}`
       ],
       // // Must have to avoid instead failing as `invalid length for result data` error
       // throwOnCallFailures: false, // not sure if this even works

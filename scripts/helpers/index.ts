@@ -11,8 +11,10 @@ import {
   MockERC20Upgradeable,
   MockERC721__factory,
   MockERC721,
-} from "../typechain";
+} from "../../typechain";
+import { ContractFactory } from "ethers";
 import { BRIDGE_ADDRESS, SEP_TNFT_ADDRESS, SEP_UPGR_TST_ADDRESS, STAKING_ERC20_ADDRESS, ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "./constants";
+import { KindType } from "./types"
 
 export const getToken = (signer ?: SignerWithAddress) => {
   const tokenFactory = new MockERC20__factory(signer);
@@ -64,3 +66,41 @@ export const getBridge = (signer ?: SignerWithAddress) => {
 
   return bridge;
 };
+
+export const getContract = async <T extends ContractFactory>(
+  factory: T,
+  address: string
+) => {
+  // TODO seems useless to have a one line function like this...
+  return factory.attach(address);
+}
+
+export const deployContract = async <T extends ContractFactory >(
+  factory: T,
+  args: any[]
+) => {
+  const contract = await factory.deploy(...args);
+
+  await contract.waitForDeployment();
+
+  console.log(`Contract successfully deployed at address: ${await contract.getAddress()}`);
+
+  return contract;
+};
+
+
+export const deployUpgradeableContract = async <T extends ContractFactory>(
+  factory: T,
+  args: any[],
+  _initializer: string = "initialize",
+  _kind: KindType = "transparent"
+) => {
+  const tx = await hre.upgrades.deployProxy(factory, ...args, {
+    initializer: _initializer,
+    kind: _kind,
+  });
+
+  const contract = await tx.waitForDeployment();
+
+  console.log(`Contract successfully deployed at address: ${await contract.getAddress()}`);
+}

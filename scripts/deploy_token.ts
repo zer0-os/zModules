@@ -5,17 +5,12 @@ import {
   MockERC20__factory,
   MockERC721__factory,
 } from "../typechain";
+import { deployContract } from "./helpers";
 
 async function main() {
   const [userD] = await hre.ethers.getSigners();
 
-  const factory = new MockERC721__factory(userD);
-
-  const token = await factory.deploy("TestNFT", "TNFT", "0://baseuri");
-
-  await token.waitForDeployment();
-
-  console.log(`Token successfully deployed to: ${await token.getAddress()}`);
+  await deployContract(new MockERC20__factory(userD), ["TestToken", "TST"]);
 }
 
 main().catch((error) => {

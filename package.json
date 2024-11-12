@@ -14,7 +14,7 @@
     "lint-sol": "yarn solhint ./contracts/**/*.sol",
     "lint-ts": "yarn eslint ./test/** ./src/**",
     "lint": "yarn lint-sol && yarn lint-ts --no-error-on-unmatched-pattern",
-    "create-type": "cat scripts/bridge_abi.json > artifacts/contracts/PolygonZkEVMBridgeV2.json ; yarn typechain"
+    "create-type": "cat scripts/bridge_abi.json > artifacts/contracts/PolygonZkEVMBridgeV2.json && yarn typechain"
   },
   "keywords": [],
   "author": "Zero CPT",

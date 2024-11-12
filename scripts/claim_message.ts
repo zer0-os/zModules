@@ -4,7 +4,7 @@ import abi from "./bridge_abi.json";
 
 import * as axios from "axios";
 import { PolygonZkEVMBridgeV2, PolygonZkEVMBridgeV2__factory } from "../typechain";
-import { BRIDGE_ADDRESS } from "./constants";
+import { BRIDGE_ADDRESS } from "./helpers/constants";
 import { getBridge } from "./helpers";
 
 async function main() {
