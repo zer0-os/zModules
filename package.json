@@ -31,7 +31,8 @@
     "posttest": "yarn mongo:stop",
     "deploy-local": "hardhat run src/deploy/run-campaign.ts --network hardhat",
     "deploy-sepolia": "hardhat run src/deploy/run-campaign.ts --network sepolia",
-    "deploy-meowtestnet": "hardhat run src/deploy/run-campaign.ts --network meowtestnet"
+    "deploy-meowtestnet": "hardhat run src/deploy/run-campaign.ts --network meowtestnet",
+    "create-bridge-type": "cat src/scripts/helpers/bridge_abi.json > artifacts/contracts/PolygonZkEVMBridgeV2.json && yarn typechain"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",

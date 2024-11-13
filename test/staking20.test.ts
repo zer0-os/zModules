@@ -5,7 +5,9 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
   DeflERC20Mock,
   MockERC20,
+  MockERC20__factory,
   StakingERC20,
+  StakingERC20__factory,
 } from "../typechain";
 import {
   NO_REWARDS_ERR,
@@ -26,6 +28,7 @@ import {
   DEFAULT_REWARDS_PER_PERIOD,
   DEFAULT_PERIOD_LENGTH,
   DEFAULT_LOCK_TIME,
+  DAY_IN_SECONDS,
 } from "./helpers/staking";
 import { ethers } from "ethers";
 import {
@@ -177,6 +180,53 @@ describe("StakingERC20", () => {
   });
 
   describe("#stake", () => {
+    it.only("Numbers testing for devnet", async () => {
+      //TEMP
+      await hre.network.provider.send("evm_setAutomine", [true]);
+
+      await stakingContractERC20.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
+      const localStakedAt = await time.latest();
+      console.log("periodLength: ", await stakingContractERC20.periodLength())
+
+      console.log(
+        `pendingrewards @ ${await time.latest()} : ${await stakingContractERC20.connect(stakerA).getPendingRewards()}`
+      );
+
+      await time.increase(timeIncreaseAmount);
+
+      console.log(
+        `pendingrewards @ ${await time.latest()} : ${await stakingContractERC20.connect(stakerA).getPendingRewards()}`
+      );
+
+      await time.increase(timeIncreaseAmount * 17n);
+
+      console.log(
+        `pendingrewards @ ${await time.latest()} : ${await stakingContractERC20.connect(stakerA).getPendingRewards()}`
+      );
+
+      const quarter = 90n * DAY_IN_SECONDS;
+      // increase 3 months
+      await time.increase(quarter);
+
+      await rewardsToken.connect(owner).mint(
+        await stakingContractERC20.getAddress(),
+        hre.ethers.parseEther("999999999")
+      );
+
+      // const stakerData = await stakingContractERC20.stakers(stakerA.address);
+      // console.log("stakerData.amountStaked", stakerData.amountStaked.toString());
+      // console.log("stakerData.owedRewards", stakerData.owedRewards.toString());
+
+      // pendingRewards = await stakingContractERC20.connect(stakerA).getPendingRewards();
+      // console.log("pendingRewards", pendingRewards.toString());
+
+      // claim
+      await stakingContractERC20.connect(stakerA).claim();
+
+      console.log(await rewardsToken.balanceOf(stakerA.address));
+
+      await hre.network.provider.send("evm_setAutomine", [false]);
+    });
     it("Can stake an amount successfully", async () => {
       const stakeBalanceBeforeA = await stakingToken.balanceOf(stakerA.address);
 
@@ -407,6 +457,8 @@ describe("StakingERC20", () => {
 
         const totalStakedBefore = await stakingContractERC20.totalStaked();
         const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+
+        const stakerDataBefore = await stakingContractERC20.stakers(stakerA.address);
 
         await stakingContractERC20.connect(stakerA).claim();
         await time.increase(timeIncreaseAmount);

@@ -8,6 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import { console } from "hardhat/console.sol";
 
 /**
  * @title StakingBase
@@ -96,6 +97,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
+    // FOR DEVNET TESTING we allow manipulation of contract state variables
+
     /**
      * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
      */
@@ -174,6 +177,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // The fractional amount of a period that has passed
         uint256 fractionOfPeriod = ((block.timestamp - staker.lastUpdatedTimestamp) % periodLength);
 
+        // console.log("fractionOfPeriod", fractionOfPeriod);
+
         // Calculate rewards owed for the number of periods
         uint256 fixedPeriodRewards = 
                 PRECISION_MULTIPLIER * (rewardsPerPeriod *
@@ -181,11 +186,18 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 ((block.timestamp - staker.lastUpdatedTimestamp) /
                     periodLength)) / PRECISION_MULTIPLIER;
 
+        // console.log("fixedPeriodRewards", fixedPeriodRewards);
+
         // Calculate rewards owed for the fractional amount of this period
         uint256 partialRewards = 
             PRECISION_MULTIPLIER * 
                 ((fractionOfPeriod * rewardsPerPeriod * staker.amountStaked) /
                     periodLength) / PRECISION_MULTIPLIER;
+
+        // console.log("partialRewards", partialRewards);
+        // console.log("staker.owedRewards(fromCC)", staker.owedRewards);
+
+        // console.log("totalPendingRewards", staker.owedRewards + fixedPeriodRewards + partialRewards);
 
         // Return the full period rewards prorated up to the moment they call
         return staker.owedRewards + fixedPeriodRewards + partialRewards;

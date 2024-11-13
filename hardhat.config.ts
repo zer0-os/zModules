@@ -59,48 +59,36 @@ const config : HardhatUserConfig = {
     // //   url: `${process.env.MAINNET_RPC_URL}`,
     // //   gasPrice: 80000000000,
     // },
-    // sepolia: {
-    //   url: `${process.env.SEPOLIA_RPC_URL}`,
-    //   timeout: 10000000,
-    //   accounts: [ // Comment out for CI, uncomment this when using Sepolia
-    //     `${process.env.TESTNET_PRIVATE_KEY_A}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_B}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_C}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_D}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_E}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_F}`,
-    //   ],
-    //   // Must have to avoid instead failing as `invalid length for result data` error
-    //   throwOnCallFailures: false, // not sure if this even works
-    // },
-    // meowtestnet: {
-    //   url: `${process.env.MEOWTESTNET_RPC_URL}`,
-    //   chainId: 883424730,
-    //   accounts: [ // Comment out for CI, uncomment this when using Sepolia
-    // `${process.env.DEPLOYER_PRIVATE_KEY}`,
-    // `${process.env.ZERO_VAULT_PRIVATE_KEY}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_A}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_B}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_C}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_D}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_E}`,
-    // `${process.env.TESTNET_PRIVATE_KEY_F}`,
-    //   ],
-    // },
+    sepolia: {
+      url: `${process.env.SEPOLIA_RPC_URL}`,
+      timeout: 10000000,
+      accounts: [ // Comment out for CI
+      `${process.env.TESTNET_PRIVATE_KEY_D}`,
+      `${process.env.TESTNET_PRIVATE_KEY_E}`,
+      ],
+    },
+    zchain: {
+      url: `${process.env.ZCHAIN_RPC_URL}`,
+      accounts: [ // Comment out for CI
+    `${process.env.TESTNET_PRIVATE_KEY_D}`,
+    `${process.env.TESTNET_PRIVATE_KEY_E}`,
+      ],
+    },
   },
-  // etherscan: {
-  //   apiKey: `${process.env.ETHERSCAN_API_KEY}`,
-  //   customChains: [
-  //     {
-  //       network: "meowtestnet",
-  //       chainId: 883424730,
-  //       urls: {
-  //         apiURL: "https://meowchain-testnet-blockscout.eu-north-2.gateway.fm/api/",
-  //         browserURL: "https://meowchain-testnet-blockscout.eu-north-2.gateway.fm/",
-  //       },
-  //     },
-  //   ],
-  // },
+  etherscan: {
+    // For all networks
+    apiKey: `${process.env.ETHERSCAN_API_KEY}`,
+    customChains: [
+      {
+        network: "zchain",
+        chainId: Number(process.env.ZCHAIN_ID),
+        urls: {
+          apiURL: `${process.env.BLOCKSCOUT_API_URL}`,
+          browserURL: `${process.env.BLOCKSCOUT_EXPLORER_URL}`,
+        }
+      }
+    ]
+  },
   docgen: {
     pages: "files",
     templates: "docs/docgen-templates",
