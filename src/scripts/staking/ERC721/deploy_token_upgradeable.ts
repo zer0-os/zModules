@@ -12,15 +12,18 @@ async function main() {
 
   const factory = new MockERC721Upgradeable__factory(userD); 
 
-  const contract = await factory.deploy(
-    "TestNFT",
-    "TNFT",
-    "0://tnft/"
-  ) as MockERC721;
+  const contract = await hre.upgrades.deployProxy(
+    factory,
+    [
+      "TestNFT",
+      "TNFT",
+      "0://tnft/"
+    ]
+  ) as unknown as MockERC721Upgradeable;;
 
   await contract.waitForDeployment();
 
-  console.log(`ERC721 contract successfully deployed to: ${await contract.getAddress()}`);
+  console.log(`ERC721Upgradeable contract successfully deployed to: ${await contract.getAddress()}`);
 }
 
 main().catch((error) => {

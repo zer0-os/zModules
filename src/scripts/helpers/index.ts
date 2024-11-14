@@ -9,9 +9,20 @@ import {
   // MockERC20Upgradeable__factory,
   MockERC721__factory,
   MockERC20Upgradeable__factory,
+  MockERC20Upgradeable,
+  MockERC20,
 } from "../../../typechain";
 import { Contract, ContractFactory } from "ethers";
-import { BRIDGE_ADDRESS, SEP_TNFT_ADDRESS, SEP_TST_ADDRESS, SEP_UPGR_TST_ADDRESS, ZCHAIN_STAKING_ERC20_ADDRESS, ZCHAIN_TNFT_ADDRESS, ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "./constants";
+import {
+  BRIDGE_ADDRESS,
+  SEP_TNFT_ADDRESS,
+  SEP_TST_ADDRESS,
+  SEP_UPGR_TST_ADDRESS,
+  ZCHAIN_STAKING_ERC20_ADDRESS,
+  ZCHAIN_TNFT_ADDRESS,
+  ZCHAIN_TST_ADDRESS,
+  ZCHAIN_UPGR_TST_ADDRESS
+} from "./constants";
 import { ContractV6, KindType } from "./types"
 
 export const getERC20 = async (signer ?: SignerWithAddress) => {
@@ -21,7 +32,7 @@ export const getERC20 = async (signer ?: SignerWithAddress) => {
     new MockERC20__factory(signer),
     ["TestToken", "TST"],
     address
-  );
+  ) as unknown as MockERC20;
 }
 
 export const getERC20Upgradeable = async (signer ?: SignerWithAddress) => {
@@ -32,7 +43,7 @@ export const getERC20Upgradeable = async (signer ?: SignerWithAddress) => {
     ["TestToken", "TST"],
     address,
     true
-  );
+  ) as unknown as MockERC20Upgradeable;
 }
 
 export const getERC721Token = async (signer ?: SignerWithAddress) => {

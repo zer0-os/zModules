@@ -6,7 +6,7 @@ import { getStakingERC20, getERC20 } from "../../helpers";
 async function main() {
   const [userD] = await hre.ethers.getSigners();
 
-  const token = getERC20(userD);
+  const token = await getERC20(userD);
   const contract = getStakingERC20(userD);
 
   const allowance = await token.allowance(userD.address, await contract.getAddress());

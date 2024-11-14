@@ -1,12 +1,12 @@
 import * as hre from "hardhat";
 
-import { getStakingERC20, getERC20, getUpgradeableToken } from "../../helpers";
+import { getStakingERC20, getERC20, getERC20Upgradeable } from "../../helpers";
 
 async function main() {
   const [userD] = await hre.ethers.getSigners();
 
   const contract = getStakingERC20(userD);
-  const rewardToken = await getUpgradeableToken(userD);
+  const rewardToken = await getERC20Upgradeable(userD);
 
   const balanceBefore = await rewardToken.balanceOf(await contract.getAddress());
   console.log(balanceBefore);
@@ -19,8 +19,8 @@ async function main() {
 
   const stakerData = await contract.connect(userD).stakers(userD.address);
 
-  // Do not withdraw, only unstake half
-  const amount = stakerData.amountStaked / 2n;
+  // Withdraw entire amount with unstake
+  const amount = stakerData.amountStaked;
 
   await rewardToken.connect(userD).mint(await contract.getAddress(), hre.ethers.parseEther("3333"));
 
