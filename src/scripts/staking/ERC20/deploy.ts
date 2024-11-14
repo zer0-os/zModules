@@ -3,10 +3,10 @@ import * as hre from "hardhat";
 import {
   StakingERC20,
   StakingERC20__factory,
-} from "../../typechain";
-import { ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "./helpers/constants";
-import { deployContract } from "./helpers";
-import { DAY_IN_SECONDS } from "../../test/helpers/constants";
+} from "../../../../typechain";
+import { ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "../../helpers/constants";
+import { deployContract } from "../../helpers";
+import { DAY_IN_SECONDS } from "../../../../test/helpers/constants";
 
 async function main() {
   const [userD] = await hre.ethers.getSigners();

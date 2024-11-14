@@ -1,60 +1,55 @@
 import * as hre from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
-  MockERC20,
   MockERC20__factory,
   StakingERC20,
   StakingERC20__factory,
-  MockERC20Upgradeable,
   // PolygonZkEVMBridgeV2,
   // PolygonZkEVMBridgeV2__factory,
   // MockERC20Upgradeable__factory,
-  // MockERC20Upgradeable,
   MockERC721__factory,
-  MockERC721,
   MockERC20Upgradeable__factory,
 } from "../../../typechain";
-import { ContractFactory } from "ethers";
-import { BRIDGE_ADDRESS, SEP_TNFT_ADDRESS, SEP_UPGR_TST_ADDRESS, STAKING_ERC20_ADDRESS, ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "./constants";
-import { KindType } from "./types"
+import { Contract, ContractFactory } from "ethers";
+import { BRIDGE_ADDRESS, SEP_TNFT_ADDRESS, SEP_TST_ADDRESS, SEP_UPGR_TST_ADDRESS, ZCHAIN_STAKING_ERC20_ADDRESS, ZCHAIN_TNFT_ADDRESS, ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "./constants";
+import { ContractV6, KindType } from "./types"
 
-export const getToken = (signer ?: SignerWithAddress) => {
-  const tokenFactory = new MockERC20__factory(signer);
-  const token = tokenFactory.attach(ZCHAIN_TST_ADDRESS) as MockERC20;
+export const getERC20 = async (signer ?: SignerWithAddress) => {
+  const address = hre.network.name === "sepolia" ? SEP_TST_ADDRESS : ZCHAIN_TST_ADDRESS;
 
-  return token;
+  return await getContract(
+    new MockERC20__factory(signer),
+    ["TestToken", "TST"],
+    address
+  );
 }
 
-export const getERC721Token = (signer ?: SignerWithAddress) => {
-  const tokenFactory = new MockERC721__factory(signer);
-  const token = tokenFactory.attach(SEP_TNFT_ADDRESS) as MockERC721;
+export const getERC20Upgradeable = async (signer ?: SignerWithAddress) => {
+  const address = hre.network.name === "sepolia" ? SEP_UPGR_TST_ADDRESS : ZCHAIN_UPGR_TST_ADDRESS;
 
-  return token;
+  return await getContract(
+    new MockERC20Upgradeable__factory(signer),
+    ["TestToken", "TST"],
+    address,
+    true
+  );
 }
 
-export const getUpgradeableToken = async (signer ?: SignerWithAddress) => {
-  let token : MockERC20Upgradeable;
+export const getERC721Token = async (signer ?: SignerWithAddress) => {
+  const address = hre.network.name === "sepolia" ? SEP_TNFT_ADDRESS : ZCHAIN_TNFT_ADDRESS;
 
-  if (hre.network.name == "hardhat") {
-    const tx = await hre.upgrades.deployProxy(
-      new MockERC20__factory(signer),
-      ["TestToken", "TST"]
-    );
-
-    token = await tx.waitForDeployment() as unknown as MockERC20Upgradeable;
-  } else {
-    const address = hre.network.name === "sepolia" ? SEP_UPGR_TST_ADDRESS : ZCHAIN_UPGR_TST_ADDRESS;
-    const tokenFactory = new MockERC20Upgradeable__factory(signer);
-
-    token = tokenFactory.attach(address) as MockERC20Upgradeable;
-  }
-
-  return token;
+  return await getContract(
+    new MockERC721__factory(signer),
+    ["TestNFT", "TNFT", "0://tnft/"],
+    address
+  );
 }
+
+// TODO getERC721Upgradeable
 
 export const getStakingERC20 = (signer ?: SignerWithAddress) => {
   const factory = new StakingERC20__factory(signer);
-  const contract = factory.attach(STAKING_ERC20_ADDRESS) as StakingERC20;
+  const contract = factory.attach(ZCHAIN_STAKING_ERC20_ADDRESS) as StakingERC20;
 
   return contract;
 };
@@ -62,19 +57,38 @@ export const getStakingERC20 = (signer ?: SignerWithAddress) => {
 // TODO export const getStakingERC721
 // and for other zmodules contracts yet to be deployed
 
-export const getBridge = (signer ?: SignerWithAddress) => {
-  const factory = new PolygonZkEVMBridgeV2__factory(signer);
-  const bridge = factory.attach(BRIDGE_ADDRESS) as PolygonZkEVMBridgeV2;
+// export const getBridge = (signer ?: SignerWithAddress) => {
+//   const factory = new PolygonZkEVMBridgeV2__factory(signer);
+//   const bridge = factory.attach(BRIDGE_ADDRESS) as PolygonZkEVMBridgeV2;
 
-  return bridge;
-};
+//   return bridge;
+// };
 
-export const getContract = async <T extends ContractFactory>(
-  factory: T,
-  address: string
+const getContract = async <T extends ContractFactory, V extends Contract>(
+  factory : T,
+  args ?: any[],
+  address ?: string,
+  upgradeable : boolean = false
 ) => {
-  // TODO seems useless to have a one line function like this...
-  return factory.attach(address);
+  let contract : Contract;
+
+  if (hre.network.name == "hardhat") {
+    if (!args) throw Error("Arguments are required for hardhat network");
+
+    let tx : Contract | ContractV6;
+    if (upgradeable) {
+      tx = await hre.upgrades.deployProxy(factory, args);
+    } else {
+      tx = await factory.deploy(...args);
+    }
+
+    contract = await tx.waitForDeployment() as V;
+  } else {
+    if (!address) throw Error("Address is required for non-hardhat network");
+    contract = factory.attach(address) as V;
+  }
+
+  return contract;
 }
 
 export const deployContract = async <T extends ContractFactory >(

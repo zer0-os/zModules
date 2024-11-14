@@ -1,12 +1,12 @@
 import * as hre from "hardhat";
 
-import { DEFAULT_STAKE } from "./helpers/constants";
-import { getStakingERC20, getToken } from "./helpers";
+import { DEFAULT_STAKE } from "../../helpers/constants";
+import { getStakingERC20, getERC20 } from "../../helpers";
 
 async function main() {
   const [userD] = await hre.ethers.getSigners();
 
-  const token = getToken(userD);
+  const token = getERC20(userD);
   const contract = getStakingERC20(userD);
 
   const allowance = await token.allowance(userD.address, await contract.getAddress());
