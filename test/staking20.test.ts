@@ -180,7 +180,7 @@ describe("StakingERC20", () => {
   });
 
   describe("#stake", () => {
-    it.only("Numbers testing for devnet", async () => {
+    it.skip("Numbers testing for devnet", async () => {
       //TEMP
       await hre.network.provider.send("evm_setAutomine", [true]);
 
@@ -762,6 +762,10 @@ describe("StakingERC20", () => {
         origStakedAtC = stakedAtC;
         amountStakedC = DEFAULT_STAKED_AMOUNT;
 
+        const amountStakedBefore = (await stakingContractERC20.stakers(stakerC.address)).amountStaked;
+
+        console.log(DEFAULT_STAKED_AMOUNT);
+        console.log(amountStakedBefore);
 
         // unstake without rewards when not passed time lock period
         await stakingContractERC20.connect(stakerC).unstake(DEFAULT_STAKED_AMOUNT, true);

@@ -83,8 +83,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             _onlyUnlocked(staker.unlockTimestamp);
             _baseClaim(staker, amount);
         } else {
+            // test partial and full amount
+
             // Snapshot their pending rewards
             staker.owedRewards = _getPendingRewards(staker);
+            // staker.amountStaked -= amount; // what we were missing
         }
 
         totalStaked -= amount;
