@@ -19,6 +19,9 @@ async function main() {
     await tx.wait();
   }
 
+  const amountStakedBefore = (await contract.connect(userD).stakers(userD.address)).amountStaked;
+  console.log("Before staking: ", amountStakedBefore);
+
   try {
     const tx = await contract.connect(userD).stake(
       stakeAmount, 
@@ -29,7 +32,7 @@ async function main() {
 
     const receipt = await tx.wait();
 
-    console.log(receipt);
+    console.log(receipt?.hash);
   } catch(e) {
     console.log(e);
   }

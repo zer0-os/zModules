@@ -1,14 +1,17 @@
 import * as hre from "hardhat";
 
-import { getStakingERC20, getERC20, getUpgradeableToken } from "../../helpers";
+import { getStakingERC20, getERC20, getERC20Upgradeable } from "../../helpers";
 
 async function main() {
   const [userD] = await hre.ethers.getSigners();
 
   const contract = getStakingERC20(userD);
-  const rewardToken = await getUpgradeableToken(userD);
+  const rewardToken = await getERC20Upgradeable(userD);
 
-  const balanceBefore = await rewardToken.balanceOf(await contract.getAddress());
+  const contractBalance = await rewardToken.balanceOf(await contract.getAddress());
+  console.log(contractBalance);
+
+  const balanceBefore = await rewardToken.balanceOf(userD.address);
   console.log(balanceBefore);
 
   const pendingRewards = await contract.connect(userD).getPendingRewards();
@@ -16,6 +19,9 @@ async function main() {
 
   const remainingTime = await contract.connect(userD).getRemainingLockTime();
   console.log(remainingTime);
+
+  const stakerdata = await contract.connect(userD).stakers(userD.address);
+  console.log(stakerdata.amountStaked);
 
 
 

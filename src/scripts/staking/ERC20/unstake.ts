@@ -18,29 +18,34 @@ async function main() {
   console.log(remainingTime);
 
   const stakerData = await contract.connect(userD).stakers(userD.address);
+  console.log(`Amount staked: ${stakerData.amountStaked}`);
 
-  // Withdraw entire amount with unstake
-  const amount = stakerData.amountStaked;
+  // Withdraw half
+  // const amount = stakerData.amountStaked / 2n;
 
-  await rewardToken.connect(userD).mint(await contract.getAddress(), hre.ethers.parseEther("3333"));
+  // await rewardToken.connect(userD).mint(await contract.getAddress(), hre.ethers.parseEther("1111"));
 
-  try {
-    const tx = await contract.connect(userD).unstake(
-      amount,
-      false
-      // {
-      //   gasLimit: 500000
-      // }
-    );
+  // try {
+  //   const tx = await contract.connect(userD).unstake(
+  //     amount,
+  //     true,
+  //     {
+  //       nonce: 500, // idk actual nonce
+  //       gasLimit: 500000
+  //     }
+  //   );
 
-    const receipt = await tx.wait();
+  //   const receipt = await tx.wait();
 
-    console.log(receipt);
-  } catch(e) {
-    console.log(e);
-  }
+  //   console.log(receipt?.hash);
+  // } catch(e) {
+  //   console.log(e);
+  // }
 
-  console.log(`Successfully unstaked: ${amount}`);
+  // const stakerDataAfter = await contract.connect(userD).stakers(userD.address);
+  // console.log(`Amount staked after: ${stakerDataAfter.amountStaked}`);
+
+  // console.log(`Successfully unstaked: ${amount}`);
 }
 
 main().catch((error) => {
