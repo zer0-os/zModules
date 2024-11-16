@@ -11,6 +11,9 @@ import {
   MockERC20Upgradeable__factory,
   MockERC20Upgradeable,
   MockERC20,
+  MockERC721,
+  StakingERC721__factory,
+  StakingERC721,
 } from "../../../typechain";
 import { Contract, ContractFactory } from "ethers";
 import {
@@ -19,6 +22,7 @@ import {
   SEP_TST_ADDRESS,
   SEP_UPGR_TST_ADDRESS,
   ZCHAIN_STAKING_ERC20_ADDRESS,
+  ZCHAIN_STAKING_ERC721_ADDRESS,
   ZCHAIN_TNFT_ADDRESS,
   ZCHAIN_TST_ADDRESS,
   ZCHAIN_UPGR_TST_ADDRESS
@@ -46,14 +50,14 @@ export const getERC20Upgradeable = async (signer ?: SignerWithAddress) => {
   ) as unknown as MockERC20Upgradeable;
 }
 
-export const getERC721Token = async (signer ?: SignerWithAddress) => {
+export const getERC721 = async (signer ?: SignerWithAddress) => {
   const address = hre.network.name === "sepolia" ? SEP_TNFT_ADDRESS : ZCHAIN_TNFT_ADDRESS;
 
   return await getContract(
     new MockERC721__factory(signer),
     ["TestNFT", "TNFT", "0://tnft/"],
     address
-  );
+  ) as unknown as MockERC721;
 }
 
 // TODO getERC721Upgradeable
@@ -64,6 +68,13 @@ export const getStakingERC20 = (signer ?: SignerWithAddress) => {
 
   return contract;
 };
+
+export const getStakingERC721 = (signer ?: SignerWithAddress) => {
+  const factory = new StakingERC721__factory(signer);
+  const contract = factory.attach(ZCHAIN_STAKING_ERC721_ADDRESS) as StakingERC721;
+
+  return contract;
+}
 
 // TODO export const getStakingERC721
 // and for other zmodules contracts yet to be deployed

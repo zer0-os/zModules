@@ -1,11 +1,11 @@
 import * as hre from "hardhat";
 
-import { getERC721Token, getStakingERC20, getERC20 } from "../../helpers";
+import { getERC721, getStakingERC20, getERC20 } from "../../helpers";
 
 async function main() {
   const [userD] = await hre.ethers.getSigners();
 
-  const token = getERC721Token(userD);
+  const token = await getERC721(userD);
 
   const tokenId = 1;
 

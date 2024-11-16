@@ -1,7 +1,7 @@
 import * as hre from "hardhat";
 
 
-import { getERC721Token } from "./helpers";
+import { getERC721 } from "./helpers";
 import { BRIDGE_ADDRESS, SEP_NET_ID, SEP_OWN_UPGR_TST_ADDRESS, SEP_TNFT_ADDRESS, SEP_TST_ADDRESS, SEP_UPGR_TST_ADDRESS, ZCHAIN_TST_ADDRESS } from "./helpers/constants";
 import { MockERC20Upgradeable, MockERC20Upgradeable__factory, PolygonZkEVMBridgeV2, PolygonZkEVMBridgeV2__factory } from "../../typechain";
 

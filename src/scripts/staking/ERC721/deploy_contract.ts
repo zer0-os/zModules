@@ -3,24 +3,29 @@ import * as hre from "hardhat";
 import {
   StakingERC20,
   StakingERC20__factory,
+  StakingERC721,
+  StakingERC721__factory,
 } from "../../../../typechain";
-import { ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "../../helpers/constants";
+import { ZCHAIN_TNFT_ADDRESS, ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "../../helpers/constants";
 import { deployContract } from "../../helpers";
 import { DAY_IN_SECONDS } from "../../../../test/helpers/constants";
 
 async function main() {
   const [userD] = await hre.ethers.getSigners();
 
-  // const factory = new StakingERC20__factory(userD); 
+  const factory = new StakingERC721__factory(userD);
 
   const contract = await factory.deploy(
-    ZCHAIN_TST_ADDRESS,
+    "RepresentativeStakeToken",
+    "RST",
+    "0://rst/",
+    ZCHAIN_TNFT_ADDRESS,
     ZCHAIN_UPGR_TST_ADDRESS,
     1,
     1500n * DAY_IN_SECONDS,
     0,
     userD.address
-  ) as StakingERC20;
+  ) as StakingERC721;
 
   await contract.waitForDeployment();
 
