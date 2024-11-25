@@ -59,6 +59,12 @@ const config : HardhatUserConfig = {
     // //   url: `${process.env.MAINNET_RPC_URL}`,
     // //   gasPrice: 80000000000,
     // },
+    hardhat: {
+      forking: {
+        url: `${process.env.MAINNET_RPC_URL}`,
+        blockNumber: 13000000,
+      }
+    },
     sepolia: {
       url: `${process.env.SEPOLIA_RPC_URL}`,
       timeout: 10000000,

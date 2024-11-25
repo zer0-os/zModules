@@ -6,9 +6,18 @@ export const DEFAULT_STAKE_ERC721 = 1;
 export const DEFAULT_STAKE_ERC20 = 1;
 
 // export const DEFAULT_REWARDS_PER_PERIOD = ethers.parseEther("6");
-export const DEFAULT_REWARDS_PER_PERIOD = 1n // * 10^18?
-export const DEFAULT_PERIOD_LENGTH = 1500n * DAY_IN_SECONDS;
+
+
+// Numbers for ERC721
+export const DEFAULT_REWARDS_PER_PERIOD = ethers.parseEther("2");
+export const DEFAULT_PERIOD_LENGTH = 2n * DAY_IN_SECONDS;
 export const DEFAULT_LOCK_TIME = 0n * DAY_IN_SECONDS;
+
+
+// These numbers worked well for ERC20 staking, playing numbers for 721
+// export const DEFAULT_REWARDS_PER_PERIOD = 4n // ERC20 deposits in 10^18 so we dont need multiplier here
+// export const DEFAULT_PERIOD_LENGTH = 1500n * DAY_IN_SECONDS;
+// export const DEFAULT_LOCK_TIME = 0n * DAY_IN_SECONDS; // 0 for testing on devnet
 
 export const STAKING721_TOKEN_NAME_DEFAULT = "Staking721";
 export const STAKING721_TOKEN_SYMBOL_DEFAULT = "STK721";

@@ -30,7 +30,7 @@ import {
   DEFAULT_LOCK_TIME,
   DAY_IN_SECONDS,
 } from "./helpers/staking";
-import { ethers } from "ethers";
+import { ethers, N } from "ethers";
 import {
   IZModulesConfig,
   IERC20DeployArgs,
@@ -180,25 +180,14 @@ describe("StakingERC20", () => {
   });
 
   describe("#stake", () => {
-    it.skip("Numbers testing for devnet", async () => {
+    it.only("Numbers testing for devnet", async () => {
       //TEMP
       await hre.network.provider.send("evm_setAutomine", [true]);
 
       await stakingContractERC20.connect(stakerA).stake(DEFAULT_STAKED_AMOUNT);
       const localStakedAt = await time.latest();
-      console.log("periodLength: ", await stakingContractERC20.periodLength())
 
-      console.log(
-        `pendingrewards @ ${await time.latest()} : ${await stakingContractERC20.connect(stakerA).getPendingRewards()}`
-      );
-
-      await time.increase(timeIncreaseAmount);
-
-      console.log(
-        `pendingrewards @ ${await time.latest()} : ${await stakingContractERC20.connect(stakerA).getPendingRewards()}`
-      );
-
-      await time.increase(timeIncreaseAmount * 17n);
+      await time.increase(365n* DAY_IN_SECONDS);
 
       console.log(
         `pendingrewards @ ${await time.latest()} : ${await stakingContractERC20.connect(stakerA).getPendingRewards()}`
@@ -223,7 +212,7 @@ describe("StakingERC20", () => {
       // claim
       await stakingContractERC20.connect(stakerA).claim();
 
-      console.log(await rewardsToken.balanceOf(stakerA.address));
+      // console.log(await rewardsToken.balanceOf(stakerA.address));
 
       await hre.network.provider.send("evm_setAutomine", [false]);
     });

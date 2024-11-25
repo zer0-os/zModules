@@ -17,6 +17,7 @@ import {
   DEFAULT_REWARDS_PER_PERIOD,
   DEFAULT_PERIOD_LENGTH,
   DEFAULT_LOCK_TIME,
+  DAY_IN_SECONDS,
 } from "./helpers/staking";
 import {
   IZModulesConfig,
@@ -243,6 +244,13 @@ describe("StakingERC721", () => {
   });
 
   describe("#stake", () => {
+    it.only("test calcs", async () => {
+      await stakingContractERC721.connect(stakerA).stake([tokenIdA], [emptyUri]);
+
+      await time.increase(365n * DAY_IN_SECONDS);
+
+      console.log(await stakingContractERC721.connect(stakerA).getPendingRewards());
+    });
     it("Can stake an NFT and properly assign tokenURI using baseURI", async () => {
       await stakingContractERC721.connect(stakerA).stake([tokenIdA], [emptyUri]);
       stakedAtA = BigInt(await time.latest());

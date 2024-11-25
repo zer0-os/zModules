@@ -11,13 +11,17 @@ async function main() {
 
   const allowance = await token.allowance(userD.address, await contract.getAddress());
 
-  const stakeAmount = DEFAULT_STAKE;
+  const balance = await token.balanceOf(userD.address);
+  console.log(balance.toString());
+
+  const stakeAmount = DEFAULT_STAKE * 3n;
 
   if (allowance < stakeAmount) {
+    console.log("calling to approve")
     // Approve contract to spend funds on staker's behalf
-    const tx = await token.connect(userD).approve(await contract.getAddress(), DEFAULT_STAKE);
+    const tx = await token.connect(userD).approve(await contract.getAddress(), stakeAmount);
     await tx.wait();
-  }
+  }  
 
   const amountStakedBefore = (await contract.connect(userD).stakers(userD.address)).amountStaked;
   console.log("Before staking: ", amountStakedBefore);
