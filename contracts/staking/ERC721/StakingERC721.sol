@@ -111,7 +111,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @param tokenId The token ID to claim rewards for
      */
     function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
-        _baseClaim(tokenId, stakers[msg.sender]);
+        // _baseClaim(tokenId, stakers[msg.sender]);
     }
 
     /**
@@ -125,7 +125,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256 i;
         for (i; i < staker.tokenIds.length;) {
             // TODO better way? dont want loop in _baseClaim but need Staker in baseClaim
-            _baseClaim(staker.tokenIds[i], staker);
+            // _baseClaim(staker.tokenIds[i], staker);
 
             unchecked {
                 ++i;
@@ -161,21 +161,21 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @notice Return the time in seconds remaining for a stake to be claimed or unstaked
      */
-    function getRemainingLockTime(uint256 tokenId) external view override returns (uint256) {
-        // Return the time remaining for the stake to be claimed or unstaked
-        Staker storage staker = stakers[msg.sender];
+    // function getRemainingLockTime(uint256 tokenId) external view override returns (uint256) {
+    //     // Return the time remaining for the stake to be claimed or unstaked
+    //     Staker storage staker = stakers[msg.sender];
 
-        // TODO Staked timestamp is 0 if the user has not staked this token
-        // return 0? return maxUint256?
-        uint256 stakedTimestamp = staker.stakedTimestamps[tokenId];
-        uint256 lockDuration = staker.lockDurations[tokenId];
+    //     // TODO Staked timestamp is 0 if the user has not staked this token
+    //     // return 0? return maxUint256?
+    //     // uint256 stakedTimestamp = staker.stakedTimestamps[tokenId];
+    //     // uint256 lockDuration = staker.lockDurations[tokenId];
 
-        if (block.timestamp < stakedTimestamp + lockDuration) {
-            return stakedTimestamp + lockDuration - block.timestamp;
-        }
+    //     // if (block.timestamp < stakedTimestamp + lockDuration) {
+    //     //     return stakedTimestamp + lockDuration - block.timestamp;
+    //     // }
 
-        return 0;
-    }
+    //     return 0;
+    // }
 
 
     ////////////////////////////////////
@@ -225,19 +225,43 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             super.supportsInterface(interfaceId);
     }
 
+    function getStakedTokenIds() public view override returns(uint256[] memory) {
+        // Staked ERC721 tokenIds
+        return stakers[msg.sender].tokenIds;
+    }
+
     ////////////////////////////////////
     /* Internal Staking Functions */
     ////////////////////////////////////
 
-    function _stake(uint256 tokenId, string memory tokenUri, uint256 lockPeriod) internal {
+    function _stake(uint256 tokenId, string memory tokenUri, uint256 lockDuration) internal {
         Staker storage staker = stakers[msg.sender];
 
-        // TODO do we need to hold on to original staked timestamp?
-        staker.stakedTimestamps[tokenId] = block.timestamp;
-        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
-        staker.lockDurations[tokenId] = lockPeriod;
-        staker.tokenIds.push(tokenId);
-        ++staker.amountStaked;
+        if (lockDuration == 0) {
+            // not locking
+            staker.owedRewards += _getPendingRewards(staker, false); // will be 0 on first stake
+            staker.lastTimestamp = block.timestamp;
+            ++staker.amountStaked;
+        } else {
+            // locking
+            if (staker.unlockedTimestamp == 0) {
+                // first time locking
+                console.log("First time locking");
+                console.log("lockDuration", lockDuration);
+                staker.lockDuration = lockDuration;
+                staker.unlockedTimestamp = block.timestamp + lockDuration;
+                staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
+            } else {
+                // subsequent time locking
+                // TODO resolve what to do, for now just simple shift
+                staker.unlockedTimestamp = block.timestamp + staker.lockDuration;
+            }
+
+            // Must always update before we update `lastTimestampLocked`
+            staker.owedRewardsLocked += _getPendingRewards(staker, true);
+            staker.lastTimestampLocked = block.timestamp;
+            ++staker.amountStakedLocked;
+        }
 
         // Transfer their NFT to this contract
         IERC721(stakingToken).safeTransferFrom(
@@ -246,41 +270,43 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             tokenId
         );
 
-        // Mint user sNFT
+        staker.tokenIds.push(tokenId);
+
+        // Mint user sNFT (TODO mint ERC721Voter when ready)
         _safeMint(msg.sender, tokenId, tokenUri);
 
         emit Staked(msg.sender, tokenId, stakingToken);
     }
 
     // For ERC721
-    function _baseClaim(uint256 tokenId, Staker storage staker) internal {
-        // only comes from Staker right now, so no need to double check ownership
-        // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
-        // call to claim without actually being the owner
+    // function _baseClaim(uint256 tokenId, Staker storage staker) internal {
+    //     // only comes from Staker right now, so no need to double check ownership
+    //     // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
+    //     // call to claim without actually being the owner
 
-        // Do not distribute rewards for stakes that are still locked
-        // TODO move this check outside of baseClaim to match what `unstake` does
-        if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
-            revert TimeLockNotPassed();
-        }
+    //     // Do not distribute rewards for stakes that are still locked
+    //     // TODO move this check outside of baseClaim to match what `unstake` does
+    //     if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
+    //         revert TimeLockNotPassed();
+    //     }
 
-        // // TODO move outside baseclaim to match unstake
-        if (staker.lastClaimedTimestamps[tokenId] == block.timestamp) {
-            revert CannotClaim();
-        }
-        uint256 rewards;
+    //     // // TODO move outside baseclaim to match unstake
+    //     if (staker.lastTimestamp == block.timestamp || staker.lastTimestampLocked == block.timestamp) {
+    //         revert CannotClaim();
+    //     }
+    //     uint256 rewards;
 
-        // uint256 rewards = _getPendingRewards(staker);
+    //     // uint256 rewards = _getPendingRewards(staker);
 
-        if (_getContractRewardsBalance() < rewards) {
-            revert NoRewardsLeftInContract();
-        }
+    //     if (_getContractRewardsBalance() < rewards) {
+    //         revert NoRewardsLeftInContract();
+    //     }
 
-        staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+    //     staker.lastClaimedTimestamps[tokenId] = block.timestamp;
 
-        // rewardsToken.safeTransfer(msg.sender, rewards);
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
-    }
+    //     // rewardsToken.safeTransfer(msg.sender, rewards);
+    //     emit Claimed(msg.sender, rewards, address(rewardsToken));
+    // }
 
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
         Staker storage staker = stakers[msg.sender];
@@ -291,23 +317,23 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256 amountBefore = staker.amountStaked;
 
         uint256 i;
-        for(i; i < tokenIds.length;) {
+        // for(i; i < tokenIds.length;) {
 
-            // If the token is unlocked, claim and unstake
-            if (_checkUnlocked(staker, tokenIds[i])) {
-                _baseClaim(tokenIds[i], staker);
-                _unstake(tokenIds[i]);
-                --staker.amountStaked;
-            } else if (exit) {
-                // if `exit` is true we unstake anyways without reward
-                _unstake(tokenIds[i]);
-                --staker.amountStaked;
-            }
+        //     // If the token is unlocked, claim and unstake
+        //     if (_checkUnlocked(staker, tokenIds[i])) {
+        //         _baseClaim(tokenIds[i], staker);
+        //         _unstake(tokenIds[i]);
+        //         --staker.amountStaked;
+        //     } else if (exit) {
+        //         // if `exit` is true we unstake anyways without reward
+        //         _unstake(tokenIds[i]);
+        //         --staker.amountStaked;
+        //     }
 
-            unchecked {
-                ++i;
-            }
-        }
+        //     unchecked {
+        //         ++i;
+        //     }
+        // }
 
         // If the token is not unlocked and user is not exiting, no action is taken
         // This will result in a successfull tx that has no change, so to avoid allowing the user to do this we

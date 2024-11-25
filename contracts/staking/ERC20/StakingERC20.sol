@@ -14,7 +14,7 @@ import { console } from "hardhat/console.sol";
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC20 is StakingBase, IStakingERC20 {
-    // TODO when ERC20Voter token is ready add here to give stakers the 
+    // TODO when ERC20Voter token is ready add here
 
     using SafeERC20 for IERC20;
 
@@ -112,17 +112,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         _unstake(amount, true, exit);
     }
 
-    /**
-     * @notice Return the time in seconds remaining for the staker's lock duration
-     */
-    function getRemainingLockTime() public view override returns(uint256) {
-        Staker storage staker = stakers[msg.sender];
-
-        if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
-
-        return staker.unlockedTimestamp - block.timestamp;
-    }
-
     // TODO do we want this feature?
     function _unlock() internal {
         // unlock a stake for a user, removing their extra rewards
@@ -172,12 +161,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             // incoming stake isnt locking
             staker.owedRewards += _getPendingRewards(staker, false);
             staker.lastTimestamp = block.timestamp;
-
             staker.amountStaked += amount;
         } else {
             // incoming stake is locking
             if (staker.unlockedTimestamp == 0) {
-
                 // first time locking stake
                 staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;

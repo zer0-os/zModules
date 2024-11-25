@@ -4,10 +4,7 @@ import { ethers } from "ethers";
 // 1e16
 export const DEFAULT_MULTIPLIER = 10000000000000000n;
 
-// export const DEFAULT_STAKE_ERC721 = 1;
-// export const DEFAULT_STAKE_ERC20 = 1;
-
-export const DEFAULT_REWARDS_PER_PERIOD = 6n;
+export const DEFAULT_REWARDS_PER_PERIOD = 1n;
 export const DAY_IN_SECONDS = 86400n;
 export const DEFAULT_LOCK = 100n * DAY_IN_SECONDS;
 

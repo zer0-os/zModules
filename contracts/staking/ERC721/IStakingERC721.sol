@@ -82,5 +82,9 @@ interface IStakingERC721 is IERC721Receiver {
 
     function getInterfaceId() external pure returns (bytes4);
 
-    function getRemainingLockTime(uint256 tokenId) external view returns (uint256);
+    function getStakedTokenIds() external view returns(uint256[] memory);
+
+    // function getLockDuration(uint256 tokenId) external view returns (uint256);
+
+    // function getRemainingLockTime(uint256 tokenId) external view returns (uint256);
 }

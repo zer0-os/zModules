@@ -89,7 +89,16 @@ contract StakingBase is Ownable, IStakingBase {
         return _getPendingRewards(stakers[msg.sender], true);
     }
 
-    // TODO reimplement fixed version for ERC721
+    /**
+     * @notice Return the time in seconds remaining for the staker's lock duration
+     */
+    function getRemainingLockTime() public view override returns(uint256) {
+        Staker storage staker = stakers[msg.sender];
+
+        if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
+
+        return staker.unlockedTimestamp - block.timestamp;
+    }
 
     /**
      * @notice View the total pending rewards balance for a user
@@ -119,47 +128,44 @@ contract StakingBase is Ownable, IStakingBase {
     // moving these to the contracts that need them instead to avoid bloat
     // for useless ERC20 functions in ERC721 contract or vice versa
 
-    function getAmountStaked() public view override returns(uint256) {
-        // ERC721s OR unlocked ERC20 amount
-        return stakers[msg.sender].amountStaked;
-    }
+    // ERC721s OR unlocked ERC20 amount
+    // function getAmountStaked() public view override returns(uint256) {
+    //     return stakers[msg.sender].amountStaked;
+    // }
 
-    function getAmountStakedLocked() public view override returns(uint256) {
-        // Locked ERC20 amount or locked ERC721s
-        return stakers[msg.sender].amountStakedLocked;
-    }
+    // // Locked ERC20 amount or locked ERC721s
+    // function getAmountStakedLocked() public view override returns(uint256) {
+    //     return stakers[msg.sender].amountStakedLocked;
+    // }
 
-    function getStakedTokenIds() public view override returns(uint256[] memory) {
-        // Staked ERC721 tokenIds
-        return stakers[msg.sender].tokenIds;
-    }
+    
 
-    function getLockDuration(uint256 tokenId) public view override returns (uint256) {
-        // Lock duration for a specific ERC721 tokenId
-        return stakers[msg.sender].lockDurations[tokenId];
-    }
+    // // function getLockDuration(uint256 tokenId) public view override returns (uint256) {
+    // //     // Lock duration for a specific ERC721 tokenId
+    // //     return stakers[msg.sender].lockDurations[tokenId];
+    // // }
 
-    function getLockDuration() public view override returns (uint256) {
-        // Lock duration for a user's ERC20 stake
-        return stakers[msg.sender].lockDuration;
-    }
+    // function getLockDuration() public view override returns (uint256) {
+    //     // Lock duration for a user's ERC20 stake
+    //     return stakers[msg.sender].lockDuration;
+    // }
 
-    function getStakedTimestamp(uint256 tokenId) public view override returns (uint256) {
-        return stakers[msg.sender].stakedTimestamps[tokenId];
-    }
+    // function getStakedTimestamp(uint256 tokenId) public view override returns (uint256) {
+    //     return stakers[msg.sender].stakedTimestamps[tokenId];
+    // }
 
-    function getLastTimestamp() public view override returns (uint256) {
-        return stakers[msg.sender].lastTimestamp;
-    }
+    // function getLastTimestamp() public view override returns (uint256) {
+    //     return stakers[msg.sender].lastTimestamp;
+    // }
 
-    function getLastTimestampLocked() public view override returns (uint256) {
-        return stakers[msg.sender].lastTimestampLocked;
-    }
+    // function getLastTimestampLocked() public view override returns (uint256) {
+    //     return stakers[msg.sender].lastTimestampLocked;
+    // }
 
-    function getlastClaimedTimestamp(uint256 tokenId) public view override returns (uint256) {
-        // In ERC721 still last*Claimed*, not just lastTimestamp
-        return stakers[msg.sender].lastClaimedTimestamps[tokenId];
-    }
+    // function getlastClaimedTimestamp(uint256 tokenId) public view override returns (uint256) {
+    //     // In ERC721 still last*Claimed*, not just lastTimestamp
+    //     return stakers[msg.sender].lastClaimedTimestamps[tokenId];
+    // }
 
     ////////////////////////////////////
     /* Internal Functions */
@@ -170,6 +176,7 @@ contract StakingBase is Ownable, IStakingBase {
 
         // user has no stake, return 0
         if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
+            console.log("No stake so returning 0");
             return 0;
         }
 
@@ -196,7 +203,7 @@ contract StakingBase is Ownable, IStakingBase {
         return rewardsToken.balanceOf(address(this));
     }
 
-    function _checkUnlocked(Staker storage staker, uint256 tokenId) internal view returns (bool) {
-        return staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] < block.timestamp;
-    }
+    // function _checkUnlocked(Staker storage staker, uint256 tokenId) internal view returns (bool) {
+    //     return staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] < block.timestamp;
+    // }
 }

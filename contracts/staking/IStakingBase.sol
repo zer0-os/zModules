@@ -31,14 +31,15 @@ interface IStakingBase {
         uint256 lastTimestamp; // For ERC20, last touchpoint claim OR stake
         uint256 lastTimestampLocked; // For ERC20, last touchpoint claim OR stake on locked values
 
+        // must have public getter function, cant get array or mapping from struct
         uint256[] tokenIds; // for indexing when bulk claiming / revoking
 
         // TODO maybe for ERC20 we can create an sNFT for staker mappings
         // as each stake will have to be unique now, lock is per stake not
         // per user anymore
-        mapping(uint256 tokenId => uint256 lockDuration) lockDurations;
-        mapping(uint256 tokenId => uint256 stakedTimestamp) stakedTimestamps;
-        mapping(uint256 tokenId => uint256 lastClaimedTimestamp) lastClaimedTimestamps;
+        // mapping(uint256 tokenId => uint256 lockDuration) lockDurations;
+        // mapping(uint256 tokenId => uint256 stakedTimestamp) stakedTimestamps;
+        // mapping(uint256 tokenId => uint256 lastClaimedTimestamp) lastClaimedTimestamps;
     }
 
     // TODO gas implications of having one struct with mappings etc.
@@ -112,7 +113,12 @@ interface IStakingBase {
 
     function getPendingRewards() external view returns (uint256);
 
+    function getPendingRewardsLocked() external view returns (uint256);
+
+    // TODO Arguably should be the only pendingRewards function
     function getAllPendingRewards() external view returns (uint256);
+    
+    function getRemainingLockTime() external view returns(uint256);
 
     function getContractRewardsBalance() external view returns (uint256);
 
@@ -120,21 +126,19 @@ interface IStakingBase {
 
     function getMultiplier() external view returns (uint256);
 
-    function getAmountStaked() external view returns (uint256);
-    
-    function getAmountStakedLocked() external view returns (uint256);
 
-    function getStakedTokenIds() external view returns(uint256[] memory);
 
-    function getLockDuration(uint256 tokenId) external view returns (uint256);
+    // function getAmountStaked() external view returns (uint256);
     
-    function getLockDuration() external view returns (uint256);
+    // function getAmountStakedLocked() external view returns (uint256);
 
-    function getStakedTimestamp(uint256 tokenId) external view returns (uint256);
-    
-    function getLastTimestamp() external view returns (uint256);
-    
-    function getLastTimestampLocked() external view returns (uint256);
+    // function getLockDuration() external view returns (uint256);
 
-    function getlastClaimedTimestamp(uint256 tokenId) external view returns (uint256);
+    // function getStakedTimestamp(uint256 tokenId) external view returns (uint256);
+    
+    // function getLastTimestamp() external view returns (uint256);
+    
+    // function getLastTimestampLocked() external view returns (uint256);
+
+    // function getlastClaimedTimestamp(uint256 tokenId) external view returns (uint256);
 }
