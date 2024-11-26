@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
@@ -19,6 +20,8 @@ import { console } from "hardhat/console.sol";
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
+    using SafeERC20 for IERC20;
+
     /**
      * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
      */
@@ -46,6 +49,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
+        uint256 _periodLength,
         address _contractOwner
     )
         ERC721(name, symbol)
@@ -53,6 +57,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             _stakingToken,
             _rewardsToken,
             _rewardsPerPeriod,
+            _periodLength,
             _contractOwner
         )
     {
@@ -106,31 +111,24 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     }
 
     /**
-     * @notice Claim rewards for a specific token
-     * 
-     * @param tokenId The token ID to claim rewards for
-     */
-    function claim(uint256 tokenId) external onlySNFTOwner(tokenId) {
-        // _baseClaim(tokenId, stakers[msg.sender]);
-    }
-
-    /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claimAll() external override {
-        // because we access the array of tokenIds by msg.sender, we know ownership
-        // we don't have to check because we will only ever  iterate over domains the user has
-        Staker storage staker = stakers[msg.sender];
+    function claimUnlockedRewards() external { // override {
+        _baseClaim(stakers[msg.sender], false);
+    }
 
-        uint256 i;
-        for (i; i < staker.tokenIds.length;) {
-            // TODO better way? dont want loop in _baseClaim but need Staker in baseClaim
-            // _baseClaim(staker.tokenIds[i], staker);
+    function claimLockedReward() external { // override
+        _baseClaim(stakers[msg.sender], true);
+    }
 
-            unchecked {
-                ++i;
-            }
-        }
+    // transfer both
+    function claim() external { // override
+        // TODO make simpler, only do one transfer if possible
+
+        // these revert if no rewards, but in double case
+        // like below we only revert if both, not just one
+        // _baseClaim(stakers[msg.sender], false);
+        // _baseClaim(stakers[msg.sender], true);
     }
 
 
@@ -244,10 +242,11 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             ++staker.amountStaked;
         } else {
             // locking
+            // console.log("locking");
             if (staker.unlockedTimestamp == 0) {
                 // first time locking
-                console.log("First time locking");
-                console.log("lockDuration", lockDuration);
+                // console.log("First time locking");
+                // console.log("lockDuration", lockDuration);
                 staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
                 staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
@@ -278,35 +277,46 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         emit Staked(msg.sender, tokenId, stakingToken);
     }
 
-    // For ERC721
-    // function _baseClaim(uint256 tokenId, Staker storage staker) internal {
-    //     // only comes from Staker right now, so no need to double check ownership
-    //     // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
-    //     // call to claim without actually being the owner
+    // TODO should user be able to claim rewards from locked vs unlocked independently?
 
-    //     // Do not distribute rewards for stakes that are still locked
-    //     // TODO move this check outside of baseClaim to match what `unstake` does
-    //     if (staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] > block.timestamp) {
-    //         revert TimeLockNotPassed();
-    //     }
+    function _baseClaim(Staker storage staker, bool locked) internal {
+        // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
+        // call to claim without actually being the owner?
 
-    //     // // TODO move outside baseclaim to match unstake
-    //     if (staker.lastTimestamp == block.timestamp || staker.lastTimestampLocked == block.timestamp) {
-    //         revert CannotClaim();
-    //     }
-    //     uint256 rewards;
+        // TODO move outside baseclaim to match unstake
+        // TODO rewards would just calc to 0 if same timestamp, which fails downstream
+        // if (staker.lastTimestamp == block.timestamp || staker.lastTimestampLocked == block.timestamp) {
+        //     revert CannotClaim();
+        // }
+        uint256 rewards;
 
-    //     // uint256 rewards = _getPendingRewards(staker);
+        if (locked) {
+            if (_getRemainingLockTime(staker) > 0) {
+                revert TimeLockNotPassed();
+            }
+            rewards = _getPendingRewards(staker, true);
+            staker.lastTimestampLocked = block.timestamp;
+        } else {
+            rewards = _getPendingRewards(staker, false);
+            staker.lastTimestamp = block.timestamp;
+        }
 
-    //     if (_getContractRewardsBalance() < rewards) {
-    //         revert NoRewardsLeftInContract();
-    //     }
+        // console.log("rewards: ", rewards);
 
-    //     staker.lastClaimedTimestamps[tokenId] = block.timestamp;
+        // uint256 rewards = _getPendingRewards(staker, locked);
+    
+        if (_getContractRewardsBalance() < rewards) {
+            revert NoRewardsLeftInContract();
+        }
 
-    //     // rewardsToken.safeTransfer(msg.sender, rewards);
-    //     emit Claimed(msg.sender, rewards, address(rewardsToken));
-    // }
+        if (rewards == 0) {
+            revert ZeroRewards();
+        }
+
+        rewardsToken.safeTransfer(msg.sender, rewards);
+
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
+    }
 
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
         Staker storage staker = stakers[msg.sender];

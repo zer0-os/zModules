@@ -42,11 +42,13 @@ contract StakingBase is Ownable, IStakingBase {
      */
     uint256 public immutable rewardsPerPeriod;
 
+    uint256 public immutable periodLength;
+
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
-        // uint256 _periodLength, // TODO also have max # periods? e.g. 365 days
+        uint256 _periodLength,
         address _contractOwner
     ) Ownable(_contractOwner) {
         if (
@@ -59,6 +61,7 @@ contract StakingBase is Ownable, IStakingBase {
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
+        periodLength = _periodLength;
     }
 
     /**
@@ -78,32 +81,28 @@ contract StakingBase is Ownable, IStakingBase {
     /**
      * @notice View the pending rewards balance for a user
      */
-    function getPendingRewards() external view override returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender], false);
-    }
+    // function getPendingRewards() external view override returns (uint256) {
+    //     return _getPendingRewards(stakers[msg.sender], false);
+    // }
 
-    /**
-     * @notice View the pending locked rewards balance for a user
-     */
-    function getPendingRewardsLocked() external view returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender], true);
-    }
+    // /**
+    //  * @notice View the pending locked rewards balance for a user
+    //  */
+    // function getPendingRewardsLocked() external view returns (uint256) {
+    //     return _getPendingRewards(stakers[msg.sender], true);
+    // }
 
     /**
      * @notice Return the time in seconds remaining for the staker's lock duration
      */
     function getRemainingLockTime() public view override returns(uint256) {
-        Staker storage staker = stakers[msg.sender];
-
-        if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
-
-        return staker.unlockedTimestamp - block.timestamp;
+        return _getRemainingLockTime(stakers[msg.sender]);
     }
 
     /**
-     * @notice View the total pending rewards balance for a user
+     * @notice View both the sum of the locked and unlocked pending rewards balance for a user
      */
-    function getAllPendingRewards() external view override returns (uint256) {
+    function getPendingRewards() external view override returns (uint256) {
         return _getPendingRewards(stakers[msg.sender], false) + _getPendingRewards(stakers[msg.sender], true);
     }
 
@@ -171,23 +170,41 @@ contract StakingBase is Ownable, IStakingBase {
     /* Internal Functions */
     ////////////////////////////////////
 
+    function _getRemainingLockTime(Staker storage staker) internal view returns(uint256) {
+        if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
+
+        return staker.unlockedTimestamp - block.timestamp;
+    }
+
     // TODO make for both ERC721 and ERC20? or empty with virtual?
     function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
 
         // user has no stake, return 0
         if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
-            console.log("No stake so returning 0");
+            // console.log("No stake so returning 0");
             return 0;
         }
 
         if (locked) {
             // div 100,000 at end to moderate (2 extra decimals of precision because multiplier is scaled in size for decimals)
-            return staker.rewardsMultiplier * (
-                staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / 86400 / 100000
-            );
+            // console.log("staker.rewardsMultiplier: %s", staker.rewardsMultiplier);
+            // console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
+            // console.log("rewardsPerPeriod: %s", rewardsPerPeriod);
+            // console.log("block.timestamp: %s", block.timestamp);
+            // console.log("staker.lastTimestampLocked: %s", staker.lastTimestampLocked);
+            // console.log("diff: %s", block.timestamp - staker.lastTimestampLocked);
+
+            // TODO make vars for precision division here? Messes up numbers if RM is not two decimals, e.g. x.yz
+            // 100 000
+            // 1 000
+
+            uint256 retval = staker.rewardsMultiplier * (
+                staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / periodLength / 100000 );
+            // console.log("retval: %s", retval);
+            return retval;
         } else {
             // div 1000 at end to moderate
-            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / 86400 / 1000;
+            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / periodLength / 1000;
         }
     }
 

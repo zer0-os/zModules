@@ -1,4 +1,4 @@
-import { DAY_IN_SECONDS, DEFAULT_MULTIPLIER } from "./constants";
+import { DAY_IN_SECONDS, DEFAULT_MULTIPLIER, DEFAULT_PERIOD_LENGTH, DEFAULT_REWARDS_PER_PERIOD, LOCKED_PRECISION_DIVISOR, PRECISION_DIVISOR } from "./constants";
 import * as hre from "hardhat";
 
 export const calcTotalRewards = (
@@ -15,7 +15,7 @@ export const calcTotalRewards = (
   return totalRewards;
 };
 
-export const calcRewardsAmount = (
+export const calcRewardsAmount = ( // TODO shouldnt use these legacy functions, confirm in tests
   timeSinceLastClaim : bigint,
   lockDuration : bigint,
   rewardsPerPeriod : bigint,
@@ -27,12 +27,20 @@ export const calcRewardsAmount = (
 export const calcTotalUnlockedRewards = (
   durations : Array<bigint>,
   balances : Array<bigint>,
-  rewardsPerPeriod : bigint,
+  rewardsPerPeriod : bigint = DEFAULT_REWARDS_PER_PERIOD,
+  periodLength : bigint = DEFAULT_PERIOD_LENGTH,
+  divisor : bigint = PRECISION_DIVISOR
 ) : bigint => {
   let totalRewards = 0n;
 
   for (let i = 0; i < durations.length; i++) {
-    totalRewards += calcUnlockedRewards(durations[i], balances[i], rewardsPerPeriod);
+    totalRewards += calcUnlockedRewards(
+      durations[i],
+      balances[i],
+      rewardsPerPeriod,
+      periodLength,
+      divisor
+    );
   }
 
   return totalRewards;
@@ -42,17 +50,43 @@ export const calcUnlockedRewards = (
   duration : bigint,
   balance : bigint,
   rewardsPerPeriod : bigint,
-  divisor : bigint = 1000n,
+  periodLength : bigint,
+  divisor : bigint
 ) => {
-  return balance * (rewardsPerPeriod * duration) / DAY_IN_SECONDS / divisor;
+  return balance * (rewardsPerPeriod * duration) / periodLength / divisor;
 }
 
 export const calcLockedRewards = (
   duration : bigint,
   balance : bigint,
-  rewardsPerPeriod : bigint,
   rewardsMultiplier : bigint,
-  divisor : bigint = 100000n,
+  rewardsPerPeriod : bigint,
+  periodLength : bigint,
+  divisor : bigint
 ) => {
-  return rewardsMultiplier * calcUnlockedRewards(duration, balance, rewardsPerPeriod, divisor);
+  return rewardsMultiplier * calcUnlockedRewards(duration, balance, rewardsPerPeriod, periodLength, divisor);
+}
+
+export const calcTotalLockedRewards = (
+  durations : Array<bigint>,
+  balances : Array<bigint>,
+  rewardsMultiplier : bigint,
+  rewardsPerPeriod : bigint = DEFAULT_REWARDS_PER_PERIOD,
+  periodLength : bigint = DEFAULT_PERIOD_LENGTH,
+  divisor : bigint = LOCKED_PRECISION_DIVISOR
+) : bigint => {
+  let totalRewards = 0n;
+
+  for (let i = 0; i < durations.length; i++) {
+    totalRewards += calcLockedRewards(
+      durations[i],
+      balances[i],
+      rewardsMultiplier,
+      rewardsPerPeriod,
+      periodLength,
+      divisor
+  );
+  }
+
+  return totalRewards;
 }

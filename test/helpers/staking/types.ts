@@ -7,6 +7,7 @@ export interface BaseConfig {
   stakingToken : string;
   rewardsToken : string;
   rewardsPerPeriod : bigint;
+  periodLength : bigint;
 }
 
 // Simplify the Ethers V6 contract type

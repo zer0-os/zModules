@@ -111,12 +111,12 @@ interface IStakingBase {
 
     function withdrawLeftoverRewards() external;
 
-    function getPendingRewards() external view returns (uint256);
+    // function getPendingRewards() external view returns (uint256);
 
-    function getPendingRewardsLocked() external view returns (uint256);
+    // function getPendingRewardsLocked() external view returns (uint256);
 
     // TODO Arguably should be the only pendingRewards function
-    function getAllPendingRewards() external view returns (uint256);
+    function getPendingRewards() external view returns (uint256);
     
     function getRemainingLockTime() external view returns(uint256);
 
