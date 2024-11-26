@@ -152,29 +152,13 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      */
     function unstakeAll(bool exit) public {
         // Pull list of tokenIds from caller internally and just provide empty array
-        uint256[] memory temp;
-        _unstakeMany(temp, exit);
+        // uint256[] memory temp;
+        // _unstakeMany(temp, exit);
+        // TODO resolve how we can use different types in internal call
+        // because empty array would indicate we use ALL of the `NFTStakes` in a users tokenIds array
+        // but otherwise we just use uint256[] for specific tokens
+        // two specific internals?
     }
-
-    /**
-     * @notice Return the time in seconds remaining for a stake to be claimed or unstaked
-     */
-    // function getRemainingLockTime(uint256 tokenId) external view override returns (uint256) {
-    //     // Return the time remaining for the stake to be claimed or unstaked
-    //     Staker storage staker = stakers[msg.sender];
-
-    //     // TODO Staked timestamp is 0 if the user has not staked this token
-    //     // return 0? return maxUint256?
-    //     // uint256 stakedTimestamp = staker.stakedTimestamps[tokenId];
-    //     // uint256 lockDuration = staker.lockDurations[tokenId];
-
-    //     // if (block.timestamp < stakedTimestamp + lockDuration) {
-    //     //     return stakedTimestamp + lockDuration - block.timestamp;
-    //     // }
-
-    //     return 0;
-    // }
-
 
     ////////////////////////////////////
     /* Token Functions */
@@ -223,7 +207,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             super.supportsInterface(interfaceId);
     }
 
-    function getStakedTokenIds() public view override returns(uint256[] memory) {
+    function getStakedTokenIds() public view override returns(NFTStake[] memory) {
         // Staked ERC721 tokenIds
         return stakers[msg.sender].tokenIds;
     }
@@ -269,7 +253,13 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             tokenId
         );
 
-        staker.tokenIds.push(tokenId);
+        console.log("tokenId: ", tokenId);
+        console.log("lockDuration: ", lockDuration);
+        NFTStake memory stake = NFTStake(tokenId, lockDuration > 0);
+
+        // Add to array and to mapping for indexing in unstake
+        staker.tokenIds.push(stake);
+        staker.stakeData[tokenId] = stake;
 
         // Mint user sNFT (TODO mint ERC721Voter when ready)
         _safeMint(msg.sender, tokenId, tokenUri);
@@ -318,43 +308,80 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
 
+    // TODO maybe have to have two more internals?
+    // unstakeUINT256
+    // unstakeNFTStakes
+
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
         Staker storage staker = stakers[msg.sender];
 
-        // Use the staker's list of tokenIds if none are given
-        uint256[] memory tokenIds = _tokenIds.length > 0 ? _tokenIds : staker.tokenIds;
+        // if empty array is given `unstakeAll`
 
-        uint256 amountBefore = staker.amountStaked;
+        bool isAction = false;
 
         uint256 i;
-        // for(i; i < tokenIds.length;) {
+        for(i; i < _tokenIds.length;) {
+            // If the token is unlocked, claim and unstake
+            console.log("i: %s", i);
+            uint256 tokenId = _tokenIds[i];
+            console.log("tokenId: %s", tokenId);
 
-        //     // If the token is unlocked, claim and unstake
-        //     if (_checkUnlocked(staker, tokenIds[i])) {
-        //         _baseClaim(tokenIds[i], staker);
-        //         _unstake(tokenIds[i]);
-        //         --staker.amountStaked;
-        //     } else if (exit) {
-        //         // if `exit` is true we unstake anyways without reward
-        //         _unstake(tokenIds[i]);
-        //         --staker.amountStaked;
-        //     }
+            NFTStake memory stake = staker.stakeData[_tokenIds[i]];
+            console.log("on unstaking check: %s", stake.tokenId);
+            console.log("on unstaking check: %s", stake.locked);
 
-        //     unchecked {
-        //         ++i;
-        //     }
-        // }
+            if (stake.locked) {
+                if (exit) {
+                    // unstake with no rewards
+                    _unstake(stake.tokenId);
+                    --staker.amountStakedLocked;
+                    isAction = true;
+                } else if (_getRemainingLockTime(staker) == 0) {
+                    // we enforce the lock duration on the user
+                    if (staker.lastTimestampLocked != block.timestamp) {
+                        console.log("lastTimestampLocked: %s", staker.lastTimestampLocked);
+                        console.log("block.timestamp: %s", block.timestamp);
 
-        // If the token is not unlocked and user is not exiting, no action is taken
-        // This will result in a successfull tx that has no change, so to avoid allowing the user to do this we
-        // revert here. This will be read by any systems that tries to call `estimateGas` and fail appropriately
-        // ahead of time so the user avoids wasting funds here
-        if (staker.amountStaked == amountBefore) {
+                        // If already called in this loop, it will have updated lastTimestampLocked
+                        console.log("claiming locked...");
+                        _baseClaim(staker, true);
+                    }
+                    _unstake(stake.tokenId);
+                    console.log("outside _baseClaim");
+                    console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
+                    --staker.amountStakedLocked;
+                    isAction = true;
+                } else {
+                    // stake is locked and cannot be unstaked
+                    continue;
+                }
+            } else {
+                // stake was never locked
+                if (staker.lastTimestamp != block.timestamp) {
+                    // If already called in this loop, it will have updated lastTimestamp
+                    // don't call again
+                    console.log("claiming unlocked...");
+                    _baseClaim(staker, false);
+                }
+                console.log("unstaked tokenId: %s", stake.tokenId);
+                _unstake(stake.tokenId);
+                --staker.amountStaked;
+                isAction = true;
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        // If no action is taken, revert
+        if (!isAction) {
             revert InvalidUnstake();
         }
 
         // If call was a complete exit, delete the staker struct for this user as well
-        if (staker.amountStaked == 0) {
+        if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
+            console.log("deleting staker struct");
             delete stakers[msg.sender];
         }
     }

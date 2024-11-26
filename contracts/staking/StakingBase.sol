@@ -79,18 +79,25 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     /**
-     * @notice View the pending rewards balance for a user
+     * @notice View the pending rewards balance for a user's non-locked amount
      */
-    // function getPendingRewards() external view override returns (uint256) {
-    //     return _getPendingRewards(stakers[msg.sender], false);
-    // }
+    function getPendingRewards() external view override returns (uint256) {
+        return _getPendingRewards(stakers[msg.sender], false);
+    }
 
-    // /**
-    //  * @notice View the pending locked rewards balance for a user
-    //  */
-    // function getPendingRewardsLocked() external view returns (uint256) {
-    //     return _getPendingRewards(stakers[msg.sender], true);
-    // }
+    /**
+     * @notice View the pending locked rewards balance for a user
+     */
+    function getPendingRewardsLocked() external view returns (uint256) {
+        return _getPendingRewards(stakers[msg.sender], true);
+    }
+
+    /**
+     * @notice View the sum of the locked and unlocked pending rewards balance for a user
+     */
+    function getTotalPendingRewards() external view override returns (uint256) {
+        return _getPendingRewards(stakers[msg.sender], false) + _getPendingRewards(stakers[msg.sender], true);
+    }
 
     /**
      * @notice Return the time in seconds remaining for the staker's lock duration
@@ -98,14 +105,6 @@ contract StakingBase is Ownable, IStakingBase {
     function getRemainingLockTime() public view override returns(uint256) {
         return _getRemainingLockTime(stakers[msg.sender]);
     }
-
-    /**
-     * @notice View both the sum of the locked and unlocked pending rewards balance for a user
-     */
-    function getPendingRewards() external view override returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender], false) + _getPendingRewards(stakers[msg.sender], true);
-    }
-
     /**
      * @notice View the rewards balance in this pool
      */

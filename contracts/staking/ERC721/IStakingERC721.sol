@@ -2,13 +2,13 @@
 pragma solidity ^0.8.20;
 
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-
+import { IStakingBase } from "../IStakingBase.sol";
 
 /**
  * @title IStakingERC721
  * @notice Interface for the StakingERC721 contract
  */
-interface IStakingERC721 is IERC721Receiver {
+interface IStakingERC721 is IERC721Receiver, IStakingBase {
 
     /**
      * @notice Emitted when the base URI is updated
@@ -80,7 +80,7 @@ interface IStakingERC721 is IERC721Receiver {
 
     function getInterfaceId() external pure returns (bytes4);
 
-    function getStakedTokenIds() external view returns(uint256[] memory);
+    function getStakedTokenIds() external view returns(NFTStake[] memory);
 
     // function getLockDuration(uint256 tokenId) external view returns (uint256);
 

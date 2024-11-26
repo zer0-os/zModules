@@ -163,7 +163,7 @@ describe("StakingERC20", () => {
 
       await time.increase(365n * DAY_IN_SECONDS);
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-      console.log(pendingRewards.toString());
+      // console.log(pendingRewards.toString());
     });
     it("Can stake without a lock successfully", async () => {
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
