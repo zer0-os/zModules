@@ -15,11 +15,11 @@ import {
   BaseConfig,
   WITHDRAW_EVENT,
   DEFAULT_LOCK,
-  DEFAULT_REWARDS_PER_PERIOD,
-  DAY_IN_SECONDS,
   calcLockedRewards,
   calcTotalLockedRewards,
   calcTotalUnlockedRewards,
+  PRECISION_DIVISOR,
+  LOCKED_PRECISION_DIVISOR,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -233,27 +233,6 @@ describe("StakingERC721", () => {
     // 4th stake at T+75
     const t75 = thirdStakeTimeRemaining - 25;
     newStakedAmount += stakeAdded;
-
-    const fourthTimeRemaining = 0;
-
-
-    // TODO would this math work when we add a lot of new stakes? 5 or 10?
-    // because it's adding a percentage of a percentage each time, and so will become smaller?
-
-    // new time remaining is ~12 days longer
-    // when we increase the amount we are staking, we should see an increase in
-    // the time remaining, before was 400, lets make it 750
-
-    /** Days added to remaining days after x is added to stake
-     * x = 400, y = 75 + ~7.14
-     * x = 500, y = 75 + ~8.33
-     * x = 750, y = 75 + ~10.7
-     * x = 950, y = 75 + ~12.17
-     * x = 1000 (same as original stake), y = 75 + 12.5
-     * x = 1200, y = 75 + ~13.6
-     * x = 2400, y = 75 + ~17.6
-     */
-
   })
 
   it.skip("calcs correctly", async () => {
@@ -266,9 +245,6 @@ describe("StakingERC721", () => {
     // Both users are given a sNFT
     expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(1);
     expect(await stakingERC721.balanceOf(stakerB.address)).to.eq(1);
-
-    // const stakedTimestampA = await stakingERC721.connect(stakerA).getStakedTimestamp(tokenIdA);
-    // const stakedTimestampB = await stakingERC721.connect(stakerB).getStakedTimestamp(tokenIdD);
 
     // now call to claim
     const stakerABalanceBefore = await rewardToken.balanceOf(stakerA.address);
@@ -287,28 +263,6 @@ describe("StakingERC721", () => {
     const stakerABalanceAfter = await rewardToken.balanceOf(stakerA.address);
     const stakerBBalanceAfter = await rewardToken.balanceOf(stakerB.address);
 
-    // console.log("A - before: ", stakerABalanceBefore)
-    // console.log("A - after: ", stakerABalanceAfter);
-
-    // console.log("B - before: ", stakerBBalanceBefore)
-    // console.log("B - after: ", stakerBBalanceAfter);
-
-    // const expectedRewardsA = calcTotalRewards(
-    //   [claimedAtA - stakedTimestampA],
-    //   [DEFAULT_LOCK],
-    //   DEFAULT_REWARDS_PER_PERIOD
-    // );
-
-    // const expectedRewardsB = calcTotalRewards(
-    //   [claimedAtB - stakedTimestampB],
-    //   [0n],
-    //   DEFAULT_REWARDS_PER_PERIOD
-    // );
-
-    // expect(expectedRewardsA).to.eq(stakerABalanceAfter - stakerABalanceBefore);
-    // expect(expectedRewardsB).to.eq(stakerBBalanceAfter - stakerBBalanceBefore);
-    // expect(expectedRewardsA).to.be.gt(expectedRewardsB);
-
     // Increase time again before unstake to accrue more rewards
     await time.increase(DEFAULT_LOCK);
 
@@ -325,16 +279,19 @@ describe("StakingERC721", () => {
     const unstakeBalAfterA = await rewardToken.balanceOf(stakerA.address);
     const unstakeBalAfterB = await rewardToken.balanceOf(stakerB.address);
 
-    const expectedRewardsAfterUnstakeA = calcTotalRewards(
+    const expectedRewardsAfterUnstakeA = calcTotalUnlockedRewards(
       [unstakedAtA - claimedAtA],
       [DEFAULT_LOCK],
-      DEFAULT_REWARDS_PER_PERIOD
+      config
     );
 
-    const expectedRewardsAfterUnstakeB = calcTotalRewards(
+    const stakerData = await stakingERC721.stakers(stakerB.address);
+
+    const expectedRewardsAfterUnstakeB = calcTotalLockedRewards(
       [unstakedAtB - claimedAtB],
       [0n],
-      DEFAULT_REWARDS_PER_PERIOD
+      stakerData.rewardsMultiplier,
+      config
     );
 
     expect(expectedRewardsAfterUnstakeA).to.eq(unstakeBalAfterA - stakerABalanceAfter);
@@ -684,8 +641,7 @@ describe("StakingERC721", () => {
         [latest - stakedAt],
         [1n],
         stakerData.rewardsMultiplier,
-        config.rewardsPerPeriod,
-        config.periodLength
+        config
       );
 
         expect(updatedPendingRewards).to.eq(expectedRewards);
@@ -729,6 +685,7 @@ describe("StakingERC721", () => {
       const expectedRewards = calcTotalUnlockedRewards(
         [claimedAt - stakedAt],
         [1n],
+        config
       );
 
       expect(expectedRewards).to.eq(balanceAfter - balanceBefore);
@@ -747,6 +704,7 @@ describe("StakingERC721", () => {
       const nextExpectedRewards = calcTotalUnlockedRewards(
         [secondClaimedAt - claimedAt],
         [1n],
+        config
       );
 
       expect(nextExpectedRewards).to.eq(balanceAfterSecond - balanceBeforeSecond);
@@ -811,6 +769,7 @@ describe("StakingERC721", () => {
       const expectedRewards = calcTotalUnlockedRewards(
         [unstakedAtUnlocked - stakedAtUnlocked],
         [1n],
+        config
       );
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
@@ -851,7 +810,8 @@ describe("StakingERC721", () => {
       const expectedRewards = calcLockedRewards(
         unstakedAtLocked - stakedAtLocked,
         2n,
-        stakerDataBefore.rewardsMultiplier        
+        stakerDataBefore.rewardsMultiplier,
+        config
       );
 
       expect(balanceAfter).to.eq(balanceBefore + expectedRewards);
@@ -1116,6 +1076,8 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
+        divisor: PRECISION_DIVISOR,
+        lockedDivisor: LOCKED_PRECISION_DIVISOR
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1158,6 +1120,8 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
+        divisor: PRECISION_DIVISOR,
+        lockedDivisor: LOCKED_PRECISION_DIVISOR
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1220,6 +1184,8 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(3),
         periodLength: BigInt(0),
         timeLockPeriod: BigInt(50),
+        divisor: PRECISION_DIVISOR,
+        lockedDivisor: LOCKED_PRECISION_DIVISOR
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1248,6 +1214,8 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
+        divisor: PRECISION_DIVISOR,
+        lockedDivisor: LOCKED_PRECISION_DIVISOR
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1331,6 +1299,8 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(13),
         periodLength: BigInt(56),
         timeLockPeriod: BigInt(897),
+        divisor: PRECISION_DIVISOR,
+        lockedDivisor: LOCKED_PRECISION_DIVISOR
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");

@@ -8,6 +8,8 @@ export interface BaseConfig {
   rewardsToken : string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
+  divisor : bigint;
+  lockedDivisor : bigint;
 }
 
 // Simplify the Ethers V6 contract type

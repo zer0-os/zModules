@@ -219,6 +219,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function _stake(uint256 tokenId, string memory tokenUri, uint256 lockDuration) internal {
         Staker storage staker = stakers[msg.sender];
 
+        //TODO make sure follow up stakes adjust lock duration properly
+
         if (lockDuration == 0) {
             // not locking
             staker.owedRewards += _getPendingRewards(staker, false); // will be 0 on first stake

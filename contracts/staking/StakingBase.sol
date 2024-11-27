@@ -193,7 +193,6 @@ contract StakingBase is Ownable, IStakingBase {
             // console.log("staker.lastTimestampLocked: %s", staker.lastTimestampLocked);
             // console.log("diff: %s", block.timestamp - staker.lastTimestampLocked);
 
-            // TODO make vars for precision division here? Messes up numbers if RM is not two decimals, e.g. x.yz
             // 100 000
             // 1 000
 
@@ -218,8 +217,4 @@ contract StakingBase is Ownable, IStakingBase {
     function _getContractRewardsBalance() internal view returns (uint256) {
         return rewardsToken.balanceOf(address(this));
     }
-
-    // function _checkUnlocked(Staker storage staker, uint256 tokenId) internal view returns (bool) {
-    //     return staker.stakedTimestamps[tokenId] + staker.lockDurations[tokenId] < block.timestamp;
-    // }
 }
