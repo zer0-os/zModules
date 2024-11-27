@@ -253,8 +253,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             tokenId
         );
 
-        console.log("tokenId: ", tokenId);
-        console.log("lockDuration: ", lockDuration);
+        // console.log("tokenId: ", tokenId);
+        // console.log("lockDuration: ", lockDuration);
         NFTStake memory stake = NFTStake(tokenId, lockDuration > 0);
 
         // Add to array and to mapping for indexing in unstake
@@ -291,10 +291,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             staker.lastTimestamp = block.timestamp;
         }
 
-        // console.log("rewards: ", rewards);
-
-        // uint256 rewards = _getPendingRewards(staker, locked);
-    
+        console.log("rewardsBalance: %s", _getContractRewardsBalance());
+        console.log("rewardsAmount: %s", rewards);
         if (_getContractRewardsBalance() < rewards) {
             revert NoRewardsLeftInContract();
         }
@@ -319,12 +317,19 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
 
         bool isAction = false;
 
-        uint256 i;
+        uint256 i = 0;
         for(i; i < _tokenIds.length;) {
             // If the token is unlocked, claim and unstake
-            console.log("i: %s", i);
-            uint256 tokenId = _tokenIds[i];
-            console.log("tokenId: %s", tokenId);
+            // console.log("i: %s", i);
+            if (ownerOf(_tokenIds[i]) == address(0) || ownerOf(_tokenIds[i]) != msg.sender) { // TODO also != msg.sender?
+                // Either the list of tokenIds contains a non-existent token
+                // or it contains a token the owner doesnt own
+                unchecked {
+                    ++i;
+                }
+                continue;
+            }
+            // console.log("tokenId: %s", tokenId);
 
             NFTStake memory stake = staker.stakeData[_tokenIds[i]];
             console.log("on unstaking check: %s", stake.tokenId);
@@ -333,26 +338,31 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             if (stake.locked) {
                 if (exit) {
                     // unstake with no rewards
+                    console.log("call with exit");
                     _unstake(stake.tokenId);
                     --staker.amountStakedLocked;
                     isAction = true;
                 } else if (_getRemainingLockTime(staker) == 0) {
                     // we enforce the lock duration on the user
                     if (staker.lastTimestampLocked != block.timestamp) {
-                        console.log("lastTimestampLocked: %s", staker.lastTimestampLocked);
-                        console.log("block.timestamp: %s", block.timestamp);
+                        // console.log("lastTimestampLocked: %s", staker.lastTimestampLocked);
+                        // console.log("block.timestamp: %s", block.timestamp);
 
                         // If already called in this loop, it will have updated lastTimestampLocked
-                        console.log("claiming locked...");
+                        // console.log("claiming locked...");
                         _baseClaim(staker, true);
                     }
                     _unstake(stake.tokenId);
-                    console.log("outside _baseClaim");
-                    console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
+                    // console.log("outside _baseClaim");
+                    // console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
                     --staker.amountStakedLocked;
                     isAction = true;
                 } else {
                     // stake is locked and cannot be unstaked
+                    // loop infinitely if we don't increment 'i' here
+                    unchecked {
+                        ++i;
+                    }
                     continue;
                 }
             } else {
@@ -363,7 +373,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     console.log("claiming unlocked...");
                     _baseClaim(staker, false);
                 }
-                console.log("unstaked tokenId: %s", stake.tokenId);
+                // console.log("unstaked tokenId: %s", stake.tokenId);
                 _unstake(stake.tokenId);
                 --staker.amountStaked;
                 isAction = true;
@@ -381,7 +391,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
 
         // If call was a complete exit, delete the staker struct for this user as well
         if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
-            console.log("deleting staker struct");
+            // console.log("deleting staker struct");
             delete stakers[msg.sender];
         }
     }

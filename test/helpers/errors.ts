@@ -24,6 +24,7 @@ export const INVALID_OWNER_ERR = "InvalidOwner";
 export const NO_REWARDS_BALANCE_ERR = "NoRewardsLeftInContract";
 export const NON_TRANSFERRABLE_ERR = "NonTransferrableToken";
 export const ZERO_INIT_ERR = "InitializedWithZero";
+export const INVALID_UNSTAKE_ERR = "InvalidUnstake";
 
 // eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";
