@@ -77,7 +77,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function stakeWithLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,
-        uint256[] calldata lockPeriods
+        uint256[] calldata lockPeriods // TODO maybe not an array, lock period is per user
     ) external override {
         uint256 i;
         for (i; i < tokenIds.length;) {
@@ -126,7 +126,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         // TODO make simpler, only do one transfer if possible
 
         // these revert if no rewards, but in double case
-        // like below we only revert if both, not just one
+        // like below we should only revert if both have no rewards, not just one
         // _baseClaim(stakers[msg.sender], false);
         // _baseClaim(stakers[msg.sender], true);
     }
@@ -151,13 +151,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * if a token is not unlocked but `exit` is true, it will be unstaked without reward
      */
     function unstakeAll(bool exit) public {
-        // Pull list of tokenIds from caller internally and just provide empty array
-        // uint256[] memory temp;
-        // _unstakeMany(temp, exit);
-        // TODO resolve how we can use different types in internal call
-        // because empty array would indicate we use ALL of the `NFTStakes` in a users tokenIds array
-        // but otherwise we just use uint256[] for specific tokens
-        // two specific internals?
+        // give list of users entire staked tokenIds
+        // TODO how to to this best? right now the typing doesnt match
+        // `NFTStake[]` vs. `uint256[]`
     }
 
     ////////////////////////////////////
@@ -228,11 +224,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             ++staker.amountStaked;
         } else {
             // locking
-            // console.log("locking");
             if (staker.unlockedTimestamp == 0) {
                 // first time locking
-                // console.log("First time locking");
-                // console.log("lockDuration", lockDuration);
                 staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
                 staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
@@ -255,8 +248,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             tokenId
         );
 
-        // console.log("tokenId: ", tokenId);
-        // console.log("lockDuration: ", lockDuration);
         NFTStake memory stake = NFTStake(tokenId, lockDuration > 0);
 
         // Add to array and to mapping for indexing in unstake
@@ -293,8 +284,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             staker.lastTimestamp = block.timestamp;
         }
 
-        console.log("rewardsBalance: %s", _getContractRewardsBalance());
-        console.log("rewardsAmount: %s", rewards);
         if (_getContractRewardsBalance() < rewards) {
             revert NoRewardsLeftInContract();
         }
@@ -315,8 +304,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
         Staker storage staker = stakers[msg.sender];
 
-        // if empty array is given `unstakeAll`
-
         bool isAction = false;
 
         uint256 i = 0;
@@ -334,13 +321,13 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             // console.log("tokenId: %s", tokenId);
 
             NFTStake memory stake = staker.stakeData[_tokenIds[i]];
-            console.log("on unstaking check: %s", stake.tokenId);
-            console.log("on unstaking check: %s", stake.locked);
+            // console.log("on unstaking check: %s", stake.tokenId);
+            // console.log("on unstaking check: %s", stake.locked);
 
             if (stake.locked) {
                 if (exit) {
                     // unstake with no rewards
-                    console.log("call with exit");
+                    // console.log("call with exit");
                     _unstake(stake.tokenId);
                     --staker.amountStakedLocked;
                     isAction = true;
@@ -372,7 +359,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 if (staker.lastTimestamp != block.timestamp) {
                     // If already called in this loop, it will have updated lastTimestamp
                     // don't call again
-                    console.log("claiming unlocked...");
+                    // console.log("claiming unlocked...");
                     _baseClaim(staker, false);
                 }
                 // console.log("unstaked tokenId: %s", stake.tokenId);
