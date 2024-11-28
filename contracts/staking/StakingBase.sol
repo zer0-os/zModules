@@ -71,7 +71,22 @@ contract StakingBase is Ownable, IStakingBase {
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
         periodLength = _periodLength;
-        lockAdjustment = _lockAdjustment;
+        lockAdjustment = _lockAdjustment; // TODO maybe instead of hardcode value make % of remaining lock time
+    }
+
+    // temp move elsewhere
+    /**
+     * T0 stake, lock for 10
+     * 
+     * T5 stake more, add half of lock duration to lock
+     */
+    function _adjustLock(Staker storage staker) internal {
+        // TODO add half of remaining time, or add half of original lock duration?
+        /**
+         * Stake for 100 days, at T75 stake again, do we add 50 days? or 7.5 days
+         */
+        // uint256 remainingLock = _getRemainingLockTime(staker);
+        staker.unlockedTimestamp += staker.lockDuration / 2;
     }
 
     /**

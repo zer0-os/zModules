@@ -238,6 +238,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     // but we don't want those to add to the lock period
                     // should only adjust once per tx
                     staker.unlockedTimestamp += lockAdjustment;
+                    // TODO this a % of their remaining lock time
+                    // you have X time left, so we add X / 2 time when you restake
 
                     // Must update before we update `lastTimestampLocked`
                     staker.owedRewardsLocked += _getPendingRewards(staker, true);
