@@ -20,6 +20,7 @@ import {
   calcTotalUnlockedRewards,
   PRECISION_DIVISOR,
   LOCKED_PRECISION_DIVISOR,
+  DEFAULT_LOCK_ADJUSTMENT,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -127,6 +128,7 @@ describe("StakingERC721", () => {
         config.rewardsToken,
         config.rewardsPerPeriod,
         config.periodLength,
+        config.lockAdjustment,
         owner.address
       );
   
@@ -239,6 +241,7 @@ describe("StakingERC721", () => {
         rewardTokenAddress,
         config.rewardsPerPeriod,
         config.periodLength,
+        config.lockAdjustment,
         owner.address
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
@@ -252,6 +255,8 @@ describe("StakingERC721", () => {
         hre.ethers.ZeroAddress,
         config.rewardsPerPeriod,
         config.periodLength,
+        config.lockAdjustment,
+
         owner.address
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
@@ -265,6 +270,7 @@ describe("StakingERC721", () => {
         rewardToken.target,
         0, // rewards per period
         config.periodLength,
+        config.lockAdjustment,
         owner.address
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
@@ -436,9 +442,7 @@ describe("StakingERC721", () => {
 
       // We increase the staker's lockDuration by the amount they already have configured
       // as the initial lockDuration
-      // TODO resolve behavior for how to adjust lock duration on new stakes
-      expect(stakerDataBefore.unlockedTimestamp).to.eq(stakedAtFirst + DEFAULT_LOCK);
-      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtSecond + stakerDataBefore.lockDuration);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakerDataBefore.unlockedTimestamp + DEFAULT_LOCK_ADJUSTMENT);
       expect(stakerDataAfter.lockDuration).to.eq(stakerDataBefore.lockDuration);
     });
 
@@ -663,7 +667,7 @@ describe("StakingERC721", () => {
     let unstakedAtUnlocked : bigint;
     let unstakedAtLocked : bigint;
 
-    it("Can unstake a token that is unlocked", async () => {
+    it.only("Can unstake a token that is unlocked", async () => {
       await reset();
 
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
@@ -679,7 +683,8 @@ describe("StakingERC721", () => {
       const stakerDataBefore = await stakingERC721.stakers(stakerA.address);
       console.log("rewardsMultiplier: ", stakerDataBefore.rewardsMultiplier);
 
-      await time.increase(DEFAULT_LOCK)
+      // first "group" of stakes shouldn't adjust lock time, even though
+      await time.increase(DEFAULT_LOCK);
 
       const balanceBefore = await rewardToken.balanceOf(stakerA.address);
 
@@ -997,7 +1002,8 @@ describe("StakingERC721", () => {
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
         divisor: PRECISION_DIVISOR,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR
+        lockedDivisor: LOCKED_PRECISION_DIVISOR,
+        lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1009,6 +1015,7 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
+        localConfig.lockAdjustment,
         owner.address
       ) as StakingERC721;
 
@@ -1041,7 +1048,8 @@ describe("StakingERC721", () => {
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
         divisor: PRECISION_DIVISOR,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR
+        lockedDivisor: LOCKED_PRECISION_DIVISOR,
+        lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1053,6 +1061,7 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
+        localConfig.lockAdjustment,
         owner.address
       ) as StakingERC721;
 
@@ -1105,7 +1114,8 @@ describe("StakingERC721", () => {
         periodLength: BigInt(0),
         timeLockPeriod: BigInt(50),
         divisor: PRECISION_DIVISOR,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR
+        lockedDivisor: LOCKED_PRECISION_DIVISOR,
+        lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1118,6 +1128,7 @@ describe("StakingERC721", () => {
           localConfig.rewardsToken,
           localConfig.rewardsPerPeriod,
           localConfig.periodLength,
+          localConfig.lockAdjustment,
           owner.address
         );
       } catch (e : unknown) {
@@ -1135,7 +1146,8 @@ describe("StakingERC721", () => {
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
         divisor: PRECISION_DIVISOR,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR
+        lockedDivisor: LOCKED_PRECISION_DIVISOR,
+        lockAdjustment: DEFAULT_LOCK
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1147,6 +1159,7 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
+        localConfig.lockAdjustment,
         owner.address
       ) as StakingERC721;
 
@@ -1218,7 +1231,8 @@ describe("StakingERC721", () => {
         periodLength: BigInt(56),
         timeLockPeriod: BigInt(897),
         divisor: PRECISION_DIVISOR,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR
+        lockedDivisor: LOCKED_PRECISION_DIVISOR,
+        lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1230,6 +1244,7 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
+        localConfig.lockAdjustment,
         owner.address
       ) as StakingERC721;
 

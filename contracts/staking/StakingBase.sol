@@ -18,9 +18,9 @@ contract StakingBase is Ownable, IStakingBase {
     using SafeERC20 for IERC20;
 
     /**
-     * @notice The multiplier multiplier used in rewards calculations
+     * @notice The multiplier used in rewards calculations
      */
-    uint256 MULTIPLIER = 1e16;
+    // uint256 MULTIPLIER = 1e16;
 
     /**
      * @notice Mapping of each staker to that staker's data in the `Staker` struct
@@ -42,26 +42,36 @@ contract StakingBase is Ownable, IStakingBase {
      */
     uint256 public immutable rewardsPerPeriod;
 
+    /**
+     * @notice The length of each rewards period
+     */
     uint256 public immutable periodLength;
+
+    /**
+     * @notice The amount of time to add to a user's lock period after any follow up stakes
+     */
+    uint256 public lockAdjustment;
 
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
+        uint256 _lockAdjustment,
         address _contractOwner
     ) Ownable(_contractOwner) {
         if (
             _stakingToken.code.length == 0 ||
             address(_rewardsToken).code.length == 0 ||
-            _rewardsPerPeriod == 0
-            // _periodLength == 0
+            _rewardsPerPeriod == 0 ||
+            _periodLength == 0
         ) revert InitializedWithZero();
 
         stakingToken = _stakingToken;
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
         periodLength = _periodLength;
+        lockAdjustment = _lockAdjustment;
     }
 
     /**
@@ -112,14 +122,19 @@ contract StakingBase is Ownable, IStakingBase {
         return _getContractRewardsBalance();
     }
 
-    function setMultiplier(uint256 _multiplier) public onlyOwner {
-        MULTIPLIER = _multiplier;
-        emit MultiplierSet(msg.sender, _multiplier);
+    function setLockAdjustment(uint256 _lockAdjustment) public override onlyOwner {
+        lockAdjustment = _lockAdjustment;
+        emit LockAdjustmentSet(msg.sender, _lockAdjustment);
     }
 
-    function getMultiplier() public view override returns (uint256) {
-        return MULTIPLIER;
-    }
+    // function setMultiplier(uint256 _multiplier) public onlyOwner {
+    //     MULTIPLIER = _multiplier;
+    //     emit MultiplierSet(msg.sender, _multiplier);
+    // }
+
+    // function getMultiplier() public view override returns (uint256) {
+    //     return MULTIPLIER;
+    // }
 
     // Staker getters
     // TODO Some are shared but many are token specific, consider
@@ -206,12 +221,41 @@ contract StakingBase is Ownable, IStakingBase {
         }
     }
 
+    function getRewardsMultiplier(uint256 lock) public pure returns(uint256) {
+        return _calcRewardsMultiplier(lock);
+    }
+
+    /**
+     * @dev Locked rewards receive a multiplier based on the length of the lock
+     * @param lock The length of the lock in seconds
+     */
     function _calcRewardsMultiplier(uint256 lock) internal pure returns(uint256) {
         // maxRM = 10
         // periodLength = 365 days
         // precisionMultiplier = 10
         // scalar = 1e18
         return 1e14 * 10 * ( (lock * 10 ) / 365) / 1e18;
+    }
+
+    // Backup function using simpler multipliers to avoid uintended side effects
+    // from the math above, like having to have minimum lock durations
+    function _calcRewardsMultiplierSimple(uint256 lock) internal pure returns(uint256 multiplier) {
+        if (lock < 30 days) return 110;
+        if (lock < 60 days) return 120;
+        if (lock < 90 days) return 130;
+        if (lock < 120 days) return 140;
+        if (lock < 150 days) return 150;
+        if (lock < 180 days) return 190;
+        if (lock < 210 days) return 240;
+        if (lock < 240 days) return 300;
+        if (lock < 270 days) return 370;
+        if (lock < 300 days) return 450;
+        if (lock < 330 days) return 540;
+        if (lock < 365 days) return 640;
+        if (lock > 365 days) return 800;
+        
+        // 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610
+        if (lock > 365) return 500;
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

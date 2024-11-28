@@ -13,6 +13,7 @@ import {
   DEFAULT_REWARDS_PER_PERIOD_ERC20,
   DEFAULT_REWARDS_PER_PERIOD_ERC721,
   LOCKED_PRECISION_DIVISOR,
+  DEFAULT_LOCK_ADJUSTMENT,
 } from "./constants";
 
 export const createDefaultConfigs = async (
@@ -27,7 +28,8 @@ export const createDefaultConfigs = async (
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD_ERC721,
       periodLength: DEFAULT_PERIOD_LENGTH,
       divisor: PRECISION_DIVISOR,
-      lockedDivisor: LOCKED_PRECISION_DIVISOR
+      lockedDivisor: LOCKED_PRECISION_DIVISOR,
+      lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
     } as BaseConfig;
   } else if (stakeERC20) {
     return {
@@ -36,7 +38,8 @@ export const createDefaultConfigs = async (
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD_ERC20,
       periodLength: DEFAULT_PERIOD_LENGTH,
       divisor: PRECISION_DIVISOR,
-      lockedDivisor: LOCKED_PRECISION_DIVISOR
+      lockedDivisor: LOCKED_PRECISION_DIVISOR,
+      lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
     } as BaseConfig;
   }
 

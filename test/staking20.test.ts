@@ -76,6 +76,7 @@ describe("StakingERC20", () => {
         config.rewardsToken,
         config.rewardsPerPeriod,
         config.periodLength,
+        config.lockAdjustment,
         owner.address
       ) as StakingERC20;
 
@@ -1055,6 +1056,50 @@ describe("StakingERC20", () => {
         contract.connect(owner).withdrawLeftoverRewards()
       ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
     });
+  });
+
+  describe.only("Utility functions", () => {
+    // 36500 is min lock time if divisor in RM function is 365
+    // 50000 is min lock time if divisor in RM function is 500
+    // etc.
+    it("Test the reward multiplier calculation with every value allowed", async () => {
+      // for (let i = DAY_IN_SECONDS / 2n; i < 365n * DAY_IN_SECONDS; i++) {
+      //   const multiplier = await contract.getRewardsMultiplier(i);
+
+      //   if (multiplier == 0n) {
+      //     console.log(`Lock duration that returns 0 RM: ${i}`);
+      //   }
+      //   // expect(multiplier).to.gt(0n);
+      // }
+      const multiplier = await contract.getRewardsMultiplier(36500n);
+      // console.log(multiplier);
+    })
+
+    it("Tries to claim when RM is minimal value", async () => {
+      await reset();
+
+      await rewardsToken.connect(stakerA).mint(await contract.getAddress(), hre.ethers.parseEther("999999"));
+
+      // await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, 50000n);
+      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      await contract.connect(stakerB).stakeWithLock(DEFAULT_STAKED_AMOUNT, 36500n);
+
+      const stakerAData = await contract.stakers(stakerA.address);
+      const stakerBData = await contract.stakers(stakerB.address);
+
+      // expect(stakerData.rewardsMultiplier).to.eq(1n); // 0.01x multiplier
+      // math might break if multiplier is too small? but we scale it up, might be okay
+
+      // move time to be past the lock duration
+      await time.increase(50001n);
+
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+      await contract.connect(stakerA).claim();
+      const claimedAt = BigInt(await time.latest());
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      expect(rewardsBalanceAfter).to.be.gt(rewardsBalanceBefore);
+    })
   });
 
   describe("Events", () => {

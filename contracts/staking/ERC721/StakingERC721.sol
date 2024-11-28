@@ -46,18 +46,20 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         string memory name,
         string memory symbol,
         string memory baseUri,
-        address _stakingToken,
+        IERC721 _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
+        uint256 _lockAdjustment,
         address _contractOwner
     )
         ERC721(name, symbol)
         StakingBase(
-            _stakingToken,
+            address(_stakingToken),
             _rewardsToken,
             _rewardsPerPeriod,
             _periodLength,
+            _lockAdjustment,
             _contractOwner
         )
     {
@@ -121,10 +123,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _baseClaim(stakers[msg.sender], true);
     }
 
-    // transfer both
+    // transfer both?
     function claim() external { // override
         // TODO make simpler, only do one transfer if possible
-
         // these revert if no rewards, but in double case
         // like below we should only revert if both have no rewards, not just one
         // _baseClaim(stakers[msg.sender], false);
@@ -230,14 +231,20 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
                 staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
             } else {
-                // subsequent time locking
-                // TODO resolve what to do, for now just simple shift
-                staker.unlockedTimestamp = block.timestamp + staker.lockDuration;
+                // subsequent time staking with lock
+                if (staker.lastTimestampLocked != block.timestamp) {
+                    // If already called in this loop, it will have updated lastTimestampLocked
+                    // For ERC721 tokens that are in the same "group" are still separate stakes
+                    // but we don't want those to add to the lock period
+                    // should only adjust once per tx
+                    staker.unlockedTimestamp += lockAdjustment;
+
+                    // Must update before we update `lastTimestampLocked`
+                    staker.owedRewardsLocked += _getPendingRewards(staker, true);
+                    staker.lastTimestampLocked = block.timestamp;
+                }
             }
 
-            // Must always update before we update `lastTimestampLocked`
-            staker.owedRewardsLocked += _getPendingRewards(staker, true);
-            staker.lastTimestampLocked = block.timestamp;
             ++staker.amountStakedLocked;
         }
 
@@ -306,13 +313,18 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
 
         bool isAction = false;
 
+        console.log("staker.amountStaked: %s", staker.amountStaked);
+        console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
+
         uint256 i = 0;
         for(i; i < _tokenIds.length;) {
             // If the token is unlocked, claim and unstake
             // console.log("i: %s", i);
-            if (ownerOf(_tokenIds[i]) == address(0) || ownerOf(_tokenIds[i]) != msg.sender) { // TODO also != msg.sender?
+            if (ownerOf(_tokenIds[i]) == address(0) || ownerOf(_tokenIds[i]) != msg.sender) {
                 // Either the list of tokenIds contains a non-existent token
                 // or it contains a token the owner doesnt own
+                console.log("here2");
+
                 unchecked {
                     ++i;
                 }
@@ -327,11 +339,13 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             if (stake.locked) {
                 if (exit) {
                     // unstake with no rewards
-                    // console.log("call with exit");
+                    console.log("call with exit");
                     _unstake(stake.tokenId);
                     --staker.amountStakedLocked;
                     isAction = true;
                 } else if (_getRemainingLockTime(staker) == 0) {
+                    console.log("call without exit");
+
                     // we enforce the lock duration on the user
                     if (staker.lastTimestampLocked != block.timestamp) {
                         // console.log("lastTimestampLocked: %s", staker.lastTimestampLocked);
@@ -347,6 +361,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     --staker.amountStakedLocked;
                     isAction = true;
                 } else {
+                    console.log("here3");
                     // stake is locked and cannot be unstaked
                     // loop infinitely if we don't increment 'i' here
                     unchecked {

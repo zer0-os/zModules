@@ -19,17 +19,19 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     using SafeERC20 for IERC20;
 
     constructor(
-        address _stakingToken,
+        IERC20 _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
+        uint256 _lockAdjustment,
         address contractOwner
     )
         StakingBase(
-            _stakingToken,
+            address(_stakingToken),
             _rewardsToken,
             _rewardsPerPeriod,
             _periodLength,
+            _lockAdjustment,
             contractOwner
         )
     {}
@@ -75,7 +77,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         if (staker.unlockedTimestamp != 0 && staker.unlockedTimestamp < block.timestamp) {
 
-            // They can only receive rewards from locked funds when they are past lock period
+            //They have locked funds that have past their lock duration, add to the amount to transfer
             rewards += staker.owedRewardsLocked + _getPendingRewards(staker, true);
             staker.owedRewardsLocked = 0;
             staker.lastTimestampLocked = block.timestamp;
@@ -83,7 +85,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         // Do not transfer 0 rewards
         if (rewards == 0) revert ZeroRewards();
-        // console.log("rewards", rewards);
 
         if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
 
@@ -114,43 +115,21 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         _unstake(amount, true, exit);
     }
 
-    // TODO do we want this feature?
-    function _unlock() internal {
+    function unlock() public { // add override if we want to keep this
+        // TODO do we want this feature?
         // unlock a stake for a user, removing their extra rewards
         // and treat it like it was always non-locked stake
-        // allowing them to access their funds immediately
-        // move staked amoun to regular amount after snapshot of balance
+        // allowing them to access their funds immediately if they unstake
+        // move staked amount to regular amount after snapshot of balance
+    }
+
+    function percent(uint256 a, uint256 b) public pure returns (uint256) {
+        // if a is 100 or more less than b, returns 0
+        return (a * 100) / b;
     }
 
     // Adjust the remaining lock time based on a new incoming stake value
-    function _updateRemainingLockTime(uint256 incomingAmount) internal view returns(uint256) {
-        Staker storage staker = stakers[msg.sender];
-
-        // TODO this formula breaks if stakes are too close in time.
-        // Keeping for posterity, but will need to be resolved.
-        // For now do simple shift forward
-
-        // Formula for adjusting a users lock timestamp based on a new incoming stake value
-        // and the percentage of time they have passed in the defined stake lock
-        // lockDuration * ( (amountStaked * %lockRemaining) + (incomingAmount) ) / (amountStaked + incomingAmount)
-        // Effectively equivalent to a weighted sum of the remaining time and the new incoming stake weighted at 100%
-        // f(x) = aW_1 + bW_2 * k
-
-        uint256 newRemainingLock = 
-            staker.lockDuration * ( 
-                (
-                    staker.amountStakedLocked * 
-                    (1000 * 
-                        (
-                            staker.lockDuration - (block.timestamp - staker.lastTimestampLocked)
-                        ) / staker.lockDuration
-                    ) / 1000
-                )
-                +
-                (incomingAmount)) / (staker.amountStakedLocked + incomingAmount);
-
-        return newRemainingLock;
-    }
+    // TODO resolve the way this should behave,
 
     function _stake(uint256 amount, uint256 lockDuration) internal {
         if (amount == 0) {
@@ -170,10 +149,18 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // first time locking stake
                 staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
+                // Consider making this calculation simpler with array mapping of specific values
+                /**
+                 * < 30 days => 1x
+                 * 30 < x < 90 => 2x
+                 * 90 < x < 180 => 3x
+                 * 180 < x < 365 => 4x
+                 * 365 < x => 5x
+                 */ 
                 staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
             } else {
-                // TODO resolve what to do, for now just simple shift 
-                staker.unlockedTimestamp = block.timestamp + staker.lockDuration;
+                // When restaking with lock, the lock period is extended by a specified amount
+                staker.unlockedTimestamp += lockAdjustment;
             }
 
             // Must always update this before we update `lastTimestampLocked`

@@ -89,6 +89,16 @@ interface IStakingBase {
     );
 
     /**
+     * @notice Emit when the amount to adjust a lock after restake is changed
+     * @param owner The setter
+     * @param lockAdjustment The new lock adjustment value
+     */
+    event LockAdjustmentSet(
+        address indexed owner,
+        uint256 indexed lockAdjustment
+    );
+
+    /**
      * @notice Throw when the lock period has not passed
      */
     error TimeLockNotPassed();
@@ -128,12 +138,7 @@ interface IStakingBase {
 
     function getContractRewardsBalance() external view returns (uint256);
 
-    function setMultiplier(uint256 _multiplier) external;
-
-    function getMultiplier() external view returns (uint256);
-
-
-
+    function setLockAdjustment(uint256 _lockAdjustment) external;
     // function getAmountStaked() external view returns (uint256);
     
     // function getAmountStakedLocked() external view returns (uint256);
