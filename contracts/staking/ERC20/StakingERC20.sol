@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
+import { AStakingBase } from "../AStakingBase.sol";
 
 import { console } from "hardhat/console.sol";
 
@@ -13,7 +14,7 @@ import { console } from "hardhat/console.sol";
  * @notice A staking contract for ERC20 tokens
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
-contract StakingERC20 is StakingBase, IStakingERC20 {
+contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
     // TODO when ERC20Voter token is ready add here
 
     using SafeERC20 for IERC20;
@@ -128,6 +129,19 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      */
     function getRemainingLockTime() public view override returns (uint256) {
         return _getRemainingLockTime(stakers[msg.sender]);
+    }
+
+    function getPendingRewards() public view override returns (uint256) {
+        return _getPendingRewards(stakers[msg.sender], false);
+    }
+
+    function getPendingRewardsLocked() public view override returns (uint256) {
+        return _getPendingRewards(stakers[msg.sender], true);
+    }
+
+    function getTotalPendingRewards() public view override returns (uint256) {
+        Staker storage staker = stakers[msg.sender];
+        return staker.owedRewards + staker.owedRewardsLocked + _getPendingRewards(staker, false) + _getPendingRewards(staker, true);
     }
 
     function _stake(uint256 amount, uint256 lockDuration) internal {

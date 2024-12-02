@@ -103,12 +103,6 @@ interface IStakingBase {
 
     function withdrawLeftoverRewards() external;
 
-    function getPendingRewards() external view returns (uint256);
-
-    function getPendingRewardsLocked() external view returns (uint256);
-
-    function getTotalPendingRewards() external view returns (uint256);
-
     function getContractRewardsBalance() external view returns (uint256);
 
     function setLockAdjustment(uint256 _lockAdjustment) external;

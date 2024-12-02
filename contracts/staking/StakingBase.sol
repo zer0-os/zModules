@@ -95,27 +95,6 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     /**
-     * @notice View the pending rewards balance for a user's non-locked amount
-     */
-    function getPendingRewards() external view override returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender], false);
-    }
-
-    /**
-     * @notice View the pending locked rewards balance for a user
-     */
-    function getPendingRewardsLocked() external view returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender], true);
-    }
-
-    /**
-     * @notice View the sum of the locked and unlocked pending rewards balance for a user
-     */
-    function getTotalPendingRewards() external view override returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender], false) + _getPendingRewards(stakers[msg.sender], true);
-    }
-
-    /**
      * @notice View the rewards balance in this pool
      */
     function getContractRewardsBalance() external view override returns (uint256) {
@@ -192,18 +171,18 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
-        if ((staker.amountStaked == 0 && !locked) || (staker.amountStakedLocked == 0 && locked)) {
+        if (staker.amountStaked == 0 || staker.amountStakedLocked == 0) {
             return 0;
         }
 
         if (locked) {
             // div 100,000 at end to moderate (2 extra decimals of precision because multiplier is scaled in size for decimals)
-            // console.log("staker.rewardsMultiplier: %s", staker.rewardsMultiplier);
-            // console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
-            // console.log("rewardsPerPeriod: %s", rewardsPerPeriod);
-            // console.log("block.timestamp: %s", block.timestamp);
-            // console.log("staker.lastTimestampLocked: %s", staker.lastTimestampLocked);
-            // console.log("diff: %s", block.timestamp - staker.lastTimestampLocked);
+            console.log("staker.rewardsMultiplier: %s", staker.rewardsMultiplier);
+            console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
+            console.log("rewardsPerPeriod: %s", rewardsPerPeriod);
+            console.log("block.timestamp: %s", block.timestamp);
+            console.log("staker.lastTimestampLocked: %s", staker.lastTimestampLocked);
+            console.log("diff: %s", block.timestamp - staker.lastTimestampLocked);
 
             // 100 000
             // 1 000
@@ -213,6 +192,8 @@ contract StakingBase is Ownable, IStakingBase {
             // console.log("retval: %s", retval);
             return retval;
         } else {
+            console.log("not locked flow");
+
             // div 1000 at end to moderate
             return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / periodLength / 1000;
         }

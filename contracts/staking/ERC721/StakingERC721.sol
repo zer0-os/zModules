@@ -8,6 +8,7 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
+import { AStakingBase } from "../AStakingBase.sol";
 
 // TODO remove when complete
 import { console } from "hardhat/console.sol";
@@ -19,7 +20,7 @@ import { console } from "hardhat/console.sol";
  * non-transferable ERC721 token in return as representation of the deposit.
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
-contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
+contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingERC721 {
     using SafeERC20 for IERC20;
 
     /**
@@ -215,6 +216,19 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      */
     function getRemainingLockTime() public view override returns (uint256) {
         return _getRemainingLockTime(nftStakers[msg.sender].data);
+    }
+
+        function getPendingRewards() public view override returns (uint256) {
+        return _getPendingRewards(nftStakers[msg.sender].data, false);
+    }
+
+    function getPendingRewardsLocked() public view override returns (uint256) {
+        return _getPendingRewards(nftStakers[msg.sender].data, true);
+    }
+
+    function getTotalPendingRewards() public view override returns (uint256) {
+        Staker storage staker = nftStakers[msg.sender].data;
+        return staker.owedRewards + staker.owedRewardsLocked + _getPendingRewards(staker, false) + _getPendingRewards(staker, true);
     }
 
     ////////////////////////////////////
