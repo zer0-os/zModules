@@ -121,7 +121,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claim() external override {
+    function claim() public override {
         uint256 rewards = 
             _baseClaim(nftStakers[msg.sender].data, false) + 
             _baseClaim(nftStakers[msg.sender].data, true);
@@ -134,7 +134,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
 
         emit Claimed(msg.sender, rewards, address(rewardsToken));
     }
-
 
     /**
      * @notice Unstake one or more specific ERC721 tokens
@@ -287,8 +286,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
     }
 
     function _baseClaim(Staker storage staker, bool locked) internal returns (uint256) {
-        // TODO if they exit and we don't mark it properly somehow this could be exploited because they can
-        // call to claim without actually being the owner?
         uint256 rewards;
 
         if (locked) {
@@ -302,6 +299,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
             staker.lastTimestamp = block.timestamp;
         }
 
+        console.log("rewards: %s", rewards);
+        console.log("getContractBalance: %s", _getContractRewardsBalance());
         if (_getContractRewardsBalance() < rewards) {
             revert NoRewardsLeftInContract();
         }
@@ -317,6 +316,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
 
         uint256 i = 0;
         for(i; i < _tokenIds.length;) {
+            console.log("enter loop");
             // If the token is unlocked, claim and unstake
             if (ownerOf(_tokenIds[i]) == address(0) || ownerOf(_tokenIds[i]) != msg.sender) {
                 // Either the list of tokenIds contains a non-existent token
@@ -328,6 +328,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
             }
 
             if (nftStaker.locked[_tokenIds[i]]) {
+                console.log("locked");
+
                 if (exit) {
                     // unstake with no rewards
                     console.log("call with exit");
@@ -344,7 +346,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
 
                         // If already called in this loop, it will have updated lastTimestampLocked
                         // console.log("claiming locked...");
-                        _baseClaim(nftStaker.data, true);
+                        claim();
                     }
                     _unstake(_tokenIds[i]);
                     --nftStaker.data.amountStakedLocked;
@@ -359,11 +361,14 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
                 }
             } else {
                 // stake was never locked
+                console.log("not locked");
                 if (nftStaker.data.lastTimestamp != block.timestamp) {
-                    // If already called in this loop, it will have updated lastTimestamp
-                    // don't call again
-                    _baseClaim(nftStaker.data, false);
+                    console.log("call claim");
+
+                    // If already called in this loop, it will have updated lastTimestamp, don't call again
+                    claim();
                 }
+                console.log("call unstake");
                 _unstake(_tokenIds[i]);
                 --nftStaker.data.amountStaked;
                 isAction = true;
@@ -378,6 +383,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
         if (!isAction) {
             revert InvalidUnstake();
         }
+
+        console.log("amountStaked: %s", nftStaker.data.amountStaked);
+        console.log("amountStakedLocked: %s", nftStaker.data.amountStakedLocked);
 
         // If a complete withdrawal, delete the staker struct for this user as well
         if (nftStaker.data.amountStaked == 0 && nftStaker.data.amountStakedLocked == 0) {

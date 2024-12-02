@@ -551,7 +551,7 @@ describe("StakingERC721", () => {
 
       // console.log(stakerData.amountStakedLocked)
 
-      const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
+      const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewardsLocked();
 
       // If no time has passed, the value will be 0
       expect(pendingRewards).to.eq(0);
@@ -560,6 +560,7 @@ describe("StakingERC721", () => {
       const latest = BigInt(await time.latest());
 
       const updatedPendingRewards = await stakingERC721.connect(stakerB).getPendingRewardsLocked();
+      const updatedPendingRewardstotal = await stakingERC721.connect(stakerB).getTotalPendingRewards();
 
       const expectedRewards = calcTotalLockedRewards(
         [latest - stakedAt],
@@ -664,7 +665,7 @@ describe("StakingERC721", () => {
   describe("#unstake", () => {
     let stakedAtUnlocked : bigint;
     let stakedAtLocked : bigint;
-    let unstakedAtUnlocked : bigint;
+    let unstakedAt : bigint;
     let unstakedAtLocked : bigint;
 
     it("Can unstake a token that is unlocked", async () => {
@@ -681,7 +682,7 @@ describe("StakingERC721", () => {
       stakedAtLocked = BigInt(await time.latest())
 
       const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
-      console.log("rewardsMultiplier: ", stakerDataBefore.rewardsMultiplier);
+      // console.log("rewardsMultiplier: ", stakerDataBefore.rewardsMultiplier);
 
       // first "group" of stakes shouldn't adjust lock time, even though
       await time.increase(DEFAULT_LOCK);
@@ -689,17 +690,24 @@ describe("StakingERC721", () => {
       const balanceBefore = await rewardToken.balanceOf(stakerA.address);
 
       await stakingERC721.connect(stakerA).unstake([tokenIdA], false);
-      unstakedAtUnlocked = BigInt(await time.latest());
+      unstakedAt = BigInt(await time.latest());
 
-      const expectedRewards = calcTotalUnlockedRewards(
-        [unstakedAtUnlocked - stakedAtUnlocked],
+      const expectedUnlockedRewards = calcTotalUnlockedRewards(
+        [unstakedAt - stakedAtUnlocked],
         [1n],
+        config
+      );
+
+      const expectedLockedRewards = calcTotalLockedRewards(
+        [unstakedAt - stakedAtLocked],
+        [2n],
+        stakerDataBefore.rewardsMultiplier,
         config
       );
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
-      expect(balanceAfter).to.eq(balanceBefore + expectedRewards);
+      expect(balanceAfter).to.eq(balanceBefore + expectedUnlockedRewards + expectedLockedRewards);
 
       const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
 
@@ -708,8 +716,8 @@ describe("StakingERC721", () => {
       expect(await stakingERC721.balanceOf(stakerA.address)).to.eq(2);
       expect(stakerDataAfter.amountStaked).to.eq(0);
       expect(stakerDataAfter.amountStakedLocked).to.eq(2);
-      expect(stakerDataAfter.lastTimestamp).to.eq(unstakedAtUnlocked);
-      expect(stakerDataAfter.lastTimestampLocked).to.eq(stakedAtLocked);
+      expect(stakerDataAfter.lastTimestamp).to.eq(unstakedAt);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(unstakedAt);
       expect(stakerDataAfter.owedRewards).to.eq(0n);
 
       // Confirm the sNFT was burned
@@ -733,7 +741,7 @@ describe("StakingERC721", () => {
 
       // One period has passed, expect that rewards for one period were given
       const expectedRewards = calcLockedRewards(
-        unstakedAtLocked - stakedAtLocked,
+        unstakedAtLocked - unstakedAt,
         2n,
         stakerDataBefore.rewardsMultiplier,
         config
@@ -1072,12 +1080,6 @@ describe("StakingERC721", () => {
       await time.increase(DEFAULT_LOCK / 4n);
 
       try {
-        await localStakingERC721.connect(stakerA).claim();
-      } catch (e : unknown) {
-        expect((e as Error).message).to.include(FAILED_INNER_CALL_ERR);
-      }
-
-      try {
         // In this flow balance is checked before trying to transfer, and so this will
         // fail first
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
@@ -1087,11 +1089,14 @@ describe("StakingERC721", () => {
       
       // To be sure balance check isn't the failure, we give balance of many NFTs so the
       // number is similar
-      const pendingRewards = await localStakingERC721.connect(stakerA).getPendingRewards()
+      const pendingRewardsTotal = await localStakingERC721.connect(stakerA).getTotalPendingRewards();
+      const pendingRewards = await localStakingERC721.connect(stakerA).getPendingRewards();
 
       const bal = await stakingToken.balanceOf(await localStakingERC721.getAddress())
 
-      for (let i = 10; i < 2171; i++) {
+      // Provide enough rewards so the contract passes the "No rewards balance" error
+      // 10 is offset for number already in existence, and 100 is a buffer for amount over the rewards we need
+      for (let i = 10; i < pendingRewards + 100n; i++) {
         await stakingToken.connect(stakerA).mint(await localStakingERC721.getAddress(), i);
       }
 
@@ -1099,7 +1104,6 @@ describe("StakingERC721", () => {
       try {
         // After providing balance to the contract, we see it now fails correctly as it can't recognize
         // the function selector being called in unstake
-
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
       } catch (e : unknown) {
         expect((e as Error).message).to.include(FAILED_INNER_CALL_ERR);

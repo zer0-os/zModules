@@ -100,3 +100,5 @@ export const calcTotalLockedRewards = (
 
   return totalRewards;
 }
+
+// calc all rewards that accepts array of RMs

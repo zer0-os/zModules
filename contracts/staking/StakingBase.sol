@@ -171,18 +171,22 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
-        if (staker.amountStaked == 0 || staker.amountStakedLocked == 0) {
+        if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
+            // console.log("zero flow");
+
             return 0;
         }
 
         if (locked) {
+            // console.log("locked flow");
+
             // div 100,000 at end to moderate (2 extra decimals of precision because multiplier is scaled in size for decimals)
-            console.log("staker.rewardsMultiplier: %s", staker.rewardsMultiplier);
-            console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
-            console.log("rewardsPerPeriod: %s", rewardsPerPeriod);
-            console.log("block.timestamp: %s", block.timestamp);
-            console.log("staker.lastTimestampLocked: %s", staker.lastTimestampLocked);
-            console.log("diff: %s", block.timestamp - staker.lastTimestampLocked);
+            // console.log("staker.rewardsMultiplier: %s", staker.rewardsMultiplier);
+            // console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
+            // console.log("rewardsPerPeriod: %s", rewardsPerPeriod);
+            // console.log("block.timestamp: %s", block.timestamp);
+            // console.log("staker.lastTimestampLocked: %s", staker.lastTimestampLocked);
+            // console.log("diff: %s", block.timestamp - staker.lastTimestampLocked);
 
             // 100 000
             // 1 000
@@ -192,7 +196,7 @@ contract StakingBase is Ownable, IStakingBase {
             // console.log("retval: %s", retval);
             return retval;
         } else {
-            console.log("not locked flow");
+            // console.log("not locked flow");
 
             // div 1000 at end to moderate
             return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / periodLength / 1000;
