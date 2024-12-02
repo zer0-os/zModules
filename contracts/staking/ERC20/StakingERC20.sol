@@ -123,14 +123,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // move staked amount to regular amount after snapshot of balance
     }
 
-    function percent(uint256 a, uint256 b) public pure returns (uint256) {
-        // if a is 100 or more less than b, returns 0
-        return (a * 100) / b;
-    }
-
-    // Adjust the remaining lock time based on a new incoming stake value
-    // TODO resolve the way this should behave,
-
     function _stake(uint256 amount, uint256 lockDuration) internal {
         if (amount == 0) {
             revert ZeroValue();
@@ -149,18 +141,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // first time locking stake
                 staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
-                // Consider making this calculation simpler with array mapping of specific values
-                /**
-                 * < 30 days => 1x
-                 * 30 < x < 90 => 2x
-                 * 90 < x < 180 => 3x
-                 * 180 < x < 365 => 4x
-                 * 365 < x => 5x
-                 */ 
                 staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
             } else {
                 // When restaking with lock, the lock period is extended by a specified amount
-                staker.unlockedTimestamp += lockAdjustment;
+                _adjustLock(staker);
             }
 
             // Must always update this before we update `lastTimestampLocked`
@@ -169,8 +153,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             staker.amountStakedLocked += amount;
         }
 
-        // Transfers users funds to this contract
-        // User must have approved this contract
+        // Transfers user's funds to this contract
         SafeERC20.safeTransferFrom(IERC20(stakingToken), msg.sender, address(this), amount);
 
         emit Staked(msg.sender, amount, lockDuration, stakingToken);

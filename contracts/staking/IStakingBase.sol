@@ -7,53 +7,23 @@ pragma solidity ^0.8.20;
  * @notice Interface for the base staking contract
  */
 interface IStakingBase {
-
-    struct NFTStake {
-        uint256 tokenId;
-        bool locked;
-    }
-
     /**
      * @notice Struct to track an individual staker's data
      */
     struct Staker { 
-        // TODO Consider breaking into multple structs. Base only should have "CoreStaker"
-
-        // mappings state vars? reduces the need for passing the Staker struct around
-        // but also having them in this struct means not having to check ownership repeatedly
-        // make 2D mappings ? address => tokenId => data
-        uint256 amountStaked;
-        uint256 amountStakedLocked; // TODO two pools, one for locked one for unlocked
-
-        uint256 rewardsMultiplier; // Set on stake based on duration of given lock
-
-        uint256 owedRewards; // rewards from locked stakes, accessible when lock is finished
-        uint256 owedRewardsLocked; // rewards from unlocked stakes, accessible any time
-
+        uint256 rewardsMultiplier;
         uint256 lockDuration;
-        uint256 unlockedTimestamp; // For ERC20 locks are per user, not per stake
+        uint256 unlockedTimestamp;
 
-        uint256 lastTimestamp; // For ERC20, last touchpoint claim OR stake
-        uint256 lastTimestampLocked; // For ERC20, last touchpoint claim OR stake on locked values
+        uint256 amountStaked;
+        uint256 amountStakedLocked;
 
-        // TODO getting a struct within a struct might not work for tests
-        // must have public getter function, cant get array or mapping from struct
-        NFTStake[] tokenIds; // for indexing when bulk claiming / revoking
+        uint256 owedRewards;
+        uint256 owedRewardsLocked;
 
-        // TODO maybe for ERC20 we can create an sNFT for staker mappings
-        // as each stake will have to be unique now, lock is per stake not
-        // per user anymore
-        mapping(uint256 tokenId => NFTStake data) stakeData;
-        // mapping(uint256 tokenId => uint256 stakedTimestamp) stakedTimestamps;
-        // mapping(uint256 tokenId => uint256 lastClaimedTimestamp) lastClaimedTimestamps;
+        uint256 lastTimestamp;
+        uint256 lastTimestampLocked;
     }
-
-    // TODO gas implications of having one struct with mappings etc.
-    // looks about the same from reading online
-    // one mapping and struct vs several 2D mappings
-    // one mapping == no ownership checks
-    // but 2d mappings have the same thing if they are mapped by address?
-    // main difference is number of state variables
 
     /**
      * @notice Emitted when the contract owner withdraws leftover rewards
@@ -131,7 +101,6 @@ interface IStakingBase {
 
     function getPendingRewardsLocked() external view returns (uint256);
 
-    // TODO Arguably should be the only pendingRewards function
     function getTotalPendingRewards() external view returns (uint256);
     
     function getRemainingLockTime() external view returns(uint256);
@@ -139,17 +108,4 @@ interface IStakingBase {
     function getContractRewardsBalance() external view returns (uint256);
 
     function setLockAdjustment(uint256 _lockAdjustment) external;
-    // function getAmountStaked() external view returns (uint256);
-    
-    // function getAmountStakedLocked() external view returns (uint256);
-
-    // function getLockDuration() external view returns (uint256);
-
-    // function getStakedTimestamp(uint256 tokenId) external view returns (uint256);
-    
-    // function getLastTimestamp() external view returns (uint256);
-    
-    // function getLastTimestampLocked() external view returns (uint256);
-
-    // function getlastClaimedTimestamp(uint256 tokenId) external view returns (uint256);
 }

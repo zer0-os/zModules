@@ -11,6 +11,15 @@ import { IStakingBase } from "../IStakingBase.sol";
 interface IStakingERC721 is IERC721Receiver, IStakingBase {
 
     /**
+     * @notice Struct to track ERC721 specific data for a staker
+     */
+    struct NFTStaker {
+        Staker data;
+        uint256[] tokenIds;
+        mapping(uint256 tokenId => bool locked) locked;
+    }
+
+    /**
      * @notice Emitted when the base URI is updated
      * @param baseURI The new base URI
      */
@@ -80,9 +89,5 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
 
     function getInterfaceId() external pure returns (bytes4);
 
-    function getStakedTokenIds() external view returns(NFTStake[] memory);
-
-    // function getLockDuration(uint256 tokenId) external view returns (uint256);
-
-    // function getRemainingLockTime(uint256 tokenId) external view returns (uint256);
+    function getStakedTokenIds() external view returns(uint256[] memory);
 }

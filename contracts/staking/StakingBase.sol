@@ -18,11 +18,6 @@ contract StakingBase is Ownable, IStakingBase {
     using SafeERC20 for IERC20;
 
     /**
-     * @notice The multiplier used in rewards calculations
-     */
-    // uint256 MULTIPLIER = 1e16;
-
-    /**
      * @notice Mapping of each staker to that staker's data in the `Staker` struct
      */
     mapping(address user => Staker staker) public stakers;
@@ -50,7 +45,7 @@ contract StakingBase is Ownable, IStakingBase {
     /**
      * @notice The amount of time to add to a user's lock period after any follow up stakes
      */
-    uint256 public lockAdjustment;
+    uint256 public lockAdjustment; // TODO leaving for now but may not need
 
     constructor(
         address _stakingToken,
@@ -71,21 +66,17 @@ contract StakingBase is Ownable, IStakingBase {
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
         periodLength = _periodLength;
-        lockAdjustment = _lockAdjustment; // TODO maybe instead of hardcode value make % of remaining lock time
+        lockAdjustment = _lockAdjustment;
     }
 
-    // temp move elsewhere
-    /**
-     * T0 stake, lock for 10
-     * 
-     * T5 stake more, add half of lock duration to lock
-     */
     function _adjustLock(Staker storage staker) internal {
-        // TODO add half of remaining time, or add half of original lock duration?
-        /**
-         * Stake for 100 days, at T75 stake again, do we add 50 days? or 7.5 days
+        /** TODO
+         * A) Add half of the remaining lock time
+         * B) Add half of the original lock duration
+         * C) Add the lock adjustment value
          */
-        // uint256 remainingLock = _getRemainingLockTime(staker);
+        // staker.unlockedTimestamp += remainingLock / 2;
+        // staker.unlockedTimestamp += lockAdjustment;
         staker.unlockedTimestamp += staker.lockDuration / 2;
     }
 
@@ -128,6 +119,8 @@ contract StakingBase is Ownable, IStakingBase {
      * @notice Return the time in seconds remaining for the staker's lock duration
      */
     function getRemainingLockTime() public view override returns(uint256) {
+        // TODO contract specific now, because we use nftStakers for 721s
+        // IMPL THIS
         return _getRemainingLockTime(stakers[msg.sender]);
     }
     /**
@@ -205,12 +198,8 @@ contract StakingBase is Ownable, IStakingBase {
         return staker.unlockedTimestamp - block.timestamp;
     }
 
-    // TODO make for both ERC721 and ERC20? or empty with virtual?
     function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
-
-        // user has no stake, return 0
-        if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
-            // console.log("No stake so returning 0");
+        if ((staker.amountStaked == 0 && !locked) || (staker.amountStakedLocked == 0 && locked)) {
             return 0;
         }
 
@@ -236,6 +225,7 @@ contract StakingBase is Ownable, IStakingBase {
         }
     }
 
+    // TODO TEMP for testing
     function getRewardsMultiplier(uint256 lock) public pure returns(uint256) {
         return _calcRewardsMultiplier(lock);
     }
@@ -270,7 +260,7 @@ contract StakingBase is Ownable, IStakingBase {
         if (lock > 365 days) return 800;
         
         // 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610
-        if (lock > 365) return 500;
+        if (lock > 365) return 1000;
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

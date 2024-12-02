@@ -225,6 +225,9 @@ describe("StakingERC20", () => {
       // Any less and it fails
       // await time.increase(4319);
 
+      const stakerDataBefore = await contract.stakers(stakerA.address);
+
+
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
       const stakedAt = BigInt(await time.latest());
 
@@ -239,7 +242,7 @@ describe("StakingERC20", () => {
 
       expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT * 2n);
       expect(stakerData.lastTimestampLocked).to.eq(stakedAt);
-      expect(stakerData.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
+      expect(stakerData.unlockedTimestamp).to.eq(stakerDataBefore.unlockedTimestamp + (stakerDataBefore.lockDuration / 2n));
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
     });
 
@@ -270,26 +273,19 @@ describe("StakingERC20", () => {
       await contract.connect(stakerA).stakeWithLock(addedStake, 1n);
       const secondStakedAt = BigInt(await time.latest());
 
-      const stakerData2 = await contract.stakers(stakerA.address);
+      const stakerDataAfter = await contract.stakers(stakerA.address);
 
       // TODO come back to this and make sure it works, check values
-      expect(stakerData2.owedRewardsLocked).to.eq(futureExpectedRewards);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(futureExpectedRewards);
 
-      expect(stakerData2.lastTimestampLocked).to.eq(secondStakedAt);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(secondStakedAt);
 
       // The lock was increased by the users existing lock amount
-      // We do + 1n to match the timestamp increment from HH automining
-      // TODO resolve what the expected behavior of lock duration is upon adding more stake
-      expect(stakerData2.unlockedTimestamp - stakerData.unlockedTimestamp).to.eq(DEFAULT_LOCK + 1n);
-      
-      // new TS should be `stakedAt + lockDuration`
-      expect(stakerData2.unlockedTimestamp).to.eq(secondStakedAt + DEFAULT_LOCK);
-      expect(stakerData2.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT + addedStake);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakerData.unlockedTimestamp + (stakerData.lockDuration / 2n));      
+      expect(stakerDataAfter.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT + addedStake);
     });
 
     it("Can stake as a new user without lock when others are already staked", async () => {
-      const pendingRewards = await contract.connect(stakerB).getPendingRewards();
-
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerB.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerB.address);
 
@@ -1058,7 +1054,7 @@ describe("StakingERC20", () => {
     });
   });
 
-  describe.only("Utility functions", () => {
+  describe("Utility functions", () => {
     // 36500 is min lock time if divisor in RM function is 365
     // 50000 is min lock time if divisor in RM function is 500
     // etc.

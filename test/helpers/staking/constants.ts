@@ -21,7 +21,6 @@ export const CLAIMED_EVENT = "Claimed";
 export const UNSTAKED_EVENT = "Unstaked";
 export const WITHDRAW_EVENT = "LeftoverRewardsWithdrawn";
 
-// TODO test this event
 export const BASE_URI_UPDATED_EVENT  = "BaseURIUpdated";
 
 // Init balance is 10,000 token
