@@ -116,20 +116,13 @@ contract StakingBase is Ownable, IStakingBase {
     }
 
     /**
-     * @notice Return the time in seconds remaining for the staker's lock duration
-     */
-    function getRemainingLockTime() public view override returns(uint256) {
-        // TODO contract specific now, because we use nftStakers for 721s
-        // IMPL THIS
-        return _getRemainingLockTime(stakers[msg.sender]);
-    }
-    /**
      * @notice View the rewards balance in this pool
      */
     function getContractRewardsBalance() external view override returns (uint256) {
         return _getContractRewardsBalance();
     }
 
+    // TODO do we want to use lock adjustment? probably not, but keep as option for discussion
     function setLockAdjustment(uint256 _lockAdjustment) public override onlyOwner {
         lockAdjustment = _lockAdjustment;
         emit LockAdjustmentSet(msg.sender, _lockAdjustment);

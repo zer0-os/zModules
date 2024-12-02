@@ -7,6 +7,12 @@ pragma solidity ^0.8.20;
  * @notice Interface for the base staking contract
  */
 interface IStakingBase {
+
+    struct NFTStake {
+        uint256 tokenId;
+        bool locked;
+    }
+
     /**
      * @notice Struct to track an individual staker's data
      */
@@ -102,8 +108,6 @@ interface IStakingBase {
     function getPendingRewardsLocked() external view returns (uint256);
 
     function getTotalPendingRewards() external view returns (uint256);
-    
-    function getRemainingLockTime() external view returns(uint256);
 
     function getContractRewardsBalance() external view returns (uint256);
 

@@ -48,4 +48,6 @@ interface IStakingERC20 {
     function unstake(uint256 amount) external;
 
     function unstakeLocked(uint256 amount, bool exit) external;
+
+    function getRemainingLockTime() external view returns (uint256);
 }

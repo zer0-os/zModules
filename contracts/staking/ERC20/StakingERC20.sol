@@ -123,6 +123,13 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // move staked amount to regular amount after snapshot of balance
     }
 
+    /**
+     * @notice Return the time in seconds remaining for the staker's lock duration
+     */
+    function getRemainingLockTime() public view override returns (uint256) {
+        return _getRemainingLockTime(stakers[msg.sender]);
+    }
+
     function _stake(uint256 amount, uint256 lockDuration) internal {
         if (amount == 0) {
             revert ZeroValue();

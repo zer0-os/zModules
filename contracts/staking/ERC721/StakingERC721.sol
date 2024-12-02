@@ -210,6 +210,13 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         return nftStakers[msg.sender].tokenIds;
     }
 
+    /**
+     * @notice Return the time in seconds remaining for the staker's lock duration
+     */
+    function getRemainingLockTime() public view override returns (uint256) {
+        return _getRemainingLockTime(nftStakers[msg.sender].data);
+    }
+
     ////////////////////////////////////
     /* Internal Staking Functions */
     ////////////////////////////////////
