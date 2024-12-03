@@ -299,8 +299,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
             staker.lastTimestamp = block.timestamp;
         }
 
-        console.log("rewards: %s", rewards);
-        console.log("getContractBalance: %s", _getContractRewardsBalance());
+        // console.log("rewards: %s", rewards);
+        // console.log("getContractBalance: %s", _getContractRewardsBalance());
         if (_getContractRewardsBalance() < rewards) {
             revert NoRewardsLeftInContract();
         }
@@ -316,7 +316,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
 
         uint256 i = 0;
         for(i; i < _tokenIds.length;) {
-            console.log("enter loop");
+            // console.log("enter loop");
             // If the token is unlocked, claim and unstake
             if (ownerOf(_tokenIds[i]) == address(0) || ownerOf(_tokenIds[i]) != msg.sender) {
                 // Either the list of tokenIds contains a non-existent token
@@ -328,16 +328,16 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
             }
 
             if (nftStaker.locked[_tokenIds[i]]) {
-                console.log("locked");
+                // console.log("locked");
 
                 if (exit) {
                     // unstake with no rewards
-                    console.log("call with exit");
+                    // console.log("call with exit");
                     _unstake(_tokenIds[i]);
                     --nftStaker.data.amountStakedLocked;
                     isAction = true;
                 } else if (_getRemainingLockTime(nftStaker.data) == 0) {
-                    console.log("call without exit");
+                    // console.log("call without exit");
 
                     // we enforce the lock duration on the user
                     if (nftStaker.data.lastTimestampLocked != block.timestamp) {
@@ -361,14 +361,14 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
                 }
             } else {
                 // stake was never locked
-                console.log("not locked");
+                // console.log("not locked");
                 if (nftStaker.data.lastTimestamp != block.timestamp) {
-                    console.log("call claim");
+                    // console.log("call claim");
 
                     // If already called in this loop, it will have updated lastTimestamp, don't call again
                     claim();
                 }
-                console.log("call unstake");
+                // console.log("call unstake");
                 _unstake(_tokenIds[i]);
                 --nftStaker.data.amountStaked;
                 isAction = true;
@@ -384,8 +384,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, AStakingBase, IStakingE
             revert InvalidUnstake();
         }
 
-        console.log("amountStaked: %s", nftStaker.data.amountStaked);
-        console.log("amountStakedLocked: %s", nftStaker.data.amountStakedLocked);
+        // console.log("amountStaked: %s", nftStaker.data.amountStaked);
+        // console.log("amountStakedLocked: %s", nftStaker.data.amountStakedLocked);
 
         // If a complete withdrawal, delete the staker struct for this user as well
         if (nftStaker.data.amountStaked == 0 && nftStaker.data.amountStakedLocked == 0) {
