@@ -8,12 +8,13 @@ import {
 } from "./types";
 
 import {
-  DEFAULT_PERIOD_LENGTH,
+  DEFAULT_PERIOD_LENGTH_ERC721,
   PRECISION_DIVISOR,
   DEFAULT_REWARDS_PER_PERIOD_ERC20,
   DEFAULT_REWARDS_PER_PERIOD_ERC721,
   LOCKED_PRECISION_DIVISOR,
   DEFAULT_LOCK_ADJUSTMENT,
+  DEFAULT_PERIOD_LENGTH_ERC20,
 } from "./constants";
 
 export const createDefaultConfigs = async (
@@ -26,7 +27,7 @@ export const createDefaultConfigs = async (
       stakingToken: await erc721.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD_ERC721,
-      periodLength: DEFAULT_PERIOD_LENGTH,
+      periodLength: DEFAULT_PERIOD_LENGTH_ERC721,
       divisor: PRECISION_DIVISOR,
       lockedDivisor: LOCKED_PRECISION_DIVISOR,
       lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
@@ -36,7 +37,7 @@ export const createDefaultConfigs = async (
       stakingToken: await stakeERC20.getAddress(),
       rewardsToken: await rewardsERC20.getAddress(),
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD_ERC20,
-      periodLength: DEFAULT_PERIOD_LENGTH,
+      periodLength: DEFAULT_PERIOD_LENGTH_ERC20,
       divisor: PRECISION_DIVISOR,
       lockedDivisor: LOCKED_PRECISION_DIVISOR,
       lockAdjustment: DEFAULT_LOCK_ADJUSTMENT

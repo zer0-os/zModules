@@ -1,6 +1,6 @@
 // ERC721
 export const NONEXISTENT_TOKEN_ERR = "ERC721NonexistentToken";
-export const INCORRECT_OWNER_TRANSFER_ERR = "ERC721IncorrectOwner";
+export const INCORRECT_OWNER_ERR = "ERC721IncorrectOwner";
 export const INSUFFICIENT_APPROVAL_721_ERR = "ERC721InsufficientApproval";
 
 // ERC20

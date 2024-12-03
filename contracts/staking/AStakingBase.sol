@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+
 abstract contract AStakingBase {
     function getRemainingLockTime() external view virtual returns (uint256);
 
@@ -8,4 +9,5 @@ abstract contract AStakingBase {
 
     function getPendingRewardsLocked() external view virtual returns (uint256);
 
-    function getTotalPendingRewards() external view virtual returns (uint256);}
+    function getTotalPendingRewards() external view virtual returns (uint256);
+}

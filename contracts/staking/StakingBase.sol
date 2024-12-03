@@ -107,59 +107,6 @@ contract StakingBase is Ownable, IStakingBase {
         emit LockAdjustmentSet(msg.sender, _lockAdjustment);
     }
 
-    // function setMultiplier(uint256 _multiplier) public onlyOwner {
-    //     MULTIPLIER = _multiplier;
-    //     emit MultiplierSet(msg.sender, _multiplier);
-    // }
-
-    // function getMultiplier() public view override returns (uint256) {
-    //     return MULTIPLIER;
-    // }
-
-    // Staker getters
-    // TODO Some are shared but many are token specific, consider
-    // moving these to the contracts that need them instead to avoid bloat
-    // for useless ERC20 functions in ERC721 contract or vice versa
-
-    // ERC721s OR unlocked ERC20 amount
-    // function getAmountStaked() public view override returns(uint256) {
-    //     return stakers[msg.sender].amountStaked;
-    // }
-
-    // // Locked ERC20 amount or locked ERC721s
-    // function getAmountStakedLocked() public view override returns(uint256) {
-    //     return stakers[msg.sender].amountStakedLocked;
-    // }
-
-    
-
-    // // function getLockDuration(uint256 tokenId) public view override returns (uint256) {
-    // //     // Lock duration for a specific ERC721 tokenId
-    // //     return stakers[msg.sender].lockDurations[tokenId];
-    // // }
-
-    // function getLockDuration() public view override returns (uint256) {
-    //     // Lock duration for a user's ERC20 stake
-    //     return stakers[msg.sender].lockDuration;
-    // }
-
-    // function getStakedTimestamp(uint256 tokenId) public view override returns (uint256) {
-    //     return stakers[msg.sender].stakedTimestamps[tokenId];
-    // }
-
-    // function getLastTimestamp() public view override returns (uint256) {
-    //     return stakers[msg.sender].lastTimestamp;
-    // }
-
-    // function getLastTimestampLocked() public view override returns (uint256) {
-    //     return stakers[msg.sender].lastTimestampLocked;
-    // }
-
-    // function getlastClaimedTimestamp(uint256 tokenId) public view override returns (uint256) {
-    //     // In ERC721 still last*Claimed*, not just lastTimestamp
-    //     return stakers[msg.sender].lastClaimedTimestamps[tokenId];
-    // }
-
     ////////////////////////////////////
     /* Internal Functions */
     ////////////////////////////////////
@@ -208,6 +155,10 @@ contract StakingBase is Ownable, IStakingBase {
         return _calcRewardsMultiplier(lock);
     }
 
+    function getRewardsMultiplierSimple(uint256 lock) public pure returns(uint256) {
+        return _calcRewardsMultiplierSimple(lock);
+    }
+
     /**
      * @dev Locked rewards receive a multiplier based on the length of the lock
      * @param lock The length of the lock in seconds
@@ -217,7 +168,19 @@ contract StakingBase is Ownable, IStakingBase {
         // periodLength = 365 days
         // precisionMultiplier = 10
         // scalar = 1e18
-        return 1e14 * 10 * ( (lock * 10 ) / 365) / 1e18;
+
+        // 101 is smallest possible increment while giving more than
+        // if a user simply didnt lock their funds, but not by a lot
+        // TODO could argue that have a minimum lock time is a good idea?
+        // could help make sure people cant exploit the system
+        // you cant lock for 1s just to get RM and boost rewards
+
+        // use 1 + to avoid ever having 0 return value
+        // if we want 30 day min lock time 259 is a good divisor
+        // for both ERC20 and ERC721 staking contracts 
+
+        return 1 + 1e14 * 10 * ( (lock * 10 ) / 259) / 1e18;
+        // return 101 + 1e14 * 10 * ( (lock * 10 ) / 365) / 1e18;
     }
 
     // Backup function using simpler multipliers to avoid uintended side effects
@@ -235,10 +198,8 @@ contract StakingBase is Ownable, IStakingBase {
         if (lock < 300 days) return 450;
         if (lock < 330 days) return 540;
         if (lock < 365 days) return 640;
-        if (lock > 365 days) return 800;
-        
-        // 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610
-        if (lock > 365) return 1000;
+        if (lock == 365 days) return 800;
+        if (lock > 365 days) return 1000;
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {

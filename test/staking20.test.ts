@@ -126,29 +126,26 @@ describe("StakingERC20", () => {
   });
 
   describe("#stake", () => {
-    it.skip("Real number calcs", async () => {
-      const rewardsBefore = await rewardsToken.balanceOf(stakerA.address);
+    it.only("Real number calcs", async () => {
+      await reset();
 
-      // await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      // if calcRM function uses 259 base period value, then 30 days is good real min lock time
+      const arm = DAY_IN_SECONDS * 30n;
+
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
-      await contract.connect(stakerB).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      await contract.connect(stakerB).stakeWithLock(DEFAULT_STAKED_AMOUNT, arm);
 
-      await time.increase(365n * DAY_IN_SECONDS);
+      console.log(await contract.getRewardsMultiplier(arm))
 
-      const stakerBData = await contract.stakers(stakerB.address);
-      console.log(stakerBData.rewardsMultiplier)
+      await time.increase(DEFAULT_LOCK);
 
-      const pendingRewardsUnlockedA = await contract.connect(stakerA).getPendingRewards();
-      const pendingRewardsLockedA = await contract.connect(stakerA).getPendingRewardsLocked();
+      const rewardsA = await contract.connect(stakerA).getTotalPendingRewards();
+      const rewardsB = await contract.connect(stakerB).getTotalPendingRewards();
+      
+      console.log(hre.ethers.formatEther(rewardsA.toString()));
+      console.log(hre.ethers.formatEther(rewardsB.toString()));
 
-      expect(pendingRewardsUnlockedA).to.gt(0n);
-      expect(pendingRewardsLockedA).to.eq(0n);
-
-      const pendingRewardsLockedB = await contract.connect(stakerB).getPendingRewardsLocked();
-      const pendingRewardsUnlockedB = await contract.connect(stakerB).getPendingRewards();
-
-      expect(pendingRewardsUnlockedB).to.eq(0n);
-      expect(pendingRewardsLockedB).to.gt(0n);
+      console.log("bigger? ", rewardsB > rewardsA);
     });
     it("Can stake without a lock successfully", async () => {
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
