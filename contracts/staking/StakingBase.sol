@@ -75,9 +75,36 @@ contract StakingBase is Ownable, IStakingBase {
          * B) Add half of the original lock duration
          * C) Add the lock adjustment value
          */
+        // TODO how to % without gameable / exploit
+        // dont want to punish people for adding more money
+        // be sure tie rewards to length of time
+
+        // todo adjust reward multiplier AND lock time together when they restake
+        // ratio has to be balanced with multiplier, higher RM is longer time
+        // add the length of time they specify perhaps
+
+        // add locks together, add RM together, calc average
+        // 
+
         // staker.unlockedTimestamp += remainingLock / 2;
         // staker.unlockedTimestamp += lockAdjustment;
         staker.unlockedTimestamp += staker.lockDuration / 2;
+
+        // if stake a second time, and first lock is over, claim for first lock then restake and start new deposit
+        // give brand new RM and lock time from what their adding
+
+        // if lock has passed but they claim later than that it goes to regular non-locked rate for that extra time
+
+        /**
+         * T1 : 1000 for 15 periods, get RM 1.5
+         *  
+         * T10 : 500 more for 30 periods, get RM for this first, say 3.0, can precalc rewards we know they will get
+         * 
+         * (1000 * 5periods * 1.5) + (500 * 30periods * 3.0)
+         * 
+         * 
+         * can only append to previous stake? maybe?
+         */
     }
 
     /**
@@ -117,6 +144,24 @@ contract StakingBase is Ownable, IStakingBase {
         return staker.unlockedTimestamp - block.timestamp;
     }
 
+    function _getStakeValue(uint256 amount, uint256 lockDuration) internal view returns(uint256) {
+        uint256 rewardsMultiplier = lockDuration == 0 ? 1 : _calcRewardsMultiplier(lockDuration);
+        uint256 divisor = lockDuration == 0 ? 1000 : 100000;
+        uint256 timeDuration = lockDuration == 0 ? 1 : lockDuration; // make 1 to avoid multiply by 0
+
+        // console.log("rewardsMultiplier: %s", rewardsMultiplier);
+        // console.log("amount: %s", amount);
+        // console.log("rewardsPerPeriod: %s", rewardsPerPeriod);
+        // console.log("lockDuration: %s", lockDuration);
+        // console.log("timeDuration: %s", timeDuration);
+        // console.log("periodLength: %s", periodLength);
+        // console.log("divisor: %s", divisor);
+        uint256 rewards = rewardsMultiplier * amount * rewardsPerPeriod * timeDuration / periodLength / divisor;
+
+        // console.log("rewards: %s", rewards);
+        return rewards;
+    }
+
     function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
         if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
             // console.log("zero flow");
@@ -138,8 +183,10 @@ contract StakingBase is Ownable, IStakingBase {
             // 100 000
             // 1 000
 
-            uint256 retval = staker.rewardsMultiplier * (
-                staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / periodLength / 100000 );
+
+            // TODO DRY, same as calc below but with locked funds
+            uint256 retval = 
+                staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / periodLength / 1000;
             // console.log("retval: %s", retval);
             return retval;
         } else {

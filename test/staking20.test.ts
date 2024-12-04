@@ -118,6 +118,14 @@ describe("StakingERC20", () => {
   });
 
   describe("#getContractRewardsBalance", () => {
+    // it.only("tests new rm calcs", async () => {
+    //   // calc as though 30 days passed
+    //   const rewardsUnlocked = await contract.getStakeValueUnlocked(DEFAULT_STAKED_AMOUNT, DAY_IN_SECONDS * 30n);
+    //   const rewardsLocked = await contract.getStakeValue(DEFAULT_STAKED_AMOUNT, DAY_IN_SECONDS * 30n);
+      
+    //   console.log(rewardsUnlocked.toString());
+    //   console.log(rewardsLocked.toString());
+    // });
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await contract.getContractRewardsBalance();
       const poolBalance = await rewardsToken.balanceOf(await contract.getAddress());
@@ -218,7 +226,7 @@ describe("StakingERC20", () => {
 
       expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT * 2n);
       expect(stakerData.lastTimestampLocked).to.eq(stakedAt);
-      expect(stakerData.unlockedTimestamp).to.eq(stakerDataBefore.unlockedTimestamp + (stakerDataBefore.lockDuration / 2n));
+      expect(stakerData.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
     });
 
