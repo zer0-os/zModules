@@ -163,6 +163,8 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
     }
 
     function _stakeNew(uint256 amount, uint256 lockDuration) internal {
+        // TODO be sure when new locks come in after an old lock is expired
+        // it is treated like a brand new lock
         if (amount == 0) {
             revert ZeroValue();
         }
@@ -181,6 +183,12 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
             staker.owedRewardsLocked += stakeValue;
 
             uint256 incomingUnlockedTimestamp = block.timestamp + lockDuration;
+            // if incoming is smaller, be sure we are not past, if so it is a new lock
+            // otherwise update like below
+            // TODO if passed lock and never claimed or unstaked, what to do?
+                // claim rewards for time between as 1.0, then everything forward
+                // is new stake lock duration
+            // if passed lock and zero balance, should be fine?
             if (incomingUnlockedTimestamp > staker.unlockedTimestamp) {
                 // When followup stakes with lock, the lock period is extended by a specified amount
                 // this value cannot be less than the existing lock time

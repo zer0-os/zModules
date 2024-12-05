@@ -36,11 +36,6 @@ interface IStakingERC20 {
      */
     error UnstakeMoreThanStake();
 
-    /**
-     * @notice Revert when the user tries to stake or unstake 0 tokens
-     */
-    error ZeroValue();
-
     function stakeWithLock(uint256 amount, uint256 lockDuration) external;
 
     function stakeWithoutLock(uint256 amount) external;

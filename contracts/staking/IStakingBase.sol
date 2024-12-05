@@ -75,6 +75,16 @@ interface IStakingBase {
     );
 
     /**
+     * @notice Emit incoming stake is not valid
+     */
+    error InvalidStake();
+
+    /**
+     * @notice Revert when the user tries to stake or unstake 0 tokens
+     */
+    error ZeroValue();
+
+    /**
      * @notice Throw when the lock period has not passed
      */
     error TimeLockNotPassed();

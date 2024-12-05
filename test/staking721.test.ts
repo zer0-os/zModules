@@ -160,7 +160,8 @@ describe("StakingERC721", () => {
       await stakingToken.connect(owner).mint(stakerC.address, tokenIdI);
       await stakingToken.connect(owner).mint(stakerC.address, tokenIdJ);
   
-      await stakingToken.connect(owner).mint(owner.address, unStakedTokenId);
+      // fails to mint?
+      // await stakingToken.mint(notStaker.address, unStakedTokenId);
   
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
@@ -182,7 +183,7 @@ describe("StakingERC721", () => {
 
   it.skip("calcs correctly", async () => {
 
-    await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [DEFAULT_LOCK]);
+    await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
     await stakingERC721.connect(stakerB).stakeWithoutLock([tokenIdD], [emptyUri]);
 
     await time.increase(DEFAULT_LOCK);

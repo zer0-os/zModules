@@ -67,7 +67,7 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
     function stakeWithLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,
-        uint256[] calldata lockPeriods
+        uint256 lockDuration
     ) external;
 
     function stakeWithoutLock(
