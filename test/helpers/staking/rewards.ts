@@ -101,4 +101,21 @@ export const calcTotalLockedRewards = (
   return totalRewards;
 }
 
+const calculateRewardsMultiplier = (lockDuration : bigint) => {
+  return 1n + hre.ethers.parseUnits("1", 14) * 10n * ( 
+    (lockDuration * 10n ) / 259n
+  ) / hre.ethers.parseEther("1");
+}
+
+export const getStakeValue = (amount : bigint, lockDuration : bigint, config : BaseConfig) => {
+  const rewardsMultiplier = lockDuration === 0n ? 1n : calculateRewardsMultiplier(lockDuration);
+  const divisor = lockDuration === 0n ? 1000n : 100000n;
+  const timeDuration = lockDuration === 0n ? 1n : lockDuration;
+
+  const rewards = rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
+  return rewards;
+}
+
+// rewards locked at two different times, are they two different APRs?
+// eg 1 year compared to 30 days extrapolated out to one year
 // calc all rewards that accepts array of RMs

@@ -189,7 +189,14 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
                 // claim rewards for time between as 1.0, then everything forward
                 // is new stake lock duration
             // if passed lock and zero balance, should be fine?
-            if (incomingUnlockedTimestamp > staker.unlockedTimestamp) {
+            
+            
+            if (block.timestamp > staker.unlockedTimestamp) {
+                // If we have passed their previous lock duration entirely, then we 
+                // collect the rewards they are owed for the interim period at 1.0 RM and then
+                staker.owedRewards += _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp);
+                staker.unlockedTimestamp = incomingUnlockedTimestamp;
+            } else if (incomingUnlockedTimestamp > staker.unlockedTimestamp) {
                 // When followup stakes with lock, the lock period is extended by a specified amount
                 // this value cannot be less than the existing lock time
                 staker.unlockedTimestamp = incomingUnlockedTimestamp;
@@ -280,7 +287,9 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
                 }
             } else {
                 // If staker's funds are unlocked, we ignore exit
-                rewards = staker.owedRewardsLocked + _getPendingRewards(staker, true);
+                // We already added the value they are owed in stake when pre calculating
+                // now we just add the value they are owed for interim rewards
+                rewards = staker.owedRewardsLocked + _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp);
             }
 
             // If removal of all locked funds and there are no non-locked funds, delete

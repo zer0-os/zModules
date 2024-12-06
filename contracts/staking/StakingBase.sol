@@ -162,6 +162,10 @@ contract StakingBase is Ownable, IStakingBase {
         return rewards;
     }
 
+    function _getInterimRewards(Staker storage staker, uint256 timeDuration) internal view returns (uint256) {
+        return staker.amountStakedLocked * (rewardsPerPeriod * (timeDuration)) / periodLength / 1000;
+    }
+
     function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
         if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
             // console.log("zero flow");
