@@ -5,8 +5,9 @@ import { ERC721Votes } from "@openzeppelin/contracts/token/ERC721/extensions/ERC
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IZeroVotingERC721 } from "./IZeroVotingERC721.sol";
 
-contract ZeroVotingERC721 is ERC721Votes, AccessControl {
+contract ZeroVotingERC721 is ERC721Votes, AccessControl, IZeroVotingERC721 {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
@@ -95,7 +96,7 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl {
     */
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(ERC721, AccessControl) returns (bool) {
+    ) public view override(ERC721, AccessControl, IZeroVotingERC721) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
     

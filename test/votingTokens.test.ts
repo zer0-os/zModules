@@ -1,7 +1,6 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { getAccessRevertMsg } from "./helpers/voting/commonFunctions";
 import {
   BURNER_ROLE,
   DEFAULT_ADMIN_ROLE,
@@ -9,7 +8,7 @@ import {
 } from "./helpers/voting/constants";
 import { ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
 
-describe.only("Voting tokens tests", () => {
+describe("Voting tokens tests", () => {
   let owner : HardhatEthersSigner;
   let addr1 : HardhatEthersSigner;
   let addr2 : HardhatEthersSigner;
@@ -37,7 +36,7 @@ describe.only("Voting tokens tests", () => {
     erc20Token = await ERC20Factory.connect(owner).deploy(erc20Name, erc20Symbol, owner);
     await erc20Token.waitForDeployment();
 
-    // mint tokens to users and owner
+    // mint erc20 tokens to users and owner
     await erc20Token.connect(owner).mint(owner.address, ethers.parseEther("1000"));
     await erc20Token.connect(owner).transfer(addr1.address, ethers.parseEther("100"));
     await erc20Token.connect(owner).transfer(addr2.address, ethers.parseEther("50"));
@@ -53,7 +52,7 @@ describe.only("Voting tokens tests", () => {
     }
   });
 
-  describe("ERC20 Voting", () => {
+  describe("ZeroVotingERC20", () => {
     it("Should correctly set name and symbol for ERC20 token", async () => {
       expect(await erc20Token.name()).to.equal(erc20Name);
       expect(await erc20Token.symbol()).to.equal(erc20Symbol);
@@ -65,6 +64,13 @@ describe.only("Voting tokens tests", () => {
 
         await erc20Token.connect(owner).delegate(owner.address);
         const votes = await erc20Token.getVotes(owner.address);
+
+        expect(
+          balanceBefore
+        ).not.eq(
+          0n
+        );
+
         expect(
           votes
         ).to.eq(
@@ -159,7 +165,7 @@ describe.only("Voting tokens tests", () => {
       });
 
       // POSITIVE
-      it("The OWNER should be allowed to perform the #grantRole", async () => {
+      it("The DEFAULT_ADMIN should be allowed to perform the #grantRole", async () => {
       // grant addr2 admin_role for next test
         const admins = [addr1.address, addr2.address];
 
@@ -184,7 +190,7 @@ describe.only("Voting tokens tests", () => {
         }
       });
 
-      it("Should allow revocation of ADMIN_ROLE role to YOURSELF", async () => {
+      it("Should allow DEFAULT_ADMIN to revoke his role", async () => {
         await expect(
           erc20Token.connect(addr2).revokeRole(DEFAULT_ADMIN_ROLE, addr2.address)
         ).to.emit(
@@ -203,10 +209,11 @@ describe.only("Voting tokens tests", () => {
         );
       });
 
-      it("The OWNER should be allowed to perform the #revokeRole", async () => {
+      // similar test, but called by a different admin
+      it("Should allow DEFAULT_ADMIN to revoke the admin role of another admin", async () => {
       // check event
         await expect(
-          erc20Token.revokeRole(DEFAULT_ADMIN_ROLE, addr1.address)
+          erc20Token.connect(owner).revokeRole(DEFAULT_ADMIN_ROLE, addr1.address)
         ).to.emit(
           erc20Token,
           "RoleRevoked"
@@ -225,7 +232,7 @@ describe.only("Voting tokens tests", () => {
     });
   });
 
-  describe("ERC721 Voting", () => {
+  describe("ZeroVotingERC721", () => {
     it("Should correctly set name and symbol for ERC721 token", async () => {
       expect(
         await erc721Token.name()
@@ -247,6 +254,12 @@ describe.only("Voting tokens tests", () => {
         await erc721Token.connect(owner).delegate(owner.address);
 
         const votesAfter = await erc721Token.getVotes(owner.address);
+
+        expect(
+          balanceBefore
+        ).not.eq(
+          0n
+        );
 
         expect(
           votesAfter
@@ -341,7 +354,7 @@ describe.only("Voting tokens tests", () => {
       });
 
       // POSITIVE
-      it("The OWNER should be allowed to perform the #grantRole", async () => {
+      it("The DEFAULT_ADMIN should be allowed to perform the #grantRole", async () => {
       // grant addr2 admin_role for next test
         const admins = [addr1.address, addr2.address];
 
@@ -385,7 +398,7 @@ describe.only("Voting tokens tests", () => {
         );
       });
 
-      it("The OWNER should be allowed to perform the #revokeRole", async () => {
+      it("The DEFAULT_ADMIN should be allowed to perform the #revokeRole", async () => {
       // check event
         await expect(
           erc721Token.revokeRole(DEFAULT_ADMIN_ROLE, addr1.address)
