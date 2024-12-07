@@ -49,12 +49,48 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl, IZeroVotingERC721 {
         address to,
         uint256 tokenId,
         address auth
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
+    ) external override onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
         return super._update(
             to,
             tokenId,
             auth
         );
+    }
+
+    /**
+     * @dev External mint function. Mints a new token to a specified address.
+     * @param to The address that will receive the minted token.
+     * @param tokenId The token ID for the newly minted token.
+     */
+    function mint(
+        address to,
+        uint256 tokenId
+    ) external override onlyRole(MINTER_ROLE) {
+        _mint(
+            to,
+            tokenId
+        );
+    }
+    
+    /**
+     * @dev External burn function. Burns a token for a specified address.
+     * @param tokenId The token ID of the token to burn.
+     */
+    function burn(
+        uint256 tokenId
+    ) external override onlyRole(BURNER_ROLE) {
+        _burn(tokenId);
+    }
+
+    /**
+    * @dev Overridden function to support the interfaces of ERC721 and AccessControl.
+    * @param interfaceId The interface identifier to check.
+    * @return True if the contract supports the given interface.
+    */
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721, AccessControl, IZeroVotingERC721) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 
     /**
@@ -72,41 +108,5 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl, IZeroVotingERC721 {
             tokenId,
             auth
         );
-    }
-
-    /**
-     * @dev External mint function. Mints a new token to a specified address.
-     * @param to The address that will receive the minted token.
-     * @param tokenId The token ID for the newly minted token.
-     */
-    function mint(
-        address to,
-        uint256 tokenId
-    ) external onlyRole(MINTER_ROLE) {
-        _mint(
-            to,
-            tokenId
-        );
-    }
-
-    /**
-    * @dev Overridden function to support the interfaces of ERC721 and AccessControl.
-    * @param interfaceId The interface identifier to check.
-    * @return True if the contract supports the given interface.
-    */
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(ERC721, AccessControl, IZeroVotingERC721) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
-    
-    /**
-     * @dev External burn function. Burns a token for a specified address.
-     * @param tokenId The token ID of the token to burn.
-     */
-    function burn(
-        uint256 tokenId
-    ) external onlyRole(BURNER_ROLE) {
-        _burn(tokenId);
     }
 }

@@ -3,7 +3,6 @@ pragma solidity 0.8.26;
 
 import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
@@ -35,16 +34,33 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
     }
 
     /**
-    * @dev Returns the current nonce for `owner`. This value must be
-    * included whenever a signature is generated for {permit}.
-    *
-    * Every successful call to {permit} increases ``owner``'s nonce by one. This
-    * prevents a signature from being used multiple times.
-    */
-    function nonces(
-        address owner
-    ) public view override(ERC20Permit, Nonces, IZeroVotingERC20) returns (uint256) {
-        return super.nonces(owner);
+     * @dev External mint function. Mints a specified amount of tokens to a specified account.
+     * @param account The address that will receive the minted tokens.
+     * @param value The amount of tokens to mint to the specified account.
+     */
+    function mint(
+        address account,
+        uint256 value
+    ) external override onlyRole(MINTER_ROLE) {
+        _mint(
+            account,
+            value
+        );
+    }
+
+    /**
+     * @dev External burn function. Burns a specified amount of tokens from the sender account.
+     * @param account Account where tokens need to be burned.
+     * @param amount The amount of tokens to burn.
+     */
+    function burn(
+        address account,
+        uint256 amount
+    ) external override onlyRole(BURNER_ROLE) {
+        _burn(
+            account,
+            amount   
+        );
     }
 
     /**
@@ -60,12 +76,25 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
         address from,
         address to,
         uint256 value
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         _update(
             from,
             to,
             value
         );
+    }
+
+    /**
+    * @dev Returns the current nonce for `owner`. This value must be
+    * included whenever a signature is generated for {permit}.
+    *
+    * Every successful call to {permit} increases ``owner``'s nonce by one. This
+    * prevents a signature from being used multiple times.
+    */
+    function nonces(
+        address owner
+    ) public view override(ERC20Permit, Nonces, IZeroVotingERC20) returns (uint256) {
+        return super.nonces(owner);
     }
 
     /**
@@ -84,36 +113,6 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
             from,
             to,
             value
-        );
-    }
-
-    /**
-     * @dev External mint function. Mints a specified amount of tokens to a specified account.
-     * @param account The address that will receive the minted tokens.
-     * @param value The amount of tokens to mint to the specified account.
-     */
-    function mint(
-        address account,
-        uint256 value
-    ) external onlyRole(MINTER_ROLE) {
-        _mint(
-            account,
-            value
-        );
-    }
-
-    /**
-     * @dev External burn function. Burns a specified amount of tokens from the sender account.
-     * @param account Account where tokens need to be burned.
-     * @param amount The amount of tokens to burn.
-     */
-    function burn(
-        address account,
-        uint256 amount
-    ) external onlyRole(BURNER_ROLE) {
-        _burn(
-            account,
-            amount   
         );
     }
 }
