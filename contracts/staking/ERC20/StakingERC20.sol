@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.26;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -126,16 +126,23 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
     }
 
     function getPendingRewards() public view override returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender], false);
+        return stakers[msg.sender].owedRewards + _getPendingRewards(stakers[msg.sender], false);
     }
 
     function getPendingRewardsLocked() public view override returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender], true);
+        return stakers[msg.sender].owedRewardsLocked + _getPendingRewards(stakers[msg.sender], true);
     }
 
     function getTotalPendingRewards() public view override returns (uint256) {
         Staker storage staker = stakers[msg.sender];
-        return staker.owedRewards + staker.owedRewardsLocked + _getPendingRewards(staker, false) + _getPendingRewards(staker, true);
+        // console.log("staker.owedRewards", staker.owedRewards);
+        // console.log("staker.owedRewardsLocked", staker.owedRewardsLocked);
+        // console.log("_getPendingRewards(staker, false)", _getPendingRewards(staker, false));
+        // console.log("_getPendingRewards(staker, true)", _getPendingRewards(staker, true));
+
+        // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` sum on stake,
+        // so we don't need to add it here as it would be double counted
+        return staker.owedRewards + staker.owedRewardsLocked + _getPendingRewards(staker, false);
     }
 
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // solhint-disable immutable-vars-naming
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.26;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -144,7 +144,13 @@ contract StakingBase is Ownable, IStakingBase {
         return staker.unlockedTimestamp - block.timestamp;
     }
 
+    // todo temp
+    function getUnlockedStakeValue(uint256 amount, uint256 timePassed) public view returns(uint256) {
+        return amount * rewardsPerPeriod * timePassed / periodLength / 1000;
+    }
+
     function _getStakeValue(uint256 amount, uint256 lockDuration) internal view returns(uint256) {
+        // bug if using to calc non-locked stake value after time has passed
         uint256 rewardsMultiplier = lockDuration == 0 ? 1 : _calcRewardsMultiplier(lockDuration);
         uint256 divisor = lockDuration == 0 ? 1000 : 100000;
         uint256 timeDuration = lockDuration == 0 ? 1 : lockDuration; // make 1 to avoid multiply by 0
@@ -162,6 +168,7 @@ contract StakingBase is Ownable, IStakingBase {
         return rewards;
     }
 
+    // TODO resolve, same as below. simplify
     function _getInterimRewards(Staker storage staker, uint256 timeDuration) internal view returns (uint256) {
         return staker.amountStakedLocked * (rewardsPerPeriod * (timeDuration)) / periodLength / 1000;
     }
@@ -189,6 +196,8 @@ contract StakingBase is Ownable, IStakingBase {
 
 
             // TODO DRY, same as calc below but with locked funds
+            // because we precalc the stake value ahead of time, this only calculates interim time
+            // between when a stake is finished
             uint256 retval = 
                 staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / periodLength / 1000;
             // console.log("retval: %s", retval);
