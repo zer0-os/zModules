@@ -1,19 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { Governor, IGovernor } from "@openzeppelin/contracts/governance/Governor.sol";
+import { Governor } from "@openzeppelin/contracts/governance/Governor.sol";
 import { GovernorSettings } from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import { GovernorCountingSimple } from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import { GovernorVotes, IVotes } from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
-import { GovernorTimelockControl, TimelockController } from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
-import { GovernorVotesQuorumFraction } from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
+import {
+    GovernorTimelockControl,
+    TimelockController
+} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
+import {
+    GovernorVotesQuorumFraction
+} from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import { GovernorPreventLateQuorum } from "@openzeppelin/contracts/governance/extensions/GovernorPreventLateQuorum.sol";
 
 // TODO dao: add missing NatSpec !!!
 /**
  * @title ZDAO
  * @notice A customizable governance contract based on OpenZeppelin's Governor contracts.
- * @dev Extends OpenZeppelin's Governor contracts with various extensions for governance settings, voting, timelock control, and quorum fraction.
+ * @dev Extends OpenZeppelin's Governor contracts with various extensions for governance settings,
+ * voting, timelock control, and quorum fraction.
  * See OpenZeppelin documentation: https://docs.openzeppelin.com/contracts/4.x/api/governance
  * This is a fork of https://github.com/zer0-os/zDAO/blob/main/contracts/ZDAO.sol
  * With updated parent contracts and Solidity version.
@@ -116,6 +122,38 @@ contract ZDAO is
         return super.proposalNeedsQueuing(proposalId);
     }
 
+    /**
+ * @notice Returns the proposal deadline in blocks.
+     * @param proposalId The ID of the proposal.
+     * @return The block number when voting ends.
+     * @dev Overrides the function from Governor and GovernorPreventLateQuorum.
+     */
+    function proposalDeadline(uint256 proposalId)
+    public
+    view
+    override(Governor, GovernorPreventLateQuorum)
+    returns (uint256)
+    {
+        return super.proposalDeadline(proposalId);
+    }
+
+    /**
+     * @notice Checks if a given interface is supported.
+     * @param interfaceId The interface identifier.
+     * @return True if the interface is supported, false otherwise.
+     * @dev Overrides the function from Governor and GovernorTimelockControl.
+     * See OpenZeppelin GovernorTimelockControl:
+     * https://docs.openzeppelin.com/contracts/4.x/api/governance#GovernorTimelockControl
+     */
+    function supportsInterface(bytes4 interfaceId)
+    public
+    view
+    override
+    returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
     function _queueOperations(
         uint256 proposalId,
         address[] memory targets,
@@ -173,15 +211,6 @@ contract ZDAO is
         );
     }
 
-    function _executor()
-        internal
-        view
-        override(Governor, GovernorTimelockControl)
-        returns (address)
-    {
-        return super._executor();
-    }
-
     /**
      * @dev Casts a vote for a proposal.
      * @param proposalId The ID of the proposal.
@@ -212,34 +241,12 @@ contract ZDAO is
         );
     }
 
-    /**
-     * @notice Returns the proposal deadline in blocks.
-     * @param proposalId The ID of the proposal.
-     * @return The block number when voting ends.
-     * @dev Overrides the function from Governor and GovernorPreventLateQuorum.
-     */
-    function proposalDeadline(uint256 proposalId)
-    public
-    view
-    override(Governor, GovernorPreventLateQuorum)
-    returns (uint256)
-    {
-        return super.proposalDeadline(proposalId);
-    }
-
-    /**
-     * @notice Checks if a given interface is supported.
-     * @param interfaceId The interface identifier.
-     * @return True if the interface is supported, false otherwise.
-     * @dev Overrides the function from Governor and GovernorTimelockControl.
-     * See OpenZeppelin GovernorTimelockControl: https://docs.openzeppelin.com/contracts/4.x/api/governance#GovernorTimelockControl
-     */
-    function supportsInterface(bytes4 interfaceId)
-        public
+    function _executor()
+        internal
         view
-        override
-        returns (bool)
+        override(Governor, GovernorTimelockControl)
+        returns (address)
     {
-        return super.supportsInterface(interfaceId);
+        return super._executor();
     }
 }
