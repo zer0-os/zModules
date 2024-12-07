@@ -1,29 +1,26 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import {
-  MockERC20Votes,
-  MockERC721Votes,
-} from "../typechain-types";
-import { getAccessRevertMsg } from "./helpers/commonFunctions";
+import { getAccessRevertMsg } from "./helpers/voting/commonFunctions";
 import {
   BURNER_ROLE,
   DEFAULT_ADMIN_ROLE,
   MINTER_ROLE,
-} from "./helpers/constants";
+} from "./helpers/voting/constants";
+import { ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
 
-describe("Voting tokens tests", () => {
+describe.only("Voting tokens tests", () => {
   let owner : HardhatEthersSigner;
   let addr1 : HardhatEthersSigner;
   let addr2 : HardhatEthersSigner;
 
-  let erc20Token : MockERC20Votes;
-  let erc721Token : MockERC721Votes;
+  let erc20Token : ZeroVotingERC20;
+  let erc721Token : ZeroVotingERC721;
 
-  const erc20Name = "MockERC20Votes";
+  const erc20Name = "ZeroVotingERC20";
   const erc20Symbol = "ZV";
 
-  const erc721Name = "MockERC721Votes";
+  const erc721Name = "ZeroVotingERC721";
   const erc721Symbol = "ZVNFT";
 
   const mintAmount = ethers.parseEther("150");
@@ -36,10 +33,11 @@ describe("Voting tokens tests", () => {
     [owner, addr1, addr2] = await ethers.getSigners();
 
     // ERC20 deploy
-    const ERC20Factory = await ethers.getContractFactory(erc20Name) ;
+    const ERC20Factory = await ethers.getContractFactory(erc20Name);
     erc20Token = await ERC20Factory.connect(owner).deploy(erc20Name, erc20Symbol, owner);
     await erc20Token.waitForDeployment();
 
+    // mint tokens to users and owner
     await erc20Token.connect(owner).mint(owner.address, ethers.parseEther("1000"));
     await erc20Token.connect(owner).transfer(addr1.address, ethers.parseEther("100"));
     await erc20Token.connect(owner).transfer(addr2.address, ethers.parseEther("50"));
@@ -55,7 +53,7 @@ describe("Voting tokens tests", () => {
     }
   });
 
-  describe("ERC20 Voting Tests", () => {
+  describe("ERC20 Voting", () => {
     it("Should correctly set name and symbol for ERC20 token", async () => {
       expect(await erc20Token.name()).to.equal(erc20Name);
       expect(await erc20Token.symbol()).to.equal(erc20Symbol);
@@ -115,32 +113,48 @@ describe("Voting tokens tests", () => {
       it("Should revert when NON-ADMIN grants role", async () => {
         await expect(
           erc20Token.connect(addr2).grantRole(DEFAULT_ADMIN_ROLE, addr1.address)
-        ).to.be.revertedWith(
-          getAccessRevertMsg(addr2.address, DEFAULT_ADMIN_ROLE)
+        ).to.be.revertedWithCustomError(
+          erc20Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr2.address,
+          DEFAULT_ADMIN_ROLE
         );
       });
 
       it("Should revert when NON-ADMIN calls #revokeRole", async () => {
         await expect(
           erc20Token.connect(addr2).revokeRole(DEFAULT_ADMIN_ROLE, addr1.address)
-        ).to.be.revertedWith(
-          getAccessRevertMsg(addr2.address, DEFAULT_ADMIN_ROLE)
+        ).to.be.revertedWithCustomError(
+          erc20Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr2.address,
+          DEFAULT_ADMIN_ROLE
         );
       });
 
       it("Should revert when NON-MINTER mints tokens", async () => {
         await expect(
           erc20Token.connect(addr2).mint(addr1.address, 2000)
-        ).to.be.revertedWith(
-          getAccessRevertMsg(addr2.address, MINTER_ROLE)
+        ).to.be.revertedWithCustomError(
+          erc20Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr2.address,
+          MINTER_ROLE
         );
       });
 
       it("Should revert when NON-BURNER burns tokens", async () => {
         await expect(
           erc20Token.connect(addr1).burn(addr1, 2000)
-        ).to.be.revertedWith(
-          getAccessRevertMsg(addr1.address, BURNER_ROLE)
+        ).to.be.revertedWithCustomError(
+          erc20Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr1.address,
+          BURNER_ROLE
         );
       });
 
@@ -211,7 +225,7 @@ describe("Voting tokens tests", () => {
     });
   });
 
-  describe("ERC721 Voting Tests", () => {
+  describe("ERC721 Voting", () => {
     it("Should correctly set name and symbol for ERC721 token", async () => {
       expect(
         await erc721Token.name()
@@ -281,32 +295,48 @@ describe("Voting tokens tests", () => {
       it("Should revert when NON-ADMIN grants role", async () => {
         await expect(
           erc721Token.connect(addr2).grantRole(DEFAULT_ADMIN_ROLE, addr1.address)
-        ).to.be.revertedWith(
-          getAccessRevertMsg(addr2.address, DEFAULT_ADMIN_ROLE)
+        ).to.be.revertedWithCustomError(
+          erc721Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr2.address,
+          DEFAULT_ADMIN_ROLE
         );
       });
 
       it("Should revert when NON-ADMIN calls #revokeRole", async () => {
         await expect(
           erc721Token.connect(addr2).revokeRole(DEFAULT_ADMIN_ROLE, addr1.address)
-        ).to.be.revertedWith(
-          getAccessRevertMsg(addr2.address, DEFAULT_ADMIN_ROLE)
+        ).to.be.revertedWithCustomError(
+          erc721Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr2.address,
+          DEFAULT_ADMIN_ROLE
         );
       });
 
       it("Should revert when NON-MINTER mints tokens", async () => {
         await expect(
           erc721Token.connect(addr2).mint(addr1.address, "99999")
-        ).to.be.revertedWith(
-          getAccessRevertMsg(addr2.address, MINTER_ROLE)
+        ).to.be.revertedWithCustomError(
+          erc721Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr2.address,
+          MINTER_ROLE
         );
       });
 
       it("Should revert when NON-BURNER burns tokens", async () => {
         await expect(
           erc721Token.connect(addr1).burn(3)
-        ).to.be.revertedWith(
-          getAccessRevertMsg(addr1.address, BURNER_ROLE)
+        ).to.be.revertedWithCustomError(
+          erc721Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr1.address,
+          BURNER_ROLE
         );
       });
 
