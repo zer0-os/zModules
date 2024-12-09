@@ -168,45 +168,41 @@ contract StakingBase is Ownable, IStakingBase {
         return rewards;
     }
 
-    // TODO resolve, same as below. simplify
-    function _getInterimRewards(Staker storage staker, uint256 timeDuration) internal view returns (uint256) {
-        return staker.amountStakedLocked * (rewardsPerPeriod * (timeDuration)) / periodLength / 1000;
-    }
+    // Return ALL the rewards available to a user at this moment
+    function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
+        // Only include rewards from locked funds the user is passed their lock period
+        // TODO this function path should be ONLY transfer
 
-    function _getPendingRewards(Staker storage staker, bool locked) internal view returns (uint256) {
-        if (staker.amountStaked == 0 && staker.amountStakedLocked == 0) {
-            // console.log("zero flow");
+        uint256 rewards = staker.owedRewards + _getInterimRewards(staker, block.timestamp - staker.lastTimestamp, false);
+        if (_getRemainingLockTime(staker) == 0) {
+            // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` sum on stake,
+            // so we don't need to add it here as it would be double counted
+            // Case A) user stakes with lock, then waits well beyond lock duration and claims
+            // need to make sure that everything past `unlockTimestamp` is calculated at the non-locked rate
+            // Case B) user stakes with lock and waits well beyond lock period, claims, then waits and claims again in the future
+            // Have to make sure that we read from the time between their last touch point at non-locked rate
+            // meaning we have to check which timestamp is more recent
+            uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
+                ? staker.lastTimestampLocked
+                : staker.unlockedTimestamp;
 
-            return 0;
+            rewards += staker.owedRewardsLocked + _getInterimRewards(staker, block.timestamp - mostRecentTimestamp, true);
         }
 
+        return rewards;
+    }
+
+    // Get rewards a user accrued between their last touch point and now
+    // In the `locked` case, we only calculate rewards if the user has surpassed their lock period
+    function _getInterimRewards(Staker storage staker, uint256 timePassed, bool locked) internal view returns (uint256) {
         if (locked) {
-            // console.log("locked flow");
+            // uint256 retvalB = staker.amountStaked * (rewardsPerPeriod * (timePassed)) / periodLength / 1000;
+            // console.log("retvalB: %s", retvalB);
 
-            // div 100,000 at end to moderate (2 extra decimals of precision because multiplier is scaled in size for decimals)
-            // console.log("staker.rewardsMultiplier: %s", staker.rewardsMultiplier);
-            // console.log("staker.amountStakedLocked: %s", staker.amountStakedLocked);
-            // console.log("rewardsPerPeriod: %s", rewardsPerPeriod);
-            // console.log("block.timestamp: %s", block.timestamp);
-            // console.log("staker.lastTimestampLocked: %s", staker.lastTimestampLocked);
-            // console.log("diff: %s", block.timestamp - staker.lastTimestampLocked);
-
-            // 100 000
-            // 1 000
-
-
-            // TODO DRY, same as calc below but with locked funds
-            // because we precalc the stake value ahead of time, this only calculates interim time
-            // between when a stake is finished
-            uint256 retval = 
-                staker.amountStakedLocked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestampLocked)) / periodLength / 1000;
-            // console.log("retval: %s", retval);
-            return retval;
+            return staker.amountStakedLocked * (rewardsPerPeriod * (timePassed)) / periodLength / 1000;
         } else {
-            // console.log("not locked flow");
 
-            // div 1000 at end to moderate
-            return staker.amountStaked * (rewardsPerPeriod * (block.timestamp - staker.lastTimestamp)) / periodLength / 1000;
+            return staker.amountStaked * (rewardsPerPeriod * (timePassed)) / periodLength / 1000;
         }
     }
 
@@ -215,6 +211,7 @@ contract StakingBase is Ownable, IStakingBase {
         return _calcRewardsMultiplier(lock);
     }
 
+    // TODO testing debug
     function getRewardsMultiplierSimple(uint256 lock) public pure returns(uint256) {
         return _calcRewardsMultiplierSimple(lock);
     }

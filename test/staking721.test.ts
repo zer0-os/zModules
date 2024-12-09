@@ -22,6 +22,7 @@ import {
   LOCKED_PRECISION_DIVISOR,
   DEFAULT_LOCK_ADJUSTMENT,
   DAY_IN_SECONDS,
+  calcStakeValue,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -94,9 +95,9 @@ describe("StakingERC721", () => {
   const tokenIdI = 9n;
   const tokenIdJ = 10n;
 
-  const tokenIdDelayed = 8n; // Minted and used in stake at a later point in time
-  const unStakedTokenId = 9n; // Minted but never used in stake
-  const unmintedTokenId = 10n; // Never minted
+  const tokenIdDelayed = 11n; // Minted and used in stake at a later point in time
+  const unStakedTokenId = 12n; // Minted but never used in stake
+  const unmintedTokenId = 13n; // Never minted
 
   const baseUri = "0://staked-nfts";
   const emptyUri = "";
@@ -159,6 +160,9 @@ describe("StakingERC721", () => {
       await stakingToken.connect(owner).mint(stakerC.address, tokenIdH);
       await stakingToken.connect(owner).mint(stakerC.address, tokenIdI);
       await stakingToken.connect(owner).mint(stakerC.address, tokenIdJ);
+
+      await stakingToken.connect(owner).mint(owner.address, unStakedTokenId);
+
   
       // fails to mint?
       // await stakingToken.mint(notStaker.address, unStakedTokenId);
@@ -340,7 +344,7 @@ describe("StakingERC721", () => {
       // stakerB starts with tokenD, tokenE, tokenF, and tokenG
       const supplyBefore = await stakingERC721.totalSupply();
 
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], [DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK);
       firstStakedAtB = BigInt(await time.latest());
 
       const supplyAfter = await stakingERC721.totalSupply();
@@ -365,7 +369,6 @@ describe("StakingERC721", () => {
 
       expect(stakerData.amountStakedLocked).to.eq(stakes.length);
       expect(stakes[0]).to.eq(tokenIdD)
-      expect(stakerData.lockDuration).to.eq(DEFAULT_LOCK);
       expect(stakerData.lastTimestampLocked).to.eq(firstStakedAtB);
     });
 
@@ -407,7 +410,7 @@ describe("StakingERC721", () => {
       await stakingERC721.connect(stakerB).stakeWithLock(
         [tokenIdE, tokenIdF],
         [emptyUri, emptyUri],
-        [DEFAULT_LOCK, DEFAULT_LOCK]
+        DEFAULT_LOCK
       );
 
       secondStakedAtB = BigInt(await time.latest());
@@ -434,14 +437,13 @@ describe("StakingERC721", () => {
       expect(tokenIds[1]).to.eq(tokenIdE)
       expect(tokenIds[2]).to.eq(tokenIdF)
 
-      expect(stakerData.lockDuration).to.eq(DEFAULT_LOCK);
       expect(stakerData.lastTimestampLocked).to.eq(secondStakedAtB);
     });
 
     it("Modifies the lock duration appropriately on follow up stakes", async () => {
       await reset();
 
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], [DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK);
 
       const stakerDataBefore = await stakingERC721.connect(stakerB).nftStakers(stakerB.address);
       const stakedAtFirst = BigInt(await time.latest());
@@ -451,7 +453,7 @@ describe("StakingERC721", () => {
       // If the user has already staked with lock, incoming locks are ignored when the
       // new lock duration is calculated
       // TODO resolve the expected behavior here.
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdE], [emptyUri], [6n]);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdE], [emptyUri], 6n);
       const stakedAtSecond = BigInt(await time.latest());
 
       const stakerDataAfter = await stakingERC721.connect(stakerB).nftStakers(stakerB.address);
@@ -487,7 +489,7 @@ describe("StakingERC721", () => {
         .withArgs(unmintedTokenId);
 
       await expect(
-        stakingERC721.connect(stakerA).stakeWithLock([unmintedTokenId], [emptyUri], [DEFAULT_LOCK])
+        stakingERC721.connect(stakerA).stakeWithLock([unmintedTokenId], [emptyUri], DEFAULT_LOCK)
       ).to.be.revertedWithCustomError(stakingERC721, NONEXISTENT_TOKEN_ERR)
         .withArgs(unmintedTokenId);
     });
@@ -500,7 +502,7 @@ describe("StakingERC721", () => {
         .withArgs(stakerA.address, tokenIdA, await stakingERC721.getAddress());
 
       await expect(
-        stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [DEFAULT_LOCK])
+        stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK)
       ).to.be.revertedWithCustomError(stakingERC721, INCORRECT_OWNER_ERR)
         .withArgs(stakerA.address, tokenIdA, await stakingERC721.getAddress());
     });
@@ -515,7 +517,7 @@ describe("StakingERC721", () => {
         .withArgs(stakingERC721.target, unStakedTokenId);
       
         await expect(
-          stakingERC721.connect(stakerA).stakeWithLock([tokenIdD], [emptyUri], [DEFAULT_LOCK])
+          stakingERC721.connect(stakerA).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK)
         ).to.be.revertedWithCustomError(stakingERC721, INCORRECT_OWNER_ERR)
           .withArgs(stakerA.address, tokenIdD, stakerB.address);
     });
@@ -526,12 +528,12 @@ describe("StakingERC721", () => {
     it("Allows the user to view the remaining time lock duration", async () => {
       await reset();
 
-      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
 
       await time.increase(DEFAULT_LOCK / 2n);
 
       const remainingLockTime = await stakingERC721.connect(stakerA).getRemainingLockTime();
-      const latest = await time.latest();
+      const latest = BigInt(await time.latest());
 
       const stakerData = await stakingERC721.nftStakers(stakerA.address);
 
@@ -540,7 +542,7 @@ describe("StakingERC721", () => {
 
       // Original lock period and remaining lock period time difference should be the same as
       // the difference between the latest timestamp and that token's stake timestamp
-      expect(remainingLockTime).to.eq((stakeTimestamp + lockDuration - BigInt(latest)));
+      expect(remainingLockTime).to.eq((latest - stakeTimestamp + lockDuration));
     });
 
     it("Returns 0 for users that did not stake the given token", async () => {
@@ -561,33 +563,31 @@ describe("StakingERC721", () => {
     it("Can view pending rewards for a user", async () => {
       await reset(); 
 
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdG], [emptyUri], [DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdG], [emptyUri], DEFAULT_LOCK);
       const stakedAt = BigInt(await time.latest());
 
-      const stakerData = await stakingERC721.nftStakers(stakerB.address);
       const tokenIds = await stakingERC721.connect(stakerB).getStakedTokenIds();
 
       // console.log(stakerData.amountStakedLocked)
 
-      const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewardsLocked();
+      const initPendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
 
       // If no time has passed, the value will be 0
-      expect(pendingRewards).to.eq(0);
+      expect(initPendingRewards).to.eq(0);
 
       await time.increase(DEFAULT_LOCK / 2n);
       const latest = BigInt(await time.latest());
 
-      const updatedPendingRewards = await stakingERC721.connect(stakerB).getPendingRewardsLocked();
-      const updatedPendingRewardstotal = await stakingERC721.connect(stakerB).getTotalPendingRewards();
+      const stakerData = await stakingERC721.nftStakers(stakerB.address);
 
-      const expectedRewards = calcTotalLockedRewards(
-        [latest - stakedAt],
-        [1n],
-        stakerData.rewardsMultiplier,
-        config
-      );
+      const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
+      const pendingRewardsTotal = await stakingERC721.connect(stakerB).getPendingRewards();
 
-        expect(updatedPendingRewards).to.eq(expectedRewards);
+      const stakeValue = calcStakeValue(1n, DEFAULT_LOCK, config);
+
+      expect(pendingRewards).to.eq(stakeValue);
+      expect(pendingRewards).to.eq(stakerData.owedRewardsLocked);
+      // expect(pendingRewardsLocked).to.eq(pendingRewards); // no non-locked funds, so no rewards
     });
 
     it("Returns 0 for users that have not passed any time", async () => {
@@ -595,7 +595,7 @@ describe("StakingERC721", () => {
       await stakingToken.connect(owner).mint(stakerB.address, tokenId);
       await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenId);
 
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenId], [emptyUri], [DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenId], [emptyUri], DEFAULT_LOCK);
       const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
 
       expect(pendingRewards).to.eq(0n);
@@ -664,7 +664,7 @@ describe("StakingERC721", () => {
       await stakingToken.connect(owner).mint(stakerC.address, tokenIdDelayed);
       await stakingToken.connect(stakerC).approve(await stakingERC721.getAddress(), tokenIdDelayed);
 
-      await stakingERC721.connect(stakerC).stakeWithLock([tokenIdDelayed], [emptyUri], [DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerC).stakeWithLock([tokenIdDelayed], [emptyUri], DEFAULT_LOCK);
 
       // The user cannot claim as not enough time has passed
       await expect(
@@ -695,7 +695,7 @@ describe("StakingERC721", () => {
       await stakingERC721.connect(stakerA).stakeWithLock(
         [tokenIdB, tokenIdC],
         [emptyUri, emptyUri],
-        [DEFAULT_LOCK, DEFAULT_LOCK]
+        DEFAULT_LOCK
       );
       stakedAtLocked = BigInt(await time.latest())
 
@@ -800,7 +800,7 @@ describe("StakingERC721", () => {
       // Restake to be able to unstake again
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
 
-      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
 
       await expect(
         stakingERC721.connect(stakerA).unstake([tokenIdA], false)
@@ -862,7 +862,7 @@ describe("StakingERC721", () => {
       await reset(); 
 
       await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdD);
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], [DEFAULT_LOCK]);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK);
 
       const stakeBalanceBefore = await stakingERC721.balanceOf(stakerB.address)
       const stakeTokenBalanceBefore = await stakingToken.balanceOf(stakerB.address)
@@ -891,7 +891,7 @@ describe("StakingERC721", () => {
       await stakingERC721.connect(stakerA).stakeWithLock(
         [tokenIdA, tokenIdB, tokenIdC],
         [emptyUri, emptyUri, emptyUri],
-        [DEFAULT_LOCK, DEFAULT_LOCK, DEFAULT_LOCK]
+        DEFAULT_LOCK
       );
 
       const stakeBalanceBefore = await stakingERC721.balanceOf(stakerA.address)
@@ -927,7 +927,7 @@ describe("StakingERC721", () => {
     it("Emits Staked event when calling with lock", async () => {
       await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdD);
 
-      await expect(stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], [DEFAULT_LOCK]))
+      await expect(stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK))
         .to.emit(stakingERC721, STAKED_EVENT)
         .withArgs(stakerB.address, tokenIdD, config.stakingToken);
 
@@ -955,7 +955,7 @@ describe("StakingERC721", () => {
       await expect(await stakingERC721.connect(stakerB).stakeWithLock(
         [tokenIdE, tokenIdF],
         [emptyUri, emptyUri],
-        [DEFAULT_LOCK, DEFAULT_LOCK]
+        DEFAULT_LOCK
       )).to.emit(stakingERC721, STAKED_EVENT)
         .withArgs(stakerB.address, tokenIdE, config.stakingToken)
         .to.emit(stakingERC721, STAKED_EVENT)
@@ -1070,7 +1070,7 @@ describe("StakingERC721", () => {
       }
 
       try {
-        await localStakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], [DEFAULT_LOCK]);
+        await localStakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
       } catch (e : unknown) {
         expect((e as Error).message).to.include(FUNCTION_SELECTOR_ERR);
       }
@@ -1119,7 +1119,7 @@ describe("StakingERC721", () => {
       
       // To be sure balance check isn't the failure, we give balance of many NFTs so the
       // number is similar
-      const pendingRewardsTotal = await localStakingERC721.connect(stakerA).getTotalPendingRewards();
+      const pendingRewardsTotal = await localStakingERC721.connect(stakerA).getPendingRewards();
       const pendingRewards = await localStakingERC721.connect(stakerA).getPendingRewards();
 
       const bal = await stakingToken.balanceOf(await localStakingERC721.getAddress())
@@ -1275,12 +1275,12 @@ describe("StakingERC721", () => {
       // at 1 year, check pending rewards
       // the min stake lock value is what is > the non-locked funds rewards
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], [arm]);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], arm);
 
       await time.increase(DEFAULT_LOCK);
 
-      const rewardsA = await stakingERC721.connect(stakerA).getTotalPendingRewards();
-      const rewardsB = await stakingERC721.connect(stakerB).getTotalPendingRewards();
+      const rewardsA = await stakingERC721.connect(stakerA).getPendingRewards();
+      const rewardsB = await stakingERC721.connect(stakerB).getPendingRewards();
 
       console.log(hre.ethers.formatEther(rewardsA.toString()));
       console.log(hre.ethers.formatEther(rewardsB.toString()));

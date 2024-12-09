@@ -107,7 +107,8 @@ const calculateRewardsMultiplier = (lockDuration : bigint) => {
   ) / hre.ethers.parseEther("1");
 }
 
-export const getStakeValue = (amount : bigint, lockDuration : bigint, config : BaseConfig) => {
+// TODO unlocked and locked will have diff funcs
+export const calcStakeValue = (amount : bigint, lockDuration : bigint, config : BaseConfig) => {
   const rewardsMultiplier = lockDuration === 0n ? 1n : calculateRewardsMultiplier(lockDuration);
   const divisor = lockDuration === 0n ? 1000n : 100000n;
   const timeDuration = lockDuration === 0n ? 1n : lockDuration;
@@ -116,6 +117,11 @@ export const getStakeValue = (amount : bigint, lockDuration : bigint, config : B
   return rewards;
 }
 
-// rewards locked at two different times, are they two different APRs?
-// eg 1 year compared to 30 days extrapolated out to one year
-// calc all rewards that accepts array of RMs
+// unlocked funds
+export const calcInterimValue = (
+  amount : bigint,
+  timePassed : bigint,
+  config : BaseConfig
+) => {
+  return amount * config.rewardsPerPeriod * timePassed / config.periodLength / config.divisor;
+};

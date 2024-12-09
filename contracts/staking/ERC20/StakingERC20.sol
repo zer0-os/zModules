@@ -5,7 +5,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
-import { AStakingBase } from "../AStakingBase.sol";
 
 import { console } from "hardhat/console.sol";
 
@@ -14,7 +13,7 @@ import { console } from "hardhat/console.sol";
  * @notice A staking contract for ERC20 tokens
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
-contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
+contract StakingERC20 is StakingBase, IStakingERC20 {
     // TODO when ERC20Voter token is ready add here
 
     using SafeERC20 for IERC20;
@@ -49,7 +48,7 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
      * @param lockDuration The duration of the lock period
      */
     function stakeWithLock(uint256 amount, uint256 lockDuration) external override {
-        _stakeNew(amount, lockDuration);
+        _stake(amount, lockDuration);
     }
 
     /**
@@ -60,7 +59,7 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
      * @param amount The amount to stake
      */
     function stakeWithoutLock(uint256 amount) external override {
-        _stakeNew(amount, 0);
+        _stake(amount, 0);
     }
 
     /**
@@ -72,16 +71,15 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
         Staker storage staker = stakers[msg.sender];
 
         // Get rewards they've accumulated already as well as any pending rewards from their last timestamp
-        uint256 rewards = staker.owedRewards + _getPendingRewards(staker, false);
+        uint256 rewards = _getPendingRewards(staker);
 
         staker.owedRewards = 0;
         staker.lastTimestamp = block.timestamp;
 
-        if (staker.unlockedTimestamp != 0 && staker.unlockedTimestamp < block.timestamp) {
-
-            // They have locked funds that have past their lock duration, and possibly more
-            // If additional time beyond lock duration, add owed rewards at 1.0 rate
-            rewards += staker.owedRewardsLocked + _getPendingRewards(staker, true);
+        if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
+            // If the above is true, the rewards will have already been accounted for in
+            // the first `_getPendingRewards` call
+            // We only need to update here
             staker.owedRewardsLocked = 0;
             staker.lastTimestampLocked = block.timestamp;
         }
@@ -126,27 +124,12 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
     }
 
     function getPendingRewards() public view override returns (uint256) {
-        return stakers[msg.sender].owedRewards + _getPendingRewards(stakers[msg.sender], false);
+        return _getPendingRewards(stakers[msg.sender]);
     }
-
-    function getPendingRewardsLocked() public view override returns (uint256) {
-        return stakers[msg.sender].owedRewardsLocked + _getPendingRewards(stakers[msg.sender], true);
-    }
-
-    function getTotalPendingRewards() public view override returns (uint256) {
-        Staker storage staker = stakers[msg.sender];
-        // console.log("staker.owedRewards", staker.owedRewards);
-        // console.log("staker.owedRewardsLocked", staker.owedRewardsLocked);
-        // console.log("_getPendingRewards(staker, false)", _getPendingRewards(staker, false));
-        // console.log("_getPendingRewards(staker, true)", _getPendingRewards(staker, true));
-
-        // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` sum on stake,
-        // so we don't need to add it here as it would be double counted
-        return staker.owedRewards + staker.owedRewardsLocked + _getPendingRewards(staker, false);
-    }
-
 
     // TODO temp, just for debug
+    // should be base maybe
+    // could see users wanting to see this value
     function getStakeValue(uint256 amount, uint256 lockDuration) public view returns (uint256) {
         uint256 rewardsMultiplier = lockDuration == 0 ? 1 : _calcRewardsMultiplier(lockDuration);
         uint256 divisor = lockDuration == 0 ? 1000 : 100000;
@@ -169,7 +152,7 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
         return rewards;
     }
 
-    function _stakeNew(uint256 amount, uint256 lockDuration) internal {
+    function _stake(uint256 amount, uint256 lockDuration) internal {
         // TODO be sure when new locks come in after an old lock is expired
         // it is treated like a brand new lock
         if (amount == 0) {
@@ -181,7 +164,9 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
         if (lockDuration == 0) {
             // Get rewards they are owed from past unlocked stakes, if any
             // `_getPendingRewards` will return 0 if `amountStaked == 0`
-            staker.owedRewards += _getPendingRewards(staker, false);
+            uint256 interimRewards =  _getInterimRewards(staker, block.timestamp - staker.lastTimestamp, false);
+            // console.log("interimRewards", interimRewards);
+            staker.owedRewards += interimRewards;
             staker.lastTimestamp = block.timestamp;
             staker.amountStaked += amount;
         } else {
@@ -201,7 +186,7 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
             if (block.timestamp > staker.unlockedTimestamp) {
                 // If we have passed their previous lock duration entirely, then we 
                 // collect the rewards they are owed for the interim period at 1.0 RM and then
-                staker.owedRewards += _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp);
+                staker.owedRewards += _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp, true);
                 staker.unlockedTimestamp = incomingUnlockedTimestamp;
             } else if (incomingUnlockedTimestamp > staker.unlockedTimestamp) {
                 // When followup stakes with lock, the lock period is extended by a specified amount
@@ -296,7 +281,11 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
                 // If staker's funds are unlocked, we ignore exit
                 // We already added the value they are owed in stake when pre calculating
                 // now we just add the value they are owed for interim rewards
-                rewards = staker.owedRewardsLocked + _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp);
+                rewards = staker.owedRewardsLocked + _getInterimRewards(
+                    staker,
+                    block.timestamp - staker.unlockedTimestamp,
+                    true
+                );
             }
 
             // If removal of all locked funds and there are no non-locked funds, delete
@@ -321,7 +310,7 @@ contract StakingERC20 is StakingBase, AStakingBase, IStakingERC20 {
                 revert UnstakeMoreThanStake();
             }
 
-            rewards = staker.owedRewards + _getPendingRewards(staker, false);
+            rewards = staker.owedRewards + _getInterimRewards(staker, block.timestamp - staker.lastTimestamp, false);
 
             if (staker.amountStaked - amount == 0) {
                 if (staker.amountStakedLocked == 0) {
