@@ -106,10 +106,11 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claim() public override {
+    function claim(bool locked) public  {
         uint256 rewards = 
-            _claim(nftStakers[msg.sender].data, false) + 
-            _claim(nftStakers[msg.sender].data, true);
+        // THIS IS DOUBLING
+            _claim(nftStakers[msg.sender].data, locked);
+            // _claim(nftStakers[msg.sender].data, true);
 
         if (rewards == 0) {
             revert ZeroRewards();
@@ -325,7 +326,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                         // console.log("block.timestamp: %s", block.timestamp);
 
                         // console.log("claiming locked...");
-                        claim();
+                        _claim(nftStaker.data, true);
                     }
                     _unstake(_tokenIds[i]);
                     --nftStaker.data.amountStakedLocked;
@@ -345,7 +346,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     // console.log("call claim");
 
                     // If already called in this loop, it will have updated lastTimestamp, don't call again
-                    claim();
+                    _claim(nftStaker.data, false);
                 }
                 // console.log("call unstake");
                 _unstake(_tokenIds[i]);

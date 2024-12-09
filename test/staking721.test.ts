@@ -23,6 +23,7 @@ import {
   DEFAULT_LOCK_ADJUSTMENT,
   DAY_IN_SECONDS,
   calcStakeValue,
+  calcInterimValue,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -581,13 +582,17 @@ describe("StakingERC721", () => {
       const stakerData = await stakingERC721.nftStakers(stakerB.address);
 
       const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
-      const pendingRewardsTotal = await stakingERC721.connect(stakerB).getPendingRewards();
 
       const stakeValue = calcStakeValue(1n, DEFAULT_LOCK, config);
 
-      expect(pendingRewards).to.eq(stakeValue);
-      expect(pendingRewards).to.eq(stakerData.owedRewardsLocked);
-      // expect(pendingRewardsLocked).to.eq(pendingRewards); // no non-locked funds, so no rewards
+      expect(pendingRewards).to.eq(0n); // 0 as not passed lock time yet
+      expect(stakerData.owedRewardsLocked).to.eq(stakeValue);
+
+      await time.increase(DEFAULT_LOCK / 2n);
+      const pendingRewardsAfter = await stakingERC721.connect(stakerB).getPendingRewards();
+      expect(pendingRewardsAfter).to.eq(stakerData.owedRewardsLocked);
+
+
     });
 
     it("Returns 0 for users that have not passed any time", async () => {
@@ -620,18 +625,18 @@ describe("StakingERC721", () => {
 
       const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
 
-      await stakingERC721.connect(stakerA).claim();
+      await stakingERC721.connect(stakerA).claim(false);
       const claimedAt = BigInt(await time.latest());
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
-      const expectedRewards = calcTotalUnlockedRewards(
-        [claimedAt - stakedAt],
-        [1n],
+      const expectedRewards = calcInterimValue(
+        1n,
+        claimedAt - stakedAt,
         config
       );
 
-      expect(expectedRewards).to.eq(balanceAfter - balanceBefore);
+      expect(balanceAfter).to.eq(balanceBefore + expectedRewards);
 
       await time.increase(DEFAULT_LOCK / 2n);
 
@@ -640,7 +645,7 @@ describe("StakingERC721", () => {
 
       // On a follow up claim, confirm only rewards are given for the time since the previous
       // call to claim
-      await stakingERC721.connect(stakerA).claim();
+      await stakingERC721.connect(stakerA).claim(false);
       const secondClaimedAt = BigInt(await time.latest());
       const balanceAfterSecond = await rewardToken.balanceOf(stakerA.address);
 
@@ -668,14 +673,14 @@ describe("StakingERC721", () => {
 
       // The user cannot claim as not enough time has passed
       await expect(
-        stakingERC721.connect(stakerC).claim()
+        stakingERC721.connect(stakerC).claim(true)
       ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED_ERR);
     });
 
     it("Fails to claim when the caller has no stakes", async () => {
       // Will fail when we check `onlyUnlocked` modifier first
       await expect(
-        stakingERC721.connect(notStaker).claim()
+        stakingERC721.connect(notStaker).claim(false)
       ).to.be.revertedWithCustomError(stakingERC721, ZERO_REWARDS_ERR);
     });
   });
@@ -759,7 +764,7 @@ describe("StakingERC721", () => {
 
       // One period has passed, expect that rewards for one period were given
       const expectedRewards = calcLockedRewards(
-        unstakedAtLocked - unstakedAt,
+        unstakedAtLocked - unstakedAt + 1n,
         2n,
         stakerDataBefore.rewardsMultiplier,
         config
