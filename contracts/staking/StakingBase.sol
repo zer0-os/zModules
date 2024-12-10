@@ -99,13 +99,19 @@ contract StakingBase is Ownable, IStakingBase {
         return staker.unlockedTimestamp - block.timestamp;
     }
 
-    // todo temp
+    // TODO keep this? cant really get unlocked stake value ahead of time
+    // might still be useful
     function getUnlockedStakeValue(uint256 amount, uint256 timePassed) public view returns(uint256) {
         return amount * rewardsPerPeriod * timePassed / periodLength / 1000;
     }
 
-    // todo temp
-    function getLockedStakeValue(uint256 amount, uint256 lockDuration) public view returns(uint256) {
+    /**
+     * @notice Get the potential value of a locked stake
+     * 
+     * @param amount Amount to be staked
+     * @param lockDuration The length in seconds of the lock duration
+     */
+    function getLockedStakeValue(uint256 amount, uint256 lockDuration) public view override returns(uint256) {
         return _getStakeValue(amount, lockDuration);
     }
 
@@ -168,16 +174,6 @@ contract StakingBase is Ownable, IStakingBase {
         }
     }
 
-    // TODO TEMP for testing
-    function getRewardsMultiplier(uint256 lock) public pure returns(uint256) {
-        return _calcRewardsMultiplier(lock);
-    }
-
-    // TODO testing debug
-    function getRewardsMultiplierSimple(uint256 lock) public pure returns(uint256) {
-        return _calcRewardsMultiplierSimple(lock);
-    }
-
     /**
      * @dev Locked rewards receive a multiplier based on the length of the lock
      * @param lock The length of the lock in seconds
@@ -200,25 +196,6 @@ contract StakingBase is Ownable, IStakingBase {
 
         return 1 + 1e14 * 10 * ( (lock * 10 ) / 259) / 1e18;
         // return 101 + 1e14 * 10 * ( (lock * 10 ) / 365) / 1e18;
-    }
-
-    // Backup function using simpler multipliers to avoid uintended side effects
-    // from the math above, like having to have minimum lock durations
-    function _calcRewardsMultiplierSimple(uint256 lock) internal pure returns(uint256 multiplier) {
-        if (lock < 30 days) return 110;
-        if (lock < 60 days) return 120;
-        if (lock < 90 days) return 130;
-        if (lock < 120 days) return 140;
-        if (lock < 150 days) return 150;
-        if (lock < 180 days) return 190;
-        if (lock < 210 days) return 240;
-        if (lock < 240 days) return 300;
-        if (lock < 270 days) return 370;
-        if (lock < 300 days) return 450;
-        if (lock < 330 days) return 540;
-        if (lock < 365 days) return 640;
-        if (lock == 365 days) return 800;
-        if (lock > 365 days) return 1000;
     }
 
     function _getContractRewardsBalance() internal view returns (uint256) {
