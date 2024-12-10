@@ -16,14 +16,9 @@ export const OPERATOR_ALREADY_ASSIGNED_ERR = "OperatorAlreadyAssigned";
 export const OPERATOR_NOT_ASSIGNED_ERR = "OperatorNotAssigned";
 
 // StakingERC20
-<<<<<<< HEAD
 export const ZERO_VALUE_ERR = "ZeroValue";
 export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
 export const ZERO_REWARDS_ERR = "ZeroRewards";
-=======
-export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
-export const ZERO_UNSTAKE_ERR = "ZeroUnstake";
->>>>>>> master
 
 // StakingERC721
 export const ZERO_STAKE_ERR = "ZeroStake";
