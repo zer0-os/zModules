@@ -55,7 +55,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
-        uint256 _lockAdjustment,
         address _contractOwner
     )
         ERC721(name, symbol)
@@ -64,7 +63,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             _rewardsToken,
             _rewardsPerPeriod,
             _periodLength,
-            _lockAdjustment,
             _contractOwner
         )
     {

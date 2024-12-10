@@ -78,7 +78,6 @@ describe("StakingERC20", () => {
         config.rewardsToken,
         config.rewardsPerPeriod,
         config.periodLength,
-        config.lockAdjustment,
         owner.address
       ) as StakingERC20;
 

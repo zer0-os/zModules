@@ -137,7 +137,6 @@ describe("StakingERC721", () => {
         config.rewardsToken,
         config.rewardsPerPeriod,
         config.periodLength,
-        config.lockAdjustment,
         owner.address
       );
   
@@ -262,7 +261,6 @@ describe("StakingERC721", () => {
         rewardTokenAddress,
         config.rewardsPerPeriod,
         config.periodLength,
-        config.lockAdjustment,
         owner.address
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
@@ -276,7 +274,6 @@ describe("StakingERC721", () => {
         hre.ethers.ZeroAddress,
         config.rewardsPerPeriod,
         config.periodLength,
-        config.lockAdjustment,
 
         owner.address
       )
@@ -291,7 +288,6 @@ describe("StakingERC721", () => {
         rewardToken.target,
         0, // rewards per period
         config.periodLength,
-        config.lockAdjustment,
         owner.address
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
@@ -1174,7 +1170,6 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
-        localConfig.lockAdjustment,
         owner.address
       ) as StakingERC721;
 
@@ -1220,7 +1215,6 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
-        localConfig.lockAdjustment,
         owner.address
       ) as StakingERC721;
 
@@ -1282,7 +1276,6 @@ describe("StakingERC721", () => {
           localConfig.rewardsToken,
           localConfig.rewardsPerPeriod,
           localConfig.periodLength,
-          localConfig.lockAdjustment,
           owner.address
         );
       } catch (e : unknown) {
@@ -1313,7 +1306,6 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
-        localConfig.lockAdjustment,
         owner.address
       ) as StakingERC721;
 
@@ -1338,44 +1330,6 @@ describe("StakingERC721", () => {
         expect((e as Error).message).to.include(NO_REWARDS_BALANCE_ERR);
       }
     });
-
-    it("", async () => {
-      /** Script
-       * stakerA stakes A, B, C
-       * stakerB stakes D, E, F
-       * stakerA tries to claim, fails
-       * stakerB tries to claim, fails
-       * time passes
-       * stakerA claims rewards
-       * stakerB tries to claim, fails
-       * stakerC tries to stake H and G, fails as doesnt own G
-       * stakerC stakes H and I
-       * stakerB unstakes D
-       * stakerB stakes G
-       * stakerA unstakes all tokens, A, B, and C
-       * stakerC tries to claim, fails
-       * time passes
-       * stakerC claims rewards
-       * stakerB unstakes E and F
-       * stakerB transfers D to stakerA
-       * stakerB transfers E to stakerC
-       * stakerB tries to transfer sNFT of G to stakerC, fails
-       * stakerC claims rewards
-       * stakerA stakes A, B
-       * stakerA tries to unstake A, fails
-       * stakerA stakes C and D
-       * stakerB exits with G
-       * stakerC unstakes H and I
-       * stakerA tries to claim, fails
-       * time passes
-       * stakerA tries to claim, no rewards left in contract
-       * stakerA exits with A, B, C, and D
-       */
-
-
-    });
-
-    
   });
 
   describe("Utility functions", () => {

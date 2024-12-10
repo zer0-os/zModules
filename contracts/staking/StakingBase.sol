@@ -45,14 +45,14 @@ contract StakingBase is Ownable, IStakingBase {
     /**
      * @notice The amount of time to add to a user's lock period after any follow up stakes
      */
-    uint256 public lockAdjustment; // TODO leaving for now but may not need
+    // uint256 public lockAdjustment; // TODO leaving for now but may not need
 
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
-        uint256 _lockAdjustment,
+        // uint256 _lockAdjustment,
         address _contractOwner
     ) Ownable(_contractOwner) {
         if (
@@ -66,45 +66,6 @@ contract StakingBase is Ownable, IStakingBase {
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
         periodLength = _periodLength;
-        lockAdjustment = _lockAdjustment;
-    }
-
-    function _adjustLock(Staker storage staker) internal {
-        /** TODO
-         * A) Add half of the remaining lock time
-         * B) Add half of the original lock duration
-         * C) Add the lock adjustment value
-         */
-        // TODO how to % without gameable / exploit
-        // dont want to punish people for adding more money
-        // be sure tie rewards to length of time
-
-        // todo adjust reward multiplier AND lock time together when they restake
-        // ratio has to be balanced with multiplier, higher RM is longer time
-        // add the length of time they specify perhaps
-
-        // add locks together, add RM together, calc average
-        // 
-
-        // staker.unlockedTimestamp += remainingLock / 2;
-        // staker.unlockedTimestamp += lockAdjustment;
-        staker.unlockedTimestamp += staker.lockDuration / 2;
-
-        // if stake a second time, and first lock is over, claim for first lock then restake and start new deposit
-        // give brand new RM and lock time from what their adding
-
-        // if lock has passed but they claim later than that it goes to regular non-locked rate for that extra time
-
-        /**
-         * T1 : 1000 for 15 periods, get RM 1.5
-         *  
-         * T10 : 500 more for 30 periods, get RM for this first, say 3.0, can precalc rewards we know they will get
-         * 
-         * (1000 * 5periods * 1.5) + (500 * 30periods * 3.0)
-         * 
-         * 
-         * can only append to previous stake? maybe?
-         */
     }
 
     /**
@@ -126,12 +87,6 @@ contract StakingBase is Ownable, IStakingBase {
      */
     function getContractRewardsBalance() external view override returns (uint256) {
         return _getContractRewardsBalance();
-    }
-
-    // TODO do we want to use lock adjustment? probably not, but keep as option for discussion
-    function setLockAdjustment(uint256 _lockAdjustment) public override onlyOwner {
-        lockAdjustment = _lockAdjustment;
-        emit LockAdjustmentSet(msg.sender, _lockAdjustment);
     }
 
     ////////////////////////////////////
