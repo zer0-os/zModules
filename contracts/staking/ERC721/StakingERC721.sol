@@ -8,7 +8,6 @@ import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extension
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 
-
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
@@ -70,7 +69,10 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function stake(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris
-    ) external override {
+    ) external override nonReentrant {
+        if (tokenIds.length == 0) revert ZeroStake();
+        if (tokenIds.length != tokenUris.length) revert ArrayLengthMismatch();
+
         Staker storage staker = stakers[msg.sender];
 
         _checkRewards(staker);
@@ -93,7 +95,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @param tokenIds Array of tokenIds to be unstaked by the caller
      * @param exit Flag for if the user would like to exit without rewards
      */
-    function unstake(uint256[] memory tokenIds, bool exit) external override {
+    function unstake(uint256[] memory tokenIds, bool exit) external override nonReentrant {
+        if (tokenIds.length == 0) revert ZeroUnstake();
+
         Staker storage staker = stakers[msg.sender];
 
         if (!exit) _onlyUnlocked(staker.unlockTimestamp);
@@ -108,19 +112,14 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
 
         if (!exit) {
-            _baseClaim(staker);
+            _baseClaim(staker, tokenIds.length);
         } else {
             // Snapshot their pending rewards
             staker.owedRewards = _getPendingRewards(staker);
         }
 
-        // if `numStaked < tokenIds.length` it will have already failed above
-        // so we don't need to check that here
-        staker.amountStaked -= tokenIds.length;
-
-        if (staker.amountStaked == 0) {
-            delete stakers[msg.sender];
-        } else {
+        if (staker.amountStaked != 0) {
+            staker.amountStaked -= tokenIds.length;
             staker.lastUpdatedTimestamp = block.timestamp;
         }
     }
@@ -224,10 +223,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
-
     /**
      * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
      */
@@ -243,5 +238,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
 
         return super._update(to, tokenId, auth);
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
     }
 }

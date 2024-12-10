@@ -8,13 +8,22 @@ import { getMatchEvents } from "./helpers/match/events";
 import {
   ARRAY_MISMATCH_ERR,
   INSUFFICIENT_FUNDS_ERR,
-  INVALID_MATCH_ERR,
+  INVALID_MATCH_ERR, INVALID_PAYOUTS_ERR,
   MATCH_STARTED_ERR,
   NO_PLAYERS_ERR, NOT_AUTHORIZED_ERR,
-  OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR,
+  OWNABLE_UNAUTHORIZED_ERR, ZERO_ADDRESS_ERR, ZERO_MATCH_FEE_ERR,
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
-
+import {
+  TestIMatchDeployArgs,
+  contractNames,
+  runZModulesCampaign,
+} from "../src/deploy";
+import { ZModulesMatchDM } from "../src/deploy/missions/match.mission";
+import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mockERC20.mission";
+import { getCampaignConfig } from "../src/deploy/campaign/environment";
+import { MongoDBAdapter } from "@zero-tech/zdc";
+import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 
 const getPlayerBalances = async (
   players : Array<string>,
@@ -26,6 +35,7 @@ const getPlayerBalances = async (
     return [...newAcc, bal];
   }, Promise.resolve([])
 );
+
 
 describe("Match Contract",  () => {
   let mockERC20 : MockERC20;
@@ -44,12 +54,20 @@ describe("Match Contract",  () => {
   let feeVault : SignerWithAddress;
   let allPlayers : Array<SignerWithAddress>;
 
-  let mockERC20Address : string;
-  let matchAddress : string;
-
   let MatchFactory : Match__factory;
 
+  let dbAdapter : MongoDBAdapter;
+
+  let config : TestIMatchDeployArgs;
+
+  let tokenForMatch : MockERC20;
+
+  const matchFee = ethers.parseEther("3.29");
+  const gameFeePercInitial = 1000n; // 10%
+  const gameFeePerc = 500n; // 5%
+
   before(async () => {
+    const mockTokens = process.env.MOCK_TOKENS === "true";
     [
       owner,
       player1,
@@ -73,114 +91,108 @@ describe("Match Contract",  () => {
       player6,
     ];
 
-    const MockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-    mockERC20 = await MockERC20Factory.deploy("MockToken", "MTK");
-    mockERC20Address = await mockERC20.getAddress();
+    const argsForDeployMatch = {
+      feeVault: feeVault.address,
+      owner: owner.address,
+      operators: [
+        operator1.address,
+        operator2.address,
+        operator3.address,
+      ],
+      gameFeePercentage: gameFeePercInitial,
+    };
+
+    const campaignConfig = getCampaignConfig({
+      mockTokens,
+      deployAdmin: owner,
+      postDeploy: {
+        tenderlyProjectSlug: "string",
+        monitorContracts: false,
+        verifyContracts: false,
+      },
+      matchConfig: argsForDeployMatch,
+    });
+
+    const campaign = await runZModulesCampaign({
+      config: campaignConfig,
+      missions: [
+        getMockERC20Mission({
+          tokenType: TokenTypes.general,
+        }),
+        ZModulesMatchDM,
+      ],
+    });
+
+    ({
+      dbAdapter,
+      match,
+      [`${contractNames.mocks.erc20.instance}${TokenTypes.general}`]: mockERC20,
+    } = campaign);
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
-    match = await MatchFactory.connect(owner).deploy(
-      mockERC20Address,
-      feeVault,
-      owner.address,
-      [ operator3.address ]
-    );
-    matchAddress = await match.getAddress();
+
+    config = {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      ...campaignConfig.matchConfig!,
+      token: await mockERC20.getAddress(),
+    };
 
     await allPlayers.reduce(
       async (acc, player) => {
         await acc;
         await mockERC20.mint(player.address, ethers.parseEther("1000"));
-        await mockERC20.connect(player).approve(matchAddress, ethers.parseEther("1000"));
+        await mockERC20.connect(player).approve(match.target, ethers.parseEther("1000"));
       }, Promise.resolve()
     );
+  });
+
+  after(async () => {
+    await dbAdapter.dropDB();
+  });
+
+  it("Should #setGameFeePercentage() correctly", async () => {
+    const curGameFeePerc = await match.gameFeePercentage();
+    expect(curGameFeePerc).to.equal(gameFeePercInitial);
+    expect(curGameFeePerc).to.not.equal(gameFeePerc);
+
+    await match.connect(owner).setGameFeePercentage(gameFeePerc);
+
+    expect(await match.gameFeePercentage()).to.equal(gameFeePerc);
+  });
+
+  it("Should NOT allow operator to call #setGameFeePercentage()", async () => {
+    await expect(
+      match.connect(operator3).setGameFeePercentage(gameFeePerc)
+    ).to.be.revertedWithCustomError(match, OWNABLE_UNAUTHORIZED_ERR);
   });
 
   it("Should revert if feeVault is passed as 0x0 address", async () => {
     await expect(
       MatchFactory.connect(owner).deploy(
-        mockERC20Address,
+        mockERC20.target,
         ethers.ZeroAddress,
         owner.address,
-        [ operator3.address ]
+        [ operator3.address ],
+        gameFeePercInitial
       )
     ).to.be.revertedWithCustomError(match, ZERO_ADDRESS_ERR);
   });
 
   describe("Aux Operations", () => {
-    it("#canMatch() should correctly return players with missing funds", async () => {
-      const depositAmount = ethers.parseEther("11");
-      const feeAmt = ethers.parseEther("2.75");
-
-      await [
-        player1,
-        player2,
-        player4,
-      ].reduce(
-        async (acc, player) => {
-          await acc;
-          await match.connect(player).deposit(depositAmount);
-        }, Promise.resolve()
-      );
-
-      const unfundedPlayers = await match.canMatch(allPlayers, feeAmt);
-
-      expect(unfundedPlayers).to.deep.equal([
-        player3.address,
-        player5.address,
-        player6.address,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-      ]);
-
-      // check all valid
-      await [
-        player3,
-        player5,
-        player6,
-      ].reduce(
-        async (acc, player) => {
-          await acc;
-          await match.connect(player).deposit(depositAmount);
-        }, Promise.resolve()
-      );
-
-      const allPlayersFunded = await match.canMatch(allPlayers, ethers.parseEther("10"));
-      expect(allPlayersFunded).to.deep.equal([
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-        ethers.ZeroAddress,
-      ]);
-
-      // check all invalid
-      const allPlayersUnfunded = await match.canMatch(allPlayers, ethers.parseEther("10000000000000000000000000"));
-      expect(allPlayersUnfunded).to.deep.equal([
-        player1.address,
-        player2.address,
-        player3.address,
-        player4.address,
-        player5.address,
-        player6.address,
-      ]);
-    });
-
     it("#setFeeVault should set the address correctly and emit an event", async () => {
-      expect(await match.getFeeVault()).to.equal(feeVault.address);
+      expect(await match.feeVault()).to.equal(feeVault.address);
 
       await expect(
         match.connect(owner).setFeeVault(operator1.address)
       ).to.emit(match, "FeeVaultSet")
         .withArgs(operator1.address);
 
-      expect(await match.getFeeVault()).to.equal(operator1.address);
+      expect(await match.feeVault()).to.equal(operator1.address);
 
       // set back
       await match.connect(owner).setFeeVault(feeVault.address);
 
-      expect(await match.getFeeVault()).to.equal(feeVault.address);
+      expect(await match.feeVault()).to.equal(feeVault.address);
     });
 
     it("#setFeeVault() should revert if called by non-owner", async () => {
@@ -205,8 +217,6 @@ describe("Match Contract",  () => {
     let feeVaultBalanceBefore : bigint;
     let matchDataHash : string;
 
-    const matchFee = ethers.parseEther("3.29");
-    const gameFeeBase = ethers.parseEther("0.1");
     let payouts : Array<bigint>;
     let gameFee : bigint;
 
@@ -278,14 +288,14 @@ describe("Match Contract",  () => {
 
         balancesAfterStart = await getPlayerBalances(playerAddresses, match);
 
-        // get payouts for the tests below
+        // calculate reference values for the subsequent tests
         ({
           payouts,
           gameFee,
         } = getPayouts({
           playerCount: BigInt(allPlayers.length),
           matchFee,
-          gameFeeBase,
+          gameFeePerc,
         }));
       });
 
@@ -304,6 +314,12 @@ describe("Match Contract",  () => {
         await expect(match.startMatch(matchId, playerAddresses, matchFee))
           .to.be.revertedWithCustomError(match, MATCH_STARTED_ERR);
       });
+
+      it("Should fail when starting a match with 0 `matchFee`", async () => {
+        await expect(match.startMatch(2, playerAddresses, 0n))
+          .to.be.revertedWithCustomError(match, ZERO_MATCH_FEE_ERR)
+          .withArgs(2);
+      });
     });
 
     describe("#endMatch()", () => {
@@ -314,7 +330,6 @@ describe("Match Contract",  () => {
             [player1.address, player2.address],
             [ethers.parseEther("1"), ethers.parseEther("1")],
             ethers.parseEther("1"),
-            ethers.parseEther("0.1")
           )
         ).to.be.revertedWithCustomError(match, NOT_AUTHORIZED_ERR)
           .withArgs(player1.address);
@@ -327,10 +342,14 @@ describe("Match Contract",  () => {
             invalidMatchId,
             [player1.address, player2.address],
             [1n, 1n],
-            ethers.parseEther("1"),
-            ethers.parseEther("0.1")
+            ethers.parseEther("1")
           )
-        ).to.be.revertedWithCustomError(match, INVALID_MATCH_ERR);
+        ).to.be.revertedWithCustomError(match, INVALID_MATCH_ERR)
+          .withArgs(invalidMatchId, getMatchDataHash({
+            matchId: BigInt(invalidMatchId),
+            matchFee: ethers.parseEther("1"),
+            players: [player1.address, player2.address],
+          }));
       });
 
       it("Should fail if players and payouts array lengths mismatch", async () => {
@@ -339,33 +358,22 @@ describe("Match Contract",  () => {
             matchId,
             [player1.address, player2.address],
             [1n],
-            ethers.parseEther("1"),
-            ethers.parseEther("0.1")
+            ethers.parseEther("1")
           )
         ).to.be.revertedWithCustomError(match, ARRAY_MISMATCH_ERR);
       });
 
-      it("Should revert if payout amounts and/or gameFee are calculated incorrectly", async () => {
+      it("Should revert if payout amounts are calculated incorrectly", async () => {
         const invalidPayouts = [1n, 1n, 1n, 1n, 1n, 1n];
         await expect(
           match.endMatch(
             matchId,
             playerAddresses,
             invalidPayouts,
-            matchFee,
-            gameFee
+            matchFee
           )
-        ).to.be.revertedWithCustomError(match, INVALID_MATCH_ERR);
-
-        await expect(
-          match.endMatch(
-            matchId,
-            playerAddresses,
-            payouts,
-            matchFee,
-            gameFeeBase // using a gameFeeBase that is less than gameFee, so it fails
-          )
-        ).to.be.revertedWithCustomError(match, INVALID_MATCH_ERR);
+        ).to.be.revertedWithCustomError(match, INVALID_PAYOUTS_ERR)
+          .withArgs(matchId);
       });
 
       it("Should end the match and emit event with correct parameters", async () => {
@@ -386,8 +394,7 @@ describe("Match Contract",  () => {
           matchId,
           playerAddresses,
           payouts,
-          matchFee,
-          gameFee
+          matchFee
         );
 
         const [{
@@ -460,8 +467,6 @@ describe("Match Contract",  () => {
 
   describe("Access Control", () => {
     it("owner, operators assigned at deploy and operators assigned later should have appropriate rights", async () => {
-      await match.connect(owner).addOperators([operator1.address, operator2.address]);
-
       const operators = [
         owner,
         operator1,
@@ -476,7 +481,6 @@ describe("Match Contract",  () => {
       await match.connect(player4).deposit(depositAmt);
 
       const matchFeeAC = ethers.parseEther("1");
-      const gameFeeBaseAC = ethers.parseEther("0.1");
 
       const players = [
         player1.address,
@@ -499,11 +503,10 @@ describe("Match Contract",  () => {
 
           const {
             payouts: payoutsAC,
-            gameFee: gameFeeAC,
           } = getPayouts({
             playerCount: BigInt(players.length),
             matchFee: matchFeeAC,
-            gameFeeBase: gameFeeBaseAC,
+            gameFeePerc,
           });
 
           await expect(
@@ -511,8 +514,7 @@ describe("Match Contract",  () => {
               idx + 1,
               players,
               payoutsAC,
-              matchFeeAC,
-              gameFeeAC
+              matchFeeAC
             )
           ).to.be.fulfilled;
 
@@ -536,6 +538,114 @@ describe("Match Contract",  () => {
       // set back
       await match.connect(operator2).setFeeVault(feeVault.address);
       await match.connect(player1).transferOwnership(owner.address);
+    });
+  });
+
+  describe("Deploy", () => {
+    it("Deployed contract should exist in the DB", async () => {
+      const nameOfContract = contractNames.match.contract;
+      const addressOfContract = await match.getAddress();
+      const contractFromDB = await dbAdapter.getContract(nameOfContract);
+      const matchArtifact = await hre.artifacts.readArtifact(contractNames.match.contract);
+
+      expect({
+        addrs: contractFromDB?.address,
+        label: contractFromDB?.name,
+        abi: JSON.stringify(matchArtifact.abi),
+      }).to.deep.equal({
+        addrs: addressOfContract,
+        label: nameOfContract,
+        abi: contractFromDB?.abi,
+      });
+    });
+
+    it("Should be deployed with correct args", async () => {
+      const expectedArgs = {
+        token: await match.token(),
+        feeVault: await match.feeVault(),
+        owner: await match.owner(),
+      };
+
+      expect(expectedArgs.token).to.eq(mockERC20.target);
+      expect(expectedArgs.feeVault).to.eq(config.feeVault);
+      expect(expectedArgs.owner).to.eq(config.owner);
+
+      for (const operator of config.operators) {
+        await match.isOperator(operator);
+      }
+    });
+
+    it("Should have correct db and contract versions", async () => {
+      const tag = await acquireLatestGitTag();
+      const contractFromDB = await dbAdapter.getContract(contractNames.match.contract);
+      const dbDeployedV = await dbAdapter.versioner.getDeployedVersion();
+
+      expect({
+        dbVersion: contractFromDB?.version,
+        contractVersion: dbDeployedV?.contractsVersion,
+      }).to.deep.equal({
+        dbVersion: dbDeployedV?.dbVersion,
+        contractVersion: tag,
+      });
+    });
+  });
+
+  describe("Separate tokens", () => {
+    let match2 : Match;
+    before(async () => {
+      [
+        owner,
+        operator1,
+        operator2,
+        operator3,
+        feeVault,
+      ] = await hre.ethers.getSigners();
+
+      const tokenForMatchFactory = await hre.ethers.getContractFactory("MockERC20");
+      tokenForMatch = await tokenForMatchFactory.deploy("Meow", "MEOW");
+
+      const argsForDeployMatch = {
+        token: await tokenForMatch.getAddress(),
+        feeVault: feeVault.address,
+        owner: owner.address,
+        operators: [
+          operator1.address,
+          operator2.address,
+          operator3.address,
+        ],
+        gameFeePercentage: gameFeePercInitial,
+      };
+
+      const campaignConfig = getCampaignConfig({
+        mockTokens: false,
+        deployAdmin: owner,
+        postDeploy: {
+          tenderlyProjectSlug: "string",
+          monitorContracts: false,
+          verifyContracts: false,
+        },
+        matchConfig: argsForDeployMatch,
+      });
+
+      const campaign = await runZModulesCampaign({
+        config: campaignConfig,
+        missions: [
+          ZModulesMatchDM,
+        ],
+      });
+
+      ({
+        match: match2,
+        dbAdapter,
+      } = campaign);
+    });
+
+    after(async () => {
+      await dbAdapter.dropDB();
+    });
+
+    it("Should deploy contract with mock, provided separetely from campaign", async () => {
+      expect(await match2.token()).to.eq(await tokenForMatch.getAddress());
     });
   });
 });

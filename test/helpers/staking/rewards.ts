@@ -20,4 +20,12 @@ export const calcRewardsAmount = (
   stakeAmount : bigint,
   rewardsPerPeriod : bigint,
   periodLength : bigint
-) : bigint => rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+) : bigint => {
+
+  // The amount of a single time period that has passed, used for fractional rewards
+  const fractionOfPeriod = timePassed % periodLength;
+
+  const fullPeriodRewards = rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+
+  return fullPeriodRewards + (fractionOfPeriod * (rewardsPerPeriod * stakeAmount) / periodLength);
+};

@@ -11,10 +11,12 @@ import {
   DEFAULT_LOCK_TIME,
   DEFAULT_PERIOD_LENGTH,
   DEFAULT_REWARDS_PER_PERIOD,
-} from "./constants";
+} from "../constants";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 export const createDefaultConfigs = async (
   rewardsERC20 : MockERC20,
+  contractOwner : SignerWithAddress,
   erc721 ?: MockERC721,
   stakeERC20 ?: MockERC20,
 ) => {
@@ -25,6 +27,7 @@ export const createDefaultConfigs = async (
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
+      contractOwner,
     } as BaseConfig;
   } else if (stakeERC20) {
     return {
@@ -33,6 +36,7 @@ export const createDefaultConfigs = async (
       rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD,
       periodLength: DEFAULT_PERIOD_LENGTH,
       timeLockPeriod: DEFAULT_LOCK_TIME,
+      contractOwner,
     } as BaseConfig;
   }
 
