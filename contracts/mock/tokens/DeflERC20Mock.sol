@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 
 import { MockERC20 } from "./MockERC20.sol";
 
-
+/* solhint-disable */
 contract DeflERC20Mock is MockERC20 {
     // 10% fee that is burned for each transaction
     uint8 private _fee = 10;

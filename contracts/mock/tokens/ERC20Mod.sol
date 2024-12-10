@@ -8,6 +8,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/* solhint-disable */
 
 /**
  * @dev OpenZeppelin ERC20 copied and slightly modified to make state vars internal, so they can be used

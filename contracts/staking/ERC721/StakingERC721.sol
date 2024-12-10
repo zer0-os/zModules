@@ -9,7 +9,8 @@ import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extension
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 
-// TODO remove when complete
+/* solhint-disable no-console */
+// TODO remove when ready
 import { console } from "hardhat/console.sol";
 
 
@@ -35,7 +36,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @notice Mapping that includes ERC721 specific data for each staker
      */
-    mapping(address staker => NFTStaker) public nftStakers;
+    mapping(address staker => NFTStaker nftStaker) public nftStakers;
 
     /**
      * @notice Revert if a call is not from the SNFT owner
@@ -112,7 +113,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
 
         if (_getContractRewardsBalance() < rewards) {
-            revert NoRewardsLeftInContract();
+            revert InsufficientContractBalance();
         }
 
         rewardsToken.safeTransfer(msg.sender, rewards);
@@ -127,7 +128,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function unstake(
         uint256[] memory tokenIds,
         bool exit
-    ) external override {
+    ) public override {
         _unstakeMany(tokenIds, exit);
     }
 
@@ -139,7 +140,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @param exit Flag for unstaking a token regardless of if it is unlocked or not. 
      * if a token is not unlocked but `exit` is true, it will be unstaked without reward
      */
-    function unstakeAll(bool exit) public {
+    function unstakeAll(bool exit) public override {
         _unstakeMany(nftStakers[msg.sender].tokenIds, exit);
     }
 
@@ -147,7 +148,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /* Token Functions */
     ////////////////////////////////////
 
-    function setBaseURI(string memory baseUri) external override onlyOwner {
+    function setBaseURI(string memory baseUri) public override onlyOwner {
         baseURI = baseUri;
         emit BaseURIUpdated(baseUri);
     }
@@ -155,11 +156,11 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function setTokenURI(
         uint256 tokenId,
         string memory tokenUri
-    ) external virtual override onlyOwner {
+    ) public virtual override onlyOwner {
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function getInterfaceId() external pure override returns (bytes4) {
+    function getInterfaceId() public pure override returns (bytes4) {
         return type(IStakingERC721).interfaceId;
     }
 
@@ -168,7 +169,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         address,
         uint256,
         bytes calldata
-    ) external pure override returns (bytes4) {
+    ) public pure override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
@@ -236,7 +237,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 // User may have already finished their previous lock period
                 // if so, grab interim rewards before update
                 if (_getRemainingLockTime(nftStaker.data) == 0) {
-                    nftStaker.data.owedRewardsLocked += _getInterimRewards(nftStaker.data, block.timestamp - nftStaker.data.unlockedTimestamp, true);
+                    nftStaker.data.owedRewardsLocked +=
+                        _getInterimRewards(nftStaker.data, block.timestamp - nftStaker.data.unlockedTimestamp, true);
                 }
 
                 nftStaker.data.unlockedTimestamp = incomingUnlockedTimestamp;
@@ -323,7 +325,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     isAction = true;
                 } else if (_getRemainingLockTime(nftStaker.data) == 0) {
                     // only unstake if they are passed their lock time
-
                     _unstake(_tokenIds[i]);
                     --nftStaker.data.amountStakedLocked;
                     isAction = true;
@@ -337,11 +338,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 }
             } else {
                 // stake was never locked
-                // console.log("not locked");
-                if (nftStaker.data.lastTimestamp != block.timestamp) {
-
-                }
-                // console.log("call unstake");
                 _unstake(_tokenIds[i]);
                 --nftStaker.data.amountStaked;
                 isAction = true;
@@ -358,7 +354,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
 
         if (rewards > 0 && _getContractRewardsBalance() < rewards) {
-            revert NoRewardsLeftInContract();
+            revert InsufficientContractBalance();
         }
 
         rewardsToken.safeTransfer(msg.sender, rewards);

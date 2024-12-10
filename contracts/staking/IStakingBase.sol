@@ -101,10 +101,10 @@ interface IStakingBase {
     error ZeroRewards();
 
     /**
-     * @notice Throw when there are no rewards remaining in the pool
-     * to give to stakers
+     * @notice Throw when the contract requires additional funding to
+     * be able to match owed rewards
      */
-    error NoRewardsLeftInContract();
+    error InsufficientContractBalance();
 
     /**
      * @notice Throw when passing zero values to set a state var
@@ -115,6 +115,5 @@ interface IStakingBase {
 
     function getContractRewardsBalance() external view returns (uint256);
 
-    function getLockedStakeValue(uint256 amount, uint256 lockDuration) external view returns(uint256);
-
+    function getStakeValue(uint256 amount, uint256 lockDuration) external view returns(uint256);
 }

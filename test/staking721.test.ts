@@ -20,10 +20,10 @@ import {
   calcTotalUnlockedRewards,
   PRECISION_DIVISOR,
   LOCKED_PRECISION_DIVISOR,
-  DEFAULT_LOCK_ADJUSTMENT,
   DAY_IN_SECONDS,
   calcStakeValue,
   calcInterimValue,
+  DEFAULT_STAKED_AMOUNT,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -33,7 +33,7 @@ import {
   INCORRECT_OWNER_ERR,
   INVALID_OWNER_ERR,
   NONEXISTENT_TOKEN_ERR,
-  NO_REWARDS_BALANCE_ERR,
+  INSUFFICIENT_CONTRACT_BALANCE_ERR,
   TIME_LOCK_NOT_PASSED_ERR, INSUFFICIENT_APPROVAL_721_ERR, OWNABLE_UNAUTHORIZED_ERR,
   ZERO_REWARDS_ERR,
   INVALID_UNSTAKE_ERR,
@@ -1158,7 +1158,6 @@ describe("StakingERC721", () => {
         timeLockPeriod: BigInt(1),
         divisor: PRECISION_DIVISOR,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
-        lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1203,7 +1202,6 @@ describe("StakingERC721", () => {
         timeLockPeriod: BigInt(1),
         divisor: PRECISION_DIVISOR,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
-        lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1229,7 +1227,7 @@ describe("StakingERC721", () => {
         // fail first
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
       } catch (e : unknown) {
-        expect((e as Error).message).to.include(NO_REWARDS_BALANCE_ERR);
+        expect((e as Error).message).to.include(INSUFFICIENT_CONTRACT_BALANCE_ERR);
       }
       
       // To be sure balance check isn't the failure, we give balance of many NFTs so the
@@ -1263,7 +1261,6 @@ describe("StakingERC721", () => {
         timeLockPeriod: BigInt(50),
         divisor: PRECISION_DIVISOR,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
-        lockAdjustment: DEFAULT_LOCK_ADJUSTMENT
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1294,7 +1291,6 @@ describe("StakingERC721", () => {
         timeLockPeriod: BigInt(1),
         divisor: PRECISION_DIVISOR,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
-        lockAdjustment: DEFAULT_LOCK
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1327,7 +1323,7 @@ describe("StakingERC721", () => {
       try {
         await localStakingERC721.connect(stakerA).claim();
       } catch (e) {
-        expect((e as Error).message).to.include(NO_REWARDS_BALANCE_ERR);
+        expect((e as Error).message).to.include(INSUFFICIENT_CONTRACT_BALANCE_ERR);
       }
     });
   });
@@ -1342,19 +1338,23 @@ describe("StakingERC721", () => {
       // that try to exploit the system, and having a "minimum" lock period makes sense
       // increasing period length in calcs makes min lock time smaller
       const arm = DAY_IN_SECONDS * 30n
-      const rm = await stakingERC721.connect(owner).getRewardsMultiplier(arm);
+      const stakeValue = await stakingERC721.connect(owner).getLockedStakeValue(1n, arm);
       // console.log(rm);
 
       // stake lock 1 year, stake without lock
       // at 1 year, check pending rewards
       // the min stake lock value is what is > the non-locked funds rewards
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
-      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], arm);
+      // await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], arm);
 
-      await time.increase(DEFAULT_LOCK);
+      await time.increase(arm);
 
+      // The effective minimum lock time is when locked rewarrds surpass unlocked rewards
       const rewardsA = await stakingERC721.connect(stakerA).getPendingRewards();
-      const rewardsB = await stakingERC721.connect(stakerB).getPendingRewards();
+      // console.log(rewardsA.toString());
+      // console.log(stakeValue);
+      // console.log("bigger? ", rewardsA > stakeValue);
+      // const rewardsB = await stakingERC721.connect(stakerB).getPendingRewards();
 
       // console.log(hre.ethers.formatEther(rewardsA.toString()));
       // console.log(hre.ethers.formatEther(rewardsB.toString()));
@@ -1420,7 +1420,7 @@ describe("StakingERC721", () => {
     it("#withdrawLeftoverRewards() should revert if contract balance is 0", async () => {
       await expect(
         stakingERC721.connect(owner).withdrawLeftoverRewards()
-      ).to.be.revertedWithCustomError(stakingERC721, NO_REWARDS_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(stakingERC721, INSUFFICIENT_CONTRACT_BALANCE_ERR);
     });
 
     it("#withdrawLeftoverRewards() should only be callable by the owner", async () => {

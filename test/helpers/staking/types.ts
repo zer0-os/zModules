@@ -11,7 +11,6 @@ export interface BaseConfig {
   periodLength : bigint;
   divisor : bigint;
   lockedDivisor : bigint;
-  lockAdjustment : bigint;
 }
 
 // Simplify the Ethers V6 contract type

@@ -6,6 +6,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 
+/* solhint-disable no-console */
+// TODO remove when ready
 import { console } from "hardhat/console.sol";
 
 /**
@@ -65,7 +67,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     /**
      * @notice Claim all of the user's rewards that are currently available
      */
-    function claim() external {
+    function claim() external override {
         // transfer a user their owed rewards + any available pending rewards
         // if funds are locked, only transfer if they are past lock duration
         Staker storage staker = stakers[msg.sender];
@@ -87,9 +89,9 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // Do not transfer 0 rewards
         if (rewards == 0) revert ZeroRewards();
 
-        if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
+        if (_getContractRewardsBalance() < rewards) revert InsufficientContractBalance();
 
-        // Because we update update timestamps before transfer, any reentrancy attempt
+        // Because we update timestamps before transfer, any reentrancy attempt
         // will use the current timestamps and calculate to 0
         rewardsToken.safeTransfer(msg.sender, rewards);
 
@@ -127,31 +129,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         return _getPendingRewards(stakers[msg.sender]);
     }
 
-    // TODO temp, just for debug
-    // should be base maybe
-    // could see users wanting to see this value
-    function getStakeValue(uint256 amount, uint256 lockDuration) public view returns (uint256) {
-        uint256 rewardsMultiplier = lockDuration == 0 ? 1 : _calcRewardsMultiplier(lockDuration);
-        uint256 divisor = lockDuration == 0 ? 1000 : 100000;
-        uint256 timeDuration = lockDuration == 0 ? 1 : lockDuration; // make 1 to avoid multiply by 0
-
-        uint256 rewards = rewardsMultiplier * amount * rewardsPerPeriod * timeDuration / periodLength / divisor;
-
-        
-        return rewards;
-    }
-
-    // TODO temp, just for debug
-    function getStakeValueUnlocked(uint256 amount, uint256 timePassed) public view returns (uint256) {
-        uint256 rewardsMultiplier = 1;
-        uint256 divisor = 1000;
-
-        uint256 rewards = rewardsMultiplier * amount * rewardsPerPeriod * timePassed / periodLength / divisor;
-
-        
-        return rewards;
-    }
-
     function _stake(uint256 amount, uint256 lockDuration) internal {
         // TODO be sure when new locks come in after an old lock is expired
         // it is treated like a brand new lock
@@ -181,10 +158,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 if (_getRemainingLockTime(staker) == 0) {
                     // If we have passed their previous lock duration entirely, then we 
                     // collect the rewards they are owed for the interim period at 1.0 RM and then
-                    staker.owedRewardsLocked += _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp, true);
+                    staker.owedRewardsLocked += 
+                        _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp, true);
                 }
-                // When followup stakes with lock, the lock period is extended by a specified amount
-                // this value cannot be less than the existing lock time
+                // On follow up stakes, if the incoming lock is longer than the existing remaining lock,
+                // we use the incoming lock duration instead
                 staker.unlockedTimestamp = incomingUnlockedTimestamp;
                 staker.lockDuration = lockDuration;
             }
@@ -276,7 +254,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         if (rewards > 0) {
             // Revert if we are unable to pay user their rewards
-            if (_getContractRewardsBalance() < rewards) revert NoRewardsLeftInContract();
+            if (_getContractRewardsBalance() < rewards) revert InsufficientContractBalance();
 
             // Transfer the user's rewards
             rewardsToken.safeTransfer(msg.sender, rewards);

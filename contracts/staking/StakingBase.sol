@@ -8,6 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+/* solhint-disable no-console */
 import { console } from "hardhat/console.sol";
 
 /**
@@ -45,17 +46,11 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     uint256 public immutable periodLength;
 
-    /**
-     * @notice The amount of time to add to a user's lock period after any follow up stakes
-     */
-    // uint256 public lockAdjustment; // TODO leaving for now but may not need
-
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
-        // uint256 _lockAdjustment,
         address _contractOwner
     ) Ownable(_contractOwner) {
         if (
@@ -76,9 +71,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * in case of an abandoned contract.
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
-    function withdrawLeftoverRewards() external override onlyOwner {
+    function withdrawLeftoverRewards() public override onlyOwner {
         uint256 balance = _getContractRewardsBalance();
-        if (balance == 0) revert NoRewardsLeftInContract();
+        if (balance == 0) revert InsufficientContractBalance();
 
         rewardsToken.safeTransfer(owner(), balance);
 
@@ -88,7 +83,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice View the rewards balance in this pool
      */
-    function getContractRewardsBalance() external view override returns (uint256) {
+    function getContractRewardsBalance() public view override returns (uint256) {
         return _getContractRewardsBalance();
     }
 
@@ -102,19 +97,13 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         return staker.unlockedTimestamp - block.timestamp;
     }
 
-    // TODO keep this? cant really get unlocked stake value ahead of time
-    // might still be useful
-    function getUnlockedStakeValue(uint256 amount, uint256 timePassed) public view returns(uint256) {
-        return amount * rewardsPerPeriod * timePassed / periodLength / 1000;
-    }
-
     /**
      * @notice Get the potential value of a locked stake
      * 
      * @param amount Amount to be staked
      * @param lockDuration The length in seconds of the lock duration
      */
-    function getLockedStakeValue(uint256 amount, uint256 lockDuration) public view override returns(uint256) {
+    function getStakeValue(uint256 amount, uint256 lockDuration) public view override returns(uint256) {
         return _getStakeValue(amount, lockDuration);
     }
 

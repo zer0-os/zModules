@@ -7,7 +7,7 @@ import {
   StakingERC20,
 } from "../typechain";
 import {
-  NO_REWARDS_BALANCE_ERR,
+  INSUFFICIENT_CONTRACT_BALANCE_ERR,
   TIME_LOCK_NOT_PASSED_ERR,
   INSUFFICIENT_ALLOWANCE_ERR,
   INSUFFICIENT_BALANCE_ERR,
@@ -119,14 +119,6 @@ describe("StakingERC20", () => {
   });
 
   describe("#getContractRewardsBalance", () => {
-    // it.only("tests new rm calcs", async () => {
-    //   // calc as though 30 days passed
-    //   const rewardsUnlocked = await contract.getStakeValueUnlocked(DEFAULT_STAKED_AMOUNT, DAY_IN_SECONDS * 30n);
-    //   const rewardsLocked = await contract.getStakeValue(DEFAULT_STAKED_AMOUNT, DAY_IN_SECONDS * 30n);
-      
-    //   console.log(rewardsUnlocked.toString());
-    //   console.log(rewardsLocked.toString());
-    // });
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await contract.getContractRewardsBalance();
       const poolBalance = await rewardsToken.balanceOf(await contract.getAddress());
@@ -558,7 +550,7 @@ describe("StakingERC20", () => {
       // Fails when the contract does not have balance to match rewards
       await expect(
         contract.connect(stakerA).claim()
-      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(contract, INSUFFICIENT_CONTRACT_BALANCE_ERR);
 
       // Provide rewards to give
       await rewardsToken.connect(owner).transfer(await contract.getAddress(), hre.ethers.parseEther("5000"));
@@ -595,7 +587,7 @@ describe("StakingERC20", () => {
 
       await expect(
         contract.connect(stakerA).claim()
-      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(contract, INSUFFICIENT_CONTRACT_BALANCE_ERR);
     });
 
     it("Fails to claim when the user has not passed their lock time", async () => {
@@ -729,7 +721,7 @@ describe("StakingERC20", () => {
 
       await expect(
         contract.connect(stakerA).unstake(stakerData.amountStaked)
-      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(contract, INSUFFICIENT_CONTRACT_BALANCE_ERR);
     });
   });
 
@@ -857,7 +849,7 @@ describe("StakingERC20", () => {
 
       await expect(
         contract.connect(stakerA).unstakeLocked(DEFAULT_STAKED_AMOUNT, false)
-      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(contract, INSUFFICIENT_CONTRACT_BALANCE_ERR);
     });
   });
 
@@ -1101,7 +1093,7 @@ describe("StakingERC20", () => {
     it("Fails when the contract has no rewards left to withdraw", async () => {
       await expect(
         contract.connect(owner).withdrawLeftoverRewards()
-      ).to.be.revertedWithCustomError(contract, NO_REWARDS_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(contract, INSUFFICIENT_CONTRACT_BALANCE_ERR);
     });
   });
   describe("#getStakerData", () => {

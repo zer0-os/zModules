@@ -37,6 +37,8 @@ address of the staking token contract
 
     function stakeWithoutLock(uint256 amount) external;
 
+    function claim() external;
+
     function unstake(uint256 amount) external;
 
     function unstakeLocked(uint256 amount, bool exit) external;
@@ -44,5 +46,4 @@ address of the staking token contract
     function getRemainingLockTime() external view returns (uint256);
 
     function getPendingRewards() external view returns (uint256);
-    
 }
