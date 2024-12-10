@@ -177,21 +177,16 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             uint256 incomingUnlockedTimestamp = block.timestamp + lockDuration;
             // if incoming is smaller, be sure we are not past, if so it is a new lock
             // otherwise update like below
-            // TODO if passed lock and never claimed or unstaked, what to do?
-                // claim rewards for time between as 1.0, then everything forward
-                // is new stake lock duration
-            // if passed lock and zero balance, should be fine?
-            
-            
-            if (block.timestamp > staker.unlockedTimestamp) {
-                // If we have passed their previous lock duration entirely, then we 
-                // collect the rewards they are owed for the interim period at 1.0 RM and then
-                staker.owedRewards += _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp, true);
-                staker.unlockedTimestamp = incomingUnlockedTimestamp;
-            } else if (incomingUnlockedTimestamp > staker.unlockedTimestamp) {
+            if (incomingUnlockedTimestamp > staker.unlockedTimestamp) {
+                if (_getRemainingLockTime(staker) == 0) {
+                    // If we have passed their previous lock duration entirely, then we 
+                    // collect the rewards they are owed for the interim period at 1.0 RM and then
+                    staker.owedRewardsLocked += _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp, true);
+                }
                 // When followup stakes with lock, the lock period is extended by a specified amount
                 // this value cannot be less than the existing lock time
                 staker.unlockedTimestamp = incomingUnlockedTimestamp;
+                staker.lockDuration = lockDuration;
             }
 
             staker.lastTimestampLocked = block.timestamp;
@@ -203,58 +198,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         emit Staked(msg.sender, amount, lockDuration, stakingToken);
     }
-
-    // function _stake(uint256 amount, uint256 lockDuration) internal {
-    //     if (amount == 0) {
-    //         revert ZeroValue();
-    //     }
-
-    //     Staker storage staker = stakers[msg.sender];
-
-    //     if (lockDuration == 0) {
-    //         // incoming stake isnt locking
-    //         staker.owedRewards += _getPendingRewards(staker, false);
-    //         staker.lastTimestamp = block.timestamp;
-    //         staker.amountStaked += amount;
-    //     } else {
-
-    //         /**
-    //          * TODO impl
-    //          * 
-    //          * each incoming stake can have it's entire value and RM pre calculated and stored under "owedRewards"
-    //          * 
-    //          */
-
-    //         uint256 rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
-    //         uint256 unlockTimestamp = block.timestamp + lockDuration;
-    //         uint256 lastTimestamp = staker.lastTimestampLocked == 0 ? block.timestamp : staker.lastTimestampLocked;
-
-    //         uint256 rewards = rewardsMultiplier * (amount * (rewardsPerPeriod * (lockDuration)) / periodLength / 100000);
-
-    //         staker.owedRewardsLocked += rewards;
-
-    //         // incoming stake is locking
-    //         if (staker.unlockedTimestamp == 0) {
-    //             // first time locking stake
-    //             staker.lockDuration = lockDuration;
-    //             staker.unlockedTimestamp = block.timestamp + lockDuration;
-    //             staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
-    //         } else {
-    //             // When restaking with lock, the lock period is extended by a specified amount
-    //             _adjustLock(staker);
-    //         }
-
-    //         // Must always update this before we update `lastTimestampLocked`
-    //         staker.owedRewardsLocked += _getPendingRewards(staker, true);
-    //         staker.lastTimestampLocked = block.timestamp;
-    //         staker.amountStakedLocked += amount;
-    //     }
-
-    //     // Transfers user's funds to this contract
-    //     SafeERC20.safeTransferFrom(IERC20(stakingToken), msg.sender, address(this), amount);
-
-    //     emit Staked(msg.sender, amount, lockDuration, stakingToken);
-    // }
 
     function _unstake(uint256 amount, bool locked, bool exit) internal {
         if (amount == 0) {
@@ -288,9 +231,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 );
             }
 
-            // If removal of all locked funds and there are no non-locked funds, delete
+            // If removal of all locked funds
             if (staker.amountStakedLocked - amount == 0) {
                 if (staker.amountStaked == 0) {
+                    // and there are no non-locked funds, delete
                     delete stakers[msg.sender];
                 } else {
                     // Otherwise set locked values to 0

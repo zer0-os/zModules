@@ -149,6 +149,11 @@ contract StakingBase is Ownable, IStakingBase {
         return amount * rewardsPerPeriod * timePassed / periodLength / 1000;
     }
 
+    // todo temp
+    function getLockedStakeValue(uint256 amount, uint256 lockDuration) public view returns(uint256) {
+        return _getStakeValue(amount, lockDuration);
+    }
+
     function _getStakeValue(uint256 amount, uint256 lockDuration) internal view returns(uint256) {
         // bug if using to calc non-locked stake value after time has passed
         uint256 rewardsMultiplier = lockDuration == 0 ? 1 : _calcRewardsMultiplier(lockDuration);
@@ -168,15 +173,17 @@ contract StakingBase is Ownable, IStakingBase {
         return rewards;
     }
 
-    // Return ALL the rewards available to a user at this moment
+    // Return the sum of ALL the rewards available to a user at this moment
     function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
-        // Only include rewards from locked funds the user is passed their lock period
-        // TODO this function path should be ONLY transfer
 
+        // Get rewards from non-locked funds already accrued and also between the last timestamp and now
         uint256 rewards = staker.owedRewards + _getInterimRewards(staker, block.timestamp - staker.lastTimestamp, false);
+        
+        // Only include rewards from locked funds the user is passed their lock period
         if (_getRemainingLockTime(staker) == 0) {
             // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` sum on stake,
             // so we don't need to add it here as it would be double counted
+
             // Case A) user stakes with lock, then waits well beyond lock duration and claims
             // need to make sure that everything past `unlockTimestamp` is calculated at the non-locked rate
             // Case B) user stakes with lock and waits well beyond lock period, claims, then waits and claims again in the future

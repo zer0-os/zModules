@@ -75,7 +75,7 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
         string[] calldata tokenURIs
     ) external;
 
-    function claim(bool locked) external;
+    function claim() external;
 
     function unstake(uint256[] memory tokenIds, bool exit) external;
 

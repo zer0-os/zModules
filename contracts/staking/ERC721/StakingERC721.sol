@@ -84,7 +84,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function stakeWithLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,
-        uint256 lockDuration // TODO maybe not an array, lock period is per user
+        uint256 lockDuration
     ) external override {
         _stake(tokenIds, tokenUris, lockDuration);
     }
@@ -106,14 +106,15 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claim(bool locked) public  {
-        uint256 rewards = 
-        // THIS IS DOUBLING
-            _claim(nftStakers[msg.sender].data, locked);
-            // _claim(nftStakers[msg.sender].data, true);
+    function claim() public override {
+        uint256 rewards = _claim(nftStakers[msg.sender].data);
 
         if (rewards == 0) {
             revert ZeroRewards();
+        }
+
+        if (_getContractRewardsBalance() < rewards) {
+            revert NoRewardsLeftInContract();
         }
 
         rewardsToken.safeTransfer(msg.sender, rewards);
@@ -227,12 +228,21 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             nftStaker.data.amountStaked += tokenIds.length;
         } else {
             uint256 stakeValue = _getStakeValue(tokenIds.length, lockDuration);
+            // console.log("stakeValue: %s", stakeValue);
             nftStaker.data.owedRewardsLocked += stakeValue;
 
             // We only update a users lock duration when it is greater than the previous
             uint256 incomingUnlockedTimestamp = block.timestamp + lockDuration;
+
             if (incomingUnlockedTimestamp > nftStaker.data.unlockedTimestamp) {
+                // User may have already finished their previous lock period
+                // if so, grab interim rewards before update
+                if (_getRemainingLockTime(nftStaker.data) == 0) {
+                    nftStaker.data.owedRewardsLocked += _getInterimRewards(nftStaker.data, block.timestamp - nftStaker.data.unlockedTimestamp, true);
+                }
+
                 nftStaker.data.unlockedTimestamp = incomingUnlockedTimestamp;
+                nftStaker.data.lockDuration = lockDuration; // todo need to set this anymore?
             }
 
             nftStaker.data.lastTimestampLocked = block.timestamp;
@@ -263,25 +273,19 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
     }
 
-    function _claim(Staker storage staker, bool locked) internal returns (uint256) {
-        uint256 rewards;
-
-        if (locked) {
-            if (_getRemainingLockTime(staker) > 0) {
-                revert TimeLockNotPassed();
-            }
-
-            rewards = _getPendingRewards(staker);
+    function _claim(Staker storage staker) internal returns (uint256) {
+        uint256 rewards = _getPendingRewards(staker);
+        
+        // Update timestamp and owed amount *after* calculation
+        staker.owedRewards = 0;
+        staker.lastTimestamp = block.timestamp;
+        
+        // If there is no remaining lock time, the locked rewards will have
+        // been accounted for in above call to `_getPendingRewards`
+        // only need to adjust timestamp and amount here
+        if (_getRemainingLockTime(staker) == 0) {
             staker.owedRewardsLocked = 0;
             staker.lastTimestampLocked = block.timestamp;
-        } else {
-            rewards = _getPendingRewards(staker);
-            staker.owedRewards = 0;
-            staker.lastTimestamp = block.timestamp;
-        }
-
-        if (_getContractRewardsBalance() < rewards) {
-            revert NoRewardsLeftInContract();
         }
 
         return rewards;
@@ -293,7 +297,10 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         // Track if any action is taken, revert if not to avoid sucessful but empty tx
         bool isAction = false;
 
-        uint256 i = 0;
+        // Calculate rewards ahead of balance adjustments, if any
+        uint256 rewards = _claim(nftStaker.data);
+
+        uint256 i;
         for(i; i < _tokenIds.length;) {
             // console.log("enter loop");
             // If the token is unlocked, claim and unstake
@@ -317,17 +324,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     --nftStaker.data.amountStakedLocked;
                     isAction = true;
                 } else if (_getRemainingLockTime(nftStaker.data) == 0) {
-                    // console.log("call without exit");
+                    // only unstake if they are passed their lock time
 
-                    // we enforce the lock duration on the user
-                    // Only call claim once per transaction
-                    if (nftStaker.data.lastTimestampLocked != block.timestamp) {
-                        // console.log("lastTimestampLocked: %s", staker.lastTimestampLocked);
-                        // console.log("block.timestamp: %s", block.timestamp);
-
-                        // console.log("claiming locked...");
-                        _claim(nftStaker.data, true);
-                    }
                     _unstake(_tokenIds[i]);
                     --nftStaker.data.amountStakedLocked;
                     isAction = true;
@@ -343,10 +341,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 // stake was never locked
                 // console.log("not locked");
                 if (nftStaker.data.lastTimestamp != block.timestamp) {
-                    // console.log("call claim");
 
-                    // If already called in this loop, it will have updated lastTimestamp, don't call again
-                    _claim(nftStaker.data, false);
                 }
                 // console.log("call unstake");
                 _unstake(_tokenIds[i]);
@@ -364,12 +359,24 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             revert InvalidUnstake();
         }
 
-        // console.log("amountStaked: %s", nftStaker.data.amountStaked);
-        // console.log("amountStakedLocked: %s", nftStaker.data.amountStakedLocked);
+        if (rewards > 0 && _getContractRewardsBalance() < rewards) {
+            revert NoRewardsLeftInContract();
+        }
+
+        rewardsToken.safeTransfer(msg.sender, rewards);
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
 
         // If a complete withdrawal, delete the staker struct for this user as well
-        if (nftStaker.data.amountStakedLocked == 0 && nftStaker.data.amountStakedLocked == 0) {
+        if (nftStaker.data.amountStaked == 0 && nftStaker.data.amountStakedLocked == 0) {
             delete nftStakers[msg.sender];
+        } else if (nftStaker.data.amountStaked != 0) {
+            nftStaker.data.amountStakedLocked = 0;
+            nftStaker.data.lastTimestampLocked = 0;
+            nftStaker.data.unlockedTimestamp = 0;
+            nftStaker.data.lockDuration = 0;
+        } else {
+            nftStaker.data.amountStaked = 0;
+            nftStaker.data.lastTimestamp = 0;
         }
     }
 

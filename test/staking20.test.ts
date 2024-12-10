@@ -273,8 +273,8 @@ describe("StakingERC20", () => {
         config
       )
 
-      expect(stakerDataAfter.owedRewardsLocked).to.eq(firstStakeValue + secondStakedValue);
-      expect(stakerDataAfter.owedRewards).to.eq(expectedInterimRewards);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(firstStakeValue + secondStakedValue + expectedInterimRewards);
+      expect(stakerDataAfter.owedRewards).to.eq(0n);
     });
     it("Updates the amount of remaining time on follow up locks appropriately", async () => {
       await reset();
@@ -312,8 +312,8 @@ describe("StakingERC20", () => {
 
       const stakerDataAfter = await contract.stakers(stakerA.address);
 
-      expect(stakerDataAfter.owedRewardsLocked).to.eq(firstStakeValue + secondStakedValue);
-      expect(stakerDataAfter.owedRewards).to.eq(expectedInterimRewards);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(firstStakeValue + secondStakedValue + expectedInterimRewards);
+      expect(stakerDataAfter.owedRewards).to.eq(0n);
 
       expect(stakerDataAfter.lastTimestampLocked).to.eq(secondStakedAt);
 
@@ -1343,7 +1343,7 @@ describe("StakingERC20", () => {
 
       await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
-        futureExpectedRewards
+        hre.ethers.parseEther("999999999")
       );
 
       await expect(
@@ -1381,6 +1381,11 @@ describe("StakingERC20", () => {
     });
 
     it("Emits 'LeftoverRewardsWithdrawn' event when the admin withdraws", async () => {
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        hre.ethers.parseEther("123")
+      );
+
       const amount = rewardsToken.balanceOf(await contract.getAddress());
 
       await expect(
