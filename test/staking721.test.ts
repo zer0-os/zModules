@@ -126,7 +126,7 @@ describe("StakingERC721", () => {
   
       stakingTokenAddress = await stakingToken.getAddress();
   
-      config = await createDefaultConfigs(rewardToken, stakingToken);
+      config = await createDefaultConfigs(rewardToken, owner, stakingToken);
   
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
       stakingERC721 = await stakingFactory.deploy(

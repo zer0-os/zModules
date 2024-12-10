@@ -71,7 +71,7 @@ describe("StakingERC20", () => {
       stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
       rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
 
-      config = await createDefaultConfigs(rewardsToken, undefined, stakeToken);
+      config = await createDefaultConfigs(rewardsToken, owner, undefined, stakeToken);
 
       contract = await stakingFactory.deploy(
         config.stakingToken,
@@ -1204,7 +1204,7 @@ describe("StakingERC20", () => {
       //   }
       //   // expect(multiplier).to.gt(0n);
       // }
-      const multiplier = await contract.getRewardsMultiplier(36500n);
+      // const multiplier = await contract.getRewardsMultiplier(36500n);
       // console.log(multiplier);
     });
 
