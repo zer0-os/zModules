@@ -6,6 +6,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingBase } from "./IStakingBase.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { console } from "hardhat/console.sol";
 
@@ -14,13 +15,15 @@ import { console } from "hardhat/console.sol";
  * @notice A set of common elements that are used in any Staking contract
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
-contract StakingBase is Ownable, IStakingBase {
+contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     using SafeERC20 for IERC20;
 
     /**
      * @notice Mapping of each staker to that staker's data in the `Staker` struct
      */
     mapping(address user => Staker staker) public stakers;
+
+    uint256 public constant PRECISION_MULTIPLIER = 1e18;
 
     /**
      * @notice The staking token for this pool
@@ -74,7 +77,7 @@ contract StakingBase is Ownable, IStakingBase {
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
     function withdrawLeftoverRewards() external override onlyOwner {
-        uint256 balance = rewardsToken.balanceOf(address(this));
+        uint256 balance = _getContractRewardsBalance();
         if (balance == 0) revert NoRewardsLeftInContract();
 
         rewardsToken.safeTransfer(owner(), balance);
@@ -198,7 +201,7 @@ contract StakingBase is Ownable, IStakingBase {
         // return 101 + 1e14 * 10 * ( (lock * 10 ) / 365) / 1e18;
     }
 
-    function _getContractRewardsBalance() internal view returns (uint256) {
+    function _getContractRewardsBalance() internal view virtual returns (uint256) {
         return rewardsToken.balanceOf(address(this));
     }
 }

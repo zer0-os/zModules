@@ -59,12 +59,23 @@ interface IMatch is IEscrow {
     );
 
     /**
-     * @notice Reverted when the match data is incorrect or the payout amounts do not add up to `lockedFunds`
-     *  from `startMatch()` calls
+     * @notice Emitted when the `gameFeePercentage` is set in state
+     * @param percentage The percentage value (as part of 10,000) that is set
+     */
+    event GameFeePercentageSet(uint256 percentage);
+
+    /**
+     * @notice Reverted when the match data passed to the contract is incorrect
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
      * @param matchDataHash The hash of the MatchData struct (`keccak256(abi.encode(matchData))`)
      */
-    error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash);
+    error InvalidMatchOrMatchData(uint256 matchId, bytes32 matchDataHash);
+    /**
+     * @notice Reverted when the payout amounts passed as `payouts` array to `endMatch()` are calculated incorrectly,
+     * and their sum + `gameFee` do not add up to the total `lockedFunds` set by `startMatch()`
+     * @param matchId The ID of the match assigned by a game client or the operator of this contract
+     */
+    error InvalidPayouts(uint256 matchId);
     /**
      * @notice Reverted when a match is already started with the same `matchId` and `matchDataHash`
      * @param matchId The ID of the match assigned by a game client or the operator of this contract
@@ -80,6 +91,16 @@ interface IMatch is IEscrow {
      * @notice Reverted when the length of `players` and `payouts` arrays are different
      */
     error ArrayLengthMismatch();
+    /**
+     * @notice Reverted when the match fee is set to 0
+     * @param matchId The ID of the match assigned by a game client or the operator of this contract
+     */
+    error ZeroMatchFee(uint256 matchId);
+    /**
+     * @notice Reverted when setting `gameFeePercentage` as a wrong value (as part of 10,000)
+     * @param percentage The percentage value passed to the function
+     */
+    error InvalidPercentageValue(uint256 percentage);
 
     /**
      * @notice Starts a match, charges the entry fee from each player's balance, creates and hashes `MatchData` struct,
@@ -104,14 +125,12 @@ interface IMatch is IEscrow {
      * @param payouts The amount of tokens each player will receive (pass 0 for players with no payouts!)
      *  Has to be the same length as `players`!
      * @param matchFee The entry fee for the match
-     * @param gameFee The fee charged by the contract for hosting the match, will go to `feeVault`
      */
     function endMatch(
         uint256 matchId,
         address[] calldata players,
         uint256[] calldata payouts,
-        uint256 matchFee,
-        uint256 gameFee
+        uint256 matchFee
     ) external;
 
     /**
@@ -122,26 +141,12 @@ interface IMatch is IEscrow {
     function setFeeVault(address _feeVault) external;
 
     /**
-     * @notice Gets the address of the fee vault where all the `gameFee`s go
-     * @return feeVault The address of the fee vault
+     * @notice Sets the percentage of the `matchFee` per match that is charged for hosting the match
+     * by the game. Represented as parts of 10,000 (100% = 10,000)
+     * @dev Can ONLY be called by the OWNER!
+     * @param _gameFeePercentage The percentage value to set
      */
-    function getFeeVault() external view returns (address);
-
-    /**
-     * @notice Checks if all players have enough balance in escrow to participate in the match
-     * @dev Note that the returned array will always be the same length as `players` array, with valid players
-     *  being `address(0)` in the same index as the player in the `players` array. If all players have enough balance
-     *  in escrow, the returned array will be filled with 0x0 addresses.
-     * @param players Array of player addresses
-     * @param matchFee The required balance in escrow for each player to participate
-     * @return unfundedPlayers Array of player addresses who do not have enough balance in escrow
-     */
-    function canMatch(
-        address[] calldata players,
-        uint256 matchFee
-    ) external view returns (
-        address[] memory unfundedPlayers
-    );
+    function setGameFeePercentage(uint256 _gameFeePercentage) external;
 }
 
 

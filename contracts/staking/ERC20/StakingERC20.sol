@@ -18,6 +18,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
     using SafeERC20 for IERC20;
 
+    uint256 public totalStaked;
+
     constructor(
         IERC20 _stakingToken,
         IERC20 _rewardsToken,
@@ -284,5 +286,15 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         IERC20(stakingToken).safeTransfer(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount, stakingToken);
+    }
+
+    function _getContractRewardsBalance() internal view override returns (uint256) {
+        uint256 balance = super._getContractRewardsBalance();
+
+        if (address(rewardsToken) == stakingToken) {
+            return balance - totalStaked;
+        }
+
+        return balance;
     }
 }

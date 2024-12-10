@@ -121,7 +121,21 @@ export const calcStakeValue = (amount : bigint, lockDuration : bigint, config : 
 export const calcInterimValue = (
   amount : bigint,
   timePassed : bigint,
+<<<<<<< HEAD
   config : BaseConfig
 ) => {
   return amount * config.rewardsPerPeriod * timePassed / config.periodLength / config.divisor;
+=======
+  stakeAmount : bigint,
+  rewardsPerPeriod : bigint,
+  periodLength : bigint
+) : bigint => {
+
+  // The amount of a single time period that has passed, used for fractional rewards
+  const fractionOfPeriod = timePassed % periodLength;
+
+  const fullPeriodRewards = rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+
+  return fullPeriodRewards + (fractionOfPeriod * (rewardsPerPeriod * stakeAmount) / periodLength);
+>>>>>>> master
 };

@@ -16,6 +16,12 @@ export const DEFAULT_LOCK_ADJUSTMENT = 30n * DAY_IN_SECONDS;
 export const PRECISION_DIVISOR = 1000n;
 export const LOCKED_PRECISION_DIVISOR = 100000n;
 
+export const STAKING721_TOKEN_NAME_DEFAULT = "Staking721";
+export const STAKING721_TOKEN_SYMBOL_DEFAULT = "STK721";
+export const STAKING721_BASE_URI_DEFAULT = "https://staking721.com/";
+
+export const MATCH_GAME_FEE_PERCENTAGE_DEFAULT = 1000n; // 10%
+
 // Events
 export const STAKED_EVENT = "Staked";
 export const CLAIMED_EVENT = "Claimed";

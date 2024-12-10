@@ -3,9 +3,9 @@ import { ethers } from "ethers";
 import { expect } from "chai";
 import { Escrow, MockERC20 } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { INSUFFICIENT_FUNDS_ERR, NOT_A_CONTRACT_ERR, NOT_AUTHORIZED_ERR, ZERO_AMOUNT_ERR } from "./helpers/errors";
+import { INSUFFICIENT_FUNDS_ERR, NOT_A_CONTRACT_ERR, ZERO_AMOUNT_ERR } from "./helpers/errors";
 
-// TODO esc: update solhint, oz packages and hardhat
+
 describe("Escrow Contract", () => {
   let mockERC20 : MockERC20;
   let escrow : Escrow;
@@ -13,7 +13,6 @@ describe("Escrow Contract", () => {
   let addr1 : SignerWithAddress;
   let addr2 : SignerWithAddress;
   let operator1 : SignerWithAddress;
-  let operator2 : SignerWithAddress;
   let escrowAddress : string;
 
   const initialMintAmountOwner = ethers.parseEther("9000000000000000000000");
@@ -26,7 +25,6 @@ describe("Escrow Contract", () => {
       addr1,
       addr2,
       operator1,
-      operator2,
     ] = await hre.ethers.getSigners();
 
     const MockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
@@ -68,34 +66,25 @@ describe("Escrow Contract", () => {
     });
   });
 
-  describe("Fund Management - Success Scenarios", () => {
+  describe("Fund Management", () => {
     const depositAmount = ethers.parseEther("100");
 
     it("Should allow deposits", async () => {
       await mockERC20.connect(addr1).approve(escrowAddress, depositAmount);
       await expect(escrow.connect(addr1).deposit(depositAmount))
         .to.emit(escrow, "Deposit")
-        .withArgs(addr1.address, depositAmount);
+        .withArgs(addr1.address, depositAmount, depositAmount);
 
       expect(await escrow.balances(addr1.address)).to.equal(depositAmount);
-    });
-
-    it("Should allow to #releaseFunds() by the owner/operator", async () => {
-      await expect(escrow.connect(owner).releaseFunds(addr1.address, depositAmount))
-        .to.emit(escrow, "FundsReleased")
-        .withArgs(addr1.address, depositAmount);
-
-      expect(await escrow.balances(addr1.address)).to.equal(ethers.parseEther("0"));
-      expect(await mockERC20.balanceOf(addr1.address)).to.equal(initialMintAmountAddr1);
     });
 
     it("Should re-deposit", async () => {
       await mockERC20.connect(addr1).approve(escrowAddress, depositAmount);
       await expect(escrow.connect(addr1).deposit(depositAmount))
         .to.emit(escrow, "Deposit")
-        .withArgs(addr1.address, depositAmount);
+        .withArgs(addr1.address, depositAmount, depositAmount);
 
-      expect(await escrow.balances(addr1.address)).to.equal(depositAmount);
+      expect(await escrow.balances(addr1.address)).to.equal(depositAmount * 2n);
     });
 
     it("Should allow withdrawal", async () => {
@@ -138,13 +127,13 @@ describe("Escrow Contract", () => {
         .withArgs(addr2.address);
     });
 
-    it("Should revert on 0 balance to releaseFunds", async () => {
-      await expect(escrow.connect(owner).releaseFunds(addr1.address, depositAmount))
-        .to.be.revertedWithCustomError(escrow, INSUFFICIENT_FUNDS_ERR);
-    });
-
     it("Should revert if depositing zero amount", async () => {
       await expect(escrow.connect(addr1).deposit(0n))
+        .to.be.revertedWithCustomError(escrow, ZERO_AMOUNT_ERR);
+    });
+
+    it("Should revert if withdrawing zero amount", async () => {
+      await expect(escrow.connect(addr1).withdraw(0n))
         .to.be.revertedWithCustomError(escrow, ZERO_AMOUNT_ERR);
     });
 
@@ -187,41 +176,6 @@ describe("Escrow Contract", () => {
       expect(await escrow.balances(addr1.address)).to.equal(0);
       expect(await mockERC20.balanceOf(addr1.address)).to.equal(currentBalanceStore + prevBalance);
     });
-
-    it("Should emit the correct events and update balances on multiple #releaseFunds()", async () => {
-      const depositAmt = ethers.parseEther("50");
-      const doubleDepositAmt = depositAmt + depositAmt;
-      await mockERC20.connect(addr1).approve(await escrow.getAddress(), doubleDepositAmt);
-      await escrow.connect(addr1).deposit(depositAmt);
-      await escrow.connect(addr1).deposit(depositAmt);
-
-      await expect(escrow.connect(owner).releaseFunds(addr1.address, doubleDepositAmt))
-        .to.emit(escrow, "FundsReleased")
-        .withArgs(addr1.address, doubleDepositAmt);
-
-      const leftoverBal = await escrow.balances(addr1.address);
-
-      await expect(
-        escrow.connect(owner).releaseFunds(addr1.address, leftoverBal)
-      ).to.emit(escrow, "FundsReleased")
-        .withArgs(addr1.address, leftoverBal);
-
-      expect(await escrow.balances(addr1.address)).to.equal(0);
-    });
-  });
-
-  describe("Fund Management - Failure Scenarios", () => {
-    it("Should fail an unauthorized #releaseFunds() call", async () => {
-      await expect(escrow.connect(addr1).releaseFunds(addr2.address, 1n))
-        .to.be.revertedWithCustomError(escrow, NOT_AUTHORIZED_ERR)
-        .withArgs(addr1.address);
-    });
-
-    it("Should revert #releaseFunds() called by non-owner/operator", async () => {
-      await expect(escrow.connect(operator2).releaseFunds(addr1.address, ethers.parseEther("100")))
-        .to.be.revertedWithCustomError(escrow, NOT_AUTHORIZED_ERR)
-        .withArgs(operator2.address);
-    });
   });
 
   describe("Deposits of different grade amounts", () => {
@@ -242,5 +196,63 @@ describe("Escrow Contract", () => {
         }
       });
     }
+  });
+
+  it("Should properly support deflationary a token", async () => {
+    const deflationaryTokenFactory = await hre.ethers.getContractFactory("DeflERC20Mock");
+    const deflToken = await deflationaryTokenFactory.connect(owner).deploy("DeflationaryToken", "DEFT");
+    const escrowFactory = await hre.ethers.getContractFactory("Escrow");
+    const escrowLocal = await escrowFactory.connect(owner).deploy(
+      deflToken.target,
+      owner.address,
+      [operator1.address]
+    );
+
+    const depositAmount = ethers.parseEther("77531");
+
+    const totalSupplyBefore = await deflToken.totalSupply();
+    await deflToken.connect(owner).approve(escrowLocal.target, depositAmount);
+
+    const transferFeeDeposit = await deflToken.getFee(depositAmount);
+
+    const tokenBalanceBefore = await deflToken.balanceOf(owner.address);
+    const escrowBalanceBefore = await escrowLocal.balances(owner.address);
+
+
+    // deposit and check the event in one go
+    await expect(
+      escrowLocal.connect(owner).deposit(depositAmount)
+    ).to.emit(escrowLocal, "Deposit")
+      .withArgs(owner.address, depositAmount, depositAmount - transferFeeDeposit);
+
+    const totalSupplyAfterDeposit = await deflToken.totalSupply();
+    const tokenBalanceAfterDeposit = await deflToken.balanceOf(owner.address);
+    const escrowBalanceAfterDeposit = await escrowLocal.balances(owner.address);
+
+    expect(tokenBalanceBefore - tokenBalanceAfterDeposit).to.equal(depositAmount);
+    expect(escrowBalanceAfterDeposit - escrowBalanceBefore).to.equal(depositAmount - transferFeeDeposit);
+    expect(totalSupplyBefore - totalSupplyAfterDeposit).to.equal(transferFeeDeposit);
+
+    // withdrawing the same amount should fail, because the actual transferred amount was `depositAmount - transferFee`
+    await expect(
+      escrowLocal.connect(owner).withdraw(depositAmount)
+    ).to.be.revertedWithCustomError(escrowLocal, INSUFFICIENT_FUNDS_ERR);
+
+    const withdrawAmount = depositAmount - transferFeeDeposit;
+    const transferFeeWithdraw = await deflToken.getFee(withdrawAmount);
+    // correct amount withdrawal
+    await escrowLocal.connect(owner).withdraw(withdrawAmount);
+
+    const tokenBalanceAfterWithdraw = await deflToken.balanceOf(owner.address);
+    const escrowBalanceAfterWithdraw = await escrowLocal.balances(owner.address);
+    const totalSupplyAfterWithdraw = await deflToken.totalSupply();
+
+    expect(
+      tokenBalanceAfterWithdraw - tokenBalanceAfterDeposit
+    ).to.equal(
+      depositAmount - transferFeeDeposit - transferFeeWithdraw
+    );
+    expect(escrowBalanceAfterWithdraw).to.equal(0);
+    expect(totalSupplyAfterWithdraw).to.equal(totalSupplyAfterDeposit - transferFeeWithdraw);
   });
 });
