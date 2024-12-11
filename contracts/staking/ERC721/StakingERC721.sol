@@ -217,47 +217,13 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     ////////////////////////////////////
 
     function _stake(uint256[] calldata tokenIds, string[] calldata tokenUris, uint256 lockDuration) internal {
+        if (tokenIds.length == 0) {
+            revert ZeroValue();
+        }
+
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
-        if (lockDuration == 0) {
-            // Not locking
-            // On first stake will return 0
-            nftStaker.data.owedRewards += _getStakeRewards(
-                nftStaker.data.amountStaked,
-                block.timestamp - nftStaker.data.lastTimestamp,
-                false
-            );
-
-            nftStaker.data.lastTimestamp = block.timestamp;
-            nftStaker.data.amountStaked += tokenIds.length;
-        } else {
-            uint256 stakeRewards = _getStakeRewards(tokenIds.length, lockDuration, true);
-            nftStaker.data.owedRewardsLocked += stakeRewards;
-
-            // TODO update this, we don't ever modify a users lock window
-            // if the incoming lock duration is shorter, ignore
-            // if the incoming lock duration is longer, ignore
-            // ALWAYS value an incoming stake as though its to the end of the existing lock
-            uint256 incomingUnlockedTimestamp = block.timestamp + lockDuration;
-
-            if (incomingUnlockedTimestamp > nftStaker.data.unlockedTimestamp) {
-                // User may have already finished their previous lock period
-                // if so, grab rewards before update
-                if (_getRemainingLockTime(nftStaker.data) == 0) {
-                    nftStaker.data.owedRewardsLocked += _getStakeRewards(
-                        nftStaker.data.amountStakedLocked,
-                        block.timestamp - nftStaker.data.unlockedTimestamp,
-                        true
-                    );
-                }
-
-                nftStaker.data.unlockedTimestamp = incomingUnlockedTimestamp;
-                nftStaker.data.lockDuration = lockDuration; // todo need to set this anymore?
-            }
-
-            nftStaker.data.lastTimestampLocked = block.timestamp;
-            nftStaker.data.amountStakedLocked += tokenIds.length;
-        }
+        _coreStake(nftStaker.data, tokenIds.length, lockDuration);
 
         uint256 i;
         for(i; i < tokenIds.length;) {

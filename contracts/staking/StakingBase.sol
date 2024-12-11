@@ -88,17 +88,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
-     * @notice Get the potential value of a staked given the time duration and if it is locked
-     * 
-     * @param amount Amount to be staked
-     * @param timeDuration The length in seconds of the lock duration
-     * @param locked If the stake will be locked or not
-     */
-    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public view override returns(uint256) {
-        return _getStakeRewards(amount, timeDuration, locked);
-    }
-
-    /**
      * @notice Get the minimum lock time
      */
     function getMinimumLockTime() public view override returns(uint256) {
@@ -126,6 +115,51 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     ////////////////////////////////////
     /* Internal Functions */
     ////////////////////////////////////
+
+    function _coreStake(
+        Staker storage staker,
+        uint256 amount, // also tokenIds.length, in ERC721 case
+        uint256 lockDuration
+    ) internal {
+        if (lockDuration == 0) {
+            // Get rewards they are owed from past unlocked stakes, if any
+            // will return 0 if `amountStaked == 0`
+            staker.owedRewards +=  _getStakeRewards(
+                staker.amountStaked,
+                1, // Rewards multiplier is 1 for non-locked funds
+                block.timestamp - staker.lastTimestamp,
+                false
+            );
+
+            staker.lastTimestamp = block.timestamp;
+            staker.amountStaked += amount;
+        } else {
+            if (block.timestamp > staker.unlockedTimestamp) {
+                // The user has never locked, or they have and we are past their lock period
+                staker.unlockedTimestamp = block.timestamp + lockDuration;
+                staker.lockDuration = lockDuration;
+                staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
+
+                // We precalculate the amount because we know the time frame
+                staker.owedRewardsLocked += _getStakeRewards(
+                    amount,
+                    staker.rewardsMultiplier,
+                    lockDuration,
+                    true
+                );
+            } else {
+                staker.owedRewardsLocked += _getStakeRewards(
+                    amount,
+                    staker.rewardsMultiplier,
+                    _getRemainingLockTime(staker),
+                    true
+                );
+            }
+
+            staker.lastTimestampLocked = block.timestamp;
+            staker.amountStakedLocked += amount;  
+        }
+    }
 
     function _getRemainingLockTime(Staker storage staker) internal view returns(uint256) {
         if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
@@ -159,7 +193,12 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
 
         // Get rewards from non-locked funds already accrued and also between the last timestamp and now
-        uint256 rewards = staker.owedRewards + _getStakeRewards(staker.amountStaked, block.timestamp - staker.lastTimestamp, false);
+        uint256 rewards = staker.owedRewards + _getStakeRewards(
+            staker.amountStaked,
+            staker.rewardsMultiplier,
+            block.timestamp - staker.lastTimestamp,
+            false
+        );
         
         // Only include rewards from locked funds the user is passed their lock period
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
@@ -177,8 +216,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
             rewards += staker.owedRewardsLocked + _getStakeRewards(
                 staker.amountStakedLocked,
+                1, // Rewards multiplier
                 block.timestamp - mostRecentTimestamp,
-                true
+                false // Treat as non-locked funds
             );
         }
 
@@ -206,6 +246,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // for both ERC20 and ERC721 staking contracts 
 
         return 1 + 1e14 * 10 * ( (lock * 10 ) / 259) / 1e18;
+        // return 100 + 1e18 * 10**(lock / 365) / 1e16; // might be better
         // return 101 + 1e14 * 10 * ( (lock * 10 ) / 365) / 1e18;
     }
 

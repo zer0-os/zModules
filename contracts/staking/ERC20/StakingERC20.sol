@@ -141,47 +141,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         Staker storage staker = stakers[msg.sender];
 
-        if (lockDuration == 0) {
-            // Get rewards they are owed from past unlocked stakes, if any
-            // will return 0 if `amountStaked == 0`
-            uint256 stakeRewards =  _getStakeRewards(
-                staker.amountStaked,
-                1, // Rewards multiplier is 1 for non-locked funds
-                block.timestamp - staker.lastTimestamp,
-                false
-            );
-            staker.owedRewards += stakeRewards;
-            staker.lastTimestamp = block.timestamp;
-            staker.amountStaked += amount;
-        } else {
-            if (block.timestamp > staker.unlockedTimestamp) {
-                // The user has never locked, or they have and we are past their lock period
-                staker.unlockedTimestamp = block.timestamp + lockDuration;
-                staker.lockDuration = lockDuration; // TODO maybe useless to track this
-                staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
-
-                // We precalculate the amount because we know the time frame
-                staker.owedRewardsLocked += _getStakeRewards(
-                    amount,
-                    staker.rewardsMultiplier,
-                    lockDuration,
-                    true
-                );
-            } else {
-                // When user does follow up stakes within existing lock period we value
-                // all incoming stakes as though they go to the end of that lock period
-                // regardless of the incoming lock duration
-                staker.owedRewardsLocked += _getStakeRewards(
-                    staker.amountStakedLocked,
-                    staker.rewardsMultiplier,
-                    _getRemainingLockTime(staker),
-                    true
-                );
-            }
-
-            staker.lastTimestampLocked = block.timestamp;
-            staker.amountStakedLocked += amount;    
-        }
+        _coreStake(staker, amount, lockDuration);
 
         // Transfers user's funds to this contract
         SafeERC20.safeTransferFrom(IERC20(stakingToken), msg.sender, address(this), amount);
