@@ -112,6 +112,25 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         return _getContractRewardsBalance();
     }
 
+    /**
+     * @notice Return the potential rewards that would be earned for a given stake
+     * 
+     * @param amount The amount of the staking token to calculate rewards for
+     * @param timeDuration The the amount of time these funds will be staked, provide the lock duration if locking
+     * @param locked Boolean if the stake is locked
+     */
+    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public view returns (uint256) {
+
+        uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
+
+        return _getStakeRewards(
+            amount,
+            rewardsMultiplier,
+            timeDuration,
+            locked
+        );
+    }
+
     ////////////////////////////////////
     /* Internal Functions */
     ////////////////////////////////////
@@ -270,7 +289,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         // 101 is smallest possible increment while giving more than
         // if a user simply didnt lock their funds, but not by a lot
-        // TODO could argue that have a minimum lock time is a good idea?
+        // could argue that have a minimum lock time is a good idea?
         // could help make sure people cant exploit the system
         // you cant lock for 1s just to get RM and boost rewards
 

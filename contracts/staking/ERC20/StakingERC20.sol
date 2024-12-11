@@ -77,7 +77,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // if funds are locked, only transfer if they are past lock duration
         Staker storage staker = stakers[msg.sender];
 
-        _coreClaim(staker); // TODO update unstake to use this too
+        _coreClaim(staker);
     }
 
     /**

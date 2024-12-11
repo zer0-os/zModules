@@ -228,7 +228,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             nftStaker.tokenIds.push(tokenIds[i]);
             nftStaker.locked[tokenIds[i]] = lockDuration > 0;
 
-            // Mint user sNFT (TODO mint ERC721Voter when ready)
+            // Mint user sNFT
             _safeMint(msg.sender, tokenIds[i], tokenUris[i]);
 
             emit Staked(msg.sender, tokenIds[i], stakingToken);
