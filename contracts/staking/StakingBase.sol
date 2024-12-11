@@ -133,9 +133,13 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         return staker.unlockedTimestamp - block.timestamp;
     }
 
-    function _getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) internal view returns(uint256) {
+    function _getStakeRewards(
+        uint256 amount,
+        uint256 rewardsMultiplier,
+        uint256 timeDuration,
+        bool locked
+    ) internal view returns(uint256) {
         // bug if using to calc non-locked stake value after time has passed
-        uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
         uint256 divisor = locked ? 100000 : 1000;
 
         // console.log("rewardsMultiplier: %s", rewardsMultiplier);
