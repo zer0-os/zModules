@@ -8,7 +8,11 @@ pragma solidity 0.8.26;
  */
 interface IStakingERC20 {
     /**
-address of the staking token contract
+     * @notice Emit when a user stakes a token
+     * @param staker The address of the account which staked
+     * @param amount The amount of the staked token passed as an argument to the `stake()`
+     * @param lockDuration The duration for which the stake is locked
+     * @param stakingToken The address of the staking token contract
      */
     event Staked(
         address indexed staker,
@@ -19,8 +23,9 @@ address of the staking token contract
 
     /**
      * @notice Emit when a user unstakes
-    //  * @param amount The amount of the staked token
-    //  * @param stakingToken The address of the staking token contract
+     * @param staker The address of the account which unstaked
+     * @param amount The amount of the staked token
+     * @param stakingToken The address of the staking token contract
      */
     event Unstaked(
         address indexed staker,

@@ -14,7 +14,7 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
      * @notice Struct to track ERC721 specific data for a staker
      */
     struct NFTStaker {
-        Staker data;
+        Staker stake;
         uint256[] tokenIds;
         mapping(uint256 tokenId => bool locked) locked;
     }

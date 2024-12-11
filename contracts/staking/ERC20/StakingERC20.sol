@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -121,7 +121,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         _coreStake(staker, amount, lockDuration);
 
         // Transfers user's funds to this contract
-        SafeERC20.safeTransferFrom(IERC20(stakingToken), msg.sender, address(this), amount);
+        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), amount);
 
         emit Staked(msg.sender, amount, lockDuration, stakingToken);
     }
@@ -212,10 +212,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         }
 
         if (rewards > 0) {
-            // Revert if we are unable to pay user their rewards
-            if (_getContractRewardsBalance() < rewards) revert InsufficientContractBalance();
-
             // Transfer the user's rewards
+            // Will fail if the contract does not have funding for this
             rewardsToken.safeTransfer(msg.sender, rewards);
         }
 

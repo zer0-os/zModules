@@ -24,8 +24,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     mapping(address user => Staker staker) public stakers;
 
-    uint256 public constant PRECISION_MULTIPLIER = 1e18;
-
     /**
      * @notice The staking token for this pool
      */
@@ -80,6 +78,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function withdrawLeftoverRewards() public override onlyOwner {
         uint256 balance = _getContractRewardsBalance();
+
+        // Do not send empty transfer
         if (balance == 0) revert InsufficientContractBalance();
 
         rewardsToken.safeTransfer(owner(), balance);
@@ -207,7 +207,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         uint256 timeDuration,
         bool locked
     ) internal view returns(uint256) {
-        // bug if using to calc non-locked stake value after time has passed
         uint256 divisor = locked ? 100000 : 1000;
 
         // console.log("rewardsMultiplier: %s", rewardsMultiplier);

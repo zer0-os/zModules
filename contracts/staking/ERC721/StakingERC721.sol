@@ -113,7 +113,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function claim() public override {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
-        _coreClaim(nftStaker.data);
+        _coreClaim(nftStaker.stake);
     }
 
     /**
@@ -195,11 +195,11 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Return the time in seconds remaining for the staker's lock duration
      */
     function getRemainingLockTime() public view override returns (uint256) {
-        return _getRemainingLockTime(nftStakers[msg.sender].data);
+        return _getRemainingLockTime(nftStakers[msg.sender].stake);
     }
 
     function getPendingRewards() public view override returns (uint256) {
-        return _getPendingRewards(nftStakers[msg.sender].data);
+        return _getPendingRewards(nftStakers[msg.sender].stake);
     }
 
     ////////////////////////////////////
@@ -213,7 +213,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
 
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
-        _coreStake(nftStaker.data, tokenIds.length, lockDuration);
+        _coreStake(nftStaker.stake, tokenIds.length, lockDuration);
 
         uint256 i;
         for(i; i < tokenIds.length;) {
@@ -267,7 +267,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256 rewards;
 
         if (!exit) {
-            rewards = _claim(nftStaker.data);
+            rewards = _claim(nftStaker.stake);
         }
 
         uint256 i;
@@ -291,12 +291,12 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     // unstake with no rewards
                     // console.log("call with exit");
                     _unstake(_tokenIds[i]);
-                    --nftStaker.data.amountStakedLocked;
+                    --nftStaker.stake.amountStakedLocked;
                     isAction = true;
-                } else if (_getRemainingLockTime(nftStaker.data) == 0) {
+                } else if (_getRemainingLockTime(nftStaker.stake) == 0) {
                     // only unstake if they are passed their lock time
                     _unstake(_tokenIds[i]);
-                    --nftStaker.data.amountStakedLocked;
+                    --nftStaker.stake.amountStakedLocked;
                     isAction = true;
                 } else {
                     // stake is locked and cannot be unstaked
@@ -309,7 +309,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             } else {
                 // stake was never locked
                 _unstake(_tokenIds[i]);
-                --nftStaker.data.amountStaked;
+                --nftStaker.stake.amountStaked;
                 isAction = true;
             }
 
@@ -324,25 +324,23 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
 
         if (!exit) {
-            if (rewards > 0 && _getContractRewardsBalance() < rewards) {
-                revert InsufficientContractBalance();
-            }
-
+            // Transfer the user's rewards
+            // Will fail if the contract does not have funding for this
             rewardsToken.safeTransfer(msg.sender, rewards);
             emit Claimed(msg.sender, rewards, address(rewardsToken));
         }
 
         // If a complete withdrawal, delete the staker struct for this user as well
-        if (nftStaker.data.amountStaked == 0 && nftStaker.data.amountStakedLocked == 0) {
+        if (nftStaker.stake.amountStaked == 0 && nftStaker.stake.amountStakedLocked == 0) {
             delete nftStakers[msg.sender];
-        } else if (nftStaker.data.amountStaked != 0) {
-            nftStaker.data.amountStakedLocked = 0;
-            nftStaker.data.lastTimestampLocked = 0;
-            nftStaker.data.unlockedTimestamp = 0;
-            nftStaker.data.lockDuration = 0;
+        } else if (nftStaker.stake.amountStaked != 0) {
+            nftStaker.stake.amountStakedLocked = 0;
+            nftStaker.stake.lastTimestampLocked = 0;
+            nftStaker.stake.unlockedTimestamp = 0;
+            nftStaker.stake.lockDuration = 0;
         } else {
-            nftStaker.data.amountStaked = 0;
-            nftStaker.data.lastTimestamp = 0;
+            nftStaker.stake.amountStaked = 0;
+            nftStaker.stake.lastTimestamp = 0;
         }
     }
 
