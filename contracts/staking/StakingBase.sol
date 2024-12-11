@@ -46,11 +46,17 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     uint256 public immutable periodLength;
 
+    /**
+     * @notice The minimum amount of time a user must lock their stake for
+     */
+    uint256 public minimumLockTime;
+
     constructor(
         address _stakingToken,
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
+        uint256 _minimumLockTime,
         address _contractOwner
     ) Ownable(_contractOwner) {
         if (
@@ -64,6 +70,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         rewardsToken = _rewardsToken;
         rewardsPerPeriod = _rewardsPerPeriod;
         periodLength = _periodLength;
+        minimumLockTime = _minimumLockTime;
     }
 
     /**
@@ -78,6 +85,26 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         rewardsToken.safeTransfer(owner(), balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
+    }
+
+    /**
+     * @notice Get the potential value of a locked stake
+     * 
+     * @param amount Amount to be staked
+     * @param timeDuration The length in seconds of the lock duration
+     * @param locked If the stake will be locked or not
+     */
+    function getStakeValue(uint256 amount, uint256 timeDuration, bool locked) public view override returns(uint256) {
+        return _getStakeValue(amount, timeDuration, locked);
+    }
+
+    function getMinimumLockTime() public view override returns(uint256) {
+        return minimumLockTime;
+    }
+
+    function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
+        minimumLockTime = _minimumLockTime;
+        emit MinimumLockTimeSet(owner(), _minimumLockTime);
     }
 
     /**
@@ -97,21 +124,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         return staker.unlockedTimestamp - block.timestamp;
     }
 
-    /**
-     * @notice Get the potential value of a locked stake
-     * 
-     * @param amount Amount to be staked
-     * @param lockDuration The length in seconds of the lock duration
-     */
-    function getStakeValue(uint256 amount, uint256 lockDuration) public view override returns(uint256) {
-        return _getStakeValue(amount, lockDuration);
-    }
-
-    function _getStakeValue(uint256 amount, uint256 lockDuration) internal view returns(uint256) {
+    function _getStakeValue(uint256 amount, uint256 timeDuration, bool locked) internal view returns(uint256) {
         // bug if using to calc non-locked stake value after time has passed
-        uint256 rewardsMultiplier = lockDuration == 0 ? 1 : _calcRewardsMultiplier(lockDuration);
-        uint256 divisor = lockDuration == 0 ? 1000 : 100000;
-        uint256 timeDuration = lockDuration == 0 ? 1 : lockDuration; // make 1 to avoid multiply by 0
+        uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
+        uint256 divisor = locked ? 1000 : 100000;
 
         // console.log("rewardsMultiplier: %s", rewardsMultiplier);
         // console.log("amount: %s", amount);
@@ -133,7 +149,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         uint256 rewards = staker.owedRewards + _getInterimRewards(staker, block.timestamp - staker.lastTimestamp, false);
         
         // Only include rewards from locked funds the user is passed their lock period
-        if (_getRemainingLockTime(staker) == 0) {
+        if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
             // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` sum on stake,
             // so we don't need to add it here as it would be double counted
 
@@ -155,15 +171,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     // Get rewards a user accrued between their last touch point and now
     // In the `locked` case, we only calculate rewards if the user has surpassed their lock period
     function _getInterimRewards(Staker storage staker, uint256 timePassed, bool locked) internal view returns (uint256) {
-        if (locked) {
-            // uint256 retvalB = staker.amountStaked * (rewardsPerPeriod * (timePassed)) / periodLength / 1000;
-            // console.log("retvalB: %s", retvalB);
-
-            return staker.amountStakedLocked * (rewardsPerPeriod * (timePassed)) / periodLength / 1000;
-        } else {
-
-            return staker.amountStaked * (rewardsPerPeriod * (timePassed)) / periodLength / 1000;
-        }
+        uint256 balance = locked ? staker.amountStakedLocked : staker.amountStaked;
+        return balance * (rewardsPerPeriod * (timePassed)) / periodLength / 1000;
     }
 
     /**

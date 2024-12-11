@@ -24,6 +24,7 @@ import {
   calcStakeValue,
   calcInterimValue,
   DEFAULT_STAKED_AMOUNT,
+  DEFAULT_MINIMUM_LOCK,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -137,6 +138,7 @@ describe("StakingERC721", () => {
         config.rewardsToken,
         config.rewardsPerPeriod,
         config.periodLength,
+        config.minimumLock,
         owner.address
       );
   
@@ -261,6 +263,7 @@ describe("StakingERC721", () => {
         rewardTokenAddress,
         config.rewardsPerPeriod,
         config.periodLength,
+        config.minimumLock,
         owner.address
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
@@ -274,7 +277,7 @@ describe("StakingERC721", () => {
         hre.ethers.ZeroAddress,
         config.rewardsPerPeriod,
         config.periodLength,
-
+        config.minimumLock,
         owner.address
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
@@ -288,6 +291,7 @@ describe("StakingERC721", () => {
         rewardToken.target,
         0, // rewards per period
         config.periodLength,
+        config.minimumLock,
         owner.address
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
@@ -1156,6 +1160,7 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
+        minimumLock: DEFAULT_MINIMUM_LOCK,
         divisor: PRECISION_DIVISOR,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
       } as BaseConfig;
@@ -1169,6 +1174,7 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
+        localConfig.minimumLock,
         owner.address
       ) as StakingERC721;
 
@@ -1200,6 +1206,7 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
+        minimumLock: DEFAULT_MINIMUM_LOCK,
         divisor: PRECISION_DIVISOR,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
       } as BaseConfig;
@@ -1213,6 +1220,7 @@ describe("StakingERC721", () => {
         localConfig.rewardsToken,
         localConfig.rewardsPerPeriod,
         localConfig.periodLength,
+        localConfig.minimumLock,
         owner.address
       ) as StakingERC721;
 

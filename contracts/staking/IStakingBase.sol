@@ -65,13 +65,13 @@ interface IStakingBase {
     );
 
     /**
-     * @notice Emit when the amount to adjust a lock after restake is changed
-     * @param owner The setter
-     * @param lockAdjustment The new lock adjustment value
+     * @notice Emit when the minimum lock time is set
+     * @param owner The address of the contract owner
+     * @param minimumLockTime The new minimum lock time
      */
-    event LockAdjustmentSet(
+    event MinimumLockTimeSet(
         address indexed owner,
-        uint256 indexed lockAdjustment
+        uint256 indexed minimumLockTime
     );
 
     /**
@@ -107,6 +107,12 @@ interface IStakingBase {
     error InsufficientContractBalance();
 
     /**
+     * @notice Throw when a staker tries to lock for less than
+     * the minimum lock time
+     */
+    error LockTimeTooShort();
+
+    /**
      * @notice Throw when passing zero values to set a state var
      */
     error InitializedWithZero();
@@ -115,5 +121,9 @@ interface IStakingBase {
 
     function getContractRewardsBalance() external view returns (uint256);
 
-    function getStakeValue(uint256 amount, uint256 lockDuration) external view returns(uint256);
+    function getStakeValue(uint256 amount, uint256 timeDuration, bool locked) external view returns(uint256);
+
+    function getMinimumLockTime() external view returns(uint256);
+
+    function setMinimumLockTime(uint256 _minimumLockTime) external;
 }

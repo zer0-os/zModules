@@ -10,6 +10,7 @@ export const DEFAULT_REWARDS_PER_PERIOD_ERC721 = ethers.parseEther("1500");
 export const DEFAULT_PERIOD_LENGTH_ERC721 = DAY_IN_SECONDS;
 export const DEFAULT_PERIOD_LENGTH_ERC20 = 365n * DAY_IN_SECONDS;
 export const DEFAULT_LOCK = 365n * DAY_IN_SECONDS;
+export const DEFAULT_MINIMUM_LOCK = 30n * DAY_IN_SECONDS;
 
 // Used in rewards calculations
 export const PRECISION_DIVISOR = 1000n;

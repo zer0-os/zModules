@@ -9,6 +9,7 @@ export interface BaseConfig {
   rewardsToken : string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
+  minimumLock : bigint;
   divisor : bigint;
   lockedDivisor : bigint;
 }

@@ -56,6 +56,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         IERC20 _rewardsToken,
         uint256 _rewardsPerPeriod,
         uint256 _periodLength,
+        uint256 _minimumLockTime,
         address _contractOwner
     )
         ERC721(name, symbol)
@@ -64,6 +65,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             _rewardsToken,
             _rewardsPerPeriod,
             _periodLength,
+            _minimumLockTime,
             _contractOwner
         )
     {
@@ -85,6 +87,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         string[] calldata tokenUris,
         uint256 lockDuration
     ) external override {
+        if (lockDuration < minimumLockTime) {
+            revert LockTimeTooShort();
+        }
         _stake(tokenIds, tokenUris, lockDuration);
     }
 
@@ -226,7 +231,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             nftStaker.data.lastTimestamp = block.timestamp;
             nftStaker.data.amountStaked += tokenIds.length;
         } else {
-            uint256 stakeValue = _getStakeValue(tokenIds.length, lockDuration);
+            uint256 stakeValue = _getStakeValue(tokenIds.length, lockDuration, true);
             // console.log("stakeValue: %s", stakeValue);
             nftStaker.data.owedRewardsLocked += stakeValue;
 
@@ -298,12 +303,15 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         bool isAction = false;
 
         // Calculate rewards ahead of balance adjustments, if any
-        uint256 rewards = _claim(nftStaker.data);
+        uint256 rewards;
+
+        if (!exit) {
+            rewards = _claim(nftStaker.data);
+        }
 
         uint256 i;
         for(i; i < _tokenIds.length;) {
             // console.log("enter loop");
-            // If the token is unlocked, claim and unstake
             if (ownerOf(_tokenIds[i]) == address(0) || ownerOf(_tokenIds[i]) != msg.sender) {
                 // Either the list of tokenIds contains a non-existent token
                 // or it contains a token the owner doesnt own
@@ -313,6 +321,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 continue;
             }
 
+            // If the token is unlocked, claim and unstake
             if (nftStaker.locked[_tokenIds[i]]) {
                 // Token was locked
                 // console.log("locked");
@@ -353,12 +362,14 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             revert InvalidUnstake();
         }
 
-        if (rewards > 0 && _getContractRewardsBalance() < rewards) {
-            revert InsufficientContractBalance();
-        }
+        if (!exit) {
+            if (rewards > 0 && _getContractRewardsBalance() < rewards) {
+                revert InsufficientContractBalance();
+            }
 
-        rewardsToken.safeTransfer(msg.sender, rewards);
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
+            rewardsToken.safeTransfer(msg.sender, rewards);
+            emit Claimed(msg.sender, rewards, address(rewardsToken));
+        }
 
         // If a complete withdrawal, delete the staker struct for this user as well
         if (nftStaker.data.amountStaked == 0 && nftStaker.data.amountStakedLocked == 0) {

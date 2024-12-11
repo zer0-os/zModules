@@ -39,7 +39,7 @@ address of the staking token contract
 
     function claim() external;
 
-    function unstake(uint256 amount) external;
+    function unstake(uint256 amount, bool exit) external;
 
     function unstakeLocked(uint256 amount, bool exit) external;
 

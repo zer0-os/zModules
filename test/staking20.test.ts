@@ -78,6 +78,7 @@ describe("StakingERC20", () => {
         config.rewardsToken,
         config.rewardsPerPeriod,
         config.periodLength,
+        config.minimumLock,
         owner.address
       ) as StakingERC20;
 
@@ -1141,7 +1142,7 @@ describe("StakingERC20", () => {
       stakerData = await contract.stakers(stakerA.address);
       
       // can pre calc value of locked stake
-      const lockedStakeValue = await contract.getStakeValue(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      const lockedStakeValue = await contract.getStakeValue(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, true);
       
       await time.increase(DEFAULT_LOCK / 4n);
       
@@ -1149,7 +1150,7 @@ describe("StakingERC20", () => {
 
       stakerData = await contract.stakers(stakerA.address);
       
-      const unlockedStakeValue = await contract.getUnlockedStakeValue(DEFAULT_STAKED_AMOUNT, BigInt(await time.latest()) - stakedAt);
+      const unlockedStakeValue = await contract.getStakeValue(DEFAULT_STAKED_AMOUNT, BigInt(await time.latest()) - stakedAt, true);
       const expectedUnlockedRewards = calcTotalUnlockedRewards(
         [BigInt(await time.latest()) - stakedAt!],
         [DEFAULT_STAKED_AMOUNT],
