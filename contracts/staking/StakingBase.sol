@@ -124,7 +124,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         if (lockDuration == 0) {
             // Get rewards they are owed from past unlocked stakes, if any
             // will return 0 if `amountStaked == 0`
-            staker.owedRewards +=  _getStakeRewards(
+            staker.owedRewards += _getStakeRewards(
                 staker.amountStaked,
                 1, // Rewards multiplier is 1 for non-locked funds
                 block.timestamp - staker.lastTimestamp,
@@ -135,7 +135,20 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             staker.amountStaked += amount;
         } else {
             if (block.timestamp > staker.unlockedTimestamp) {
-                // The user has never locked, or they have and we are past their lock period
+                // The user has never locked
+                // or they have and we are past their lock period
+
+                // Capture the user's owed rewards from the past stake in between
+                // period at rate of 1
+                // Note: this will return 0 if `amountStakedLocked == 0`
+                staker.owedRewardsLocked += _getStakeRewards(
+                    staker.amountStakedLocked,
+                    1,
+                    lockDuration,
+                    false
+                );
+
+                // Then we update appropriately
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
                 staker.lockDuration = lockDuration;
                 staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
