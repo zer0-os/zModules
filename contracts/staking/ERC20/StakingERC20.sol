@@ -77,30 +77,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // if funds are locked, only transfer if they are past lock duration
         Staker storage staker = stakers[msg.sender];
 
-        // Get rewards they've accumulated already as well as any pending rewards from their last timestamp
-        uint256 rewards = _getPendingRewards(staker);
-
-        staker.owedRewards = 0;
-        staker.lastTimestamp = block.timestamp;
-
-        if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
-            // If the above is true, the rewards will have already been accounted for in
-            // the first `_getPendingRewards` call
-            // We only need to update here
-            staker.owedRewardsLocked = 0;
-            staker.lastTimestampLocked = block.timestamp;
-        }
-
-        // Do not transfer 0 rewards
-        if (rewards == 0) revert ZeroRewards();
-
-        // if (_getContractRewardsBalance() < rewards) revert InsufficientContractBalance();
-
-        // Because we update timestamps before transfer, any reentrancy attempt
-        // will use the current timestamps and calculate to 0
-        rewardsToken.safeTransfer(msg.sender, rewards);
-
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
+        _coreClaim(staker); // TODO update unstake to use this too
     }
 
     /**

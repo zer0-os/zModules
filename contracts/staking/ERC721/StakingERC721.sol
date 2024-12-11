@@ -111,19 +111,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Claim rewards for the calling user based on their staked amount
      */
     function claim() public override {
-        uint256 rewards = _claim(nftStakers[msg.sender].data);
+        NFTStaker storage nftStaker = nftStakers[msg.sender];
 
-        if (rewards == 0) {
-            revert ZeroRewards();
-        }
-
-        if (_getContractRewardsBalance() < rewards) {
-            revert InsufficientContractBalance();
-        }
-
-        rewardsToken.safeTransfer(msg.sender, rewards);
-
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
+        _coreClaim(nftStaker.data);
     }
 
     /**

@@ -161,6 +161,27 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         }
     }
 
+    function _coreClaim(Staker storage staker) internal {
+        uint256 rewards = _getPendingRewards(staker);
+
+        staker.owedRewards = 0;
+        staker.lastTimestamp = block.timestamp;
+
+        if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
+            // If the above is true, the rewards will have already been accounted for in
+            // the first `_getPendingRewards` call
+            // We only need to update here
+            staker.owedRewardsLocked = 0;
+            staker.lastTimestampLocked = block.timestamp;
+        }
+
+        if (rewards == 0) revert ZeroRewards();
+
+        rewardsToken.safeTransfer(msg.sender, rewards);
+
+        emit Claimed(msg.sender, rewards, address(rewardsToken));
+    }
+
     function _getRemainingLockTime(Staker storage staker) internal view returns(uint256) {
         if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
 
