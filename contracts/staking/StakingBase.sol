@@ -88,20 +88,29 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
-     * @notice Get the potential value of a locked stake
+     * @notice Get the potential value of a staked given the time duration and if it is locked
      * 
      * @param amount Amount to be staked
      * @param timeDuration The length in seconds of the lock duration
      * @param locked If the stake will be locked or not
      */
-    function getStakeValue(uint256 amount, uint256 timeDuration, bool locked) public view override returns(uint256) {
-        return _getStakeValue(amount, timeDuration, locked);
+    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public view override returns(uint256) {
+        return _getStakeRewards(amount, timeDuration, locked);
     }
 
+    /**
+     * @notice Get the minimum lock time
+     */
     function getMinimumLockTime() public view override returns(uint256) {
         return minimumLockTime;
     }
 
+    /**
+     * @notice Set the minimum lock time
+     * @dev Will fail when called by anyone other than the contract owner
+     * 
+     * @param _minimumLockTime The new minimum lock time, in seconds
+     */
     function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
         minimumLockTime = _minimumLockTime;
         emit MinimumLockTimeSet(owner(), _minimumLockTime);
@@ -124,10 +133,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         return staker.unlockedTimestamp - block.timestamp;
     }
 
-    function _getStakeValue(uint256 amount, uint256 timeDuration, bool locked) internal view returns(uint256) {
+    function _getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) internal view returns(uint256) {
         // bug if using to calc non-locked stake value after time has passed
         uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
-        uint256 divisor = locked ? 1000 : 100000;
+        uint256 divisor = locked ? 100000 : 1000;
 
         // console.log("rewardsMultiplier: %s", rewardsMultiplier);
         // console.log("amount: %s", amount);
@@ -146,7 +155,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
 
         // Get rewards from non-locked funds already accrued and also between the last timestamp and now
-        uint256 rewards = staker.owedRewards + _getInterimRewards(staker, block.timestamp - staker.lastTimestamp, false);
+        uint256 rewards = staker.owedRewards + _getStakeRewards(staker.amountStaked, block.timestamp - staker.lastTimestamp, false);
         
         // Only include rewards from locked funds the user is passed their lock period
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
@@ -162,17 +171,14 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 ? staker.lastTimestampLocked
                 : staker.unlockedTimestamp;
 
-            rewards += staker.owedRewardsLocked + _getInterimRewards(staker, block.timestamp - mostRecentTimestamp, true);
+            rewards += staker.owedRewardsLocked + _getStakeRewards(
+                staker.amountStakedLocked,
+                block.timestamp - mostRecentTimestamp,
+                true
+            );
         }
 
         return rewards;
-    }
-
-    // Get rewards a user accrued between their last touch point and now
-    // In the `locked` case, we only calculate rewards if the user has surpassed their lock period
-    function _getInterimRewards(Staker storage staker, uint256 timePassed, bool locked) internal view returns (uint256) {
-        uint256 balance = locked ? staker.amountStakedLocked : staker.amountStaked;
-        return balance * (rewardsPerPeriod * (timePassed)) / periodLength / 1000;
     }
 
     /**

@@ -8,16 +8,17 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/* solhint-disable */
+// Don't enforce linter function ordering in mock tokens
+/* solhint-disable ordering */
 
 /**
  * @dev OpenZeppelin ERC20 copied and slightly modified to make state vars internal, so they can be used
  * in other mocked contracts that inherit from this one.
  */
 abstract contract ERC20Mod is Context, IERC20, IERC20Metadata, IERC20Errors {
-    mapping(address account => uint256) internal _balances;
+    mapping(address account => uint256 balance) internal _balances;
 
-    mapping(address account => mapping(address spender => uint256)) internal _allowances;
+    mapping(address account => mapping(address spender => uint256 allowance)) internal _allowances;
 
     uint256 internal _totalSupply;
 

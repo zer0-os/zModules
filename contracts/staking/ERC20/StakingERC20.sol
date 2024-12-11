@@ -145,16 +145,19 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         if (lockDuration == 0) {
             // Get rewards they are owed from past unlocked stakes, if any
-            // `_getPendingRewards` will return 0 if `amountStaked == 0`
-            uint256 interimRewards =  _getInterimRewards(staker, block.timestamp - staker.lastTimestamp, false);
-            // console.log("interimRewards", interimRewards);
-            staker.owedRewards += interimRewards;
+            // will return 0 if `amountStaked == 0`
+            uint256 stakeRewards =  _getStakeRewards(
+                staker.amountStaked,
+                block.timestamp - staker.lastTimestamp,
+                false
+            );
+            staker.owedRewards += stakeRewards;
             staker.lastTimestamp = block.timestamp;
             staker.amountStaked += amount;
         } else {
             // Pre calculate the value of the stake
-            uint256 stakeValue = _getStakeValue(amount, lockDuration, true);
-            staker.owedRewardsLocked += stakeValue;
+            uint256 stakeRewards = _getStakeRewards(amount, lockDuration, true);
+            staker.owedRewardsLocked += stakeRewards;
 
             uint256 incomingUnlockedTimestamp = block.timestamp + lockDuration;
             // if incoming is smaller, be sure we are not past, if so it is a new lock
@@ -162,9 +165,9 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             if (incomingUnlockedTimestamp > staker.unlockedTimestamp) {
                 if (_getRemainingLockTime(staker) == 0) {
                     // If we have passed their previous lock duration entirely, then we 
-                    // collect the rewards they are owed for the interim period at 1.0 RM and then
+                    // collect the rewards they are owed for the in between period at 1.0 RM and then
                     staker.owedRewardsLocked += 
-                        _getInterimRewards(staker, block.timestamp - staker.unlockedTimestamp, true);
+                        _getStakeRewards(staker.amountStakedLocked, block.timestamp - staker.unlockedTimestamp, true);
                 }
                 // On follow up stakes, if the incoming lock is longer than the existing remaining lock,
                 // we use the incoming lock duration instead
@@ -206,9 +209,9 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             } else {
                 // If staker's funds are unlocked, we ignore exit
                 // We already added the value they are owed in stake when pre calculating
-                // now we just add the value they are owed for interim rewards
-                rewards = staker.owedRewardsLocked + _getInterimRewards(
-                    staker,
+                // now we just add the value they are owed for rewards
+                rewards = staker.owedRewardsLocked + _getStakeRewards(
+                    staker.amountStakedLocked,
                     block.timestamp - staker.unlockedTimestamp,
                     true
                 );
@@ -240,7 +243,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             if (exit) {
                 rewards = 0;
             } else {
-                rewards = staker.owedRewards + _getInterimRewards(staker, block.timestamp - staker.lastTimestamp, false);
+                rewards = staker.owedRewards + _getStakeRewards(
+                    staker.amountStaked,
+                    block.timestamp - staker.lastTimestamp,
+                    false
+                );
             }
 
             if (staker.amountStaked - amount == 0) {

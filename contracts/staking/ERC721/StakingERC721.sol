@@ -220,10 +220,10 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
         if (lockDuration == 0) {
-            // Not locking_getInterimRewards
-            // On first stake `_getTimedRewards` will return 0
-            nftStaker.data.owedRewards += _getInterimRewards(
-                nftStaker.data,
+            // Not locking
+            // On first stake will return 0
+            nftStaker.data.owedRewards += _getStakeRewards(
+                nftStaker.data.amountStaked,
                 block.timestamp - nftStaker.data.lastTimestamp,
                 false
             );
@@ -231,19 +231,24 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             nftStaker.data.lastTimestamp = block.timestamp;
             nftStaker.data.amountStaked += tokenIds.length;
         } else {
-            uint256 stakeValue = _getStakeValue(tokenIds.length, lockDuration, true);
-            // console.log("stakeValue: %s", stakeValue);
-            nftStaker.data.owedRewardsLocked += stakeValue;
+            uint256 stakeRewards = _getStakeRewards(tokenIds.length, lockDuration, true);
+            nftStaker.data.owedRewardsLocked += stakeRewards;
 
-            // We only update a users lock duration when it is greater than the previous
+            // TODO update this, we don't ever modify a users lock window
+            // if the incoming lock duration is shorter, ignore
+            // if the incoming lock duration is longer, ignore
+            // ALWAYS value an incoming stake as though its to the end of the existing lock
             uint256 incomingUnlockedTimestamp = block.timestamp + lockDuration;
 
             if (incomingUnlockedTimestamp > nftStaker.data.unlockedTimestamp) {
                 // User may have already finished their previous lock period
-                // if so, grab interim rewards before update
+                // if so, grab rewards before update
                 if (_getRemainingLockTime(nftStaker.data) == 0) {
-                    nftStaker.data.owedRewardsLocked +=
-                        _getInterimRewards(nftStaker.data, block.timestamp - nftStaker.data.unlockedTimestamp, true);
+                    nftStaker.data.owedRewardsLocked += _getStakeRewards(
+                        nftStaker.data.amountStakedLocked,
+                        block.timestamp - nftStaker.data.unlockedTimestamp,
+                        true
+                    );
                 }
 
                 nftStaker.data.unlockedTimestamp = incomingUnlockedTimestamp;
