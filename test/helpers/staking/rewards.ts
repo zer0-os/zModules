@@ -1,36 +1,7 @@
-// import { DAY_IN_SECONDS,
-//   DEFAULT_MULTIPLIER,
-//   DEFAULT_PERIOD_LENGTH,
-//   DEFAULT_REWARDS_PER_PERIOD,
-//   LOCKED_PRECISION_DIVISOR,
-//   PRECISION_DIVISOR 
-// } from "./constants";
+import { DAY_IN_SECONDS } from "../constants";
 import { BaseConfig } from "./types";
 
 import * as hre from "hardhat"
-
-// export const calcTotalRewards = (
-//   durations : Array<bigint>,
-//   balances : Array<bigint>,
-//   rewardsPerPeriod : bigint,
-// ) : bigint => {
-//   let totalRewards = 0n;
-
-//   for (let i = 0; i < durations.length; i++) {
-//     totalRewards += calcRewardsAmount(durations[i], balances[i], rewardsPerPeriod);
-//   }
-
-//   return totalRewards;
-// };
-
-// export const calcRewardsAmount = ( // TODO shouldnt use these legacy functions, confirm in tests
-//   timeSinceLastClaim : bigint,
-//   lockDuration : bigint,
-//   rewardsPerPeriod : bigint,
-// ) : bigint => {
-//   const exponent = lockDuration > 0n ? 2n : 1n;
-//   return (rewardsPerPeriod * timeSinceLastClaim**exponent * DEFAULT_MULTIPLIER) / DAY_IN_SECONDS;
-// }
 
 // Pass specific values here from config in other functions so we can use the correct divisor
 const calcRewards = (
@@ -101,27 +72,29 @@ export const calcTotalLockedRewards = (
   return totalRewards;
 }
 
-const calculateRewardsMultiplier = (lockDuration : bigint) => {
-  return 1n + hre.ethers.parseUnits("1", 14) * 10n * ( 
-    (lockDuration * 10n ) / 259n
-  ) / hre.ethers.parseEther("1");
+const calculateRewardsMultiplier = (lockDuration : bigint, config : BaseConfig) => {
+
+  return config.minimumRewardsMultiplier
+    + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
+    * (lockDuration / DAY_IN_SECONDS) 
+    / config.periodLength
 }
 
-// TODO unlocked and locked will have diff funcs
-export const calcStakeValue = (amount : bigint, lockDuration : bigint, config : BaseConfig) => {
-  const rewardsMultiplier = lockDuration === 0n ? 1n : calculateRewardsMultiplier(lockDuration);
-  const divisor = lockDuration === 0n ? 1000n : 100000n;
-  const timeDuration = lockDuration === 0n ? 1n : lockDuration;
-
-  const rewards = rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
-  return rewards;
-}
-
-// unlocked funds
-export const calcInterimValue = (
+export const calcStakeRewards = (
   amount : bigint,
-  timePassed : bigint,
-  config : BaseConfig
+  timeDuration : bigint,
+  locked : boolean,
+  config : BaseConfig,
+  rewardsMultiplier ?: bigint,
 ) => {
-  return amount * config.rewardsPerPeriod * timePassed / config.periodLength / config.divisor;
-};
+  if (!rewardsMultiplier) {
+    rewardsMultiplier = locked ? calculateRewardsMultiplier(timeDuration, config) : 1n;
+  }
+
+  const divisor = locked ? 100000n : 1000n;
+
+  const rewards = 
+    rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
+
+    return rewards;
+}

@@ -9,9 +9,12 @@ export interface BaseConfig {
   rewardsToken : string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
-  minimumLock : bigint;
+  minimumLockTime : bigint;
   divisor : bigint;
   lockedDivisor : bigint;
+  minimumRewardsMultiplier : bigint;
+  maximumRewardsMultiplier : bigint;
+  contractOwner : string;
 }
 
 // Simplify the Ethers V6 contract type

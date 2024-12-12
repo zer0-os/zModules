@@ -19,7 +19,7 @@ import {
   WITHDRAW_EVENT,
   INIT_BALANCE,
   DEFAULT_STAKED_AMOUNT,
-  createDefaultConfigs,
+  createDefaultConfig,
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
@@ -29,8 +29,7 @@ import {
   calcLockedRewards,
   calcTotalUnlockedRewards,
   calcTotalLockedRewards,
-  calcStakeValue,
-  calcInterimValue,
+  calcStakeRewards
 } from "./helpers/staking";
 
 describe("StakingERC20", () => {
@@ -70,16 +69,9 @@ describe("StakingERC20", () => {
       stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
       rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
 
-      config = await createDefaultConfigs(rewardsToken, owner, undefined, stakeToken);
+      config = await createDefaultConfig(rewardsToken, owner, undefined, stakeToken);
 
-      contract = await stakingFactory.deploy(
-        config.stakingToken,
-        config.rewardsToken,
-        config.rewardsPerPeriod,
-        config.periodLength,
-        config.minimumLock,
-        owner.address
-      ) as StakingERC20;
+      contract = await stakingFactory.deploy(config) as StakingERC20;
 
       // Give each user funds to stake
       await stakeToken.connect(owner).transfer(
@@ -157,19 +149,18 @@ describe("StakingERC20", () => {
       const rewardsBalanceBeforeA = await rewardsToken.balanceOf(stakerA.address);
 
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
-      // amountStakedA += DEFAULT_STAKED_AMOUNT;
+      const stakedAt = BigInt(await time.latest());
       
       const stakerData = await contract.stakers(stakerA.address);
 
-      const interimValue = calcInterimValue(
+      const interimValue = calcStakeRewards(
         DEFAULT_STAKED_AMOUNT,
         BigInt(await time.latest()) - stakedAt,
+        false,
         config
       )
 
       expect(stakerData.owedRewards).to.eq(interimValue);
-
-      stakedAt = BigInt(await time.latest());
 
       const stakeBalanceAfterA = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceAfterA = await rewardsToken.balanceOf(stakerA.address);
@@ -216,35 +207,28 @@ describe("StakingERC20", () => {
 
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerA.address);
 
-      const stakerData = await contract.stakers(stakerA.address);
+      const stakerDataAfter = await contract.stakers(stakerA.address);
 
-      // TODO change to unlockedTimestamp should be shown with helper that does
-      // the same weighted sum math that we do internally
-      // TODO the weighted sum math breaks if stakes are too frequent
-      // resolve what we shoud do
-
-      expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT * 2n);
-      expect(stakerData.lastTimestampLocked).to.eq(stakedAt);
-      expect(stakerData.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
+      expect(stakerDataAfter.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT * 2n);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(stakedAt);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakerDataBefore.unlockedTimestamp);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
     });
 
-    // TODO cases for new stake function
-    /**
-     * follow up stakes that are
-     *  before initial stake lock finishes
-     *    less time than the original stake lock
-     *    equal time to the original stake lock
-     *    more time than the original stake lock
-     *  after initial stake lock finishes
-     *    if add at EXACT MOMENT last one ends (highly unlikely)
-     *    if add after last ends, be sure 1.0 RM applied to time diff
-     *    be sure NEW one is treated entirely separately
-     */
-    it("Calculates interim rewards correctly after initial lock duration is complete", async () => {
+    it("Calculates in between rewards correctly after initial lock duration is complete", async () => {
       await reset();
 
-      const firstStakeValue = calcStakeValue(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, config);
+      const futureRewards = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        DEFAULT_LOCK,
+        true,
+        config
+      );
+
+      const futureRewardsContract = await contract.getStakeRewards(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, true);
+
+      expect(futureRewards).to.eq(futureRewardsContract);
+
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
 
       const interimTime = DAY_IN_SECONDS * 17n;
@@ -252,22 +236,26 @@ describe("StakingERC20", () => {
 
       const addedStake = hre.ethers.parseEther("900");
       const addedStakeLock = DAY_IN_SECONDS * 30n;
-      const secondStakedValue = calcStakeValue(addedStake, addedStakeLock, config);
+
+      const secondFutureRewards = calcStakeRewards(
+        addedStake,
+        addedStakeLock,
+        true,
+        config
+      );
 
       await contract.connect(stakerA).stakeWithLock(addedStake, addedStakeLock);
-
+      const latest = BigInt(await time.latest());
       const stakerDataAfter = await contract.stakers(stakerA.address);
 
-      const expectedInterimRewards = calcTotalUnlockedRewards(
-        [interimTime + 1n],
-        [DEFAULT_STAKED_AMOUNT],
-        config
-      )
+      // The time in between stake A and B should be rewarded at rate 1.0
+      const expectedRewards = calcStakeRewards(DEFAULT_STAKED_AMOUNT, interimTime + 1n, false, config);
 
-      expect(stakerDataAfter.owedRewardsLocked).to.eq(firstStakeValue + secondStakedValue + expectedInterimRewards);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(futureRewards + secondFutureRewards + expectedRewards);
       expect(stakerDataAfter.owedRewards).to.eq(0n);
     });
-    it("Updates the amount of remaining time on follow up locks appropriately", async () => {
+
+    it("Does not update the amount of remaining time on follow up stakes with lock", async () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
@@ -275,42 +263,50 @@ describe("StakingERC20", () => {
 
       const stakerData = await contract.stakers(stakerA.address);
 
-      const firstStakeValue = calcStakeValue(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, config);
+      const firstStakeValue = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        DEFAULT_LOCK,
+        true,
+        config
+      );
 
       expect(stakerData.lastTimestampLocked).to.eq(stakedAt);
       expect(stakerData.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
       expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT);
       expect(stakerData.owedRewardsLocked).to.eq(firstStakeValue);
 
-      const interimTime = DAY_IN_SECONDS * 27n;
-
-      await time.increase(DEFAULT_LOCK + interimTime);
+      await time.increase(DEFAULT_LOCK / 2n);
       const latest = BigInt(await time.latest());
 
       const addedStake = hre.ethers.parseEther("900");
       const addedStakeLock = DAY_IN_SECONDS * 30n;
-      const secondStakedValue = calcStakeValue(addedStake, addedStakeLock, config);
+
+      // Even though we do provide lock time for this stake, the user has already locked 
+      // and so it isn't used. This stake is valued as though it extends to the end of the 
+      // existing lock
+
+      // multiplier should be based on remaining lock time, not
+      const secondStakedValue = calcStakeRewards(
+        addedStake,
+        stakerData.unlockedTimestamp - latest - 1n, // amount of time remaining in lock
+        true,
+        config,
+        stakerData.rewardsMultiplier,
+      );
 
       // Additional locked stakes disregard the incoming lock duration
       await contract.connect(stakerA).stakeWithLock(addedStake, addedStakeLock);
       const secondStakedAt = BigInt(await time.latest());
 
-      const expectedInterimRewards = calcTotalUnlockedRewards(
-        [interimTime + 1n],
-        [DEFAULT_STAKED_AMOUNT],
-        config
-      )
-
       const stakerDataAfter = await contract.stakers(stakerA.address);
 
-      expect(stakerDataAfter.owedRewardsLocked).to.eq(firstStakeValue + secondStakedValue + expectedInterimRewards);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(firstStakeValue + secondStakedValue);
       expect(stakerDataAfter.owedRewards).to.eq(0n);
 
       expect(stakerDataAfter.lastTimestampLocked).to.eq(secondStakedAt);
 
       // Second stake lock was less duration total, so the unlockedTimestamp wasn't changed
-      expect(stakerDataAfter.unlockedTimestamp).to.be.gt(stakerData.unlockedTimestamp);
-      expect(stakerDataAfter.unlockedTimestamp).to.be.eq(secondStakedAt + addedStakeLock);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakerData.unlockedTimestamp);
       expect(stakerDataAfter.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT + addedStake);
     });
 
@@ -487,8 +483,15 @@ describe("StakingERC20", () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
-      
-      const stakeValue = calcStakeValue(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, config);
+      const stakerData = await contract.stakers(stakerA.address);
+
+      const stakeValue = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        DEFAULT_LOCK,
+        true,
+        config,
+        stakerData.rewardsMultiplier,
+      );
 
       await time.increase(DEFAULT_LOCK);
 
@@ -732,7 +735,14 @@ describe("StakingERC20", () => {
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
       const stakedAt = BigInt(await time.latest());
 
-      const stakeValue = calcStakeValue(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, config);
+      const stakerData = await contract.stakers(stakerA.address);
+      const stakeValue = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        DEFAULT_LOCK,
+        true,
+        config,
+        stakerData.rewardsMultiplier,
+      );
 
       await time.increase(DEFAULT_LOCK);
 
@@ -767,12 +777,12 @@ describe("StakingERC20", () => {
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + DEFAULT_STAKED_AMOUNT / 2n);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + stakeValue + interimRewards);
 
-      const stakerData = await contract.stakers(stakerA.address);
+      const stakerDataAfter = await contract.stakers(stakerA.address);
 
-      expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT / 2n);
-      expect(stakerData.lastTimestampLocked).to.eq(unstakedAt);
-      expect(stakerData.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
-      expect(stakerData.owedRewardsLocked).to.eq(0n);
+      expect(stakerDataAfter.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT / 2n);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(unstakedAt);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
     });
 
     it("Allows a user to fully unstake locked funds when passed their lock time", async () => {
@@ -1188,16 +1198,16 @@ describe("StakingERC20", () => {
     it("Test the reward multiplier calculation with every value allowed", async () => {
       await reset();
 
-      // for (let i = DAY_IN_SECONDS / 2n; i < 365n * DAY_IN_SECONDS; i++) {
-      //   const multiplier = await contract.getRewardsMultiplier(i);
+      for (let i = 0; i <= 365; i++) {
+        let time = DAY_IN_SECONDS * BigInt(i);
 
-      //   if (multiplier == 0n) {
-      //     console.log(`Lock duration that returns 0 RM: ${i}`);
-      //   }
-      //   // expect(multiplier).to.gt(0n);
-      // }
-      // const multiplier = await contract.getRewardsMultiplier(36500n);
-      // console.log(multiplier);
+        const rm = await contract.testRM(time);
+
+        const log = false;
+        if (log && (i % 10 === 0 || i === 365)) {
+          console.log(`${i}: ${rm}`);
+        }
+      };
     });
 
     it("Finds the minimum lock time required to exceed non-locked rewards", async () => {

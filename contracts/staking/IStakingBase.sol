@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title IStakingBase
@@ -29,6 +30,17 @@ interface IStakingBase {
 
         uint256 lastTimestamp;
         uint256 lastTimestampLocked;
+    }
+
+    struct Config {
+        address stakingToken;
+        address contractOwner;
+        IERC20 rewardsToken;
+        uint256 rewardsPerPeriod;
+        uint256 periodLength;
+        uint256 minimumLockTime;
+        uint256 minimumRewardsMultiplier;
+        uint256 maximumRewardsMultiplier;
     }
 
     /**

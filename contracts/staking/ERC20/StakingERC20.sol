@@ -23,21 +23,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     uint256 public totalStaked;
 
     constructor(
-        IERC20 _stakingToken,
-        IERC20 _rewardsToken,
-        uint256 _rewardsPerPeriod,
-        uint256 _periodLength,
-        uint256 _minimumLockTime,
-        address contractOwner
-    )
-        StakingBase(
-            address(_stakingToken),
-            _rewardsToken,
-            _rewardsPerPeriod,
-            _periodLength,
-            _minimumLockTime,
-            contractOwner
-        )
+        Config memory _config
+    ) StakingBase(_config)
     {}
 
     /**
@@ -52,7 +39,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param lockDuration The duration of the lock period
      */
     function stakeWithLock(uint256 amount, uint256 lockDuration) external override {
-        if (lockDuration < minimumLockTime) {
+        if (lockDuration < config.minimumLockTime) {
             revert LockTimeTooShort();
         }
         _stake(amount, lockDuration);
@@ -121,9 +108,9 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         _coreStake(staker, amount, lockDuration);
 
         // Transfers user's funds to this contract
-        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Staked(msg.sender, amount, lockDuration, stakingToken);
+        emit Staked(msg.sender, amount, lockDuration, config.stakingToken);
     }
 
     function _unstake(uint256 amount, bool locked, bool exit) internal {
@@ -214,19 +201,19 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         if (rewards > 0) {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding for this
-            rewardsToken.safeTransfer(msg.sender, rewards);
+            config.rewardsToken.safeTransfer(msg.sender, rewards);
         }
 
         // Return the user's initial stake
-        IERC20(stakingToken).safeTransfer(msg.sender, amount);
+        IERC20(config.stakingToken).safeTransfer(msg.sender, amount);
 
-        emit Unstaked(msg.sender, amount, stakingToken);
+        emit Unstaked(msg.sender, amount, config.stakingToken);
     }
 
     function _getContractRewardsBalance() internal view override returns (uint256) {
         uint256 balance = super._getContractRewardsBalance();
 
-        if (address(rewardsToken) == stakingToken) {
+        if (address(config.rewardsToken) == config.stakingToken) {
             return balance - totalStaked;
         }
 

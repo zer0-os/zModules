@@ -24,51 +24,18 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     mapping(address user => Staker staker) public stakers;
 
-    /**
-     * @notice The staking token for this pool
-     */
-    address public immutable stakingToken;
-
-    /**
-     * @notice The rewards token for this pool
-     */
-    IERC20 public immutable rewardsToken;
-
-    /**
-     * @notice The rewards of the pool per period length
-     */
-    uint256 public immutable rewardsPerPeriod;
-
-    /**
-     * @notice The length of each rewards period
-     */
-    uint256 public immutable periodLength;
-
-    /**
-     * @notice The minimum amount of time a user must lock their stake for
-     */
-    uint256 public minimumLockTime;
+    Config public config;
 
     constructor(
-        address _stakingToken,
-        IERC20 _rewardsToken,
-        uint256 _rewardsPerPeriod,
-        uint256 _periodLength,
-        uint256 _minimumLockTime,
-        address _contractOwner
-    ) Ownable(_contractOwner) {
+        Config memory _config
+    ) Ownable(_config.contractOwner) {
         if (
-            _stakingToken.code.length == 0 ||
-            address(_rewardsToken).code.length == 0 ||
-            _rewardsPerPeriod == 0 ||
-            _periodLength == 0
+            _config.stakingToken.code.length == 0 ||
+            address(_config.rewardsToken).code.length == 0 ||
+            _config.rewardsPerPeriod == 0 ||
+            _config.periodLength == 0
         ) revert InitializedWithZero();
-
-        stakingToken = _stakingToken;
-        rewardsToken = _rewardsToken;
-        rewardsPerPeriod = _rewardsPerPeriod;
-        periodLength = _periodLength;
-        minimumLockTime = _minimumLockTime;
+        config = _config;
     }
 
     /**
@@ -82,7 +49,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Do not send empty transfer
         if (balance == 0) revert InsufficientContractBalance();
 
-        rewardsToken.safeTransfer(owner(), balance);
+        config.rewardsToken.safeTransfer(owner(), balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
@@ -91,7 +58,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @notice Get the minimum lock time
      */
     function getMinimumLockTime() public view override returns(uint256) {
-        return minimumLockTime;
+        return config.minimumLockTime;
     }
 
     /**
@@ -101,7 +68,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param _minimumLockTime The new minimum lock time, in seconds
      */
     function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
-        minimumLockTime = _minimumLockTime;
+        config.minimumLockTime = _minimumLockTime;
         emit MinimumLockTimeSet(owner(), _minimumLockTime);
     }
 
@@ -153,17 +120,23 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             staker.lastTimestamp = block.timestamp;
             staker.amountStaked += amount;
         } else {
+            // console.log("stake with lock");
             if (block.timestamp > staker.unlockedTimestamp) {
                 // The user has never locked
                 // or they have and we are past their lock period
 
+                // console.log("block.timestamp > staker.unlockedTimestamp: true");
                 // Capture the user's owed rewards from the past stake in between
                 // period at rate of 1
+                uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
+                ? staker.lastTimestampLocked
+                : staker.unlockedTimestamp;
+
                 // Note: this will return 0 if `amountStakedLocked == 0`
                 staker.owedRewardsLocked += _getStakeRewards(
                     staker.amountStakedLocked,
                     1,
-                    lockDuration,
+                    block.timestamp - mostRecentTimestamp,
                     false
                 );
 
@@ -180,6 +153,11 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                     true
                 );
             } else {
+                // console.log("block.timestamp > staker.unlockedTimestamp: false");
+
+                // should be value of new stake at remaining time lock
+                // console.log("addedRewards: %s", addedRewards);
+
                 staker.owedRewardsLocked += _getStakeRewards(
                     amount,
                     staker.rewardsMultiplier,
@@ -209,9 +187,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         if (rewards == 0) revert ZeroRewards();
 
-        rewardsToken.safeTransfer(msg.sender, rewards);
+        config.rewardsToken.safeTransfer(msg.sender, rewards);
 
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
+        emit Claimed(msg.sender, rewards, address(config.rewardsToken));
     }
 
     function _getRemainingLockTime(Staker storage staker) internal view returns(uint256) {
@@ -226,6 +204,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         uint256 timeDuration,
         bool locked
     ) internal view returns(uint256) {
+        // todo make these values constants
         uint256 divisor = locked ? 100000 : 1000;
 
         // console.log("rewardsMultiplier: %s", rewardsMultiplier);
@@ -235,7 +214,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // console.log("timeDuration: %s", timeDuration);
         // console.log("periodLength: %s", periodLength);
         // console.log("divisor: %s", divisor);
-        uint256 rewards = rewardsMultiplier * amount * rewardsPerPeriod * timeDuration / periodLength / divisor;
+        uint256 rewards = rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
 
         // console.log("rewards: %s", rewards);
         return rewards;
@@ -277,32 +256,22 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         return rewards;
     }
 
+    function testRM(uint256 timeDuration) public view returns(uint256) {
+        return _calcRewardsMultiplier(timeDuration);
+    }
+
     /**
      * @dev Locked rewards receive a multiplier based on the length of the lock
      * @param lock The length of the lock in seconds
      */
-    function _calcRewardsMultiplier(uint256 lock) internal pure returns(uint256) {
-        // maxRM = 10
-        // periodLength = 365 days
-        // precisionMultiplier = 10
-        // scalar = 1e18
-
-        // 101 is smallest possible increment while giving more than
-        // if a user simply didnt lock their funds, but not by a lot
-        // could argue that have a minimum lock time is a good idea?
-        // could help make sure people cant exploit the system
-        // you cant lock for 1s just to get RM and boost rewards
-
-        // use 1 + to avoid ever having 0 return value
-        // if we want 30 day min lock time 259 is a good divisor
-        // for both ERC20 and ERC721 staking contracts 
-
-        return 1 + 1e14 * 10 * ( (lock * 10 ) / 259) / 1e18;
-        // return 100 + 1e18 * 10**(lock / 365) / 1e16; // might be better
-        // return 101 + 1e14 * 10 * ( (lock * 10 ) / 365) / 1e18;
+    function _calcRewardsMultiplier(uint256 lock) internal view returns(uint256) {
+        return config.minimumRewardsMultiplier
+        + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
+        * (lock / 86400 ) // 86400 seconds in a day
+        / config.periodLength;
     }
 
     function _getContractRewardsBalance() internal view virtual returns (uint256) {
-        return rewardsToken.balanceOf(address(this));
+        return config.rewardsToken.balanceOf(address(this));
     }
 }

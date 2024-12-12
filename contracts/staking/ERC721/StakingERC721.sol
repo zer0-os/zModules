@@ -52,22 +52,11 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         string memory name,
         string memory symbol,
         string memory baseUri,
-        IERC721 _stakingToken,
-        IERC20 _rewardsToken,
-        uint256 _rewardsPerPeriod,
-        uint256 _periodLength,
-        uint256 _minimumLockTime,
-        address _contractOwner
+        Config memory config
+        // address owner
     )
         ERC721(name, symbol)
-        StakingBase(
-            address(_stakingToken),
-            _rewardsToken,
-            _rewardsPerPeriod,
-            _periodLength,
-            _minimumLockTime,
-            _contractOwner
-        )
+        StakingBase(config)
     {
         if (bytes(baseUri).length > 0) {
             baseURI = baseUri;
@@ -87,7 +76,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         string[] calldata tokenUris,
         uint256 lockDuration
     ) external override {
-        if (lockDuration < minimumLockTime) {
+        if (lockDuration < config.minimumLockTime) {
             revert LockTimeTooShort();
         }
         _stake(tokenIds, tokenUris, lockDuration);
@@ -218,7 +207,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256 i;
         for(i; i < tokenIds.length;) {
             // Transfer their NFT to this contract
-            IERC721(stakingToken).safeTransferFrom(
+            IERC721(config.stakingToken).safeTransferFrom(
                 msg.sender,
                 address(this),
                 tokenIds[i]
@@ -231,7 +220,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             // Mint user sNFT
             _safeMint(msg.sender, tokenIds[i], tokenUris[i]);
 
-            emit Staked(msg.sender, tokenIds[i], stakingToken);
+            emit Staked(msg.sender, tokenIds[i], config.stakingToken);
 
             unchecked {
                 ++i;
@@ -326,8 +315,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         if (!exit) {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding for this
-            rewardsToken.safeTransfer(msg.sender, rewards);
-            emit Claimed(msg.sender, rewards, address(rewardsToken));
+            config.rewardsToken.safeTransfer(msg.sender, rewards);
+            emit Claimed(msg.sender, rewards, address(config.rewardsToken));
         }
 
         // If a complete withdrawal, delete the staker struct for this user as well
@@ -351,13 +340,13 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         --_totalSupply;
 
         // Return NFT to staker
-        IERC721(stakingToken).safeTransferFrom(
+        IERC721(config.stakingToken).safeTransferFrom(
             address(this),
             msg.sender,
             tokenId
         );
 
-        emit Unstaked(msg.sender, tokenId, stakingToken);
+        emit Unstaked(msg.sender, tokenId, config.stakingToken);
     }
 
     function _safeMint(

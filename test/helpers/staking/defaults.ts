@@ -15,35 +15,39 @@ import {
   LOCKED_PRECISION_DIVISOR,
   DEFAULT_PERIOD_LENGTH_ERC20,
   DEFAULT_MINIMUM_LOCK,
+  DEFAULT_MINIMUM_RM,
+  DEFAULT_MAXIMUM_RM,
 } from "../constants";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
-export const createDefaultConfigs = async (
+export const createDefaultConfig = async (
   rewardsERC20 : MockERC20,
   contractOwner : SignerWithAddress,
   erc721 ?: MockERC721,
   stakeERC20 ?: MockERC20,
 ) => {
+  const config : Partial<BaseConfig> = {
+    rewardsToken: await rewardsERC20.getAddress(),
+    minimumLockTime: DEFAULT_MINIMUM_LOCK,
+    divisor: PRECISION_DIVISOR,
+    lockedDivisor: LOCKED_PRECISION_DIVISOR,
+    minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
+    maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
+    contractOwner: contractOwner.address,
+  }
+
   if (erc721) {
-    return {
-      stakingToken: await erc721.getAddress(),
-      rewardsToken: await rewardsERC20.getAddress(),
-      rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD_ERC721,
-      periodLength: DEFAULT_PERIOD_LENGTH_ERC721,
-      minimumLock: DEFAULT_MINIMUM_LOCK,
-      divisor: PRECISION_DIVISOR,
-      lockedDivisor: LOCKED_PRECISION_DIVISOR,
-    } as BaseConfig;
+    config.stakingToken = await erc721.getAddress()
+    config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC721
+    config.periodLength = DEFAULT_PERIOD_LENGTH_ERC721
+
+    return config as BaseConfig;
   } else if (stakeERC20) {
-    return {
-      stakingToken: await stakeERC20.getAddress(),
-      rewardsToken: await rewardsERC20.getAddress(),
-      rewardsPerPeriod: DEFAULT_REWARDS_PER_PERIOD_ERC20,
-      periodLength: DEFAULT_PERIOD_LENGTH_ERC20,
-      minimumLock: DEFAULT_MINIMUM_LOCK,
-      divisor: PRECISION_DIVISOR,
-      lockedDivisor: LOCKED_PRECISION_DIVISOR,
-    } as BaseConfig;
+    config.stakingToken = await stakeERC20.getAddress()
+    config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC20
+    config.periodLength = DEFAULT_PERIOD_LENGTH_ERC20
+
+    return config as BaseConfig;
   }
 
   throw new Error("No valid staking token provided");

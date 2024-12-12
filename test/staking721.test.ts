@@ -8,7 +8,7 @@ import {
   StakingERC721,
 } from "../typechain";
 import {
-  createDefaultConfigs,
+  createDefaultConfig,
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
@@ -21,10 +21,11 @@ import {
   PRECISION_DIVISOR,
   LOCKED_PRECISION_DIVISOR,
   DAY_IN_SECONDS,
-  calcStakeValue,
-  calcInterimValue,
+  calcStakeRewards,
   DEFAULT_STAKED_AMOUNT,
   DEFAULT_MINIMUM_LOCK,
+  DEFAULT_MINIMUM_RM,
+  DEFAULT_MAXIMUM_RM,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -127,19 +128,15 @@ describe("StakingERC721", () => {
   
       stakingTokenAddress = await stakingToken.getAddress();
   
-      config = await createDefaultConfigs(rewardToken, owner, stakingToken);
+      config = await createDefaultConfig(rewardToken, owner, stakingToken);
   
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
       stakingERC721 = await stakingFactory.deploy(
         "StakingNFT",
         "SNFT",
         baseUri,
-        config.stakingToken,
-        config.rewardsToken,
-        config.rewardsPerPeriod,
-        config.periodLength,
-        config.minimumLock,
-        owner.address
+        config
+        // { ...config }
       );
   
       stakingERC721Address = await stakingERC721.getAddress();
@@ -254,45 +251,51 @@ describe("StakingERC721", () => {
   it("Should NOT deploy with zero values passed", async () => {
     const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
 
-    await expect(
-      stakingFactory.deploy(
-        "StakingNFT",
-        "SNFT",
-        baseUri,
-        hre.ethers.ZeroAddress,
-        rewardTokenAddress,
-        config.rewardsPerPeriod,
-        config.periodLength,
-        config.minimumLock,
-        owner.address
-      )
-    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+    let localConfig = config;
+    localConfig.stakingToken = hre.ethers.ZeroAddress;
 
     await expect(
       stakingFactory.deploy(
         "StakingNFT",
         "SNFT",
         baseUri,
-        stakingTokenAddress,
-        hre.ethers.ZeroAddress,
-        config.rewardsPerPeriod,
-        config.periodLength,
-        config.minimumLock,
-        owner.address
+        config
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+
+    localConfig = config;
+    localConfig.rewardsToken = hre.ethers.ZeroAddress;
 
     await expect(
       stakingFactory.deploy(
         "StakingNFT",
         "SNFT",
         baseUri,
-        stakingToken.target,
-        rewardToken.target,
-        0, // rewards per period
-        config.periodLength,
-        config.minimumLock,
-        owner.address
+        config
+      )
+    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+
+    localConfig = config;
+    localConfig.rewardsPerPeriod = 0n;
+
+    await expect(
+      stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        baseUri,
+        config
+      )
+    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+
+    localConfig = config;
+    localConfig.periodLength = 0n;
+
+    await expect(
+      stakingFactory.deploy(
+        "StakingNFT",
+        "SNFT",
+        baseUri,
+        config
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
   });
@@ -601,7 +604,13 @@ describe("StakingERC721", () => {
 
       const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
 
-      const stakeValue = calcStakeValue(1n, DEFAULT_LOCK, config);
+      const stakeValue = calcStakeRewards(
+        1n,
+        DEFAULT_LOCK,
+        true,
+        config,
+        stakerData.rewardsMultiplier
+      );
 
       expect(pendingRewards).to.eq(0n); // 0 as not passed lock time yet
       expect(stakerData.owedRewardsLocked).to.eq(stakeValue);
@@ -646,9 +655,10 @@ describe("StakingERC721", () => {
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
-      const expectedRewards = calcInterimValue(
+      const expectedRewards = calcStakeRewards(
         1n,
         claimedAt - stakedAt,
+        false,
         config
       );
 
@@ -734,21 +744,25 @@ describe("StakingERC721", () => {
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
-      const expectedUnlocked = calcInterimValue(
+      const expectedUnlocked = calcStakeRewards(
         1n,
         claimedAt - stakedAtWithoutLock,
+        false,
         config
       )
 
-      const expectedLockedStakeValue = calcStakeValue(
+      const expectedLockedStakeValue = calcStakeRewards(
         1n,
         DEFAULT_LOCK,
-        config
+        true,
+        config,
+        stakerDataBefore.rewardsMultiplier
       )
 
-      const expectedLockedInterimRewards = calcInterimValue(
+      const expectedLockedInterimRewards = calcStakeRewards(
         1n,
         claimedAt - stakerDataBefore.unlockedTimestamp,
+        false,
         config
       )
 
@@ -790,21 +804,25 @@ describe("StakingERC721", () => {
       await stakingERC721.connect(stakerA).unstake([tokenIdA], false);
       unstakedAt = BigInt(await time.latest());
 
-      const expectedUnlocked = calcInterimValue(
+      const expectedUnlocked = calcStakeRewards(
         stakerDataBefore.amountStaked,
         unstakedAt - stakedAtUnlocked,
+        false,
         config
       )
 
-      const expectedLockedStakeValue = calcStakeValue(
+      const expectedLockedStakeValue = calcStakeRewards(
         stakerDataBefore.amountStakedLocked,
         DEFAULT_LOCK,
-        config
+        true,
+        config,
+        stakerDataBefore.rewardsMultiplier
       )
 
-      const expectedLockedInterimRewards = calcInterimValue(
+      const expectedLockedInterimRewards = calcStakeRewards(
         stakerDataBefore.amountStakedLocked,
         unstakedAt - stakerDataBefore.unlockedTimestamp,
+        false,
         config
       )
 
@@ -857,21 +875,25 @@ describe("StakingERC721", () => {
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
-      const stakeValue = calcStakeValue(
+      const stakeValue = calcStakeRewards(
         stakerDataBefore.amountStakedLocked,
         DEFAULT_LOCK,
-        config
+        true,
+        config,
+        stakerDataBefore.rewardsMultiplier
       )
 
-      const unlockedValue = calcInterimValue(
+      const unlockedValue = calcStakeRewards(
         stakerDataBefore.amountStaked,
         unstakedAt - stakedAtUnlocked,
+        false,
         config
       )
 
-      const interimValue = calcInterimValue(
+      const interimValue = calcStakeRewards(
         stakerDataBefore.amountStakedLocked,
         unstakedAt - stakerDataBefore.unlockedTimestamp,
+        false,
         config
       )
 
@@ -1160,9 +1182,12 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
-        minimumLock: DEFAULT_MINIMUM_LOCK,
+        minimumLockTime: DEFAULT_MINIMUM_LOCK,
         divisor: PRECISION_DIVISOR,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
+        minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
+        maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
+        contractOwner: owner.address,
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1170,12 +1195,7 @@ describe("StakingERC721", () => {
         "StakingNFT",
         "SNFT",
         baseUri,
-        localConfig.stakingToken,
-        localConfig.rewardsToken,
-        localConfig.rewardsPerPeriod,
-        localConfig.periodLength,
-        localConfig.minimumLock,
-        owner.address
+        localConfig
       ) as StakingERC721;
 
       // Realistically, they should never approve the contract for erc20 spending
@@ -1206,9 +1226,12 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
-        minimumLock: DEFAULT_MINIMUM_LOCK,
+        minimumLockTime: DEFAULT_MINIMUM_LOCK,
         divisor: PRECISION_DIVISOR,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
+        minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
+        maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
+        contractOwner: owner.address,
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1216,12 +1239,7 @@ describe("StakingERC721", () => {
         "StakingNFT",
         "SNFT",
         baseUri,
-        localConfig.stakingToken,
-        localConfig.rewardsToken,
-        localConfig.rewardsPerPeriod,
-        localConfig.periodLength,
-        localConfig.minimumLock,
-        owner.address
+        localConfig
       ) as StakingERC721;
 
       await stakingToken.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
@@ -1260,35 +1278,6 @@ describe("StakingERC721", () => {
       }
     });
 
-    it("Can't use 0 as the period length", async () => {
-      const localConfig = {
-        stakingToken: await stakingToken.getAddress(),
-        rewardsToken: await stakingToken.getAddress(),
-        rewardsPerPeriod: BigInt(3),
-        periodLength: BigInt(0),
-        minimumLock : DEFAULT_MINIMUM_LOCK,
-        divisor: PRECISION_DIVISOR,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR,
-      } as BaseConfig;
-
-      const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
-      try {
-        await stakingFactory.deploy(
-          "StakingNFT",
-          "SNFT",
-          baseUri,
-          localConfig.stakingToken,
-          localConfig.rewardsToken,
-          localConfig.rewardsPerPeriod,
-          localConfig.periodLength,
-          localConfig.minimumLock,
-          owner.address
-        );
-      } catch (e : unknown) {
-        expect((e as Error).message).to.include(ZERO_INIT_ERR);
-      }
-    });
-
     it("Can't transfer rewards when there is no rewards balance", async () => {
       await reset(); 
 
@@ -1298,8 +1287,11 @@ describe("StakingERC721", () => {
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
         divisor: PRECISION_DIVISOR,
-        minimumLock : DEFAULT_MINIMUM_LOCK,
+        minimumLockTime: DEFAULT_MINIMUM_LOCK,
         lockedDivisor: LOCKED_PRECISION_DIVISOR,
+        minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
+        maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
+        contractOwner: owner.address,
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1307,12 +1299,7 @@ describe("StakingERC721", () => {
         "StakingNFT",
         "SNFT",
         baseUri,
-        localConfig.stakingToken,
-        localConfig.rewardsToken,
-        localConfig.rewardsPerPeriod,
-        localConfig.periodLength,
-        localConfig.minimumLock,
-        owner.address
+        localConfig
       ) as StakingERC721;
 
       await stakingToken.connect(stakerA).approve(await localStakingERC721.getAddress(), tokenIdA);
