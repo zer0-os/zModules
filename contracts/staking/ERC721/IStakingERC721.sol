@@ -2,13 +2,23 @@
 pragma solidity 0.8.26;
 
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-
+import { IStakingBase } from "../IStakingBase.sol";
 
 /**
  * @title IStakingERC721
  * @notice Interface for the StakingERC721 contract
  */
-interface IStakingERC721 is IERC721Receiver {
+interface IStakingERC721 is IERC721Receiver, IStakingBase {
+
+    /**
+     * @notice Struct to track ERC721 specific data for a staker
+     */
+    struct NFTStaker {
+        Staker stake;
+        uint256[] tokenIds;
+        mapping(uint256 tokenId => bool locked) locked;
+    }
+
     /**
      * @notice Emitted when the base URI is updated
      * @param baseURI The new base URI
@@ -45,27 +55,43 @@ interface IStakingERC721 is IERC721Receiver {
     error InvalidOwner();
 
     /**
+     * @notice Throw when call to unstake makes no changes
+     */
+    error InvalidUnstake();
+
+    /**
      * @notice Throw when trying to transfer the representative sNFT
      */
     error NonTransferrableToken();
 
-    /**
-     * @notice Throw when the token array lengths do not match
-     */
-    error ArrayLengthMismatch();
+    function stakeWithLock(
+        uint256[] calldata tokenIds,
+        string[] calldata tokenUris,
+        uint256 lockDuration
+    ) external;
 
-    function stake(
+    function stakeWithoutLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenURIs
     ) external;
 
+    function claim() external;
+
     function unstake(uint256[] memory tokenIds, bool exit) external;
+
+    function unstakeAll(bool exit) external;
 
     function setBaseURI(string memory baseUri) external;
 
     function setTokenURI(uint256 tokenId, string memory tokenUri) external;
 
     function totalSupply() external view returns (uint256);
+
+    function getStakedTokenIds() external view returns(uint256[] memory);
+
+    function getPendingRewards() external view returns (uint256);
+
+    function getRemainingLockTime() external view returns (uint256);
 
     function getInterfaceId() external pure returns (bytes4);
 }

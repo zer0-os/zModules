@@ -1,13 +1,22 @@
 import { ethers } from "ethers";
 
-export const dayInSeconds = 86400n;
+export const DAY_IN_SECONDS = 86400n;
 
-export const DEFAULT_STAKE_ERC721 = 1;
-export const DEFAULT_STAKE_ERC20 = 1;
+export const DEFAULT_REWARDS_PER_PERIOD_ERC20 = 50n;
+export const DEFAULT_PERIOD_LENGTH_ERC20 = 365n * DAY_IN_SECONDS;
 
-export const DEFAULT_REWARDS_PER_PERIOD = 6n;
-export const DEFAULT_PERIOD_LENGTH = 17n;
-export const DEFAULT_LOCK_TIME = 189n;
+export const DEFAULT_REWARDS_PER_PERIOD_ERC721 = ethers.parseEther("1500");
+export const DEFAULT_PERIOD_LENGTH_ERC721 = DAY_IN_SECONDS;
+
+export const DEFAULT_LOCK = 365n * DAY_IN_SECONDS;
+export const DEFAULT_MINIMUM_LOCK = 30n * DAY_IN_SECONDS;
+
+export const DEFAULT_MINIMUM_RM = 100n;
+export const DEFAULT_MAXIMUM_RM = 1000n;
+
+// Used in rewards calculations
+export const PRECISION_DIVISOR = 1000n;
+export const LOCKED_PRECISION_DIVISOR = 100000n;
 
 export const STAKING721_TOKEN_NAME_DEFAULT = "Staking721";
 export const STAKING721_TOKEN_SYMBOL_DEFAULT = "STK721";
@@ -23,5 +32,8 @@ export const WITHDRAW_EVENT = "LeftoverRewardsWithdrawn";
 
 export const BASE_URI_UPDATED_EVENT  = "BaseURIUpdated";
 
-export const INIT_BALANCE = ethers.parseEther("1000000000000");
-export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10000n;
+// Init balance is 10,000 token
+export const INIT_BALANCE = ethers.parseEther("10000");
+
+// Default stake = 1000 token
+export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10n;
