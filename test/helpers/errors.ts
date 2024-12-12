@@ -16,12 +16,10 @@ export const OPERATOR_ALREADY_ASSIGNED_ERR = "OperatorAlreadyAssigned";
 export const OPERATOR_NOT_ASSIGNED_ERR = "OperatorNotAssigned";
 
 // StakingERC20
-export const ZERO_VALUE_ERR = "ZeroValue";
 export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
 export const ZERO_REWARDS_ERR = "ZeroRewards";
 
 // StakingERC721
-export const ZERO_STAKE_ERR = "ZeroStake";
 export const TIME_LOCK_NOT_PASSED_ERR = "TimeLockNotPassed";
 export const INVALID_OWNER_ERR = "InvalidOwner";
 export const NON_TRANSFERRABLE_ERR = "NonTransferrableToken";
@@ -30,6 +28,8 @@ export const INVALID_UNSTAKE_ERR = "InvalidUnstake";
 
 // StakingBase
 export const INSUFFICIENT_CONTRACT_BALANCE_ERR = "InsufficientContractBalance";
+export const LOCK_TOO_SHORT_ERR = "LockTimeTooShort";
+export const ZERO_VALUE_ERR = "ZeroValue";
 
 // eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";
