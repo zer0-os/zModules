@@ -8,30 +8,42 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @notice Interface for the base staking contract
  */
 interface IStakingBase {
-
-    struct NFTStake {
-        uint256 tokenId;
-        bool locked;
-    }
-
     /**
      * @notice Struct to track an individual staker's data
+     * 
+     * @param rewardsMultiplier The multiplier for rewards
+     * @param lockDuration The duration of the lock
+     * @param unlockedTimestamp The timestamp when the stake unlocks
+     * @param amountStaked The amount of tokens staked
+     * @param amountStakedLocked The amount of tokens locked
+     * @param owedRewards The amount of rewards owed
+     * @param owedRewardsLocked The amount of rewards locked
+     * @param lastTimestamp The timestamp of the last action
+     * @param lastTimestampLocked The timestamp of the last locked action
      */
     struct Staker { 
         uint256 rewardsMultiplier;
         uint256 lockDuration;
         uint256 unlockedTimestamp;
-
         uint256 amountStaked;
         uint256 amountStakedLocked;
-
         uint256 owedRewards;
         uint256 owedRewardsLocked;
-
         uint256 lastTimestamp;
         uint256 lastTimestampLocked;
     }
-
+    /**
+     * @notice Struct to hold all required config variables
+     * 
+     * @param stakingToken The address of the token being staked
+     * @param contractOwner The address of the contract owner
+     * @param rewardsToken The address of the token being rewarded
+     * @param rewardsPerPeriod The amount of rewards per period
+     * @param periodLength The length of each period
+     * @param minimumLockTime The minimum amount of time a user must lock
+     * @param minimumRewardsMultiplier The minimum multiplier for rewards
+     * @param maximumRewardsMultiplier The maximum multiplier for rewards
+     */
     struct Config {
         address stakingToken;
         address contractOwner;

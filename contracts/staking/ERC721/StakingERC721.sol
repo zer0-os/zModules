@@ -127,6 +127,29 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         _unstakeMany(nftStakers[msg.sender].tokenIds, exit);
     }
 
+    /**
+     * @notice Get the array of staked tokenIds for the caller
+     * @return Array of tokenIds that the caller has staked
+     */
+    function getStakedTokenIds() public view override returns(uint256[] memory) {
+        return nftStakers[msg.sender].tokenIds;
+    }
+
+    /**
+     * @notice Return the time in seconds remaining for the staker's lock duration
+     */
+    function getRemainingLockTime() public view override returns (uint256) {
+        return _getRemainingLockTime(nftStakers[msg.sender].stake);
+    }
+
+    /**
+     * @notice Get the total pending rewards for the caller
+     * @return The amount of rewards the caller has pending
+     */
+    function getPendingRewards() public view override returns (uint256) {
+        return _getPendingRewards(nftStakers[msg.sender].stake);
+    }
+
     ////////////////////////////////////
     /* Token Functions */
     ////////////////////////////////////
@@ -174,26 +197,16 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             super.supportsInterface(interfaceId);
     }
 
-    function getStakedTokenIds() public view override returns(uint256[] memory) {
-        // Staked ERC721 tokenIds
-        return nftStakers[msg.sender].tokenIds;
-    }
-
-    /**
-     * @notice Return the time in seconds remaining for the staker's lock duration
-     */
-    function getRemainingLockTime() public view override returns (uint256) {
-        return _getRemainingLockTime(nftStakers[msg.sender].stake);
-    }
-
-    function getPendingRewards() public view override returns (uint256) {
-        return _getPendingRewards(nftStakers[msg.sender].stake);
-    }
-
     ////////////////////////////////////
     /* Internal Staking Functions */
     ////////////////////////////////////
 
+    /**
+     * @dev The ERC721 specific stake function, called by both `stakeWithLock` and `stakeWithoutLock`
+     * @param tokenIds Array of tokenIds to be staked by the caller
+     * @param tokenUris Array of token URIs to be associated with the staked tokens
+     * @param lockDuration The lock duration for the staked tokens
+     */
     function _stake(uint256[] calldata tokenIds, string[] calldata tokenUris, uint256 lockDuration) internal {
         if (tokenIds.length == 0) {
             revert ZeroValue();
@@ -227,24 +240,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         }
     }
 
-    function _claim(Staker storage staker) internal returns (uint256) {
-        uint256 rewards = _getPendingRewards(staker);
-        
-        // Update timestamp and owed amount *after* calculation
-        staker.owedRewards = 0;
-        staker.lastTimestamp = block.timestamp;
-        
-        // If there is no remaining lock time, the locked rewards will have
-        // been accounted for in above call to `_getPendingRewards`
-        // only need to adjust timestamp and amount here
-        if (_getRemainingLockTime(staker) == 0) {
-            staker.owedRewardsLocked = 0;
-            staker.lastTimestampLocked = block.timestamp;
-        }
-
-        return rewards;
-    }
-
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
@@ -252,15 +247,10 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         bool isAction = false;
 
         // Calculate rewards ahead of balance adjustments, if any
-        uint256 rewards;
-
-        if (!exit) {
-            rewards = _claim(nftStaker.stake);
-        }
+        uint256 rewards = _getPendingRewards(nftStaker.stake);
 
         uint256 i;
         for(i; i < _tokenIds.length;) {
-            // console.log("enter loop");
             if (ownerOf(_tokenIds[i]) == address(0) || ownerOf(_tokenIds[i]) != msg.sender) {
                 // Either the list of tokenIds contains a non-existent token
                 // or it contains a token the owner doesnt own
@@ -273,11 +263,9 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             // If the token is unlocked, claim and unstake
             if (nftStaker.locked[_tokenIds[i]]) {
                 // Token was locked
-                // console.log("locked");
 
                 if (exit) {
                     // unstake with no rewards
-                    // console.log("call with exit");
                     _unstake(_tokenIds[i]);
                     --nftStaker.stake.amountStakedLocked;
                     isAction = true;
@@ -288,7 +276,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     isAction = true;
                 } else {
                     // stake is locked and cannot be unstaked
-                    // console.log("here3");
                     unchecked {
                         ++i;
                     }
@@ -313,7 +300,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
 
         if (!exit) {
             // Transfer the user's rewards
-            // Will fail if the contract does not have funding for this
+            // Will fail if the contract does not have funding
             config.rewardsToken.safeTransfer(msg.sender, rewards);
             emit Claimed(msg.sender, rewards, address(config.rewardsToken));
         }

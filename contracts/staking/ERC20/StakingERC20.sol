@@ -20,6 +20,9 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
     using SafeERC20 for IERC20;
 
+    /**
+     * @notice Track the total amount staked in the pool
+     */
     uint256 public totalStaked;
 
     constructor(
@@ -107,6 +110,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         _coreStake(staker, amount, lockDuration);
 
+        totalStaked += amount;
+
         // Transfers user's funds to this contract
         IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -135,14 +140,21 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                     revert TimeLockNotPassed();
                 }
             } else {
+                // If claims happen after lock period has passed, the lastTimestamp is more accurate
+                // but if they don't happen, then lastTimestampLocked may still be the original stake timestamp
+                // so we have to calculate which is more recent before calculating rewards
+                uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
+                ? staker.lastTimestampLocked
+                : staker.unlockedTimestamp;
+
                 // If staker's funds are unlocked, we ignore exit
                 // We already added the value they are owed in stake when pre calculating
                 // now we just add the value they are owed for rewards in between
                 rewards = staker.owedRewardsLocked + _getStakeRewards(
                     staker.amountStakedLocked,
                     1, // Rewards multiplier
-                    block.timestamp - staker.unlockedTimestamp,
-                    true
+                    block.timestamp - mostRecentTimestamp,
+                    false
                 );
             }
 
@@ -204,12 +216,20 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             config.rewardsToken.safeTransfer(msg.sender, rewards);
         }
 
+        totalStaked -= amount;
+
         // Return the user's initial stake
         IERC20(config.stakingToken).safeTransfer(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount, config.stakingToken);
     }
 
+    /**
+     * @dev If we just use `rewardsToken.balance` on the contract address when checking
+     * funding it will be a misleading amount because it will also include the amount staked by users
+     * To avoid this, we override the internal `_getContractRewardsBalance` function to
+     * return the balance of the rewards token minus the total staked amount
+     */
     function _getContractRewardsBalance() internal view override returns (uint256) {
         uint256 balance = super._getContractRewardsBalance();
 

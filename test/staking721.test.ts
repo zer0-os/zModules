@@ -588,8 +588,6 @@ describe("StakingERC721", () => {
 
       const tokenIds = await stakingERC721.connect(stakerB).getStakedTokenIds();
 
-      // console.log(stakerData.amountStakedLocked)
-
       const initPendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
 
       // If no time has passed, the value will be 0
