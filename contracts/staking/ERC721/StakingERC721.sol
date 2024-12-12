@@ -53,7 +53,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         string memory symbol,
         string memory baseUri,
         Config memory config
-        // address owner
     )
         ERC721(name, symbol)
         StakingBase(config)

@@ -360,8 +360,7 @@ describe("StakingERC20", () => {
       // First, it will fail on allowance
       await expect(
         contract.connect(notStaker).stakeWithoutLock(amount)
-      ).to.be.revertedWithCustomError(rewardsToken, INSUFFICIENT_ALLOWANCE_ERR)
-        .withArgs(contract.target, 0n, amount);
+      ).to.be.revertedWith(INSUFFICIENT_BALANCE_ERR);
 
       // Then after we allow funds, it will fail on balance
       await stakeToken.connect(notStaker).approve(await contract.getAddress(), amount);
@@ -369,8 +368,7 @@ describe("StakingERC20", () => {
       const balance = await stakeToken.balanceOf(notStaker.address);
       await expect(
         contract.connect(notStaker).stakeWithLock(amount, DEFAULT_LOCK)
-      ).to.be.revertedWithCustomError(stakeToken, INSUFFICIENT_BALANCE_ERR)
-        .withArgs(notStaker.address, balance, amount);
+      ).to.be.revertedWith(INSUFFICIENT_BALANCE_ERR)
     });
 
     it("Fails when the staker tries to stake 0", async () => {

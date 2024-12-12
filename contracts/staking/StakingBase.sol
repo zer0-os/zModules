@@ -24,6 +24,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     mapping(address user => Staker staker) public stakers;
 
+    /**
+     * @notice All required config variables, specified in the `Config` struct in `IStakingBase.sol`
+     */
     Config public config;
 
     constructor(
@@ -41,6 +44,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.
+     * 
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
     function withdrawLeftoverRewards() public override onlyOwner {
@@ -55,10 +59,79 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
+     * @notice View the rewards balance in this pool
+     */
+    function getContractRewardsBalance() public view override returns (uint256) {
+        return _getContractRewardsBalance();
+    }
+
+    /**
+     * @notice Get the staking token address
+     */
+    function getStakingToken() public view override returns(address) {
+        return config.stakingToken;
+    }
+
+    /**
+     * @notice Get the rewards token address
+     */
+    function getRewardsToken() public view override returns(IERC20) {
+        return config.rewardsToken;
+    }
+
+    /**
+     * @notice Get the rewards per period
+     */
+    function getRewardsPerPeriod() public view override returns(uint256) {
+        return config.rewardsPerPeriod;
+    }
+
+    /**
+     * @notice Get the period length
+     */
+    function getPeriodLength() public view override returns(uint256) {
+        return config.periodLength;
+    }
+
+    /**
      * @notice Get the minimum lock time
      */
     function getMinimumLockTime() public view override returns(uint256) {
         return config.minimumLockTime;
+    }
+
+    /**
+     * @notice Get the minimum rewards multiplier
+     */
+    function getMinimumRewardsMultiplier() public view override returns(uint256) {
+        return config.minimumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Get the maximum rewards multiplier
+     */
+    function getMaximumRewardsMultiplier() public view override returns(uint256) {
+        return config.maximumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Set the rewards per period
+     * @dev Will fail when called by anyone other than the contract owner
+     * 
+     * @param _rewardsPerPeriod The new rewards per period value
+     */
+    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
+        config.rewardsPerPeriod = _rewardsPerPeriod;
+    }
+
+    /**
+     * @notice Set the period length
+     * @dev Will fail when called by anyone other than the contract owner
+     * 
+     * @param _periodLength The new period length value
+     */
+    function setPeriodLength(uint256 _periodLength) public override onlyOwner {
+        config.periodLength = _periodLength;
     }
 
     /**
@@ -73,10 +146,23 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
-     * @notice View the rewards balance in this pool
+     * @notice Set the minimum rewards multiplier
+     * @dev Will fail when called by anyone other than the contract owner
+     * 
+     * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
      */
-    function getContractRewardsBalance() public view override returns (uint256) {
-        return _getContractRewardsBalance();
+    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
+        config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Set the maximum rewards multiplier
+     * @dev Will fail when called by anyone other than the contract owner
+     * 
+     * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
+     */
+    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
+        config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
     }
 
     /**
@@ -226,7 +312,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Get rewards from non-locked funds already accrued and also between the last timestamp and now
         uint256 rewards = staker.owedRewards + _getStakeRewards(
             staker.amountStaked,
-            staker.rewardsMultiplier,
+            1, // Rewards multiplier
             block.timestamp - staker.lastTimestamp,
             false
         );

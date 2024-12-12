@@ -24,10 +24,12 @@ export const ZERO_REWARDS_ERR = "ZeroRewards";
 export const ZERO_STAKE_ERR = "ZeroStake";
 export const TIME_LOCK_NOT_PASSED_ERR = "TimeLockNotPassed";
 export const INVALID_OWNER_ERR = "InvalidOwner";
-// export const INSUFFICIENT_CONTRACT_BALANCE_ERR = "InsufficientContractBalance";
 export const NON_TRANSFERRABLE_ERR = "NonTransferrableToken";
 export const ZERO_INIT_ERR = "InitializedWithZero";
 export const INVALID_UNSTAKE_ERR = "InvalidUnstake";
+
+// StakingBase
+export const INSUFFICIENT_CONTRACT_BALANCE_ERR = "InsufficientContractBalance";
 
 // eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";

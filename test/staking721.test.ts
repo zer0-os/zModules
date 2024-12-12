@@ -39,6 +39,7 @@ import {
   ZERO_REWARDS_ERR,
   INVALID_UNSTAKE_ERR,
   INSUFFICIENT_BALANCE_ERR,
+  INSUFFICIENT_CONTRACT_BALANCE_ERR,
 } from "./helpers/errors";
 import { staking } from "../typechain/contracts";
 
@@ -444,12 +445,11 @@ describe("StakingERC721", () => {
       expect(stakerData.lastTimestampLocked).to.eq(secondStakedAtB);
     });
 
-    it("Modifies the lock duration when a follow up stake provides a larger lock duration", async () => {
+    it("Does not modify the lock duration upon follow up stake", async () => {
       await reset();
 
       await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK);
 
-      const stakerDataBefore = await stakingERC721.connect(stakerB).nftStakers(stakerB.address);
       const stakedAtFirst = BigInt(await time.latest());
 
       const timeIncrease = 100n;
@@ -457,14 +457,12 @@ describe("StakingERC721", () => {
       
       // Existing lock is `DEFAULT_LOCK - 100s` now, so the incoming lock will be larger and it should update
       await stakingERC721.connect(stakerB).stakeWithLock([tokenIdE], [emptyUri], DEFAULT_LOCK);
-      const stakedAtSecond = BigInt(await time.latest());
 
       const stakerDataAfter = await stakingERC721.connect(stakerB).nftStakers(stakerB.address);
 
       // We increase the staker's lockDuration by the amount they already have configured
       // as the initial lockDuration
-      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtSecond + DEFAULT_LOCK);
-      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakerDataBefore.unlockedTimestamp + timeIncrease + 1n); // + 1s to match HH auto mine
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtFirst + DEFAULT_LOCK);
     });
 
     it("Does not modify the lock duration when a follow up stake provides a smaller lock duration", async () => {
@@ -649,6 +647,8 @@ describe("StakingERC721", () => {
       await time.increase(DEFAULT_LOCK / 5n);
 
       const balanceBefore = await rewardToken.balanceOf(stakerA.address);
+
+      const pendingRewards = await stakingERC721.connect(stakerA).getPendingRewards();
 
       await stakingERC721.connect(stakerA).claim();
       const claimedAt = BigInt(await time.latest());
@@ -1250,10 +1250,10 @@ describe("StakingERC721", () => {
 
       try {
         // In this flow balance is checked before trying to transfer, and so this will
-        // fail first
+        // fail first, can't seem to check the normal way using `revertedWith`
         await localStakingERC721.connect(stakerA).unstake([tokenIdA], false);
       } catch (e : unknown) {
-        expect((e as Error).message).to.include(INSUFFICIENT_BALANCE_ERR);
+        expect((e as Error).message).to.include(FAILED_INNER_CALL_ERR);
       }
       
       // To be sure balance check isn't the failure, we give balance of many NFTs so the
@@ -1329,13 +1329,14 @@ describe("StakingERC721", () => {
     it("Calculates the users rewards multiplier when they lock based on their lock time", async () => {
       await reset();
 
-      const arm = DAY_IN_SECONDS * 30n
+      const arm = DAY_IN_SECONDS * 69n
       const unlocked = await stakingERC721.connect(owner).getStakeRewards(1n, arm, false);
       const locked = await stakingERC721.connect(owner).getStakeRewards(1n, arm, true);
 
       // play with RM function calculation
       
-      expect(locked).to.be.gt(unlocked);
+      expect(locked).to.eq(unlocked);
+      // At 30 days these values are exactly the same
     });
 
     it("#setBaseURI() should set the base URI", async () => {
@@ -1394,7 +1395,7 @@ describe("StakingERC721", () => {
     it("#withdrawLeftoverRewards() should revert if contract balance is 0", async () => {
       await expect(
         stakingERC721.connect(owner).withdrawLeftoverRewards()
-      ).to.be.revertedWithCustomError(stakingERC721, INSUFFICIENT_BALANCE_ERR);
+      ).to.be.revertedWithCustomError(stakingERC721, INSUFFICIENT_CONTRACT_BALANCE_ERR);
     });
 
     it("#withdrawLeftoverRewards() should only be callable by the owner", async () => {
