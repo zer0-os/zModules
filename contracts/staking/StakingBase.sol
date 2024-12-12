@@ -49,7 +49,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.
-     * 
+     *
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
     function withdrawLeftoverRewards() public override onlyOwner {
@@ -73,28 +73,28 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Get the staking token address
      */
-    function getStakingToken() public view override returns(address) {
+    function getStakingToken() public view override returns (address) {
         return config.stakingToken;
     }
 
     /**
      * @notice Get the rewards token address
      */
-    function getRewardsToken() public view override returns(IERC20) {
+    function getRewardsToken() public view override returns (IERC20) {
         return config.rewardsToken;
     }
 
     /**
      * @notice Get the rewards per period
      */
-    function getRewardsPerPeriod() public view override returns(uint256) {
+    function getRewardsPerPeriod() public view override returns (uint256) {
         return config.rewardsPerPeriod;
     }
 
     /**
      * @notice Get the period length
      */
-    function getPeriodLength() public view override returns(uint256) {
+    function getPeriodLength() public view override returns (uint256) {
         return config.periodLength;
     }
 
@@ -122,7 +122,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Set the rewards per period
      * @dev Will fail when called by anyone other than the contract owner
-     * 
+     *
      * @param _rewardsPerPeriod The new rewards per period value
      */
     function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
@@ -132,7 +132,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Set the period length
      * @dev Will fail when called by anyone other than the contract owner
-     * 
+     *
      * @param _periodLength The new period length value
      */
     function setPeriodLength(uint256 _periodLength) public override onlyOwner {
@@ -142,7 +142,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Set the minimum lock time
      * @dev Will fail when called by anyone other than the contract owner
-     * 
+     *
      * @param _minimumLockTime The new minimum lock time, in seconds
      */
     function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
@@ -153,7 +153,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Set the minimum rewards multiplier
      * @dev Will fail when called by anyone other than the contract owner
-     * 
+     *
      * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
      */
     function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
@@ -163,7 +163,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Set the maximum rewards multiplier
      * @dev Will fail when called by anyone other than the contract owner
-     * 
+     *
      * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
      */
     function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
@@ -172,7 +172,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
     /**
      * @notice Return the potential rewards that would be earned for a given stake
-     * 
+     *
      * @param amount The amount of the staking token to calculate rewards for
      * @param timeDuration The the amount of time these funds will be staked, provide the lock duration if locking
      * @param locked Boolean if the stake is locked
@@ -223,8 +223,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 // Capture the user's owed rewards from the past stake in between
                 // period at rate of 1
                 uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
-                ? staker.lastTimestampLocked
-                : staker.unlockedTimestamp;
+                    ? staker.lastTimestampLocked
+                    : staker.unlockedTimestamp;
 
                 // Note: this will return 0 if `amountStakedLocked == 0`
                 staker.owedRewardsLocked += _getStakeRewards(
@@ -257,7 +257,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             }
 
             staker.lastTimestampLocked = block.timestamp;
-            staker.amountStakedLocked += amount;  
+            staker.amountStakedLocked += amount;
         }
     }
 
@@ -308,12 +308,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         uint256 rewardsMultiplier,
         uint256 timeDuration,
         bool locked
-    ) internal view returns(uint256) {
+    ) internal view returns (uint256) {
         uint256 divisor = locked ? LOCKED_PRECISION_DIVISOR : PRECISION_DIVISOR;
 
-        uint256 rewards = rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
-
-        return rewards;
+        return rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
     }
 
     /**
@@ -328,7 +326,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             block.timestamp - staker.lastTimestamp,
             false
         );
-        
+
         // Only include rewards from locked funds the user is passed their lock period
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
             // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` sum on stake,
@@ -343,7 +341,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 ? staker.lastTimestampLocked
                 : staker.unlockedTimestamp;
 
-            // TODO somehow creates slightly different value than what 
+            // TODO somehow creates slightly different value than what
 
             rewards += staker.owedRewardsLocked + _getStakeRewards(
                 staker.amountStakedLocked,
@@ -357,7 +355,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     // todo remove when finished
-    function testRM(uint256 timeDuration) public view returns(uint256) {
+    function testRM(uint256 timeDuration) public view returns (uint256) {
         return _calcRewardsMultiplier(timeDuration);
     }
 
@@ -365,10 +363,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @dev Locked rewards receive a multiplier based on the length of the lock
      * @param lock The length of the lock in seconds
      */
-    function _calcRewardsMultiplier(uint256 lock) internal view returns(uint256) {
+    function _calcRewardsMultiplier(uint256 lock) internal view returns (uint256) {
         return config.minimumRewardsMultiplier
         + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
-        * (lock / 86400 ) // 86400 seconds in a day // TODO eval if this division is even necessary
+        * (lock / 86400) // 86400 seconds in a day // TODO eval if this division is even necessary
         / config.periodLength;
     }
 

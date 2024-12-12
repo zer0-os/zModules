@@ -34,18 +34,18 @@ export const createDefaultConfig = async (
     minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
     maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
     contractOwner: contractOwner.address,
-  }
+  };
 
   if (erc721) {
-    config.stakingToken = await erc721.getAddress()
-    config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC721
-    config.periodLength = DEFAULT_PERIOD_LENGTH_ERC721
+    config.stakingToken = await erc721.getAddress();
+    config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC721;
+    config.periodLength = DEFAULT_PERIOD_LENGTH_ERC721;
 
     return config as BaseConfig;
   } else if (stakeERC20) {
-    config.stakingToken = await stakeERC20.getAddress()
-    config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC20
-    config.periodLength = DEFAULT_PERIOD_LENGTH_ERC20
+    config.stakingToken = await stakeERC20.getAddress();
+    config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC20;
+    config.periodLength = DEFAULT_PERIOD_LENGTH_ERC20;
 
     return config as BaseConfig;
   }

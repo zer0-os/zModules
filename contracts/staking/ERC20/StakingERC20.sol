@@ -31,13 +31,13 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     {}
 
     /**
-     * @notice Stake an amount of ERC20 with a lock period By locking, 
+     * @notice Stake an amount of ERC20 with a lock period By locking,
      * a user cannot access their funds until the lock period is over, but they
      * receive a higher rewards rate for doing so
      * @dev A user can call to `unstake` with `exit` as true to access their funds
      * before the lock period is over, but they will forfeit their rewards
      * @dev This function and the below `stakeWithoutLock` are intentionally separate for clarity
-     * 
+     *
      * @param amount The amount to stake
      * @param lockDuration The duration of the lock period
      */
@@ -49,10 +49,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     }
 
     /**
-     * @notice Stake an amount of ERC20 with no lock period. By not locking, a 
+     * @notice Stake an amount of ERC20 with no lock period. By not locking, a
      * user can access their funds any time, but they forfeit a higher rewards rate
      * @dev This function and the above`stakeWithLock` are intentionally separate for clarity
-     * 
+     *
      * @param amount The amount to stake
      */
     function stakeWithoutLock(uint256 amount) external override {
@@ -72,7 +72,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
     /**
      * @notice Unstake a specified amount of a user's non-locked stake
-     * 
+     *
      * @param amount The amount to withdraw
      */
     function unstake(uint256 amount, bool exit) external override {
@@ -82,8 +82,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     /**
      * @notice Unstake a specified amount of a user's locked funds that were locked
      * @dev Will revert if funds are still within their lock period and not calling with `exit` as `true`
-     * 
-     * @param amount The amount to withdraw 
+     *
+     * @param amount The amount to withdraw
      * @param exit Boolean if user wants to forfeit rewards
      */
     function unstakeLocked(uint256 amount, bool exit) public override {
@@ -134,7 +134,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
             if (_getRemainingLockTime(staker) > 0) {
                 // Only allow use of exit on funds that are still locked
-                if (exit) {           
+                if (exit) {
                     rewards = 0;
                 } else {
                     revert TimeLockNotPassed();
@@ -144,8 +144,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // but if they don't happen, then lastTimestampLocked may still be the original stake timestamp
                 // so we have to calculate which is more recent before calculating rewards
                 uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
-                ? staker.lastTimestampLocked
-                : staker.unlockedTimestamp;
+                    ? staker.lastTimestampLocked
+                    : staker.unlockedTimestamp;
 
                 // If staker's funds are unlocked, we ignore exit
                 // We already added the value they are owed in stake when pre calculating
@@ -159,7 +159,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             }
 
             // If removal of all locked funds
-            if (staker.amountStakedLocked - amount == 0) {
+            if (staker.amountStakedLocked == amount) {
                 if (staker.amountStaked == 0) {
                     // and there are no non-locked funds, delete
                     delete stakers[msg.sender];
@@ -192,7 +192,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 );
             }
 
-            if (staker.amountStaked - amount == 0) {
+            if (staker.amountStaked == amount) {
                 if (staker.amountStakedLocked == 0) {
                     // If unstake completely removes all staker funds, delete from mapping
                     delete stakers[msg.sender];
