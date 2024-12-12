@@ -263,17 +263,16 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             // If the token is unlocked, claim and unstake
             if (nftStaker.locked[_tokenIds[i]]) {
                 // Token was locked
-
-                if (exit) {
-                    // unstake with no rewards
-                    _unstake(_tokenIds[i]);
-                    --nftStaker.stake.amountStakedLocked;
-                    isAction = true;
-                } else if (_getRemainingLockTime(nftStaker.stake) == 0) {
+                if (exit || _getRemainingLockTime(nftStaker.stake) == 0) {
                     // only unstake if they are passed their lock time
                     _unstake(_tokenIds[i]);
                     --nftStaker.stake.amountStakedLocked;
                     isAction = true;
+
+                    if (block.timestamp != nftStaker.stake.lastTimestampLocked) {
+                        // only update once per TX
+                        nftStaker.stake.lastTimestampLocked = block.timestamp;
+                    }
                 } else {
                     // stake is locked and cannot be unstaked
                     unchecked {
@@ -286,6 +285,11 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                 _unstake(_tokenIds[i]);
                 --nftStaker.stake.amountStaked;
                 isAction = true;
+
+                if (block.timestamp != nftStaker.stake.lastTimestamp) {
+                    // only update once per TX
+                    nftStaker.stake.lastTimestamp = block.timestamp;
+                }
             }
 
             unchecked {

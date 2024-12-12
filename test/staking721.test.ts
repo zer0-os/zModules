@@ -839,7 +839,7 @@ describe("StakingERC721", () => {
 
       // We are still staked with locked funds, and that is withheld in the staker data
       expect(stakerDataAfter.amountStakedLocked).to.eq(2);
-      expect(stakerDataAfter.lastTimestampLocked).to.eq(unstakedAt);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(stakedAtLocked);
 
       // Confirm the sNFT was burned
       await expect(
@@ -873,7 +873,7 @@ describe("StakingERC721", () => {
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
-      const stakeValue = calcStakeRewards(
+      const lockedStakeRewards = calcStakeRewards(
         stakerDataBefore.amountStakedLocked,
         DEFAULT_LOCK,
         true,
@@ -881,21 +881,21 @@ describe("StakingERC721", () => {
         stakerDataBefore.rewardsMultiplier
       )
 
-      const unlockedValue = calcStakeRewards(
+      const unlockedStakeRewards = calcStakeRewards(
         stakerDataBefore.amountStaked,
         unstakedAt - stakedAtUnlocked,
         false,
         config
       )
 
-      const interimValue = calcStakeRewards(
+      const interimTimeRewards = calcStakeRewards(
         stakerDataBefore.amountStakedLocked,
         unstakedAt - stakerDataBefore.unlockedTimestamp,
         false,
         config
       )
 
-      expect(balanceAfter).to.eq(balanceBefore + stakeValue + interimValue + unlockedValue);
+      expect(balanceAfter).to.eq(balanceBefore + lockedStakeRewards + interimTimeRewards + unlockedStakeRewards);
 
       const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
 
@@ -908,13 +908,13 @@ describe("StakingERC721", () => {
 
       // Staker data has been reset when they have completely unstaked
       // Because `unstake` also claims, the non-locked timestamp is updated as well
-      expect(stakerDataAfter.lastTimestamp).to.eq(unstakedAt);
+      expect(stakerDataAfter.lastTimestamp).to.eq(stakedAtUnlocked);
       expect(stakerDataAfter.lastTimestampLocked).to.eq(0n);
       expect(stakerDataAfter.lockDuration).to.eq(0n);
-      expect(stakerDataAfter.amountStaked).to.eq(1n);
-      expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
+      expect(stakerDataAfter.amountStaked).to.eq(stakerDataBefore.amountStaked);
+      expect(stakerDataAfter.amountStakedLocked).to.eq(stakerDataBefore.amountStakedLocked - 2n);
       expect(stakerDataAfter.owedRewards).to.eq(0n);
-      expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(lockedStakeRewards);
 
       await expect(
         stakingERC721.ownerOf(tokenIdB)
