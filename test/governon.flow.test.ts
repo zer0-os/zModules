@@ -5,7 +5,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { mineBlocks } from "./helpers/voting/mineBlocks";
 
 
-describe.only("Governance Flow Test", () => {
+describe("Governance Flow Test", () => {
   let votingERC20 : ZeroVotingERC20;
   let votingERC721 : ZeroVotingERC721;
   let governance20 : ZDAO;
@@ -45,7 +45,8 @@ describe.only("Governance Flow Test", () => {
       "ZeroVotingERC721",
       "ZV721",
       "1.0",
-      admin
+      "dummyURI",
+      admin,
     );
     await votingERC721.waitForDeployment();
 
@@ -103,8 +104,8 @@ describe.only("Governance Flow Test", () => {
     await votingERC721.grantRole(await votingERC721.MINTER_ROLE(), await timelock.getAddress());
 
     // Mint tokens to users
-    await votingERC721.connect(admin).mint(user1.address, 1);
-    await votingERC721.connect(admin).mint(user2.address, 2);
+    await votingERC721.connect(admin).mint(user1.address, 1, "");
+    await votingERC721.connect(admin).mint(user2.address, 2, "");
 
     // Delegate tokens to themselves for voting power
     await votingERC721.connect(user1).delegate(user1.address);
@@ -195,7 +196,7 @@ describe.only("Governance Flow Test", () => {
     const targets = [votingERC721];
     const values = [0];
     const calldatas = [
-      votingERC721.interface.encodeFunctionData("mint", [user1.address, 3]),
+      votingERC721.interface.encodeFunctionData("mint", [user1.address, 3, ""]),
     ];
     const description = "Mint token ID 3 to user1";
     const descriptionHash = await ethers.keccak256(

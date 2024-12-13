@@ -44,12 +44,12 @@ describe("Voting tokens tests", () => {
 
     // ERC721 deploy
     const ERC721Factory = await ethers.getContractFactory(erc721Name) ;
-    erc721Token = await ERC721Factory.connect(owner).deploy(erc721Name, erc721Symbol, "1.0", owner);
+    erc721Token = await ERC721Factory.connect(owner).deploy(erc721Name, erc721Symbol, "1.0", "dummyURI", owner);
     await erc721Token.waitForDeployment();
 
     // mint 10 NFTs to owner
     for (let i = 0; i < 10; i++) {
-      await erc721Token.connect(owner).mint(owner.address, tokenId + i);
+      await erc721Token.connect(owner).mint(owner.address, tokenId + i, "");
     }
   });
 
@@ -332,7 +332,7 @@ describe("Voting tokens tests", () => {
 
       it("Should revert when NON-MINTER mints tokens", async () => {
         await expect(
-          erc721Token.connect(addr2).mint(addr1.address, "99999")
+          erc721Token.connect(addr2).mint(addr1.address, "99999", "")
         ).to.be.revertedWithCustomError(
           erc721Token,
           "AccessControlUnauthorizedAccount",

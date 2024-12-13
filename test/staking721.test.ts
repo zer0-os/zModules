@@ -436,6 +436,19 @@ describe("StakingERC721", () => {
       expect(stakerData.lastTimestampLocked).to.eq(secondStakedAtB);
     });
 
+    it("Fails to stake when the token is already staked", async () => {
+      // If the token is staked, the owner will be the staking contract not the original owner
+      await expect(
+        stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri])
+      ).to.be.revertedWithCustomError(stakingToken, INCORRECT_OWNER_ERR)
+        .withArgs(stakerA.address, tokenIdA, await stakingERC721.getAddress());
+
+      await expect(
+        stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK)
+      ).to.be.revertedWithCustomError(stakingToken, INCORRECT_OWNER_ERR)
+        .withArgs(stakerA.address, tokenIdA, await stakingERC721.getAddress());
+    });
+
     it("Does not modify the lock duration upon follow up stake", async () => {
       await reset();
 
@@ -489,19 +502,6 @@ describe("StakingERC721", () => {
         stakingERC721.connect(stakerA).stakeWithLock([unmintedTokenId], [emptyUri], DEFAULT_LOCK)
       ).to.be.revertedWithCustomError(stakingToken, NONEXISTENT_TOKEN_ERR)
         .withArgs(unmintedTokenId);
-    });
-
-    it("Fails to stake when the token is already staked", async () => {
-      // If the token is staked, the owner will be the staking contract not the original owner
-      await expect(
-        stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri])
-      ).to.be.revertedWithCustomError(stakingToken, INCORRECT_OWNER_ERR)
-        .withArgs(stakerA.address, tokenIdA, await stakingERC721.getAddress());
-
-      await expect(
-        stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK)
-      ).to.be.revertedWithCustomError(stakingToken, INCORRECT_OWNER_ERR)
-        .withArgs(stakerA.address, tokenIdA, await stakingERC721.getAddress());
     });
 
     it("Fails to stake when the caller is not the owner of the NFT", async () => {
