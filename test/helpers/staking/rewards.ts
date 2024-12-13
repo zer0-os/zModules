@@ -82,7 +82,6 @@ export const calcStakeRewards = (
 
   const divisor = locked ? 100000n : 1000n;
 
-  // not correct in case debugger using
   const rewards = 
     rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
 

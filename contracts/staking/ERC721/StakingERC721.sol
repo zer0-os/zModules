@@ -246,8 +246,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         // Track if any action is taken, revert if not to avoid sucessful but empty tx
         bool isAction = false;
 
-        // Calculate rewards ahead of balance adjustments, if any
-        uint256 rewards = _getPendingRewards(nftStaker.stake);
+        uint256 rewards;
 
         uint256 i;
         for(i; i < _tokenIds.length;) {
@@ -264,14 +263,36 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             if (nftStaker.locked[_tokenIds[i]]) {
                 // Token was locked
                 if (exit || _getRemainingLockTime(nftStaker.stake) == 0) {
-                    // only unstake if they are passed their lock time
+                    // Unstake if they are passed their lock time or exiting
                     _unstake(_tokenIds[i]);
                     --nftStaker.stake.amountStakedLocked;
                     isAction = true;
 
-                    if (block.timestamp != nftStaker.stake.lastTimestampLocked) {
+                    // only get locked rewards
+                    if (_getRemainingLockTime(nftStaker.stake) == 0) {
+                        rewards += _getStakeRewards(
+                            1, // 1 token
+                            1, // Rewards multiplier
+                            block.timestamp - nftStaker.stake.lastTimestampLocked,
+                            false
+                        );
+
+                        // If the token was locked and is now past its lock time, we get the pre calculated rewards from this
+                        // but only do this once for a user then mark `owedRewardsLocked` as 0
+                        // so it is possible that the user calls to unstake again in the future with a token that was locked and is
+                        // now past its locked time, but they will only get the interim locked time rewards, not the pre calculated amount
+                        // for the total locked time that was calculated when they staked
                         // only update once per TX
-                        nftStaker.stake.lastTimestampLocked = block.timestamp;
+                        if (block.timestamp != nftStaker.stake.lastTimestampLocked) {
+                            // If unstaked any formerly locked tokens and they are past their lock time,
+                            // we give them the pre calculated amount
+                            rewards += nftStaker.stake.owedRewardsLocked; // once
+
+                            // we have to make sure this gets set to 0 so they don't get it again in future calls
+                            nftStaker.stake.owedRewardsLocked = 0; // once
+
+                            nftStaker.stake.lastTimestampLocked = block.timestamp; // once
+                        }
                     }
                 } else {
                     // stake is locked and cannot be unstaked
@@ -281,6 +302,25 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                     continue;
                 }
             } else {
+                // only update once per TX
+                if (block.timestamp != nftStaker.stake.lastTimestampLocked) {
+                    // If unstaked any formerly locked tokens and they are past their lock time,
+                    // we give them the pre calculated amount
+                    rewards += nftStaker.stake.owedRewards;
+
+                    // we have to make sure this gets set to 0 so they don't get it again in future calls
+                    nftStaker.stake.owedRewards = 0;
+                    nftStaker.stake.lastTimestamp = block.timestamp;
+                }
+
+                // get interim rewards on a per token basis
+                rewards += _getStakeRewards(
+                    1, // 1 token
+                    1, // Rewards multiplier
+                    block.timestamp - nftStaker.stake.lastTimestampLocked,
+                    false
+                );
+
                 // stake was never locked
                 _unstake(_tokenIds[i]);
                 --nftStaker.stake.amountStaked;

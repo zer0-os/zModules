@@ -341,8 +341,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 ? staker.lastTimestampLocked
                 : staker.unlockedTimestamp;
 
-            // TODO somehow creates slightly different value than what
-
             rewards += staker.owedRewardsLocked + _getStakeRewards(
                 staker.amountStakedLocked,
                 1, // Rewards multiplier
@@ -357,6 +355,12 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     // todo remove when finished
     function testRM(uint256 timeDuration) public view returns (uint256) {
         return _calcRewardsMultiplier(timeDuration);
+    }
+
+    function _mostRecentTimestamp(Staker storage staker) internal view returns (uint256) {
+        return staker.lastTimestampLocked > staker.unlockedTimestamp
+            ? staker.lastTimestampLocked
+            : staker.unlockedTimestamp;
     }
 
     /**

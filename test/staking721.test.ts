@@ -40,6 +40,7 @@ import {
   INVALID_UNSTAKE_ERR,
   INSUFFICIENT_BALANCE_ERR,
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
+  LOCK_TOO_SHORT_ERR,
 } from "./helpers/errors";
 import { staking } from "../typechain/contracts";
 
@@ -309,8 +310,6 @@ describe("StakingERC721", () => {
     });
   });
 
-  // TODO list out cases, make sure all covered
-
   describe("#stake", () => {
     it("Can stake a single NFT using #stakeWithoutLock", async () => {
       // stakerA starts with tokenA, tokenB, and tokenC
@@ -503,6 +502,13 @@ describe("StakingERC721", () => {
           tokenIdA
         )).to.be.revertedWithCustomError(stakingERC721, NON_TRANSFERRABLE_ERR);
     });
+
+    it("Fails when the stakes is locked for less than the minimum lock time", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_MINIMUM_LOCK - 1n)
+      ).to.be.revertedWithCustomError(stakingERC721, LOCK_TOO_SHORT_ERR)
+        .withArgs(DEFAULT_MINIMUM_LOCK);
+    })
 
     it("Fails to stake when the token id is invalid", async () => {
       // Token is not minted, and so is invalid
