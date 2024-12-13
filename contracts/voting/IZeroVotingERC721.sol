@@ -7,10 +7,10 @@ interface IZeroVotingERC721 {
      * @dev Updates the ownership of a token, transferring it to the specified address.
      * This external function is restricted to accounts with the `DEFAULT_ADMIN_ROLE`.
      * It wraps the internal `_update` method provided by the ERC721Votes base contract.
-     * @param to The address to which the token will be transferred. 
+     * @param to The address to which the token will be transferred.
      *           Can be `address(0)` to burn the token.
      * @param tokenId The ID of the token to be updated.
-     * @param auth The address authorized to execute this update. 
+     * @param auth The address authorized to execute this update.
      *             If `address(0)`, no authorization check is performed.
      * @return The address of the previous owner of the token.
      */
@@ -26,6 +26,11 @@ interface IZeroVotingERC721 {
      * @param tokenId The token ID for the newly minted token.
      */
     function mint(
+        address to,
+        uint256 tokenId
+    ) external;
+
+    function safeMint(
         address to,
         uint256 tokenId
     ) external;
