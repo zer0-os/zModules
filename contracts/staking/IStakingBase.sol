@@ -143,9 +143,18 @@ interface IStakingBase {
     error InitializedWithZero();
 
     function withdrawLeftoverRewards() external;
+    
+    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) external;
+
+    function setPeriodLength(uint256 _periodLength) external;
+
+    function setMinimumLockTime(uint256 _minimumLockTime) external;
+
+    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) external;
+
+    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) external;
 
     function getContractRewardsBalance() external view returns (uint256);
-
 
     function getStakingToken() external view returns(address);
 
@@ -160,14 +169,4 @@ interface IStakingBase {
     function getMinimumRewardsMultiplier() external view returns(uint256);
 
     function getMaximumRewardsMultiplier() external view returns(uint256);
-
-    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) external;
-
-    function setPeriodLength(uint256 _periodLength) external;
-
-    function setMinimumLockTime(uint256 _minimumLockTime) external;
-
-    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) external;
-
-    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) external;
 }

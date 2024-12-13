@@ -8,9 +8,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/* solhint-disable no-console */
-import { console } from "hardhat/console.sol";
-// TODO remove when ready
 
 /**
  * @title StakingBase
@@ -62,6 +59,59 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
+
+    
+    /**
+     * @notice Set the rewards per period
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _rewardsPerPeriod The new rewards per period value
+     */
+    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
+        config.rewardsPerPeriod = _rewardsPerPeriod;
+    }
+
+    /**
+     * @notice Set the period length
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _periodLength The new period length value
+     */
+    function setPeriodLength(uint256 _periodLength) public override onlyOwner {
+        config.periodLength = _periodLength;
+    }
+
+    /**
+     * @notice Set the minimum lock time
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _minimumLockTime The new minimum lock time, in seconds
+     */
+    function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
+        config.minimumLockTime = _minimumLockTime;
+        emit MinimumLockTimeSet(owner(), _minimumLockTime);
+    }
+
+    /**
+     * @notice Set the minimum rewards multiplier
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
+     */
+    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
+        config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Set the maximum rewards multiplier
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
+     */
+    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
+        config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
+    }
+
 
     /**
      * @notice View the rewards balance in this pool
@@ -120,64 +170,13 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
-     * @notice Set the rewards per period
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _rewardsPerPeriod The new rewards per period value
-     */
-    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
-        config.rewardsPerPeriod = _rewardsPerPeriod;
-    }
-
-    /**
-     * @notice Set the period length
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _periodLength The new period length value
-     */
-    function setPeriodLength(uint256 _periodLength) public override onlyOwner {
-        config.periodLength = _periodLength;
-    }
-
-    /**
-     * @notice Set the minimum lock time
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _minimumLockTime The new minimum lock time, in seconds
-     */
-    function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
-        config.minimumLockTime = _minimumLockTime;
-        emit MinimumLockTimeSet(owner(), _minimumLockTime);
-    }
-
-    /**
-     * @notice Set the minimum rewards multiplier
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
-     */
-    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
-        config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
-    }
-
-    /**
-     * @notice Set the maximum rewards multiplier
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
-     */
-    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
-        config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
-    }
-
-    /**
      * @notice Return the potential rewards that would be earned for a given stake
      *
      * @param amount The amount of the staking token to calculate rewards for
      * @param timeDuration The the amount of time these funds will be staked, provide the lock duration if locking
      * @param locked Boolean if the stake is locked
      */
-    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public view returns (uint256) {
+    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public view override returns (uint256) {
 
         uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
 
@@ -187,6 +186,11 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             timeDuration,
             locked
         );
+    }
+
+    // todo remove when finished
+    function testRM(uint256 timeDuration) public view override returns (uint256) {
+        return _calcRewardsMultiplier(timeDuration);
     }
 
     ////////////////////////////////////
@@ -334,7 +338,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
             // Case A) user stakes with lock, then waits well beyond lock duration and claims
             // need to make sure that everything past `unlockTimestamp` is calculated at the non-locked rate
-            // Case B) user stakes with lock and waits well beyond lock period, claims, then waits and claims again in the future
+            // Case B) user stakes with lock and waits well beyond lock period, claims, 
+            // then waits and claims again in the future
             // Have to make sure that we read from the time between their last touch point at non-locked rate
             // meaning we have to check which timestamp is more recent
             uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
@@ -352,11 +357,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         }
 
         return rewards;
-    }
-
-    // todo remove when finished
-    function testRM(uint256 timeDuration) public view returns (uint256) {
-        return _calcRewardsMultiplier(timeDuration);
     }
 
     /**

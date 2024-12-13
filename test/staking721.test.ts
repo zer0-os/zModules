@@ -15,14 +15,12 @@ import {
   BaseConfig,
   WITHDRAW_EVENT,
   DEFAULT_LOCK,
-  calcLockedRewards,
   calcTotalLockedRewards,
   calcTotalUnlockedRewards,
   PRECISION_DIVISOR,
   LOCKED_PRECISION_DIVISOR,
   DAY_IN_SECONDS,
   calcStakeRewards,
-  DEFAULT_STAKED_AMOUNT,
   DEFAULT_MINIMUM_LOCK,
   DEFAULT_MINIMUM_RM,
   DEFAULT_MAXIMUM_RM,
@@ -33,15 +31,13 @@ import {
   ZERO_INIT_ERR,
   NON_TRANSFERRABLE_ERR,
   INCORRECT_OWNER_ERR,
-  INVALID_OWNER_ERR,
   NONEXISTENT_TOKEN_ERR,
-  TIME_LOCK_NOT_PASSED_ERR, INSUFFICIENT_APPROVAL_721_ERR, OWNABLE_UNAUTHORIZED_ERR,
+  INSUFFICIENT_APPROVAL_721_ERR, OWNABLE_UNAUTHORIZED_ERR,
   ZERO_REWARDS_ERR,
   INVALID_UNSTAKE_ERR,
   INSUFFICIENT_BALANCE_ERR,
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
 } from "./helpers/errors";
-import { staking } from "../typechain/contracts";
 
 
 describe("StakingERC721", () => {
@@ -741,7 +737,11 @@ describe("StakingERC721", () => {
         config
       );
 
-      expect(balanceAfter).to.eq(balanceBefore + expectedUnlocked + expectedLockedStakeValue + expectedLockedInterimRewards);
+      expect(
+        balanceAfter
+      ).to.eq(
+        balanceBefore + expectedUnlocked + expectedLockedStakeValue + expectedLockedInterimRewards
+      );
     });
 
     it("Fails to claim when the caller has no stakes", async () => {
@@ -803,7 +803,11 @@ describe("StakingERC721", () => {
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
-      expect(balanceAfter).to.eq(balanceBefore + expectedUnlocked + expectedLockedStakeValue + expectedLockedInterimRewards);
+      expect(
+        balanceAfter
+      ).to.eq(
+        balanceBefore + expectedUnlocked + expectedLockedStakeValue + expectedLockedInterimRewards
+      );
 
       const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
 
