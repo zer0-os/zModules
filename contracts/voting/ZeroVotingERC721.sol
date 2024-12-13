@@ -11,11 +11,6 @@ import { IZeroVotingERC721 } from "./IZeroVotingERC721.sol";
 
 
 contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZeroVotingERC721 {
-    /**
-     * @notice Emitted when the base URI is updated
-     * @param baseURI The new base URI
-     */
-    event BaseURIUpdated(string baseURI);
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");

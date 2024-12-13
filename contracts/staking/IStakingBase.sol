@@ -143,7 +143,7 @@ interface IStakingBase {
     error InitializedWithZero();
 
     function withdrawLeftoverRewards() external;
-    
+
     function setRewardsPerPeriod(uint256 _rewardsPerPeriod) external;
 
     function setPeriodLength(uint256 _periodLength) external;
@@ -161,6 +161,8 @@ interface IStakingBase {
     function getRewardsToken() external view returns(IERC20);
 
     function getRewardsPerPeriod() external view returns(uint256);
+
+    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) external view returns (uint256);
 
     function getPeriodLength() external view returns(uint256);
 

@@ -7,6 +7,12 @@ import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 
 interface IZeroVotingERC721 is IAccessControl, IERC721, IVotes {
+    /**
+     * @notice Emitted when the base URI is updated
+     * @param baseURI The new base URI
+     */
+    event BaseURIUpdated(string baseURI);
+
     function tokenURI(uint256 tokenId) external view returns (string memory);
 
     function mint(

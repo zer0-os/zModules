@@ -60,7 +60,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
-    
+
     /**
      * @notice Set the rewards per period
      * @dev Will fail when called by anyone other than the contract owner
@@ -189,7 +189,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     // todo remove when finished
-    function testRM(uint256 timeDuration) public view override returns (uint256) {
+    function testRM(uint256 timeDuration) public view returns (uint256) {
         return _calcRewardsMultiplier(timeDuration);
     }
 
@@ -338,7 +338,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
             // Case A) user stakes with lock, then waits well beyond lock duration and claims
             // need to make sure that everything past `unlockTimestamp` is calculated at the non-locked rate
-            // Case B) user stakes with lock and waits well beyond lock period, claims, 
+            // Case B) user stakes with lock and waits well beyond lock period, claims,
             // then waits and claims again in the future
             // Have to make sure that we read from the time between their last touch point at non-locked rate
             // meaning we have to check which timestamp is more recent
