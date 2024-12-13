@@ -6,10 +6,9 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { IZeroVotingERC721 } from "./IZeroVotingERC721.sol";
 
 
-contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZeroVotingERC721 {
+contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl {
 
     event BaseURIUpdated(string baseURI);
 
@@ -41,8 +40,6 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
     )
         ERC721(name, symbol)
         EIP712(name, version)
-        ERC721Votes()
-        AccessControl()
     {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(BURNER_ROLE, admin);
@@ -127,7 +124,7 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
      */
     function burn(
         uint256 tokenId
-    ) external override onlyRole(BURNER_ROLE) {
+    ) external onlyRole(BURNER_ROLE) {
         _burn(tokenId);
     }
 
@@ -138,7 +135,7 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
     */
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(ERC721, AccessControl, IZeroVotingERC721) returns (bool) {
+    ) public view override(ERC721, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 

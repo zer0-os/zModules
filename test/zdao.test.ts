@@ -11,7 +11,7 @@ import { mine } from "@nomicfoundation/hardhat-network-helpers";
 import { mineBlocks } from "./helpers/voting/mineBlocks";
 
 
-describe.only("zDAO Test", () => {
+describe("zDAO Test", () => {
   let admin : SignerWithAddress;
   let user1 : SignerWithAddress;
   let user2 : SignerWithAddress;
@@ -234,6 +234,7 @@ describe.only("zDAO Test", () => {
     });
 
     it("Should", async () => {});
+
     it("Should", async () => {});
   });
 });

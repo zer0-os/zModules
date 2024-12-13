@@ -8,6 +8,7 @@ import {
 } from "./helpers/voting/constants";
 import { ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
 
+
 describe("Voting tokens tests", () => {
   let owner : HardhatEthersSigner;
   let addr1 : HardhatEthersSigner;
