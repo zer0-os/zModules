@@ -1161,7 +1161,8 @@ describe("StakingERC20", () => {
     let stakedAt : bigint;
     let stakedAtLocked : bigint;
 
-    it("Allows the user to view the total pending rewards for both locked and non-locked stakes when passed lock time", async () => {
+    it("Allows the user to view the total pending rewards for both locked" +
+      "and non-locked stakes when passed lock time", async () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
@@ -1183,7 +1184,11 @@ describe("StakingERC20", () => {
 
       stakerData = await contract.stakers(stakerA.address);
 
-      const unlockedStakeValue = await contract.getStakeRewards(DEFAULT_STAKED_AMOUNT, BigInt(await time.latest()) - stakedAt, true);
+      const unlockedStakeValue = await contract.getStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        BigInt(await time.latest()) - stakedAt,
+        true
+      );
       const expectedUnlockedRewards = calcTotalUnlockedRewards(
         [BigInt(await time.latest()) - stakedAt!],
         [DEFAULT_STAKED_AMOUNT],

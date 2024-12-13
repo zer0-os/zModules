@@ -1,7 +1,7 @@
 import { DAY_IN_SECONDS } from "../constants";
 import { BaseConfig } from "./types";
 
-import * as hre from "hardhat"
+import * as hre from "hardhat";
 
 // Pass specific values here from config in other functions so we can use the correct divisor
 
@@ -23,7 +23,7 @@ export const calcTotalUnlockedRewards = (
   }
 
   return totalRewards;
-}
+};
 
 export const calcLockedRewards = (
   duration : bigint,
@@ -40,7 +40,7 @@ export const calcLockedRewards = (
   );
 
   return retval;
-}
+};
 
 export const calcTotalLockedRewards = (
   durations : Array<bigint>,
@@ -56,18 +56,16 @@ export const calcTotalLockedRewards = (
       balances[i],
       rewardsMultiplier,
       config
-  );
+    );
   }
 
   return totalRewards;
-}
+};
 
-const calculateRewardsMultiplier = (lockDuration : bigint, config : BaseConfig) => {
-  return config.minimumRewardsMultiplier
+const calculateRewardsMultiplier = (lockDuration : bigint, config : BaseConfig) => config.minimumRewardsMultiplier
     + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
-    * (lockDuration / DAY_IN_SECONDS) 
-    / config.periodLength
-}
+    * (lockDuration / DAY_IN_SECONDS)
+    / config.periodLength;
 
 export const calcStakeRewards = (
   amount : bigint,
@@ -82,8 +80,8 @@ export const calcStakeRewards = (
 
   const divisor = locked ? 100000n : 1000n;
 
-  const rewards = 
+  const rewards =
     rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
 
-    return rewards;
-}
+  return rewards;
+};

@@ -20,8 +20,18 @@ import { console } from "hardhat/console.sol";
  * non-transferable ERC721 token in return as representation of the deposit.
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
-contract StakingERC721 is StakingBase, IStakingERC721 {
+contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     using SafeERC20 for IERC20;
+    /**
+     * @notice Based URI used for ALL tokens.Can be empty if individual URIs are set.
+     */
+    string internal baseURI;
+
+    /**
+     * @notice Total supply of all tokens
+     */
+    uint256 internal _totalSupply;
+
     /**
      * @notice Mapping that includes ERC721 specific data for each staker
      */

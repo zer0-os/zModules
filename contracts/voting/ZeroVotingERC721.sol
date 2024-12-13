@@ -40,7 +40,7 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl {
     function mint(
         address to,
         uint256 tokenId
-    ) external onlyRole(MINTER_ROLE) {
+    ) external override onlyRole(MINTER_ROLE) {
         _mint(
             to,
             tokenId
@@ -53,7 +53,7 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl {
      */
     function burn(
         uint256 tokenId
-    ) external onlyRole(BURNER_ROLE) {
+    ) external override onlyRole(BURNER_ROLE) {
         _burn(tokenId);
     }
 
