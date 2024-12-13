@@ -368,7 +368,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     function _calcRewardsMultiplier(uint256 lock) internal view returns(uint256) {
         return config.minimumRewardsMultiplier
         + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
-        * (lock / 86400 ) // 86400 seconds in a day // TODO eval if this division is even necessary
+        * (lock ) // 86400 seconds in a day // TODO eval if this division is even necessary
         / config.periodLength;
     }
 

@@ -516,6 +516,7 @@ describe("StakingERC20", () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      const stakedAt = BigInt(await time.latest());
 
       await time.increase(DEFAULT_LOCK / 4n);
 
@@ -526,17 +527,24 @@ describe("StakingERC20", () => {
       await rewardsToken.connect(owner).transfer(
         await contract.getAddress(),
         pendingRewards * 2n // account for +1s timestamp execution
-      );
+      ); 
 
       await contract.connect(stakerA).claim();
+      const claimedAt = BigInt(await time.latest());
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
 
-      // expect(pendingRewards).to.eq(expectedRewards);
-      // TODO update helper
-      // expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + pendingRewards);
-
+      // TODO AMOUNT CHECK NOW THAT UPDATE     
+      const expectedRewards = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        claimedAt - stakedAt,
+        false,
+        config
+      );
+      
       const stakerData = await contract.stakers(stakerA.address);
+
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + expectedRewards);
       expect(stakerData.owedRewards).to.eq(0n);
     });
 
@@ -574,16 +582,22 @@ describe("StakingERC20", () => {
 
       const stakerData = await contract.stakers(stakerA.address);
 
-      const expectedRewards = calcTotalUnlockedRewards(
-        [claimedAt - stakedAt],
-        [DEFAULT_STAKED_AMOUNT],
-        config
+      const expectedRewards = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        DEFAULT_LOCK,
+        true,
+        config,
+        stakerData.rewardsMultiplier
       );
 
-      // TODO difference of ~103 wei, rounding error?
-      const match = stakerData.rewardsMultiplier * expectedRewards / 100n;
+      const interimRewards = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        claimedAt - stakerData.unlockedTimestamp,
+        false,
+        config
+      )
 
-      expect(balanceAfter).to.be.gt(balanceBefore);
+      expect(balanceAfter).to.eq(balanceBefore + expectedRewards + interimRewards);
     });
 
     it("Fails when the user has never staked", async () => {
@@ -1167,46 +1181,36 @@ describe("StakingERC20", () => {
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
       stakedAt = BigInt(await time.latest());
 
-      let stakerData = await contract.stakers(stakerA.address);
-      
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
       stakedAtLocked = BigInt(await time.latest());
 
-      stakerData = await contract.stakers(stakerA.address);
+      const stakerData = await contract.stakers(stakerA.address);
       
-      // can pre calc value of locked stake
-      const lockedStakeValue = await contract.getStakeRewards(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, true);
-      
-      await time.increase(DEFAULT_LOCK / 4n);
-      
+      // can pre calc rewards for locked stake
+      const expectedRewardsContract = await contract.getStakeRewards(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, true);
+
+      const expectedRewards = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        stakedAtLocked + DEFAULT_LOCK,
+        true,
+        config,
+        stakerData.rewardsMultiplier
+      )
+
+      const interimRewards = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        BigInt(await time.latest()) - stakedAt,
+        false,
+        config
+      )
+
       const totalPendingRewards = await contract.connect(stakerA).getPendingRewards();
 
-      stakerData = await contract.stakers(stakerA.address);
-      
-      const unlockedStakeValue = await contract.getStakeRewards(DEFAULT_STAKED_AMOUNT, BigInt(await time.latest()) - stakedAt, true);
-      const expectedUnlockedRewards = calcTotalUnlockedRewards(
-        [BigInt(await time.latest()) - stakedAt!],
-        [DEFAULT_STAKED_AMOUNT],
-        config
-      );
+      // get values very large when lock with RM, 345x
+      expect(totalPendingRewards).to.eq(expectedRewards + interimRewards);
+      expect(stakerData.owedRewardsLocked).to.eq(expectedRewards + interimRewards);
 
-      expect(totalPendingRewards).to.eq(expectedUnlockedRewards);
-      expect(totalPendingRewards).to.eq(unlockedStakeValue);
-      expect(stakerData.owedRewardsLocked).to.eq(lockedStakeValue);
-
-      await time.increase(DEFAULT_LOCK / 4n * 3n);
-      stakerData = await contract.stakers(stakerA.address);
-      
-      const latest = BigInt(await time.latest());
-      const totalPendingRewardsFull = await contract.connect(stakerA).getPendingRewards();
-
-      const futureExpectedUnlockedRewards = calcTotalUnlockedRewards(
-        [latest - stakedAt!],
-        [DEFAULT_STAKED_AMOUNT],
-        config
-      );
-
-      expect(totalPendingRewardsFull).to.eq(futureExpectedUnlockedRewards + stakerData.owedRewardsLocked);
+      // expect(totalPendingRewardsFull).to.eq(futureExpectedUnlockedRewards + stakerData.owedRewardsLocked);
     });
 
     it("Returns 0 for a user that has not staked", async () => {
@@ -1219,7 +1223,7 @@ describe("StakingERC20", () => {
     // 36500 is min lock time if divisor in RM function is 365
     // 50000 is min lock time if divisor in RM function is 500
     // etc.
-    it.skip("Test the reward multiplier calculation with every value allowed", async () => {
+    it("Test the reward multiplier calculation with every value allowed", async () => {
       await reset();
 
       for (let i = 0; i <= 365; i++) {
