@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.0.0) (token/ERC20/ERC20.sol) [Modified by Zero]
+pragma solidity 0.8.26;
 
-pragma solidity 0.8.22;
 
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// Don't enforce linter function ordering in mock tokens
+/* solhint-disable ordering */
 
 /**
  * @dev OpenZeppelin ERC20 copied and slightly modified to make state vars internal, so they can be used
  * in other mocked contracts that inherit from this one.
  */
 abstract contract ERC20Mod is Context, IERC20, IERC20Metadata, IERC20Errors {
-    mapping(address account => uint256) internal _balances;
+    mapping(address account => uint256 balance) internal _balances;
 
-    mapping(address account => mapping(address spender => uint256)) internal _allowances;
+    mapping(address account => mapping(address spender => uint256 allowance)) internal _allowances;
 
     uint256 internal _totalSupply;
 

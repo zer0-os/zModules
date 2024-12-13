@@ -13,7 +13,7 @@ import {
 } from "./helpers/voting/commonFunctions";
 
 
-describe.only("zDAO Test", () => {
+describe("zDAO Test", () => {
   let admin : SignerWithAddress;
   let user1 : SignerWithAddress;
   let user2 : SignerWithAddress;
