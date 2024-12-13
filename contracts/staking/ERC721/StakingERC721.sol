@@ -8,10 +8,7 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
-
-/* solhint-disable no-console */
-// TODO remove when ready
-import { console } from "hardhat/console.sol";
+import { IERC721MintableBurnable } from "../../types/IERC721MintableBurnable.sol";
 
 
 /**
@@ -24,16 +21,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     using SafeERC20 for IERC20;
 
     /**
-     * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
-     */
-    string internal baseURI;
-
-    /**
-     * @notice Total supply of all tokens
-     */
-    uint256 internal _totalSupply;
-
-    /**
      * @notice Mapping that includes ERC721 specific data for each staker
      */
     mapping(address staker => NFTStaker nftStaker) public nftStakers;
@@ -42,30 +29,22 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Revert if a call is not from the SNFT owner
      */
     modifier onlySNFTOwner(uint256 tokenId) {
-        if (ownerOf(tokenId) != msg.sender) {
+        if (IERC721(config.stakeRepToken).ownerOf(tokenId) != msg.sender) {
             revert InvalidOwner();
         }
         _;
     }
 
     constructor(
-        string memory name,
-        string memory symbol,
-        string memory baseUri,
         Config memory config
     )
-        ERC721(name, symbol)
         StakingBase(config)
-    {
-        if (bytes(baseUri).length > 0) {
-            baseURI = baseUri;
-        }
-    }
+    {}
 
     /**
      * @notice Stake one or more ERC721 tokens with a lock period
      * @dev These are two separate functions intentionally for the sake of user clarity
-     * 
+     *
      * @param tokenIds The id(s) of the tokens to stake
      * @param tokenUris The associated metadata URIs of the tokens to stake
      * @param lockDuration The lock durations, in seconds, for each token
@@ -84,7 +63,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @notice Stake one or more ERC721 tokens without a lock period
      * @dev These are two separate functions intentionally for the sake of user clarity
-     * 
+     *
      * @param tokenIds Array of tokenIds to be staked by the caller
      * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used!
      */
@@ -119,8 +98,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Unstake all the tokens staked by a user.
      * @dev If a user is still within their lock time, tokens that are locked are not unstaked
      * unless `exit` is true.
-     * 
-     * @param exit Flag for unstaking a token regardless of if it is unlocked or not. 
+     *
+     * @param exit Flag for unstaking a token regardless of if it is unlocked or not.
      * if a token is not unlocked but `exit` is true, it will be unstaked without reward
      */
     function unstakeAll(bool exit) public override {
@@ -150,26 +129,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         return _getPendingRewards(nftStakers[msg.sender].stake);
     }
 
-    ////////////////////////////////////
-    /* Token Functions */
-    ////////////////////////////////////
-
-    function setBaseURI(string memory baseUri) public override onlyOwner {
-        baseURI = baseUri;
-        emit BaseURIUpdated(baseUri);
-    }
-
-    function setTokenURI(
-        uint256 tokenId,
-        string memory tokenUri
-    ) public virtual override onlyOwner {
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    function getInterfaceId() public pure override returns (bytes4) {
-        return type(IStakingERC721).interfaceId;
-    }
-
     function onERC721Received(
         address,
         address,
@@ -177,24 +136,6 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         bytes calldata
     ) public pure override returns (bytes4) {
         return this.onERC721Received.selector;
-    }
-
-    function totalSupply() public view override returns (uint256) {
-        return _totalSupply;
-    }
-
-    function tokenURI(
-        uint256 tokenId
-    ) public view override returns (string memory) {
-        return super.tokenURI(tokenId);
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override returns (bool) {
-        return
-            interfaceId == type(IStakingERC721).interfaceId ||
-            super.supportsInterface(interfaceId);
     }
 
     ////////////////////////////////////
@@ -230,7 +171,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             nftStaker.locked[tokenIds[i]] = lockDuration > 0;
 
             // Mint user sNFT
-            _safeMint(msg.sender, tokenIds[i], tokenUris[i]);
+            IERC721MintableBurnable(config.stakeRepToken)
+                .safeMint(msg.sender, tokenIds[i], tokenUris[i]);
 
             emit Staked(msg.sender, tokenIds[i], config.stakingToken);
 
@@ -250,8 +192,11 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         uint256 rewards = _getPendingRewards(nftStaker.stake);
 
         uint256 i;
-        for(i; i < _tokenIds.length;) {
-            if (ownerOf(_tokenIds[i]) == address(0) || ownerOf(_tokenIds[i]) != msg.sender) {
+        for (i; i < _tokenIds.length;) {
+            if (
+                IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) == address(0)
+                || IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) != msg.sender
+            ) {
                 // Either the list of tokenIds contains a non-existent token
                 // or it contains a token the owner doesnt own
                 unchecked {
@@ -326,8 +271,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     function _unstake(
         uint256 tokenId
     ) internal onlySNFTOwner(tokenId) {
-        _burn(tokenId);
-        --_totalSupply;
+        IERC721MintableBurnable(config.stakeRepToken).burn(tokenId);
 
         // Return NFT to staker
         IERC721(config.stakingToken).safeTransferFrom(
@@ -337,46 +281,5 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
         );
 
         emit Unstaked(msg.sender, tokenId, config.stakingToken);
-    }
-
-    function _safeMint(
-        address to,
-        uint256 tokenId,
-        string memory tokenUri
-    ) internal {
-        ++_totalSupply;
-        super._safeMint(to, tokenId);
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    function _mint(
-        address to,
-        uint256 tokenId,
-        string memory tokenUri
-    ) internal {
-        ++_totalSupply;
-        super._mint(to, tokenId);
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    /**
-     * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
-     */
-    function _update(
-        address to,
-        uint256 tokenId,
-        address auth
-    ) internal override returns (address) {
-        address from = _ownerOf(tokenId);
-
-        if (from != address(0) && to != address(0)) {
-            revert NonTransferrableToken();
-        }
-
-        return super._update(to, tokenId, auth);
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
     }
 }
