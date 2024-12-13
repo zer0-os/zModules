@@ -8,7 +8,7 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
-import { IERC721MintableBurnable } from "../../types/IERC721MintableBurnable.sol";
+import { IERC721MintableBurnableURIStorage } from "../../types/IERC721MintableBurnableURIStorage.sol";
 
 
 /**
@@ -171,7 +171,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             nftStaker.locked[tokenIds[i]] = lockDuration > 0;
 
             // Mint user sNFT
-            IERC721MintableBurnable(config.stakeRepToken)
+            IERC721MintableBurnableURIStorage(config.stakeRepToken)
                 .safeMint(msg.sender, tokenIds[i], tokenUris[i]);
 
             emit Staked(msg.sender, tokenIds[i], config.stakingToken);
@@ -271,7 +271,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     function _unstake(
         uint256 tokenId
     ) internal onlySNFTOwner(tokenId) {
-        IERC721MintableBurnable(config.stakeRepToken).burn(tokenId);
+        IERC721MintableBurnableURIStorage(config.stakeRepToken).burn(tokenId);
 
         // Return NFT to staker
         IERC721(config.stakingToken).safeTransferFrom(
