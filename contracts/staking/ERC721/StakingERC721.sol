@@ -20,19 +20,8 @@ import { console } from "hardhat/console.sol";
  * non-transferable ERC721 token in return as representation of the deposit.
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
-contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
+contract StakingERC721 is StakingBase, IStakingERC721 {
     using SafeERC20 for IERC20;
-
-    /**
-     * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
-     */
-    string internal baseURI;
-
-    /**
-     * @notice Total supply of all tokens
-     */
-    uint256 internal _totalSupply;
-
     /**
      * @notice Mapping that includes ERC721 specific data for each staker
      */
@@ -65,7 +54,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @notice Stake one or more ERC721 tokens with a lock period
      * @dev These are two separate functions intentionally for the sake of user clarity
-     * 
+     *
      * @param tokenIds The id(s) of the tokens to stake
      * @param tokenUris The associated metadata URIs of the tokens to stake
      * @param lockDuration The lock durations, in seconds, for each token
@@ -84,7 +73,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
     /**
      * @notice Stake one or more ERC721 tokens without a lock period
      * @dev These are two separate functions intentionally for the sake of user clarity
-     * 
+     *
      * @param tokenIds Array of tokenIds to be staked by the caller
      * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used!
      */
@@ -119,8 +108,8 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
      * @notice Unstake all the tokens staked by a user.
      * @dev If a user is still within their lock time, tokens that are locked are not unstaked
      * unless `exit` is true.
-     * 
-     * @param exit Flag for unstaking a token regardless of if it is unlocked or not. 
+     *
+     * @param exit Flag for unstaking a token regardless of if it is unlocked or not.
      * if a token is not unlocked but `exit` is true, it will be unstaked without reward
      */
     function unstakeAll(bool exit) public override {
