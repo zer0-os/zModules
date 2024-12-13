@@ -7,8 +7,10 @@ import {
   ZeroVotingERC721,
 } from "../typechain";
 import { expect } from "chai";
-import { mine } from "@nomicfoundation/hardhat-network-helpers";
-import { mineBlocks } from "./helpers/voting/mineBlocks";
+import {
+  createProposal,
+  mineBlocks,
+} from "./helpers/voting/commonFunctions";
 
 
 describe.only("zDAO Test", () => {
@@ -88,6 +90,37 @@ describe.only("zDAO Test", () => {
   });
 
   describe("DAO with ERC20", () => {
+    it("Should have correct passed arguments", async () => {
+      const curTime = Math.floor(Date.now() / 1000);
+      const curBlock = await hre.ethers.provider.getBlockNumber();
+      const totalSupply = await erc20.getPastTotalSupply(curBlock - 1);
+      console.log(totalSupply);
+
+      expect(
+        await daoERC20.quorum(curBlock - 1)
+      ).to.be.eq(
+        totalSupply * BigInt(quorumPercentage)
+      );
+
+      expect(
+        await daoERC20.votingDelay()
+      ).to.be.eq(
+        delay
+      );
+
+      expect(
+        await daoERC20.votingPeriod()
+      ).to.be.eq(
+        delay + voteExtension
+      );
+
+      expect(
+        await daoERC20.proposalThreshold()
+      ).to.be.eq(
+        proposalThreshold
+      );
+    });
+
     it("Should start voting after the delay", async () => {
       const targets = [erc20];
       const values = [0];
@@ -174,11 +207,13 @@ describe.only("zDAO Test", () => {
       );
 
       // canceled proposal
-      await daoERC20.propose(
+      await createProposal(
+        daoERC20,
         targets,
         values,
         [calldatas[2]],
-        description3
+        description3,
+        descriptionHash3,
       );
       const proposalId3 = await daoERC20.hashProposal(
         targets,
@@ -219,6 +254,8 @@ describe.only("zDAO Test", () => {
       await mineBlocks(delay + voteExtension + 9999);
 
       // 3 = Defeated state
+      // НЕ ДОЛЖЕН БЫТЬ 3. ДОЛЖЕН БЫТЬ EXPIRED (6). А мб и нет.
+      // ОЧЕРЕДИ ТОЖЕ НЕТ. Возможно и не должна быть
       expect(
         await daoERC20.state(proposalId)
       ).to.equal(
@@ -231,9 +268,32 @@ describe.only("zDAO Test", () => {
       ).to.equal(
         4n
       );
+
+      console.log(await daoERC20.proposalDeadline(proposalId));
+      console.log(await daoERC20.votingPeriod());
+      console.log("before: ", await hre.ethers.provider.getBlockNumber());
+
+      await mineBlocks(100);
+
+      console.log("after: ", await hre.ethers.provider.getBlockNumber());
+
+      expect(
+        await daoERC20.state(proposalId)
+      ).to.equal(
+        6n
+      );
     });
 
-    it("Should", async () => {});
-    it("Should", async () => {});
+    it("Should execute a proposal and change the state of it", async () => {});
+    it("Should execute passed in calldatas method on token", async () => {});
+
+    describe("Negative", () => {
+      it("Should revert if voting starts before the delay", async () => {});
+      it("Should revert if proposal threshold is not met", async () => {});
+      it("Should revert if non-voter tries to vote", async () => {});
+      it("Should revert if proposal attempts to execute before timelock", async () => {});
+    });
+
+    describe("Queue", () => {});
   });
 });
