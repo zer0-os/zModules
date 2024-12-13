@@ -15,6 +15,8 @@ interface IZeroVotingERC20 is
     IERC5267,
     IVotes {
 
+    error NonTransferrableToken();
+
     function mint(
         address account,
         uint256 value

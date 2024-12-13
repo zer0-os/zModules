@@ -140,20 +140,20 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
     }
 
     /**
-     * @dev Internal function to update the ownership of a token, transferring it to the specified address.
-     * This method overrides the `_update` implementation in the ERC721Votes contract and ensures the
-     * balances and ownership mappings are updated correctly, emitting a `Transfer` event.
+     * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
      */
     function _update(
         address to,
         uint256 tokenId,
         address auth
     ) internal override(ERC721, ERC721Votes) returns (address) {
-        return super._update(
-            to,
-            tokenId,
-            auth
-        );
+        address from = _ownerOf(tokenId);
+
+        if (from != address(0) && to != address(0)) {
+            revert NonTransferrableToken();
+        }
+
+        return super._update(to, tokenId, auth);
     }
 
     function _increaseBalance(

@@ -5,7 +5,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { mineBlocks } from "./helpers/voting/mineBlocks";
 
 
-describe("Governance Flow Test", () => {
+describe("Governor Voting Flow Test", () => {
   let votingERC20 : ZeroVotingERC20;
   let votingERC721 : ZeroVotingERC721;
   let governance20 : ZDAO;

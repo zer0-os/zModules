@@ -77,21 +77,17 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
     }
 
     /**
-     * @dev Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
-     * (or `to`) is the zero address. All customizations to transfers, mints, and burns should be done by overriding
-     * this function.
-     *
-     * Emits a {Transfer} event.
-    */
+     * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
+     */
     function _update(
         address from,
         address to,
         uint256 value
     ) internal override(ERC20, ERC20Votes) {
-        super._update(
-            from,
-            to,
-            value
-        );
+        if (from != address(0) && to != address(0)) {
+            revert NonTransferrableToken();
+        }
+
+        super._update(from, to, value);
     }
 }

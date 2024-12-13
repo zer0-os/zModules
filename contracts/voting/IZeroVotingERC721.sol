@@ -13,6 +13,8 @@ interface IZeroVotingERC721 is IAccessControl, IERC721, IVotes {
      */
     event BaseURIUpdated(string baseURI);
 
+    error NonTransferrableToken();
+
     function tokenURI(uint256 tokenId) external view returns (string memory);
 
     function mint(

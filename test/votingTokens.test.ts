@@ -7,6 +7,7 @@ import {
   MINTER_ROLE,
 } from "./helpers/voting/constants";
 import { ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
+import { NON_TRANSFERRABLE_ERR } from "./helpers/errors";
 
 
 describe("Voting tokens tests", () => {
@@ -39,8 +40,8 @@ describe("Voting tokens tests", () => {
 
     // mint erc20 tokens to users and owner
     await erc20Token.connect(owner).mint(owner.address, ethers.parseEther("1000"));
-    await erc20Token.connect(owner).transfer(addr1.address, ethers.parseEther("100"));
-    await erc20Token.connect(owner).transfer(addr2.address, ethers.parseEther("50"));
+    await erc20Token.connect(owner).mint(addr1.address, ethers.parseEther("100"));
+    await erc20Token.connect(owner).mint(addr2.address, ethers.parseEther("50"));
 
     // ERC721 deploy
     const ERC721Factory = await ethers.getContractFactory(erc721Name) ;
@@ -57,6 +58,15 @@ describe("Voting tokens tests", () => {
     it("Should correctly set name and symbol for ERC20 token", async () => {
       expect(await erc20Token.name()).to.equal(erc20Name);
       expect(await erc20Token.symbol()).to.equal(erc20Symbol);
+    });
+
+    it("tokens should NOT be transferrable", async () => {
+      await expect(
+        erc20Token.connect(owner).transfer(addr1.address, ethers.parseEther("12"))
+      ).to.be.revertedWithCustomError(
+        erc20Token,
+        NON_TRANSFERRABLE_ERR
+      );
     });
 
     describe("Voting functions", () => {
@@ -79,30 +89,11 @@ describe("Voting tokens tests", () => {
         );
       });
 
-      it("Should correctly update votes after TRANSFER for ERC20 token", async () => {
-        const balanceBefore = await erc20Token.balanceOf(addr1.address);
-        await erc20Token.connect(addr1).delegate(addr1.address);
-        const votesBefore = await erc20Token.getVotes(addr1.address);
-
-        expect(
-          votesBefore
-        ).to.equal(
-          balanceBefore
-        );
-
-        await erc20Token.connect(addr1).transfer(addr2.address, transferAmount);
-        const votesAfterTransfer = await erc20Token.getVotes(addr1.address);
-
-        expect(
-          votesAfterTransfer
-        ).to.equal(
-          balanceBefore - transferAmount
-        );
-      });
-
       it("Should correctly update votes after BURN for ERC20 token", async () => {
         await erc20Token.connect(owner).mint(addr1.address, mintAmount);
-        const balanceBefore = await erc20Token.balanceOf(addr1.address);
+
+        await erc20Token.connect(addr1).delegate(addr1.address);
+        const votesBeforeBurn = await erc20Token.getVotes(addr1.address);
 
         await erc20Token.connect(owner).burn(addr1.address, burnAmount);
 
@@ -111,7 +102,7 @@ describe("Voting tokens tests", () => {
         expect(
           votesAfterBurn
         ).to.equal(
-          balanceBefore - burnAmount
+          votesBeforeBurn - burnAmount
         );
       });
     });
@@ -248,6 +239,15 @@ describe("Voting tokens tests", () => {
       );
     });
 
+    it("tokens should NOT be transferrable", async () => {
+      await expect(
+        erc721Token.connect(owner).transferFrom(owner.address, addr1.address, 1)
+      ).to.be.revertedWithCustomError(
+        erc721Token,
+        NON_TRANSFERRABLE_ERR
+      );
+    });
+
     describe("Voting functions", () => {
       it("Should delegate votes for ERC721 token", async () => {
         const balanceBefore = await erc721Token.balanceOf(owner.address);
@@ -266,19 +266,6 @@ describe("Voting tokens tests", () => {
           votesAfter
         ).to.eq(
           balanceBefore
-        );
-      });
-
-      it("Should update votes after transferring NFT for ERC721 token", async () => {
-        const votesBefore = await erc721Token.getVotes(owner.address);
-
-        await erc721Token.connect(owner).transferFrom(owner.address, addr1.address, tokenId);
-        const votesAfter = await erc721Token.getVotes(owner.address);
-
-        expect(
-          votesAfter
-        ).to.eq(
-          votesBefore - 1n
         );
       });
 
