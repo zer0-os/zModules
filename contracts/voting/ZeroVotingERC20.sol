@@ -6,9 +6,10 @@ import { ERC20Permit, IERC20Permit } from "@openzeppelin/contracts/token/ERC20/e
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
+import { IZeroVotingERC20 } from "./IZeroVotingERC20.sol";
 
 
-contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl {
+contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingERC20 {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
@@ -70,7 +71,7 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl {
     */
     function nonces(
         address owner
-    ) public view override(ERC20Permit, Nonces) returns (uint256) {
+    ) public view override(ERC20Permit, Nonces, IERC20Permit) returns (uint256) {
         return super.nonces(owner);
     }
 
