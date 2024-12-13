@@ -31,10 +31,10 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
     uint256 internal _totalSupply;
 
     /**
-    * @dev Initializes the ERC721 token with a name, symbol.
-    * @param name The name of the ERC721 token.
-    * @param symbol The symbol of the ERC721 token.
-    * @param admin The admin of contract.
+     * @dev Initializes the ERC721 token with a name, symbol.
+     * @param name The name of the ERC721 token.
+     * @param symbol The symbol of the ERC721 token.
+     * @param admin The admin of contract.
     */
     constructor(
         string memory name,
@@ -145,10 +145,10 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
     }
 
     /**
-    * @dev Internal function to update the ownership of a token, transferring it to the specified address.
-    * This method overrides the `_update` implementation in the ERC721Votes contract and ensures the
-    * balances and ownership mappings are updated correctly, emitting a `Transfer` event.
-    */
+     * @dev Internal function to update the ownership of a token, transferring it to the specified address.
+     * This method overrides the `_update` implementation in the ERC721Votes contract and ensures the
+     * balances and ownership mappings are updated correctly, emitting a `Transfer` event.
+     */
     function _update(
         address to,
         uint256 tokenId,

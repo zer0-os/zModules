@@ -15,9 +15,9 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     /**
-    * @dev Initializes the token with name and symbol, also sets up ERC20Permit and ownership.
-    * @param name The name of the ERC20 token.
-    * @param symbol The symbol of the ERC20 token.
+     * @dev Initializes the token with name and symbol, also sets up ERC20Permit and ownership.
+     * @param name The name of the ERC20 token.
+     * @param symbol The symbol of the ERC20 token.
     */
     constructor(
         string memory name,
@@ -63,11 +63,11 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
     }
 
     /**
-    * @dev Returns the current nonce for `owner`. This value must be
-    * included whenever a signature is generated for {permit}.
-    *
-    * Every successful call to {permit} increases ``owner``'s nonce by one. This
-    * prevents a signature from being used multiple times.
+     * @dev Returns the current nonce for `owner`. This value must be
+     * included whenever a signature is generated for {permit}.
+     *
+     * Every successful call to {permit} increases ``owner``'s nonce by one. This
+     * prevents a signature from being used multiple times.
     */
     function nonces(
         address owner
@@ -76,11 +76,11 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
     }
 
     /**
-    * @dev Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
-    * (or `to`) is the zero address. All customizations to transfers, mints, and burns should be done by overriding
-    * this function.
-    *
-    * Emits a {Transfer} event.
+     * @dev Transfers a `value` amount of tokens from `from` to `to`, or alternatively mints (or burns) if `from`
+     * (or `to`) is the zero address. All customizations to transfers, mints, and burns should be done by overriding
+     * this function.
+     *
+     * Emits a {Transfer} event.
     */
     function _update(
         address from,
