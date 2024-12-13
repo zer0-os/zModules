@@ -54,7 +54,7 @@ describe("StakingERC20", () => {
   let config : BaseConfig;
 
   // Use this to reset the contract state
-  let reset = async () => {};
+  let reset : () => Promise<void>;
 
   before(async () => {
     [
@@ -850,6 +850,7 @@ describe("StakingERC20", () => {
       expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
     });
 
+    // eslint-disable-next-line max-len
     it("Allows a user to fully unstake locked funds when passed their lock time and burns `stakeRepToken`", async () => {
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);

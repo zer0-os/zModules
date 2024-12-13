@@ -103,7 +103,7 @@ describe("StakingERC721", () => {
   const baseUri = "0://staked-nfts";
   const emptyUri = "";
 
-  let reset = async () => {};
+  let reset : () => Promise<void>;
 
   before(async () => {
     [

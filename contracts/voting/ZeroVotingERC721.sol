@@ -76,7 +76,8 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
      * Requirements:
      *
      * - `tokenId` must not exist.
-     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer.
+     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received},
+     * which is called upon a safe transfer.
      *
      * Emits a {Transfer} event.
      */
@@ -117,10 +118,6 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
         _setTokenURI(tokenId, tokenUri);
     }
 
-    function getInterfaceId() public pure override returns (bytes4) {
-        return type(IZeroVotingERC721).interfaceId;
-    }
-
     function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
@@ -137,6 +134,10 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
         return
             interfaceId == type(IZeroVotingERC721).interfaceId ||
             super.supportsInterface(interfaceId);
+    }
+
+    function getInterfaceId() public pure override returns (bytes4) {
+        return type(IZeroVotingERC721).interfaceId;
     }
 
     /**

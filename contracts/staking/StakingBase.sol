@@ -188,11 +188,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         );
     }
 
-    // todo remove when finished
-    function testRM(uint256 timeDuration) public view returns (uint256) {
-        return _calcRewardsMultiplier(timeDuration);
-    }
-
     ////////////////////////////////////
     /* Internal Functions */
     ////////////////////////////////////
