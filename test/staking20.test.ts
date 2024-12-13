@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import {
   MockERC20,
-  StakingERC20,
+  StakingERC20, ZeroVotingERC20,
 } from "../typechain";
 import {
   TIME_LOCK_NOT_PASSED_ERR,
@@ -35,6 +35,7 @@ import {
   DEFAULT_MINIMUM_LOCK,
 } from "./helpers/staking";
 
+
 describe("StakingERC20", () => {
   let owner : SignerWithAddress;
   let stakerA : SignerWithAddress;
@@ -48,6 +49,7 @@ describe("StakingERC20", () => {
 
   let stakeToken : MockERC20;
   let rewardsToken : MockERC20;
+  let stakeRepToken : ZeroVotingERC20;
 
   let config : BaseConfig;
 
@@ -67,14 +69,25 @@ describe("StakingERC20", () => {
 
     const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
     const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+    const stakeRepFactory = await hre.ethers.getContractFactory("ZeroVotingERC20");
 
     reset = async () => {
       stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
       rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
+      stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", owner);
 
-      config = await createDefaultConfig(rewardsToken, owner, undefined, stakeToken);
+      config = await createDefaultConfig(
+        rewardsToken,
+        owner,
+        undefined,
+        stakeToken,
+        stakeRepToken,
+      );
 
       contract = await stakingFactory.deploy(config) as StakingERC20;
+
+      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await contract.getAddress());
+      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await contract.getAddress());
 
       // Give each user funds to stake
       await stakeToken.connect(owner).transfer(
@@ -123,10 +136,14 @@ describe("StakingERC20", () => {
 
   describe("#stake", () => {
     let stakedAt : bigint;
-    it("Can stake without a lock successfully", async () => {
+    it("Can stake without a lock successfully and mint proper amount of `stakeRepToken`", async () => {
       const stakeBalanceBeforeA = await stakeToken.balanceOf(stakerA.address);
 
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerA.address);
+
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerA.address);
 
       stakedAt = BigInt(await time.latest());
 
@@ -135,6 +152,8 @@ describe("StakingERC20", () => {
       const stakerData = await contract.stakers(stakerA.address);
 
       expect(stakeBalanceAfterA).to.eq(stakeBalanceBeforeA - DEFAULT_STAKED_AMOUNT);
+
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore + DEFAULT_STAKED_AMOUNT);
 
       expect(stakerData.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT);
       expect(stakerData.amountStakedLocked).to.eq(0n);
@@ -180,11 +199,15 @@ describe("StakingERC20", () => {
       expect(stakerData.lastTimestamp).to.eq(secondStakedAt);
     });
 
-    it("Can stake with a lock successfully", async () => {
+    it("Can stake with a lock successfully and mint proper amount of `stakeRepToken`", async () => {
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerA.address);
+
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerA.address);
 
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
       const stakedAt = BigInt(await time.latest());
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerA.address);
 
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerA.address);
 
@@ -194,9 +217,12 @@ describe("StakingERC20", () => {
       expect(stakerData.lastTimestampLocked).to.eq(stakedAt);
       expect(stakerData.unlockedTimestamp).to.eq(stakedAt + DEFAULT_LOCK);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
+
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore + DEFAULT_STAKED_AMOUNT);
     });
 
-    it("Can stake a second time with a lock as the same user successfully", async () => {
+    // eslint-disable-next-line max-len
+    it("Can stake a second time with a lock as the same user successfully and get proper amount of `stakeRepToken`", async () => {
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerA.address);
 
       // If we don't increase time between two stakes it breaks
@@ -207,9 +233,12 @@ describe("StakingERC20", () => {
 
       const stakerDataBefore = await contract.stakers(stakerA.address);
 
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerA.address);
 
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
       const stakedAt = BigInt(await time.latest());
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerA.address);
 
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerA.address);
 
@@ -219,6 +248,8 @@ describe("StakingERC20", () => {
       expect(stakerDataAfter.lastTimestampLocked).to.eq(stakedAt);
       expect(stakerDataAfter.unlockedTimestamp).to.eq(stakerDataBefore.unlockedTimestamp);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - DEFAULT_STAKED_AMOUNT);
+
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore + DEFAULT_STAKED_AMOUNT);
     });
 
     it("Calculates in between rewards correctly after initial lock duration is complete", async () => {
@@ -622,7 +653,7 @@ describe("StakingERC20", () => {
   });
 
   describe("#unstake", () => {
-    it("Allows a user to unstake non-locked amount partially", async () => {
+    it("Allows a user to unstake non-locked amount partially and burns `stakeRepToken`", async () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
@@ -651,14 +682,19 @@ describe("StakingERC20", () => {
         futureExpectedRewards
       );
 
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerA.address);
+
       await contract.connect(stakerA).unstake(amount, false);
       const unstakedAt = BigInt(await time.latest());
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerA.address);
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
       const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
 
       expect(stakeTokenBalanceAfter).to.eq(stakeTokenBalanceBefore + amount);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + futureExpectedRewards);
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore - amount);
 
       const stakerData = await contract.stakers(stakerA.address);
 
@@ -668,7 +704,7 @@ describe("StakingERC20", () => {
       expect(stakerData.owedRewards).to.eq(0n);
     });
 
-    it("Allows a user to fully withdraw their entire non-locked staked amount", async () => {
+    it("Allows a user to fully withdraw their entire non-locked staked amount and burns `stakeRepToken`", async () => {
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
       const stakeTokenBalanceBefore = await stakeToken.balanceOf(stakerA.address);
 
@@ -688,13 +724,18 @@ describe("StakingERC20", () => {
         futureExpectedRewards
       );
 
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerA.address);
+
       await contract.connect(stakerA).unstake(stakerDataBefore.amountStaked, false);
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerA.address);
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
       const stakeTokenBalanceAfter = await stakeToken.balanceOf(stakerA.address);
 
       expect(stakeTokenBalanceAfter).to.eq(stakeTokenBalanceBefore + stakerDataBefore.amountStaked);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + futureExpectedRewards);
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore - stakerDataBefore.amountStaked);
 
       const stakerDataAfter = await contract.stakers(stakerA.address);
 
@@ -746,7 +787,8 @@ describe("StakingERC20", () => {
   });
 
   describe("#unstakeLocked", () => {
-    it("Allows a user to partially unstake locked funds when passed their lock time", async () => {
+    // eslint-disable-next-line max-len
+    it("Allows a user to partially unstake locked funds when passed their lock time and burns `stakeRepToken`", async () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
@@ -778,8 +820,12 @@ describe("StakingERC20", () => {
 
       const amount = DEFAULT_STAKED_AMOUNT / 2n;
 
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerA.address);
+
       await contract.connect(stakerA).unstakeLocked(amount, false);
       const unstakedAt = BigInt(await time.latest());
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerA.address);
 
       // should only be 1s more than stakeValue
       const interimRewards = calcTotalUnlockedRewards(
@@ -794,6 +840,7 @@ describe("StakingERC20", () => {
 
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + amount);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + stakeRewards + interimRewards);
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore - amount);
 
       const stakerDataAfter = await contract.stakers(stakerA.address);
 
@@ -803,7 +850,7 @@ describe("StakingERC20", () => {
       expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
     });
 
-    it("Allows a user to fully unstake locked funds when passed their lock time", async () => {
+    it("Allows a user to fully unstake locked funds when passed their lock time and burns `stakeRepToken`", async () => {
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
 
@@ -814,8 +861,12 @@ describe("StakingERC20", () => {
         hre.ethers.parseEther("5000")
       );
 
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerA.address);
+
       await contract.connect(stakerA).unstakeLocked(DEFAULT_STAKED_AMOUNT / 2n, false);
       const secondUnstakedAt = BigInt(await time.latest());
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerA.address);
 
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerA.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
@@ -829,6 +880,7 @@ describe("StakingERC20", () => {
       // Already was given stake value, should only get interim rewards
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + interimRewards);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + DEFAULT_STAKED_AMOUNT / 2n);
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore - DEFAULT_STAKED_AMOUNT / 2n);
 
       const stakerData = await contract.stakers(stakerA.address);
 
@@ -885,7 +937,7 @@ describe("StakingERC20", () => {
   });
 
   describe("#unstakeLocked with 'exit'", () => {
-    it("Allows a user to partially unstake using 'exit' within lock duration", async () => {
+    it("Allows a user to partially unstake using 'exit' within lock duration and burns `stakeRepToken`", async () => {
       await reset();
 
       await contract.connect(stakerC).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
@@ -907,10 +959,14 @@ describe("StakingERC20", () => {
         futureExpectedRewards
       );
 
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerC.address);
+
       // Allows unstaking with 'exit' before the time lock is over
       const amount = DEFAULT_STAKED_AMOUNT / 2n;
       await contract.connect(stakerC).unstakeLocked(amount, true);
       const unstakedAt = BigInt(await time.latest());
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerC.address);
 
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerC.address);
@@ -918,6 +974,7 @@ describe("StakingERC20", () => {
       // Confirm they have not gained rewards
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + amount);
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore - amount);
 
       const stakerData = await contract.stakers(stakerC.address);
 
@@ -927,7 +984,7 @@ describe("StakingERC20", () => {
       expect(stakerData.owedRewardsLocked).to.eq(0n);
     });
 
-    it("Allows a user to fully unstake using 'exit' within lock duration", async () => {
+    it("Allows a user to fully unstake using 'exit' within lock duration and burns `stakeRepToken`", async () => {
       const stakeBalanceBefore = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerC.address);
 
@@ -944,9 +1001,13 @@ describe("StakingERC20", () => {
         futureExpectedRewards
       );
 
+      const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerC.address);
+
       const amount = DEFAULT_STAKED_AMOUNT / 2n;
       await contract.connect(stakerC).unstakeLocked(amount, true);
       const unstakedAt = BigInt(await time.latest());
+
+      const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerC.address);
 
       const stakeBalanceAfter = await stakeToken.balanceOf(stakerC.address);
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerC.address);
@@ -954,6 +1015,7 @@ describe("StakingERC20", () => {
       // Confirm they have not received rewards
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + amount);
+      expect(repTokenBalanceAfter).to.eq(repTokenBalanceBefore - amount);
 
       const stakerData = await contract.stakers(stakerC.address);
 

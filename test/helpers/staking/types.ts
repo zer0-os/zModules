@@ -1,4 +1,3 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   BaseContract,
   ContractInterface,
@@ -7,6 +6,7 @@ import {
 export interface BaseConfig {
   stakingToken : string;
   rewardsToken : string;
+  stakeRepToken : string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
   minimumLockTime : bigint;
