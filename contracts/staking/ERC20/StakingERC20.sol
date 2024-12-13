@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
+import { IERC20MintableBurnable } from "../../types/IERC20MintableBurnable.sol";
 
 /* solhint-disable no-console */
 // TODO remove when ready
@@ -114,6 +115,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         // Transfers user's funds to this contract
         IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+        // Mint the user's stake as a representative token
+        IERC20MintableBurnable(config.stakeRepToken).mint(msg.sender, amount);
 
         emit Staked(msg.sender, amount, lockDuration, config.stakingToken);
     }
@@ -220,6 +223,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         // Return the user's initial stake
         IERC20(config.stakingToken).safeTransfer(msg.sender, amount);
+        // Burn the user's stake representative token
+        IERC20MintableBurnable(config.stakeRepToken).burn(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount, config.stakingToken);
     }

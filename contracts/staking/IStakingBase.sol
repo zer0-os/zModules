@@ -10,7 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IStakingBase {
     /**
      * @notice Struct to track an individual staker's data
-     * 
+     *
      * @param rewardsMultiplier The multiplier for rewards
      * @param lockDuration The duration of the lock
      * @param unlockedTimestamp The timestamp when the stake unlocks
@@ -21,7 +21,7 @@ interface IStakingBase {
      * @param lastTimestamp The timestamp of the last action
      * @param lastTimestampLocked The timestamp of the last locked action
      */
-    struct Staker { 
+    struct Staker {
         uint256 rewardsMultiplier;
         uint256 lockDuration;
         uint256 unlockedTimestamp;
@@ -34,7 +34,7 @@ interface IStakingBase {
     }
     /**
      * @notice Struct to hold all required config variables
-     * 
+     *
      * @param stakingToken The address of the token being staked
      * @param contractOwner The address of the contract owner
      * @param rewardsToken The address of the token being rewarded
@@ -48,6 +48,7 @@ interface IStakingBase {
         address stakingToken;
         address contractOwner;
         IERC20 rewardsToken;
+        address stakeRepToken;
         uint256 rewardsPerPeriod;
         uint256 periodLength;
         uint256 minimumLockTime;
