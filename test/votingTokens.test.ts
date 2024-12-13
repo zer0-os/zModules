@@ -26,7 +26,6 @@ describe("Voting tokens tests", () => {
 
   const mintAmount = ethers.parseEther("150");
   const burnAmount = ethers.parseEther("100");
-  const transferAmount = ethers.parseEther("50");
   const tokenId = 1;
 
 
