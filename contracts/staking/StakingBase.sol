@@ -135,6 +135,13 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
+     * @notice Get the representative token address minted with each stake
+     */
+    function getStakeRepToken() public view override returns (address) {
+        return config.stakeRepToken;
+    }
+
+    /**
      * @notice Get the rewards per period
      */
     function getRewardsPerPeriod() public view override returns (uint256) {

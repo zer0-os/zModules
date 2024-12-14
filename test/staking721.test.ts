@@ -8,7 +8,7 @@ import {
   StakingERC721, ZeroVotingERC721,
 } from "../typechain";
 import {
-  createDefaultConfig,
+  createDefaultStakingConfig,
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
@@ -129,7 +129,7 @@ describe("StakingERC721", () => {
 
       stakingTokenAddress = await stakingToken.getAddress();
 
-      config = await createDefaultConfig(
+      config = await createDefaultStakingConfig(
         rewardToken,
         owner,
         stakingToken,

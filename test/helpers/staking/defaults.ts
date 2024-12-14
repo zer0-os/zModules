@@ -20,7 +20,7 @@ import {
 } from "../constants";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
-export const createDefaultConfig = async (
+export const createDefaultStakingConfig = async (
   rewardsERC20 : MockERC20,
   contractOwner : SignerWithAddress,
   erc721 ?: MockERC721,

@@ -160,6 +160,8 @@ interface IStakingBase {
 
     function getRewardsToken() external view returns(IERC20);
 
+    function getStakeRepToken() external view returns (address);
+
     function getRewardsPerPeriod() external view returns(uint256);
 
     function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) external view returns (uint256);
