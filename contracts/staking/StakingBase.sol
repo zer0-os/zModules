@@ -283,7 +283,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         config.rewardsToken.safeTransfer(msg.sender, rewards);
 
-        emit Claimed(msg.sender, rewards, address(config.rewardsToken));
+        emit Claimed(msg.sender, rewards);
     }
 
     /**

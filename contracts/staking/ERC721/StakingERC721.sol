@@ -232,7 +232,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             // Mint user sNFT
             _safeMint(msg.sender, tokenIds[i], tokenUris[i]);
 
-            emit Staked(msg.sender, tokenIds[i], config.stakingToken);
+            emit Staked(msg.sender, tokenIds[i]);
 
             unchecked {
                 ++i;
@@ -262,7 +262,17 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             // If the token is unlocked, claim and unstake
             if (nftStaker.locked[_tokenIds[i]]) {
                 // Token was locked
+
+                // TODO ensure exit can be used at any time, not just pre lock
+                // for both locked and non locked tokens
+
                 if (exit || _getRemainingLockTime(nftStaker.stake) == 0) {
+
+                    // we use `<` not `==` because incoming tokens may included non locked tokens as well
+                    // so incoming array has to at LEAST be equal
+                    if (exit && _tokenIds.length < nftStaker.stake.amountStakedLocked) {
+                        revert NotFullExit();
+                    }
                     // Unstake if they are passed their lock time or exiting
                     _unstake(_tokenIds[i]);
                     --nftStaker.stake.amountStakedLocked;
@@ -286,12 +296,12 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
                         if (block.timestamp != nftStaker.stake.lastTimestampLocked) {
                             // If unstaked any formerly locked tokens and they are past their lock time,
                             // we give them the pre calculated amount
-                            rewards += nftStaker.stake.owedRewardsLocked; // once
+                            rewards += nftStaker.stake.owedRewardsLocked;
 
                             // we have to make sure this gets set to 0 so they don't get it again in future calls
-                            nftStaker.stake.owedRewardsLocked = 0; // once
+                            nftStaker.stake.owedRewardsLocked = 0;
 
-                            nftStaker.stake.lastTimestampLocked = block.timestamp; // once
+                            nftStaker.stake.lastTimestampLocked = block.timestamp;
                         }
                     }
                 } else {
@@ -346,7 +356,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding
             config.rewardsToken.safeTransfer(msg.sender, rewards);
-            emit Claimed(msg.sender, rewards, address(config.rewardsToken));
+            emit Claimed(msg.sender, rewards);
         }
 
         // If a complete withdrawal, delete the staker struct for this user as well
@@ -376,7 +386,7 @@ contract StakingERC721 is ERC721URIStorage, StakingBase, IStakingERC721 {
             tokenId
         );
 
-        emit Unstaked(msg.sender, tokenId, config.stakingToken);
+        emit Unstaked(msg.sender, tokenId);
     }
 
     function _safeMint(

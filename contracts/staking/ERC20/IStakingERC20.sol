@@ -12,25 +12,21 @@ interface IStakingERC20 {
      * @param staker The address of the account which staked
      * @param amount The amount of the staked token passed as an argument to the `stake()`
      * @param lockDuration The duration for which the stake is locked
-     * @param stakingToken The address of the staking token contract
      */
     event Staked(
         address indexed staker,
         uint256 indexed amount,
-        uint256 indexed lockDuration,
-        address stakingToken
+        uint256 indexed lockDuration
     );
 
     /**
      * @notice Emit when a user unstakes
      * @param staker The address of the account which unstaked
      * @param amount The amount of the staked token
-     * @param stakingToken The address of the staking token contract
      */
     event Unstaked(
         address indexed staker,
-        uint256 indexed amount,
-        address indexed stakingToken
+        uint256 indexed amount
     );
 
     /**

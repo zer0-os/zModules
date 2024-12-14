@@ -70,12 +70,10 @@ interface IStakingBase {
      * @dev Because all contracts reward in ERC20 this can be shared
      * @param claimer The address of the user claiming rewards
      * @param rewards The amount of rewards the user received
-     * @param rewardsToken The address of the rewards token contract
      */
     event Claimed(
         address indexed claimer,
-        uint256 indexed rewards,
-        address indexed rewardsToken
+        uint256 indexed rewards
     );
 
     /**
@@ -112,6 +110,11 @@ interface IStakingBase {
      * @notice Throw when the lock period has not passed
      */
     error TimeLockNotPassed();
+
+    /**
+     * @notice Throw when the user tries to exit the pool without their full staked amount
+     */
+    error NotFullExit();
 
     /**
      * @notice Throw when trying to claim within an invalid period

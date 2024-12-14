@@ -115,7 +115,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // Transfers user's funds to this contract
         IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Staked(msg.sender, amount, lockDuration, config.stakingToken);
+        emit Staked(msg.sender, amount, lockDuration);
     }
 
     function _unstake(uint256 amount, bool locked, bool exit) internal {
@@ -132,13 +132,20 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 revert UnstakeMoreThanStake();
             }
 
-            if (_getRemainingLockTime(staker) > 0) {
-                // Only allow use of exit on funds that are still locked
-                if (exit) {
-                    rewards = 0;
-                } else {
-                    revert TimeLockNotPassed();
+            if (exit) {
+                // A staker can only exit in the entire quantity or not at all
+                if (amount != staker.amountStakedLocked) {
+                    revert NotFullExit();
                 }
+
+                rewards = 0;
+                staker.owedRewardsLocked = 0;
+                staker.amountStakedLocked = 0;
+                staker.lastTimestampLocked = 0;
+                staker.unlockedTimestamp = 0;
+            } else if (_getRemainingLockTime(staker) > 0) {
+                // if still locked and not exiting, revert
+                revert TimeLockNotPassed();
             } else {
                 // If claims happen after lock period has passed, the lastTimestamp is more accurate
                 // but if they don't happen, then lastTimestampLocked may still be the original stake timestamp
@@ -156,26 +163,27 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                     block.timestamp - mostRecentTimestamp,
                     false
                 );
-            }
 
-            // If removal of all locked funds
-            if (staker.amountStakedLocked == amount) {
-                if (staker.amountStaked == 0) {
-                    // and there are no non-locked funds, delete
-                    delete stakers[msg.sender];
+                // Update to show they have claimed this value
+                staker.owedRewardsLocked = 0;
+
+                // If removal of all locked funds
+                if (staker.amountStakedLocked == amount) {
+                    if (staker.amountStaked == 0) {
+                        // and there are no non-locked funds, delete
+                        delete stakers[msg.sender];
+                    } else {
+                        // Otherwise set locked values to 0
+                        staker.amountStakedLocked = 0;
+                        staker.lastTimestampLocked = 0;
+                        staker.unlockedTimestamp = 0;
+                    }
                 } else {
-                    // Otherwise set locked values to 0
-                    staker.amountStakedLocked = 0;
-                    staker.lastTimestampLocked = 0;
-                    staker.unlockedTimestamp = 0;
+                    // If not withdrawal, update locked values
+                    staker.amountStakedLocked -= amount;
+                    staker.lastTimestampLocked = block.timestamp;
                 }
-            } else {
-                // If not withdrawal, update locked values
-                staker.amountStakedLocked -= amount;
-                staker.lastTimestampLocked = block.timestamp;
             }
-
-            staker.owedRewardsLocked = 0;
         } else {
             if (amount > staker.amountStaked) {
                 revert UnstakeMoreThanStake();
@@ -183,6 +191,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
             if (exit) {
                 rewards = 0;
+                staker.owedRewards;
             } else {
                 // most recent timestamp?
                 rewards = staker.owedRewards + _getStakeRewards(
@@ -215,6 +224,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding for this
             config.rewardsToken.safeTransfer(msg.sender, rewards);
+            emit Claimed(msg.sender, rewards);
         }
 
         totalStaked -= amount;
@@ -222,7 +232,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // Return the user's initial stake
         IERC20(config.stakingToken).safeTransfer(msg.sender, amount);
 
-        emit Unstaked(msg.sender, amount, config.stakingToken);
+        emit Unstaked(msg.sender, amount);
     }
 
     /**
