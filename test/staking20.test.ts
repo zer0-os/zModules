@@ -21,7 +21,7 @@ import {
   WITHDRAW_EVENT,
   INIT_BALANCE,
   DEFAULT_STAKED_AMOUNT,
-  createDefaultConfig,
+  createDefaultStakingConfig,
   STAKED_EVENT,
   CLAIMED_EVENT,
   UNSTAKED_EVENT,
@@ -76,7 +76,7 @@ describe("StakingERC20", () => {
       rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
       stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", owner);
 
-      config = await createDefaultConfig(
+      config = await createDefaultStakingConfig(
         rewardsToken,
         owner,
         undefined,
@@ -1284,26 +1284,7 @@ describe("StakingERC20", () => {
   });
 
   describe("Utility functions", () => {
-    // 36500 is min lock time if divisor in RM function is 365
-    // 50000 is min lock time if divisor in RM function is 500
-    // etc.
-    it.skip("Test the reward multiplier calculation with every value allowed", async () => {
-      await reset();
-
-      for (let i = 0; i <= 365; i++) {
-        const time = DAY_IN_SECONDS * BigInt(i);
-
-        const rm = await contract.testRM(time);
-
-        const log = false;
-        if (log && (i % 10 === 0 || i === 365)) {
-          console.log(`${i}: ${rm}`);
-        }
-      }
-    });
-
     it("Finds the minimum lock time required to exceed non-locked rewards", async () => {
-
       // if calcRM function uses 259 base period value, then 30 days is good real min lock time
       const arm = DAY_IN_SECONDS * 30n;
 

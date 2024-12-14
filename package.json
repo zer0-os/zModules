@@ -18,6 +18,7 @@
     "clean": "hardhat clean",
     "test": "hardhat test",
     "coverage": "hardhat coverage",
+    "coverage-local": "yarn pretest && yarn coverage && yarn posttest",
     "check-coverage": "istanbul check-coverage --statements 90 --branches 87 --functions 89 --lines 90",
     "docgen": "hardhat docgen",
     "lint-sol": "yarn solhint ./contracts/**/*.sol",
