@@ -43,8 +43,8 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
     /**
      * @notice Stake one or more ERC721 tokens with a lock period
-     * @dev These are two separate functions intentionally for the sake of user clarity
-     *
+     * @dev These functions are separate intentionally for the sake of user clarity
+     * 
      * @param tokenIds The id(s) of the tokens to stake
      * @param tokenUris The associated metadata URIs of the tokens to stake
      * @param lockDuration The lock durations, in seconds, for each token
@@ -62,8 +62,8 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
     /**
      * @notice Stake one or more ERC721 tokens without a lock period
-     * @dev These are two separate functions intentionally for the sake of user clarity
-     *
+     * @dev These functions are separate intentionally for the sake of user clarity
+     * 
      * @param tokenIds Array of tokenIds to be staked by the caller
      * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used!
      */
@@ -129,6 +129,27 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         return _getPendingRewards(nftStakers[msg.sender].stake);
     }
 
+    ////////////////////////////////////
+    /* Token Functions */
+    ////////////////////////////////////
+
+    /* solhint-disable ordering */
+    function setBaseURI(string memory baseUri) public override onlyOwner {
+        baseURI = baseUri;
+        emit BaseURIUpdated(baseUri);
+    }
+
+    function setTokenURI(
+        uint256 tokenId,
+        string memory tokenUri
+    ) public virtual override onlyOwner {
+        _setTokenURI(tokenId, tokenUri);
+    }
+
+    function getInterfaceId() public pure override returns (bytes4) {
+        return type(IStakingERC721).interfaceId;
+    }
+
     function onERC721Received(
         address,
         address,
@@ -139,7 +160,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     }
 
     ////////////////////////////////////
-    /* Internal Staking Functions */
+    /* Internal Functions */
     ////////////////////////////////////
 
     /**
@@ -174,7 +195,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             IERC721MintableBurnableURIStorage(config.stakeRepToken)
                 .safeMint(msg.sender, tokenIds[i], tokenUris[i]);
 
-            emit Staked(msg.sender, tokenIds[i], config.stakingToken);
+            emit Staked(msg.sender, tokenIds[i]);
 
             unchecked {
                 ++i;
@@ -185,11 +206,15 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
+        uint256 rewards;
+
         // Track if any action is taken, revert if not to avoid sucessful but empty tx
         bool isAction = false;
 
-        // Calculate rewards ahead of balance adjustments, if any
-        uint256 rewards = _getPendingRewards(nftStaker.stake);
+        // Because of the possibility of having both locked and non-locked tokens 
+        // unstaked at the same time, we track these values separately
+        bool rewardsGiven = false;
+        bool rewardsGivenLocked = false;
 
         uint256 i;
         for (i; i < _tokenIds.length;) {
@@ -207,17 +232,45 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
             // If the token is unlocked, claim and unstake
             if (nftStaker.locked[_tokenIds[i]]) {
-                // Token was locked
+                // Token was locked when staked
                 if (exit || _getRemainingLockTime(nftStaker.stake) == 0) {
-                    // only unstake if they are passed their lock time
+
+                    // we use `<` not `==` because incoming tokens may included non locked 
+                    // tokens as well so incoming array has to at LEAST be equal
+                    if (exit && _tokenIds.length < nftStaker.stake.amountStakedLocked) {
+                        revert NotFullExit();
+                    }
+
+                    // Get interim locked rewards, if any, at RM of 1
+                    if (_getRemainingLockTime(nftStaker.stake) == 0) {
+                        uint256 mostRecentTimestamp = _mostRecentTimestamp(nftStaker.stake);
+                        // We can't simply give rewards for the entire array's balance because
+                        // we can't guarantee every token's lock or non-locked status
+                        // So we must do one at a time here
+                        rewards += _getStakeRewards(
+                            1, // 1 token
+                            1, // Rewards multiplier
+                            block.timestamp - mostRecentTimestamp,
+                            false
+                        );
+
+                        if (!rewardsGivenLocked) {
+                            rewards += nftStaker.stake.owedRewardsLocked;
+
+                            // set to 0 so they don't get it again in future calls
+                            nftStaker.stake.owedRewardsLocked = 0;
+
+                            rewardsGivenLocked = true;
+                        }
+                    }
+
+                    // In either case, `exit` or `getRemainingLockTime == 0` we unstake
+                    // but if we update the user's `amountStakeLocked` before the above it can cause unintentional
+                    // rewards overflows
+                    // Unstake if they are passed their lock time or exiting
                     _unstake(_tokenIds[i]);
                     --nftStaker.stake.amountStakedLocked;
                     isAction = true;
-
-                    if (block.timestamp != nftStaker.stake.lastTimestampLocked) {
-                        // only update once per TX
-                        nftStaker.stake.lastTimestampLocked = block.timestamp;
-                    }
                 } else {
                     // stake is locked and cannot be unstaked
                     unchecked {
@@ -226,15 +279,25 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                     continue;
                 }
             } else {
-                // stake was never locked
+                if (!rewardsGiven) {
+                    rewards += nftStaker.stake.owedRewards;
+
+                    // set to 0 so they don't get it again in future calls
+                    nftStaker.stake.owedRewards = 0;
+                    rewardsGiven = true;
+                }
+
+                // get interim rewards on a per token basis
+                rewards += _getStakeRewards(
+                    1, // 1 token
+                    1, // Rewards multiplier
+                    block.timestamp - nftStaker.stake.lastTimestamp,
+                    false
+                );
+
                 _unstake(_tokenIds[i]);
                 --nftStaker.stake.amountStaked;
                 isAction = true;
-
-                if (block.timestamp != nftStaker.stake.lastTimestamp) {
-                    // only update once per TX
-                    nftStaker.stake.lastTimestamp = block.timestamp;
-                }
             }
 
             unchecked {
@@ -243,15 +306,25 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         }
 
         // If no action is taken, revert
-        if (!isAction) {
+        if (!isAction || (!exit && !rewardsGiven && !rewardsGivenLocked)) {
             revert InvalidUnstake();
+        }
+
+        if (rewardsGivenLocked) {
+            nftStaker.stake.lastTimestampLocked = block.timestamp;
+        }
+
+        if (rewardsGiven) {
+            // If `isAction` didn't revert above, we know we unstaked
+            // at least one non-locked token here
+            nftStaker.stake.lastTimestamp = block.timestamp;
         }
 
         if (!exit) {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding
             config.rewardsToken.safeTransfer(msg.sender, rewards);
-            emit Claimed(msg.sender, rewards, address(config.rewardsToken));
+            emit Claimed(msg.sender, rewards);
         }
 
         // If a complete withdrawal, delete the staker struct for this user as well
@@ -280,6 +353,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             tokenId
         );
 
-        emit Unstaked(msg.sender, tokenId, config.stakingToken);
+        emit Unstaked(msg.sender, tokenId);
     }
 }

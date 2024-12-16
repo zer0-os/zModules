@@ -1,10 +1,4 @@
-import { DAY_IN_SECONDS } from "../constants";
 import { BaseConfig } from "./types";
-
-import * as hre from "hardhat";
-
-// Pass specific values here from config in other functions so we can use the correct divisor
-
 
 export const calcTotalUnlockedRewards = (
   durations : Array<bigint>,
@@ -64,7 +58,7 @@ export const calcTotalLockedRewards = (
 
 const calculateRewardsMultiplier = (lockDuration : bigint, config : BaseConfig) => config.minimumRewardsMultiplier
     + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
-    * (lockDuration / DAY_IN_SECONDS)
+    * (lockDuration)
     / config.periodLength;
 
 export const calcStakeRewards = (

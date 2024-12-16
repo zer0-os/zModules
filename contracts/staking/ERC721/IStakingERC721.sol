@@ -23,24 +23,20 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
      * @notice Emit when a user stakes a token
      * @param staker The address of the user staking
      * @param tokenId The token ID of the staked token
-     * @param stakingToken The address of the staking token contract
      */
     event Staked(
         address indexed staker,
-        uint256 indexed tokenId,
-        address indexed stakingToken
+        uint256 indexed tokenId
     );
 
     /**
      * @notice Emit when a user unstakes
      * @param staker The address of the user unstaking
      * @param tokenId The token ID of the staked token
-     * @param stakingToken The address of the staking token contract
      */
     event Unstaked(
         address indexed staker,
-        uint256 indexed tokenId,
-        address indexed stakingToken
+        uint256 indexed tokenId
     );
 
     /**
