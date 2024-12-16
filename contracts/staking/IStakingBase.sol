@@ -157,8 +157,6 @@ interface IStakingBase {
 
     function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) external;
 
-    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) external view returns (uint256);
-
     function getContractRewardsBalance() external view returns (uint256);
 
     function getStakingToken() external view returns(address);

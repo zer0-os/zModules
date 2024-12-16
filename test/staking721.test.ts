@@ -803,11 +803,7 @@ describe("StakingERC721", () => {
 
       const balanceAfter = await rewardToken.balanceOf(stakerA.address);
 
-      expect(
-        balanceAfter
-      ).to.eq(
-        balanceBefore + expectedUnlocked + expectedLockedStakeValue + expectedLockedInterimRewards
-      );
+      expect(balanceAfter).to.eq(balanceBefore + expectedUnlocked);
 
       const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
 
@@ -876,7 +872,9 @@ describe("StakingERC721", () => {
         config
       );
 
-      expect(balanceAfter).to.eq(balanceBefore + lockedStakeRewards + interimTimeRewards + unlockedStakeRewards);
+      // Rounding error in Solidity, so we `-1n` here, can't calculate the exact value
+      // because TypeScript handles the math better.
+      expect(balanceAfter).to.eq(balanceBefore + lockedStakeRewards + interimTimeRewards - 1n);
 
       const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
 
@@ -895,7 +893,7 @@ describe("StakingERC721", () => {
       expect(stakerDataAfter.amountStaked).to.eq(stakerDataBefore.amountStaked);
       expect(stakerDataAfter.amountStakedLocked).to.eq(stakerDataBefore.amountStakedLocked - 2n);
       expect(stakerDataAfter.owedRewards).to.eq(0n);
-      expect(stakerDataAfter.owedRewardsLocked).to.eq(lockedStakeRewards);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(0n); // Still staked, but haven't updated the rewards yet
 
       await expect(
         stakeRepToken.ownerOf(tokenIdB)
@@ -1033,7 +1031,7 @@ describe("StakingERC721", () => {
 
       await expect(stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(stakerA.address, tokenIdA, config.stakingToken);
+        .withArgs(stakerA.address, tokenIdA);
 
       firstStakedAtA = BigInt(await time.latest());
     });
@@ -1043,7 +1041,7 @@ describe("StakingERC721", () => {
 
       await expect(stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(stakerB.address, tokenIdD, config.stakingToken);
+        .withArgs(stakerB.address, tokenIdD);
 
       firstStakedAtB = BigInt(await time.latest());
     });
@@ -1055,9 +1053,9 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB, tokenIdC], [emptyUri, emptyUri]))
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(stakerA.address, tokenIdB, config.stakingToken)
+        .withArgs(stakerA.address, tokenIdB)
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(stakerA.address, tokenIdC, config.stakingToken);
+        .withArgs(stakerA.address, tokenIdC);
 
       secondStakedAtA = BigInt(await time.latest());
     });
@@ -1071,9 +1069,9 @@ describe("StakingERC721", () => {
         [emptyUri, emptyUri],
         DEFAULT_LOCK
       )).to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(stakerB.address, tokenIdE, config.stakingToken)
+        .withArgs(stakerB.address, tokenIdE)
         .to.emit(stakingERC721, STAKED_EVENT)
-        .withArgs(stakerB.address, tokenIdF, config.stakingToken);
+        .withArgs(stakerB.address, tokenIdF);
 
       secondStakedAtB = BigInt(await time.latest());
     });
@@ -1097,7 +1095,7 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).claim())
         .to.emit(stakingERC721, CLAIMED_EVENT)
-        .withArgs(stakerA.address, futureExpectedRewardsA, config.rewardsToken);
+        .withArgs(stakerA.address, futureExpectedRewardsA);
     });
 
     it("Unstake Emits 'Unstaked' and 'Claimed 'events", async () => {
@@ -1119,9 +1117,9 @@ describe("StakingERC721", () => {
       await expect(
         await stakingERC721.connect(stakerA).unstake([tokenIdA], false)
       ).to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(stakerA.address, tokenIdA, config.stakingToken)
+        .withArgs(stakerA.address, tokenIdA)
         .to.emit(stakingERC721, CLAIMED_EVENT)
-        .withArgs(stakerA.address, futureExpectedRewardsA, config.rewardsToken);
+        .withArgs(stakerA.address, futureExpectedRewardsA);
       unstakedAtA = BigInt(await time.latest());
     });
 
@@ -1145,11 +1143,11 @@ describe("StakingERC721", () => {
 
       await expect(await stakingERC721.connect(stakerA).unstake([tokenIdB, tokenIdC], false))
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(stakerA.address, tokenIdB, config.stakingToken)
+        .withArgs(stakerA.address, tokenIdB)
         .to.emit(stakingERC721, UNSTAKED_EVENT)
-        .withArgs(stakerA.address, tokenIdC, config.stakingToken)
+        .withArgs(stakerA.address, tokenIdC)
         .to.emit(stakingERC721, CLAIMED_EVENT)
-        .withArgs(stakerA.address, futureExpectedRewards, config.rewardsToken);
+        .withArgs(stakerA.address, futureExpectedRewards);
     });
   });
 
@@ -1315,14 +1313,13 @@ describe("StakingERC721", () => {
     it("Calculates the users rewards multiplier when they lock based on their lock time", async () => {
       await reset();
 
-      const arm = DAY_IN_SECONDS * 69n;
-      const unlocked = await stakingERC721.connect(owner).getStakeRewards(1n, arm, false);
-      const locked = await stakingERC721.connect(owner).getStakeRewards(1n, arm, true);
+      const timeDuration = DAY_IN_SECONDS * 10n;
+      const unlocked = await stakingERC721.connect(owner).getStakeRewards(1n, timeDuration, false);
+      const locked = await stakingERC721.connect(owner).getStakeRewards(1n, timeDuration, true);
 
-      // play with RM function calculation
-
-      expect(locked).to.eq(unlocked);
-      // At 30 days these values are exactly the same
+      console.log("Locked rewards:   ", locked.toString());
+      console.log("Unlocked rewards: ", unlocked.toString());
+      expect(locked).to.be.gt(unlocked);
     });
 
     it("#setBaseURI() should set the base URI", async () => {

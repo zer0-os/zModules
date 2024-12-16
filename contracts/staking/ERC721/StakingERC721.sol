@@ -129,27 +129,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         return _getPendingRewards(nftStakers[msg.sender].stake);
     }
 
-    ////////////////////////////////////
-    /* Token Functions */
-    ////////////////////////////////////
-
-    /* solhint-disable ordering */
-    function setBaseURI(string memory baseUri) public override onlyOwner {
-        baseURI = baseUri;
-        emit BaseURIUpdated(baseUri);
-    }
-
-    function setTokenURI(
-        uint256 tokenId,
-        string memory tokenUri
-    ) public virtual override onlyOwner {
-        _setTokenURI(tokenId, tokenUri);
-    }
-
-    function getInterfaceId() public pure override returns (bytes4) {
-        return type(IStakingERC721).interfaceId;
-    }
-
     function onERC721Received(
         address,
         address,
