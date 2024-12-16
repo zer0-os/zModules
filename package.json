@@ -1,7 +1,7 @@
 {
   "name": "@zero-tech/zmodules",
-  "version": "0.4.1",
-  "description": "A collection of simple, modular contracts for different use cases",
+  "version": "0.8.0",
+  "description": "A collection of modular contracts for different use cases",
   "keywords": [],
   "author": "Zero CPT",
   "license": "MIT",
