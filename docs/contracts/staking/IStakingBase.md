@@ -56,10 +56,10 @@ error TimeLockNotPassed()
 
 Throw when the lock period has not passed
 
-### NoRewardsLeftInContract
+### InsufficientContractBalance
 
 ```solidity
-error NoRewardsLeftInContract()
+error InsufficientContractBalance()
 ```
 
 Throw when there are no rewards remaining in the pool

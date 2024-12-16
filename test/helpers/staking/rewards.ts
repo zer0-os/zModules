@@ -1,31 +1,81 @@
+import { BaseConfig } from "./types";
 
-
-export const calcTotalRewards = (
+export const calcTotalUnlockedRewards = (
   durations : Array<bigint>,
   balances : Array<bigint>,
-  rewardsPerPeriod : bigint,
-  periodLength : bigint
+  config : BaseConfig
 ) : bigint => {
   let totalRewards = 0n;
 
   for (let i = 0; i < durations.length; i++) {
-    totalRewards += calcRewardsAmount(durations[i], balances[i], rewardsPerPeriod, periodLength);
+    totalRewards += calcStakeRewards(
+      balances[i],
+      durations[i],
+      false,
+      config,
+    );
   }
 
   return totalRewards;
 };
 
-export const calcRewardsAmount = (
-  timePassed : bigint,
-  stakeAmount : bigint,
-  rewardsPerPeriod : bigint,
-  periodLength : bigint
+export const calcLockedRewards = (
+  duration : bigint,
+  balance : bigint,
+  rewardsMultiplier : bigint,
+  config : BaseConfig
+) => {
+  const retval = calcStakeRewards(
+    balance,
+    duration,
+    true,
+    config,
+    rewardsMultiplier
+  );
+
+  return retval;
+};
+
+export const calcTotalLockedRewards = (
+  durations : Array<bigint>,
+  balances : Array<bigint>,
+  rewardsMultiplier : bigint,
+  config : BaseConfig
 ) : bigint => {
+  let totalRewards = 0n;
 
-  // The amount of a single time period that has passed, used for fractional rewards
-  const fractionOfPeriod = timePassed % periodLength;
+  for (let i = 0; i < durations.length; i++) {
+    totalRewards += calcLockedRewards(
+      durations[i],
+      balances[i],
+      rewardsMultiplier,
+      config
+    );
+  }
 
-  const fullPeriodRewards = rewardsPerPeriod * stakeAmount * (timePassed / periodLength);
+  return totalRewards;
+};
 
-  return fullPeriodRewards + (fractionOfPeriod * (rewardsPerPeriod * stakeAmount) / periodLength);
+const calculateRewardsMultiplier = (lockDuration : bigint, config : BaseConfig) => config.minimumRewardsMultiplier
+    + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
+    * (lockDuration)
+    / config.periodLength;
+
+export const calcStakeRewards = (
+  amount : bigint,
+  timeDuration : bigint,
+  locked : boolean,
+  config : BaseConfig,
+  rewardsMultiplier ?: bigint,
+) => {
+  if (!rewardsMultiplier) {
+    rewardsMultiplier = locked ? calculateRewardsMultiplier(timeDuration, config) : 1n;
+  }
+
+  const divisor = locked ? 100000n : 1000n;
+
+  const rewards =
+    rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
+
+  return rewards;
 };

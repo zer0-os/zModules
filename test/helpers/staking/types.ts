@@ -1,4 +1,3 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   BaseContract,
   ContractInterface,
@@ -7,10 +6,15 @@ import {
 export interface BaseConfig {
   stakingToken : string;
   rewardsToken : string;
+  stakeRepToken : string;
   rewardsPerPeriod : bigint;
-  periodLength : bigint; // length of a single rewards period
-  timeLockPeriod : bigint; // The length of the time lock in seconds
-  contractOwner : SignerWithAddress;
+  periodLength : bigint;
+  minimumLockTime : bigint;
+  divisor : bigint;
+  lockedDivisor : bigint;
+  minimumRewardsMultiplier : bigint;
+  maximumRewardsMultiplier : bigint;
+  contractOwner : string;
 }
 
 // Simplify the Ethers V6 contract type

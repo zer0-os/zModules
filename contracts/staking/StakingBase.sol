@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // solhint-disable immutable-vars-naming
-pragma solidity 0.8.22;
+pragma solidity ^0.8.26;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -17,196 +17,363 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     using SafeERC20 for IERC20;
 
+    // Constant values for precision in rewards calculations
+    uint256 constant public PRECISION_DIVISOR = 1000;
+    uint256 constant public LOCKED_PRECISION_DIVISOR = 100000;
+
     /**
      * @notice Mapping of each staker to that staker's data in the `Staker` struct
      */
-    mapping(address staker => Staker stakerData) public stakers;
-
-    uint256 public constant PRECISION_MULTIPLIER = 1e18;
+    mapping(address user => Staker staker) public stakers;
 
     /**
-     * @notice The staking token for this pool
+     * @notice All required config variables, specified in the `Config` struct in `IStakingBase.sol`
      */
-    address public immutable stakingToken;
-
-    /**
-     * @notice The rewards token for this pool
-     */
-    IERC20 public immutable rewardsToken;
-
-    /**
-     * @notice The rewards of the pool per period length
-     */
-    uint256 public immutable rewardsPerPeriod;
-
-    /**
-     * @notice The length of a time period
-     */
-    uint256 public immutable periodLength;
-
-    /**
-     * @notice The amount of time required to pass to be able to claim or unstake
-     */
-    uint256 public immutable timeLockPeriod;
+    Config public config;
 
     constructor(
-        address _stakingToken,
-        IERC20 _rewardsToken,
-        uint256 _rewardsPerPeriod,
-        uint256 _periodLength,
-        uint256 _timeLockPeriod,
-        address contractOwner
-    ) Ownable(contractOwner) {
+        Config memory _config
+    ) Ownable(_config.contractOwner) {
         if (
-            _stakingToken.code.length == 0 ||
-            address(_rewardsToken).code.length == 0 ||
-            _rewardsPerPeriod == 0 ||
-            _periodLength == 0
+            _config.stakingToken.code.length == 0 ||
+            address(_config.rewardsToken).code.length == 0 ||
+            _config.rewardsPerPeriod == 0 ||
+            _config.periodLength == 0
         ) revert InitializedWithZero();
-
-        stakingToken = _stakingToken;
-        rewardsToken = _rewardsToken;
-        rewardsPerPeriod = _rewardsPerPeriod;
-        periodLength = _periodLength;
-        timeLockPeriod = _timeLockPeriod;
-    }
-
-    /**
-     * @notice Claim rewards for the calling user based on their staked amount
-     */
-    function claim() external override {
-        // Require the time lock to have passed
-        Staker storage staker = stakers[msg.sender];
-
-        _onlyUnlocked(staker.unlockTimestamp);
-        _baseClaim(staker, 0);
+        config = _config;
     }
 
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.
+     *
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
-    function withdrawLeftoverRewards() external override onlyOwner {
+    function withdrawLeftoverRewards() public override onlyOwner {
         uint256 balance = _getContractRewardsBalance();
-        if (balance == 0) revert NoRewardsLeftInContract();
 
-        rewardsToken.safeTransfer(owner(), balance);
+        // Do not send empty transfer
+        if (balance == 0) revert InsufficientContractBalance();
+
+        config.rewardsToken.safeTransfer(owner(), balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
     /**
-     * @notice Return the time, in seconds, remaining for a stake to be claimed or unstaked
+     * @notice Set the rewards per period
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _rewardsPerPeriod The new rewards per period value
      */
-    function getRemainingLockTime() external view override returns (uint256) {
-        // Return the time remaining for the stake to be claimed or unstaked
-        Staker memory staker = stakers[msg.sender];
-        if (block.timestamp > staker.unlockTimestamp) {
-            return 0;
-        }
-
-        return staker.unlockTimestamp - block.timestamp;
+    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
+        config.rewardsPerPeriod = _rewardsPerPeriod;
     }
 
     /**
-     * @notice View the pending rewards balance for a user
+     * @notice Set the period length
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _periodLength The new period length value
      */
-    function getPendingRewards() external view override returns (uint256) {
-        return _getPendingRewards(stakers[msg.sender]);
+    function setPeriodLength(uint256 _periodLength) public override onlyOwner {
+        config.periodLength = _periodLength;
+    }
+
+    /**
+     * @notice Set the minimum lock time
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _minimumLockTime The new minimum lock time, in seconds
+     */
+    function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
+        config.minimumLockTime = _minimumLockTime;
+        emit MinimumLockTimeSet(owner(), _minimumLockTime);
+    }
+
+    /**
+     * @notice Set the minimum rewards multiplier
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
+     */
+    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
+        config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Set the maximum rewards multiplier
+     * @dev Will fail when called by anyone other than the contract owner
+     *
+     * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
+     */
+    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
+        config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Return the potential rewards that would be earned for a given stake
+     *
+     * @param amount The amount of the staking token to calculate rewards for
+     * @param timeDuration The the amount of time these funds will be staked, provide the lock duration if locking
+     * @param locked Boolean if the stake is locked
+     */
+    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public override view returns (uint256) {
+
+        uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
+
+        return _getStakeRewards(
+            amount,
+            rewardsMultiplier,
+            timeDuration,
+            locked
+        );
+    }
+
+    /**
+     * @notice Get the representative token address minted with each stake
+     */
+    function getStakeRepToken() public view override returns (address) {
+        return config.stakeRepToken;
     }
 
     /**
      * @notice View the rewards balance in this pool
      */
-    function getContractRewardsBalance()
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getContractRewardsBalance() public view override returns (uint256) {
         return _getContractRewardsBalance();
+    }
+
+    /**
+     * @notice Get the staking token address
+     */
+    function getStakingToken() public view override returns (address) {
+        return config.stakingToken;
+    }
+
+    /**
+     * @notice Get the rewards token address
+     */
+    function getRewardsToken() public view override returns (IERC20) {
+        return config.rewardsToken;
+    }
+
+    /**
+     * @notice Get the rewards per period
+     */
+    function getRewardsPerPeriod() public view override returns (uint256) {
+        return config.rewardsPerPeriod;
+    }
+
+    /**
+     * @notice Get the period length
+     */
+    function getPeriodLength() public view override returns (uint256) {
+        return config.periodLength;
+    }
+
+    /**
+     * @notice Get the minimum lock time
+     */
+    function getMinimumLockTime() public view override returns(uint256) {
+        return config.minimumLockTime;
+    }
+
+    /**
+     * @notice Get the minimum rewards multiplier
+     */
+    function getMinimumRewardsMultiplier() public view override returns(uint256) {
+        return config.minimumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Get the maximum rewards multiplier
+     */
+    function getMaximumRewardsMultiplier() public view override returns(uint256) {
+        return config.maximumRewardsMultiplier;
     }
 
     ////////////////////////////////////
     /* Internal Functions */
     ////////////////////////////////////
 
-    function _checkRewards(Staker storage staker) internal {
+    /**
+     * @dev Core stake functionality used by both StakingERC20 and StakingERC721
+     * @param staker The user that is staking
+     * @param amount The amount to stake
+     * @param lockDuration The duration to lock the stake for, in seconds
+     */
+    function _coreStake(
+        Staker storage staker,
+        uint256 amount,
+        uint256 lockDuration
+    ) internal {
+        if (lockDuration == 0) {
+            // Get rewards they are owed from past unlocked stakes, if any
+            // will return 0 if `amountStaked == 0`
+            staker.owedRewards += _getStakeRewards(
+                staker.amountStaked,
+                1, // Rewards multiplier is 1 for non-locked funds
+                block.timestamp - staker.lastTimestamp,
+                false
+            );
 
-        if (staker.amountStaked > 0) {
-            // It isn't their first stake, snapshot pending rewards
-            staker.owedRewards = _getPendingRewards(staker);
+            staker.lastTimestamp = block.timestamp;
+            staker.amountStaked += amount;
         } else {
-            // Log the time at which this stake becomes claimable or unstakable
-            // This is only done once per user
-            staker.unlockTimestamp = block.timestamp + timeLockPeriod;
+            if (block.timestamp > staker.unlockedTimestamp) {
+                // The user has never locked or they have and we are past their lock period
+
+                // get the user's owed rewards from period in between `unlockedTimestamp` and present at rate of 1
+                uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
+
+                // this will return 0 if `amountStakedLocked` == 0
+                staker.owedRewardsLocked += _getStakeRewards(
+                    staker.amountStakedLocked,
+                    1,
+                    block.timestamp - mostRecentTimestamp,
+                    false
+                );
+
+                // Then we update appropriately
+                staker.unlockedTimestamp = block.timestamp + lockDuration;
+                staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
+
+                // We precalculate the amount because we know the time frame
+                staker.owedRewardsLocked += _getStakeRewards(
+                    amount,
+                    staker.rewardsMultiplier,
+                    lockDuration,
+                    true
+                );
+            } else {
+                // Rewards value of the incoming stake given at staker's RM for remaining lock time
+                staker.owedRewardsLocked += _getStakeRewards(
+                    amount,
+                    staker.rewardsMultiplier,
+                    _getRemainingLockTime(staker),
+                    true
+                );
+            }
+
+            staker.lastTimestampLocked = block.timestamp;
+            staker.amountStakedLocked += amount;
         }
     }
 
-    function _baseClaim(Staker storage staker, uint256 subtractAmountStaked) internal {
+    /**
+     * @dev Core claim functionality used by both StakingERC20 and StakingERC721
+     * @param staker The staker to claim rewards for
+     */
+    function _coreClaim(Staker storage staker) internal {
         uint256 rewards = _getPendingRewards(staker);
 
-        staker.lastUpdatedTimestamp = block.timestamp;
         staker.owedRewards = 0;
+        staker.lastTimestamp = block.timestamp;
 
-        if (rewards != 0) {
-            _checkRewardsAvailable(rewards);
-
-            rewardsToken.safeTransfer(msg.sender, rewards);
+        if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
+            // If the above is true, the rewards will have already been accounted for in
+            // the first `_getPendingRewards` call
+            // We only need to update here
+            staker.owedRewardsLocked = 0;
+            staker.lastTimestampLocked = block.timestamp;
         }
 
-        if (staker.amountStaked - subtractAmountStaked == 0 && staker.owedRewards == 0) {
-            delete stakers[msg.sender];
-        }
+        if (rewards == 0) revert ZeroRewards();
 
-        emit Claimed(msg.sender, rewards, address(rewardsToken));
+        config.rewardsToken.safeTransfer(msg.sender, rewards);
+
+        emit Claimed(msg.sender, rewards);
     }
 
-    function _getPendingRewards(
-        Staker memory staker
+    /**
+     * @dev Calculate the time remaining for a staker's lock. Return 0 if no locked funds or if passed lock time
+     * @param staker The staker to get the lock time for
+     */
+    function _getRemainingLockTime(Staker storage staker) internal view returns(uint256) {
+        if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
+
+        return staker.unlockedTimestamp - block.timestamp;
+    }
+
+    /**
+     * @dev Calculate the rewards for a specific stake
+     * @param amount The amount of the staking token to calculate rewards for
+     * @param rewardsMultiplier The multiplier for the rewards
+     * @param timeDuration The amount of time these funds will be staked
+     * @param locked Boolean if the stake is locked
+     */
+    function _getStakeRewards(
+        uint256 amount,
+        uint256 rewardsMultiplier,
+        uint256 timeDuration,
+        bool locked
     ) internal view returns (uint256) {
-        // Return any existing rewards they are owed plus the additional amount accrued
-        // Value is prorated to a fractional period length. This means that calls will 
-        // calculate rewards for the appropriate amount in between periods, instead of
-        // just the full period
+        uint256 divisor = locked ? LOCKED_PRECISION_DIVISOR : PRECISION_DIVISOR;
 
-        // The fractional amount of a period that has passed
-        uint256 fractionOfPeriod = ((block.timestamp - staker.lastUpdatedTimestamp) % periodLength);
-
-        // Calculate rewards owed for the number of periods
-        uint256 fixedPeriodRewards = 
-                PRECISION_MULTIPLIER * (rewardsPerPeriod *
-                staker.amountStaked *
-                ((block.timestamp - staker.lastUpdatedTimestamp) /
-                    periodLength)) / PRECISION_MULTIPLIER;
-
-        // Calculate rewards owed for the fractional amount of this period
-        uint256 partialRewards = 
-            PRECISION_MULTIPLIER * 
-                ((fractionOfPeriod * rewardsPerPeriod * staker.amountStaked) /
-                    periodLength) / PRECISION_MULTIPLIER;
-
-        // Return the full period rewards prorated up to the moment they call
-        return staker.owedRewards + fixedPeriodRewards + partialRewards;
+        return rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
     }
 
+    /**
+     * @dev Get the total rewards owed to a staker
+     * @param staker The staker to get rewards for
+     */
+    function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
+        // Get rewards from non-locked funds already accrued and also between the last timestamp and now
+        uint256 rewards = staker.owedRewards + _getStakeRewards(
+            staker.amountStaked,
+            1, // Rewards multiplier
+            block.timestamp - staker.lastTimestamp,
+            false
+        );
+
+        // Only include rewards from locked funds the user is passed their lock period
+        if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
+            // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` 
+            // sum on stake, so we don't need to add it here as it would be double counted
+            uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
+
+            rewards += staker.owedRewardsLocked + _getStakeRewards(
+                staker.amountStakedLocked,
+                1, // Rewards multiplier
+                block.timestamp - mostRecentTimestamp,
+                false // Treat as non-locked funds
+            );
+        }
+
+        return rewards;
+    }
+
+    /**
+     * @dev Get the most recent timestamp for a staker  
+     * @param staker The staker to get the most recent timestamp for
+     */
+    function _mostRecentTimestamp(Staker storage staker) internal view returns (uint256) {
+        // For calculations of interim time, the time between a user's `unlockedTimestamp` and the present,
+        // we have to check if their `lastTimestampLocked` is more recent first.
+        // This is because they would be able to double count rewards if they had locked funds
+        // and we only compare rewards against their `unlockedTimestamp`, as they could have
+        // changed the `lastTimestampLocked` value to get more rewards
+        return staker.lastTimestampLocked > staker.unlockedTimestamp
+            ? staker.lastTimestampLocked
+            : staker.unlockedTimestamp;
+    }
+
+    /**
+     * @dev Locked rewards receive a multiplier based on the length of the lock
+     * @param lock The length of the lock in seconds
+     */
+    function _calcRewardsMultiplier(uint256 lock) internal view returns (uint256) {
+        return config.minimumRewardsMultiplier
+        + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
+        * (lock )
+        / config.periodLength;
+    }
+
+    /**
+     * @dev Get the rewards balance of this contract
+     */
     function _getContractRewardsBalance() internal view virtual returns (uint256) {
-        return rewardsToken.balanceOf(address(this));
-    }
-
-    function _checkRewardsAvailable(uint256 rewardAmount) internal view {
-        uint256 rewardBalance = _getContractRewardsBalance();
-
-        if (rewardBalance < rewardAmount || rewardBalance == 0) {
-            revert NoRewardsLeftInContract();
-        }
-    }
-
-    function _onlyUnlocked(uint256 unlockTimestamp) internal view {
-        // User is not staked or has not passed the time lock
-        if (unlockTimestamp == 0 || block.timestamp < unlockTimestamp) {
-            revert TimeLockNotPassed();
-        }
+        return config.rewardsToken.balanceOf(address(this));
     }
 }
