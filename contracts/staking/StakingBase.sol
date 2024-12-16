@@ -310,6 +310,14 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         bool locked
     ) internal view returns (uint256) {
         uint256 divisor = locked ? LOCKED_PRECISION_DIVISOR : PRECISION_DIVISOR;
+        // console.log("rewardsMultiplier: ", rewardsMultiplier);
+        // console.log("amount: ", amount);
+        // console.log("config.rewardsPerPeriod: ", config.rewardsPerPeriod);
+        // console.log("timeDuration: ", timeDuration);
+        // console.log("config.periodLength: ", config.periodLength);
+        // console.log("divisor: ", divisor);
+        // console.log("---");
+
 
         return rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
     }
