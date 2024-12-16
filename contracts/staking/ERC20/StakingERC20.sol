@@ -6,9 +6,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 
-/* solhint-disable no-console */
-// TODO remove when ready
-import { console } from "hardhat/console.sol";
 
 /**
  * @title StakingERC20
@@ -16,7 +13,6 @@ import { console } from "hardhat/console.sol";
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC20 is StakingBase, IStakingERC20 {
-    // TODO when ERC20Voter token is ready add here
 
     using SafeERC20 for IERC20;
 
@@ -97,9 +93,16 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         return _getRemainingLockTime(stakers[msg.sender]);
     }
 
+    /**
+     * @notice Return the amount of rewards a user is owed
+     */
     function getPendingRewards() public view override returns (uint256) {
         return _getPendingRewards(stakers[msg.sender]);
     }
+
+    ////////////////////////////////////
+    /* Internal Functions */
+    ////////////////////////////////////
 
     function _stake(uint256 amount, uint256 lockDuration) internal {
         if (amount == 0) {
@@ -150,9 +153,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // If claims happen after lock period has passed, the lastTimestamp is more accurate
                 // but if they don't happen, then lastTimestampLocked may still be the original stake timestamp
                 // so we have to calculate which is more recent before calculating rewards
-                uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
-                    ? staker.lastTimestampLocked
-                    : staker.unlockedTimestamp;
+                uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 
                 // If staker's funds are unlocked, we ignore exit
                 // We already added the value they are owed in stake when pre calculating

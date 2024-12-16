@@ -8,9 +8,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/* solhint-disable no-console */
-import { console } from "hardhat/console.sol";
-// TODO remove when ready
 
 /**
  * @title StakingBase
@@ -61,62 +58,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         config.rewardsToken.safeTransfer(owner(), balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
-    }
-
-    /**
-     * @notice View the rewards balance in this pool
-     */
-    function getContractRewardsBalance() public view override returns (uint256) {
-        return _getContractRewardsBalance();
-    }
-
-    /**
-     * @notice Get the staking token address
-     */
-    function getStakingToken() public view override returns (address) {
-        return config.stakingToken;
-    }
-
-    /**
-     * @notice Get the rewards token address
-     */
-    function getRewardsToken() public view override returns (IERC20) {
-        return config.rewardsToken;
-    }
-
-    /**
-     * @notice Get the rewards per period
-     */
-    function getRewardsPerPeriod() public view override returns (uint256) {
-        return config.rewardsPerPeriod;
-    }
-
-    /**
-     * @notice Get the period length
-     */
-    function getPeriodLength() public view override returns (uint256) {
-        return config.periodLength;
-    }
-
-    /**
-     * @notice Get the minimum lock time
-     */
-    function getMinimumLockTime() public view override returns(uint256) {
-        return config.minimumLockTime;
-    }
-
-    /**
-     * @notice Get the minimum rewards multiplier
-     */
-    function getMinimumRewardsMultiplier() public view override returns(uint256) {
-        return config.minimumRewardsMultiplier;
-    }
-
-    /**
-     * @notice Get the maximum rewards multiplier
-     */
-    function getMaximumRewardsMultiplier() public view override returns(uint256) {
-        return config.maximumRewardsMultiplier;
     }
 
     /**
@@ -177,7 +118,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param timeDuration The the amount of time these funds will be staked, provide the lock duration if locking
      * @param locked Boolean if the stake is locked
      */
-    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public view returns (uint256) {
+    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public override view returns (uint256) {
 
         uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
 
@@ -187,6 +128,62 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             timeDuration,
             locked
         );
+    }
+
+    /**
+     * @notice View the rewards balance in this pool
+     */
+    function getContractRewardsBalance() public view override returns (uint256) {
+        return _getContractRewardsBalance();
+    }
+
+    /**
+     * @notice Get the staking token address
+     */
+    function getStakingToken() public view override returns (address) {
+        return config.stakingToken;
+    }
+
+    /**
+     * @notice Get the rewards token address
+     */
+    function getRewardsToken() public view override returns (IERC20) {
+        return config.rewardsToken;
+    }
+
+    /**
+     * @notice Get the rewards per period
+     */
+    function getRewardsPerPeriod() public view override returns (uint256) {
+        return config.rewardsPerPeriod;
+    }
+
+    /**
+     * @notice Get the period length
+     */
+    function getPeriodLength() public view override returns (uint256) {
+        return config.periodLength;
+    }
+
+    /**
+     * @notice Get the minimum lock time
+     */
+    function getMinimumLockTime() public view override returns(uint256) {
+        return config.minimumLockTime;
+    }
+
+    /**
+     * @notice Get the minimum rewards multiplier
+     */
+    function getMinimumRewardsMultiplier() public view override returns(uint256) {
+        return config.minimumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Get the maximum rewards multiplier
+     */
+    function getMaximumRewardsMultiplier() public view override returns(uint256) {
+        return config.maximumRewardsMultiplier;
     }
 
     ////////////////////////////////////
@@ -201,7 +198,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function _coreStake(
         Staker storage staker,
-        uint256 amount, //     tokenIds.length, in ERC721 case
+        uint256 amount,
         uint256 lockDuration
     ) internal {
         if (lockDuration == 0) {
@@ -220,13 +217,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             if (block.timestamp > staker.unlockedTimestamp) {
                 // The user has never locked or they have and we are past their lock period
 
-                // Capture the user's owed rewards from the past stake in between
-                // period at rate of 1
-                uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
-                    ? staker.lastTimestampLocked
-                    : staker.unlockedTimestamp;
+                // get the user's owed rewards from period in between `unlockedTimestamp` and present at rate of 1
+                uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 
-                // Note: this will return 0 if `amountStakedLocked == 0`
+                // this will return 0 if `amountStakedLocked` == 0
                 staker.owedRewardsLocked += _getStakeRewards(
                     staker.amountStakedLocked,
                     1,
@@ -236,7 +230,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
                 // Then we update appropriately
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
-                staker.lockDuration = lockDuration;
                 staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
 
                 // We precalculate the amount because we know the time frame
@@ -247,7 +240,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                     true
                 );
             } else {
-                // Rewards value of the incoming stake given the remaining lock time
+                // Rewards value of the incoming stake given at staker's RM for remaining lock time
                 staker.owedRewardsLocked += _getStakeRewards(
                     amount,
                     staker.rewardsMultiplier,
@@ -310,14 +303,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         bool locked
     ) internal view returns (uint256) {
         uint256 divisor = locked ? LOCKED_PRECISION_DIVISOR : PRECISION_DIVISOR;
-        // console.log("rewardsMultiplier: ", rewardsMultiplier);
-        // console.log("amount: ", amount);
-        // console.log("config.rewardsPerPeriod: ", config.rewardsPerPeriod);
-        // console.log("timeDuration: ", timeDuration);
-        // console.log("config.periodLength: ", config.periodLength);
-        // console.log("divisor: ", divisor);
-        // console.log("---");
-
 
         return rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
     }
@@ -337,17 +322,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         // Only include rewards from locked funds the user is passed their lock period
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
-            // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` sum on stake,
-            // so we don't need to add it here as it would be double counted
-
-            // Case A) user stakes with lock, then waits well beyond lock duration and claims
-            // need to make sure that everything past `unlockTimestamp` is calculated at the non-locked rate
-            // Case B) user stakes with lock and waits well beyond lock period, claims, then waits and claims again in the future
-            // Have to make sure that we read from the time between their last touch point at non-locked rate
-            // meaning we have to check which timestamp is more recent
-            uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
-                ? staker.lastTimestampLocked
-                : staker.unlockedTimestamp;
+            // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` 
+            // sum on stake, so we don't need to add it here as it would be double counted
+            uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 
             rewards += staker.owedRewardsLocked + _getStakeRewards(
                 staker.amountStakedLocked,
@@ -360,12 +337,16 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         return rewards;
     }
 
-    // todo remove when finished
-    function testRM(uint256 timeDuration) public view returns (uint256) {
-        return _calcRewardsMultiplier(timeDuration);
-    }
-
+    /**
+     * @dev Get the most recent timestamp for a staker  
+     * @param staker The staker to get the most recent timestamp for
+     */
     function _mostRecentTimestamp(Staker storage staker) internal view returns (uint256) {
+        // For calculations of interim time, the time between a user's `unlockedTimestamp` and the present,
+        // we have to check if their `lastTimestampLocked` is more recent first.
+        // This is because they would be able to double count rewards if they had locked funds
+        // and we only compare rewards against their `unlockedTimestamp`, as they could have
+        // changed the `lastTimestampLocked` value to get more rewards
         return staker.lastTimestampLocked > staker.unlockedTimestamp
             ? staker.lastTimestampLocked
             : staker.unlockedTimestamp;
@@ -382,6 +363,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         / config.periodLength;
     }
 
+    /**
+     * @dev Get the rewards balance of this contract
+     */
     function _getContractRewardsBalance() internal view virtual returns (uint256) {
         return config.rewardsToken.balanceOf(address(this));
     }

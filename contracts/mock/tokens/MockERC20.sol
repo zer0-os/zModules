@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC20Mod } from "./ERC20Mod.sol";
 
 // Don't enforce linter in mock token
