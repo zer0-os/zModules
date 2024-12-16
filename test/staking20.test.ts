@@ -964,7 +964,7 @@ describe("StakingERC20", () => {
 
       const stakerDataBefore = await contract.stakers(stakerC.address);
 
-      const unstakeAmount = stakerDataBefore.amountStakedLocked
+      const unstakeAmount = stakerDataBefore.amountStakedLocked;
       await contract.connect(stakerC).unstakeLocked(unstakeAmount, true);
 
       const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerC.address);
@@ -1205,7 +1205,7 @@ describe("StakingERC20", () => {
       // Because we have not passed the time lock, the value of any locked stake is not included in pending rewards
       expect(totalPendingRewards).to.eq(interimRewards);
       expect(stakerData.owedRewardsLocked).to.eq(expectedRewards);
-      
+
       const timeIncrease = 67n;
 
       const unlockedStakeValue = await contract.getStakeRewards(
