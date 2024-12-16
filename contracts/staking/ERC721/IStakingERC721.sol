@@ -20,33 +20,23 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
     }
 
     /**
-     * @notice Emitted when the base URI is updated
-     * @param baseURI The new base URI
-     */
-    event BaseURIUpdated(string baseURI);
-
-    /**
      * @notice Emit when a user stakes a token
      * @param staker The address of the user staking
      * @param tokenId The token ID of the staked token
-     * @param stakingToken The address of the staking token contract
      */
     event Staked(
         address indexed staker,
-        uint256 indexed tokenId,
-        address indexed stakingToken
+        uint256 indexed tokenId
     );
 
     /**
      * @notice Emit when a user unstakes
      * @param staker The address of the user unstaking
      * @param tokenId The token ID of the staked token
-     * @param stakingToken The address of the staking token contract
      */
     event Unstaked(
         address indexed staker,
-        uint256 indexed tokenId,
-        address indexed stakingToken
+        uint256 indexed tokenId
     );
 
     /**
@@ -81,17 +71,9 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
 
     function unstakeAll(bool exit) external;
 
-    function setBaseURI(string memory baseUri) external;
-
-    function setTokenURI(uint256 tokenId, string memory tokenUri) external;
-
-    function totalSupply() external view returns (uint256);
-
     function getStakedTokenIds() external view returns(uint256[] memory);
 
     function getPendingRewards() external view returns (uint256);
 
     function getRemainingLockTime() external view returns (uint256);
-
-    function getInterfaceId() external pure returns (bytes4);
 }

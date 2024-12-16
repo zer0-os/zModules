@@ -10,7 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IStakingBase {
     /**
      * @notice Struct to track an individual staker's data
-     * 
+     *
      * @param rewardsMultiplier The multiplier for rewards
      * @param lockDuration The duration of the lock
      * @param unlockedTimestamp The timestamp when the stake unlocks
@@ -21,7 +21,7 @@ interface IStakingBase {
      * @param lastTimestamp The timestamp of the last action
      * @param lastTimestampLocked The timestamp of the last locked action
      */
-    struct Staker { 
+    struct Staker {
         uint256 rewardsMultiplier;
         uint256 lockDuration;
         uint256 unlockedTimestamp;
@@ -34,7 +34,7 @@ interface IStakingBase {
     }
     /**
      * @notice Struct to hold all required config variables
-     * 
+     *
      * @param stakingToken The address of the token being staked
      * @param contractOwner The address of the contract owner
      * @param rewardsToken The address of the token being rewarded
@@ -48,6 +48,7 @@ interface IStakingBase {
         address stakingToken;
         address contractOwner;
         IERC20 rewardsToken;
+        address stakeRepToken;
         uint256 rewardsPerPeriod;
         uint256 periodLength;
         uint256 minimumLockTime;
@@ -70,12 +71,10 @@ interface IStakingBase {
      * @dev Because all contracts reward in ERC20 this can be shared
      * @param claimer The address of the user claiming rewards
      * @param rewards The amount of rewards the user received
-     * @param rewardsToken The address of the rewards token contract
      */
     event Claimed(
         address indexed claimer,
-        uint256 indexed rewards,
-        address indexed rewardsToken
+        uint256 indexed rewards
     );
 
     /**
@@ -114,6 +113,11 @@ interface IStakingBase {
     error TimeLockNotPassed();
 
     /**
+     * @notice Throw when the user tries to exit the pool without their full staked amount
+     */
+    error NotFullExit();
+
+    /**
      * @notice Throw when trying to claim within an invalid period
      * @dev Used to protect against reentrancy
      */
@@ -142,7 +146,7 @@ interface IStakingBase {
     error InitializedWithZero();
 
     function withdrawLeftoverRewards() external;
-    
+
     function setRewardsPerPeriod(uint256 _rewardsPerPeriod) external;
 
     function setPeriodLength(uint256 _periodLength) external;
@@ -159,7 +163,11 @@ interface IStakingBase {
 
     function getRewardsToken() external view returns(IERC20);
 
+    function getStakeRepToken() external view returns (address);
+
     function getRewardsPerPeriod() external view returns(uint256);
+
+    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) external view returns (uint256);
 
     function getPeriodLength() external view returns(uint256);
 

@@ -7,6 +7,7 @@ import {
   MINTER_ROLE,
 } from "./helpers/voting/constants";
 import { ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
+import { NON_TRANSFERRABLE_ERR } from "./helpers/errors";
 
 
 describe("Voting tokens tests", () => {
@@ -25,8 +26,10 @@ describe("Voting tokens tests", () => {
 
   const mintAmount = ethers.parseEther("150");
   const burnAmount = ethers.parseEther("100");
-  const transferAmount = ethers.parseEther("50");
   const tokenId = 1;
+
+  const initialBaseURI = "initialBaseURI";
+  const newBaseURI = "the/Best/URI/";
 
 
   before(async () => {
@@ -39,17 +42,17 @@ describe("Voting tokens tests", () => {
 
     // mint erc20 tokens to users and owner
     await erc20Token.connect(owner).mint(owner.address, ethers.parseEther("1000"));
-    await erc20Token.connect(owner).transfer(addr1.address, ethers.parseEther("100"));
-    await erc20Token.connect(owner).transfer(addr2.address, ethers.parseEther("50"));
+    await erc20Token.connect(owner).mint(addr1.address, ethers.parseEther("100"));
+    await erc20Token.connect(owner).mint(addr2.address, ethers.parseEther("50"));
 
     // ERC721 deploy
     const ERC721Factory = await ethers.getContractFactory(erc721Name) ;
-    erc721Token = await ERC721Factory.connect(owner).deploy(erc721Name, erc721Symbol, "1.0", owner);
+    erc721Token = await ERC721Factory.connect(owner).deploy(erc721Name, erc721Symbol, "1.0", initialBaseURI, owner);
     await erc721Token.waitForDeployment();
 
     // mint 10 NFTs to owner
     for (let i = 0; i < 10; i++) {
-      await erc721Token.connect(owner).mint(owner.address, tokenId + i);
+      await erc721Token.connect(owner).mint(owner.address, tokenId + i, "");
     }
   });
 
@@ -57,6 +60,15 @@ describe("Voting tokens tests", () => {
     it("Should correctly set name and symbol for ERC20 token", async () => {
       expect(await erc20Token.name()).to.equal(erc20Name);
       expect(await erc20Token.symbol()).to.equal(erc20Symbol);
+    });
+
+    it("tokens should NOT be transferrable", async () => {
+      await expect(
+        erc20Token.connect(owner).transfer(addr1.address, ethers.parseEther("12"))
+      ).to.be.revertedWithCustomError(
+        erc20Token,
+        NON_TRANSFERRABLE_ERR
+      );
     });
 
     describe("Voting functions", () => {
@@ -79,30 +91,11 @@ describe("Voting tokens tests", () => {
         );
       });
 
-      it("Should correctly update votes after TRANSFER for ERC20 token", async () => {
-        const balanceBefore = await erc20Token.balanceOf(addr1.address);
-        await erc20Token.connect(addr1).delegate(addr1.address);
-        const votesBefore = await erc20Token.getVotes(addr1.address);
-
-        expect(
-          votesBefore
-        ).to.equal(
-          balanceBefore
-        );
-
-        await erc20Token.connect(addr1).transfer(addr2.address, transferAmount);
-        const votesAfterTransfer = await erc20Token.getVotes(addr1.address);
-
-        expect(
-          votesAfterTransfer
-        ).to.equal(
-          balanceBefore - transferAmount
-        );
-      });
-
       it("Should correctly update votes after BURN for ERC20 token", async () => {
         await erc20Token.connect(owner).mint(addr1.address, mintAmount);
-        const balanceBefore = await erc20Token.balanceOf(addr1.address);
+
+        await erc20Token.connect(addr1).delegate(addr1.address);
+        const votesBeforeBurn = await erc20Token.getVotes(addr1.address);
 
         await erc20Token.connect(owner).burn(addr1.address, burnAmount);
 
@@ -111,7 +104,7 @@ describe("Voting tokens tests", () => {
         expect(
           votesAfterBurn
         ).to.equal(
-          balanceBefore - burnAmount
+          votesBeforeBurn - burnAmount
         );
       });
     });
@@ -248,6 +241,80 @@ describe("Voting tokens tests", () => {
       );
     });
 
+    it("tokens should NOT be transferrable", async () => {
+      await expect(
+        erc721Token.connect(owner).transferFrom(owner.address, addr1.address, 1)
+      ).to.be.revertedWithCustomError(
+        erc721Token,
+        NON_TRANSFERRABLE_ERR
+      );
+    });
+
+    it("Should allow minter to #safeMint a token with proper URI", async () => {
+      const newTokenId = "8754";
+      const newTokenUri = "/newTokenUri/safeMint/";
+      await erc721Token.connect(owner).safeMint(addr1.address, newTokenId, newTokenUri);
+
+      const tokenOwner = await erc721Token.ownerOf(newTokenId);
+      expect(
+        tokenOwner
+      ).to.equal(
+        addr1.address
+      );
+
+      expect(
+        await erc721Token.tokenURI(newTokenId)
+      ).to.equal(
+        `${initialBaseURI + newTokenUri}`
+      );
+    });
+
+    it("Should emit Transfer event on #safeMint", async () => {
+      const newTokenId = "5421";
+      const newTokenUri = "safeMint/event";
+
+      await expect(
+        erc721Token.connect(owner).safeMint(owner, newTokenId, newTokenUri)
+      ).to.emit(
+        erc721Token,
+        "Transfer"
+      ).withArgs(
+        ethers.ZeroAddress,
+        owner.address,
+        newTokenId
+      );
+    });
+
+    it("Should allow admin to #setBaseURI", async () => {
+      const newBaseURI = "newURI";
+
+      // check current URI
+      expect(
+        await erc721Token.tokenURI(tokenId)
+      ).to.be.eq(
+        `${initialBaseURI + tokenId}`
+      );
+
+      await erc721Token.connect(owner).setBaseURI(newBaseURI);
+
+      expect(
+        await erc721Token.tokenURI(tokenId)
+      ).to.equal(
+        newBaseURI + tokenId
+      );
+    });
+
+    it("Should emit BaseURIUpdated event when baseURI is updated", async () => {
+      await expect(
+        erc721Token.connect(owner).setBaseURI(newBaseURI)
+      ).to.emit(
+        erc721Token,
+        "BaseURIUpdated"
+      ).withArgs(
+        newBaseURI
+      );
+    });
+
     describe("Voting functions", () => {
       it("Should delegate votes for ERC721 token", async () => {
         const balanceBefore = await erc721Token.balanceOf(owner.address);
@@ -266,19 +333,6 @@ describe("Voting tokens tests", () => {
           votesAfter
         ).to.eq(
           balanceBefore
-        );
-      });
-
-      it("Should update votes after transferring NFT for ERC721 token", async () => {
-        const votesBefore = await erc721Token.getVotes(owner.address);
-
-        await erc721Token.connect(owner).transferFrom(owner.address, addr1.address, tokenId);
-        const votesAfter = await erc721Token.getVotes(owner.address);
-
-        expect(
-          votesAfter
-        ).to.eq(
-          votesBefore - 1n
         );
       });
 
@@ -332,7 +386,7 @@ describe("Voting tokens tests", () => {
 
       it("Should revert when NON-MINTER mints tokens", async () => {
         await expect(
-          erc721Token.connect(addr2).mint(addr1.address, "99999")
+          erc721Token.connect(addr2).mint(addr1.address, "99999", "")
         ).to.be.revertedWithCustomError(
           erc721Token,
           "AccessControlUnauthorizedAccount",
@@ -351,6 +405,85 @@ describe("Voting tokens tests", () => {
         ).withArgs(
           addr1.address,
           BURNER_ROLE
+        );
+      });
+
+      it("Should revert, if NON-MINTER tries to #safeMint", async () => {
+        expect(
+          await erc721Token.hasRole(MINTER_ROLE, addr2.address)
+        ).to.be.eq(
+          false
+        );
+
+        await expect(
+          erc721Token.connect(addr2).safeMint(addr1.address, "123456789", "")
+        ).to.be.revertedWithCustomError(
+          erc721Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr2.address,
+          MINTER_ROLE
+        );
+      });
+
+      it("Should NOT allow NON-ADMIN to #setBaseURI", async () => {
+        const unauthorizedBaseURI = "unauthorizedBaseURI";
+
+        expect(
+          await erc721Token.hasRole(DEFAULT_ADMIN_ROLE, addr1.address)
+        ).to.be.eq(
+          false
+        );
+
+        await expect(
+          erc721Token.connect(addr1).setBaseURI(unauthorizedBaseURI)
+        ).to.be.revertedWithCustomError(
+          erc721Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr1.address,
+          DEFAULT_ADMIN_ROLE
+        );
+
+        const currentBaseURI = await erc721Token.tokenURI(tokenId);
+        expect(
+          currentBaseURI
+        ).to.be.eq(
+          `${newBaseURI + tokenId}`
+        );
+      });
+
+      it("Should not allow non-admin to set token URI", async () => {
+        const newTokenUri = "/newNFT/";
+        const id = "7777777";
+
+        expect(
+          await erc721Token.hasRole(DEFAULT_ADMIN_ROLE, addr2.address)
+        ).to.be.eq(
+          false
+        );
+
+        await erc721Token.safeMint(
+          addr1.address,
+          id,
+          "/example.com/"
+        );
+
+        await expect(
+          erc721Token.connect(addr2).setTokenURI(id, newTokenUri)
+        ).to.be.revertedWithCustomError(
+          erc721Token,
+          "AccessControlUnauthorizedAccount",
+        ).withArgs(
+          addr2.address,
+          DEFAULT_ADMIN_ROLE
+        );
+
+        const tokenUri = await erc721Token.tokenURI(id);
+        expect(
+          tokenUri
+        ).to.not.equal(
+          newTokenUri
         );
       });
 
@@ -416,6 +549,25 @@ describe("Voting tokens tests", () => {
           await erc721Token.hasRole(DEFAULT_ADMIN_ROLE, addr1.address)
         ).to.eq(
           false
+        );
+      });
+
+      it("Should allow admin to set token URI", async () => {
+        const newTokenUri = "https://nft";
+        const newTokenId = "122333444455555";
+
+        await erc721Token.safeMint(
+          addr1.address,
+          newTokenId,
+          "/old/URI"
+        );
+
+        await erc721Token.connect(owner).setTokenURI(newTokenId, newTokenUri);
+
+        expect(
+          await erc721Token.tokenURI(newTokenId)
+        ).to.equal(
+          `${newBaseURI + newTokenUri}`
         );
       });
     });

@@ -5,10 +5,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
+import { IERC20MintableBurnable } from "../../types/IERC20MintableBurnable.sol";
 
-/* solhint-disable no-console */
-// TODO remove when ready
-import { console } from "hardhat/console.sol";
 
 /**
  * @title StakingERC20
@@ -16,7 +14,6 @@ import { console } from "hardhat/console.sol";
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC20 is StakingBase, IStakingERC20 {
-    // TODO when ERC20Voter token is ready add here
 
     using SafeERC20 for IERC20;
 
@@ -97,9 +94,16 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         return _getRemainingLockTime(stakers[msg.sender]);
     }
 
+    /**
+     * @notice Return the amount of rewards a user is owed
+     */
     function getPendingRewards() public view override returns (uint256) {
         return _getPendingRewards(stakers[msg.sender]);
     }
+
+    ////////////////////////////////////
+    /* Internal Functions */
+    ////////////////////////////////////
 
     function _stake(uint256 amount, uint256 lockDuration) internal {
         if (amount == 0) {
@@ -114,8 +118,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         // Transfers user's funds to this contract
         IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+        // Mint the user's stake as a representative token
+        IERC20MintableBurnable(config.stakeRepToken).mint(msg.sender, amount);
 
-        emit Staked(msg.sender, amount, lockDuration, config.stakingToken);
+        emit Staked(msg.sender, amount, lockDuration);
     }
 
     function _unstake(uint256 amount, bool locked, bool exit) internal {
@@ -132,50 +138,56 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 revert UnstakeMoreThanStake();
             }
 
-            if (_getRemainingLockTime(staker) > 0) {
-                // Only allow use of exit on funds that are still locked
-                if (exit) {
-                    rewards = 0;
-                } else {
-                    revert TimeLockNotPassed();
+            if (exit) {
+                // A staker can only exit in the entire quantity or not at all
+                if (amount != staker.amountStakedLocked) {
+                    revert NotFullExit();
                 }
+
+                rewards = 0;
+                staker.owedRewardsLocked = 0;
+                staker.amountStakedLocked = 0;
+                staker.lastTimestampLocked = 0;
+                staker.unlockedTimestamp = 0;
+            } else if (_getRemainingLockTime(staker) > 0) {
+                // if still locked and not exiting, revert
+                revert TimeLockNotPassed();
             } else {
                 // If claims happen after lock period has passed, the lastTimestamp is more accurate
                 // but if they don't happen, then lastTimestampLocked may still be the original stake timestamp
                 // so we have to calculate which is more recent before calculating rewards
-                uint256 mostRecentTimestamp = staker.lastTimestampLocked > staker.unlockedTimestamp
-                    ? staker.lastTimestampLocked
-                    : staker.unlockedTimestamp;
+                uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 
                 // If staker's funds are unlocked, we ignore exit
                 // We already added the value they are owed in stake when pre calculating
                 // now we just add the value they are owed for rewards in between
                 rewards = staker.owedRewardsLocked + _getStakeRewards(
-                    staker.amountStakedLocked,
+                    amount,
                     1, // Rewards multiplier
                     block.timestamp - mostRecentTimestamp,
                     false
                 );
-            }
 
-            // If removal of all locked funds
-            if (staker.amountStakedLocked == amount) {
-                if (staker.amountStaked == 0) {
-                    // and there are no non-locked funds, delete
-                    delete stakers[msg.sender];
+                // Update to show they have claimed this value
+                staker.owedRewardsLocked = 0;
+
+                // If removal of all locked funds
+                if (staker.amountStakedLocked == amount) {
+                    if (staker.amountStaked == 0) {
+                        // and there are no non-locked funds, delete
+                        delete stakers[msg.sender];
+                    } else {
+                        // Otherwise set locked values to 0
+                        staker.amountStakedLocked = 0;
+                        staker.lastTimestampLocked = 0;
+                        staker.unlockedTimestamp = 0;
+                    }
                 } else {
-                    // Otherwise set locked values to 0
-                    staker.amountStakedLocked = 0;
-                    staker.lastTimestampLocked = 0;
-                    staker.unlockedTimestamp = 0;
+                    // If not withdrawal, update locked values
+                    staker.amountStakedLocked -= amount;
+                    staker.lastTimestampLocked = block.timestamp;
                 }
-            } else {
-                // If not withdrawal, update locked values
-                staker.amountStakedLocked -= amount;
-                staker.lastTimestampLocked = block.timestamp;
             }
-
-            staker.owedRewardsLocked = 0;
         } else {
             if (amount > staker.amountStaked) {
                 revert UnstakeMoreThanStake();
@@ -183,9 +195,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
             if (exit) {
                 rewards = 0;
+                staker.owedRewards;
             } else {
+                // most recent timestamp?
                 rewards = staker.owedRewards + _getStakeRewards(
-                    staker.amountStaked,
+                    amount,
                     1, // Rewards multiplier
                     block.timestamp - staker.lastTimestamp,
                     false
@@ -214,14 +228,17 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding for this
             config.rewardsToken.safeTransfer(msg.sender, rewards);
+            emit Claimed(msg.sender, rewards);
         }
 
         totalStaked -= amount;
 
         // Return the user's initial stake
         IERC20(config.stakingToken).safeTransfer(msg.sender, amount);
+        // Burn the user's stake representative token
+        IERC20MintableBurnable(config.stakeRepToken).burn(msg.sender, amount);
 
-        emit Unstaked(msg.sender, amount, config.stakingToken);
+        emit Unstaked(msg.sender, amount);
     }
 
     /**

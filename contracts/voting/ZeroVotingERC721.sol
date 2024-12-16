@@ -4,13 +4,26 @@ pragma solidity 0.8.26;
 import { ERC721Votes } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Votes.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IZeroVotingERC721 } from "./IZeroVotingERC721.sol";
 
 
-contract ZeroVotingERC721 is ERC721Votes, AccessControl {
+contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZeroVotingERC721 {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+
+    /**
+     * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
+     */
+    string internal baseURI;
+
+    /**
+     * @notice Total supply of all tokens
+     */
+    uint256 internal _totalSupply;
 
     /**
      * @dev Initializes the ERC721 token with a name, symbol.
@@ -22,6 +35,7 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl {
         string memory name,
         string memory symbol,
         string memory version,
+        string memory baseUri,
         address admin
     )
         ERC721(name, symbol)
@@ -30,6 +44,10 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(BURNER_ROLE, admin);
         _grantRole(MINTER_ROLE, admin);
+
+        if (bytes(baseUri).length > 0) {
+            baseURI = baseUri;
+        }
     }
 
     /**
@@ -39,12 +57,43 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl {
      */
     function mint(
         address to,
-        uint256 tokenId
+        uint256 tokenId,
+        string memory tokenUri
     ) external override onlyRole(MINTER_ROLE) {
+        ++_totalSupply;
+
         _mint(
             to,
             tokenId
         );
+
+        _setTokenURI(tokenId, tokenUri);
+    }
+
+    /**
+     * @dev Mints `tokenId`, transfers it to `to` and checks for `to` acceptance.
+     *
+     * Requirements:
+     *
+     * - `tokenId` must not exist.
+     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received},
+     * which is called upon a safe transfer.
+     *
+     * Emits a {Transfer} event.
+     */
+    function safeMint(
+        address to,
+        uint256 tokenId,
+        string memory tokenUri
+    ) external override onlyRole(MINTER_ROLE) {
+        ++_totalSupply;
+
+        _safeMint(
+            to,
+            tokenId
+        );
+
+        _setTokenURI(tokenId, tokenUri);
     }
 
     /**
@@ -57,31 +106,68 @@ contract ZeroVotingERC721 is ERC721Votes, AccessControl {
         _burn(tokenId);
     }
 
-    /**
-    * @dev Overridden function to support the interfaces of ERC721 and AccessControl.
-    * @param interfaceId The interface identifier to check.
-    * @return True if the contract supports the given interface.
-    */
+    function setBaseURI(string memory baseUri) public override onlyRole(DEFAULT_ADMIN_ROLE) {
+        baseURI = baseUri;
+        emit BaseURIUpdated(baseUri);
+    }
+
+    function setTokenURI(
+        uint256 tokenId,
+        string memory tokenUri
+    ) public override onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setTokenURI(tokenId, tokenUri);
+    }
+
+    function totalSupply() public view override returns (uint256) {
+        return _totalSupply;
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721, ERC721URIStorage, IZeroVotingERC721) returns (string memory) {
+        return super.tokenURI(tokenId);
+    }
+
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(ERC721, AccessControl) returns (bool) {
-        return super.supportsInterface(interfaceId);
+    ) public view virtual override(IERC165, AccessControl, ERC721, ERC721URIStorage) returns (bool) {
+        return
+            interfaceId == type(IZeroVotingERC721).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    function getInterfaceId() public pure override returns (bytes4) {
+        return type(IZeroVotingERC721).interfaceId;
     }
 
     /**
-    * @dev Internal function to update the ownership of a token, transferring it to the specified address.
-    * This method overrides the `_update` implementation in the ERC721Votes contract and ensures the
-    * balances and ownership mappings are updated correctly, emitting a `Transfer` event.
-    */
+     * @dev Disallow all transfers, only `_mint` and `_burn` are allowed
+     */
     function _update(
         address to,
         uint256 tokenId,
         address auth
-    ) internal override returns (address) {
-        return super._update(
-            to,
-            tokenId,
-            auth
+    ) internal override(ERC721, ERC721Votes) returns (address) {
+        address from = _ownerOf(tokenId);
+
+        if (from != address(0) && to != address(0)) {
+            revert NonTransferrableToken();
+        }
+
+        return super._update(to, tokenId, auth);
+    }
+
+    function _increaseBalance(
+        address account,
+        uint128 amount
+    ) internal override(ERC721, ERC721Votes) {
+        super._increaseBalance(
+            account,
+            amount
         );
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
     }
 }
