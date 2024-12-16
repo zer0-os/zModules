@@ -1187,8 +1187,8 @@ describe("StakingERC721", () => {
       const timeDuration = DAY_IN_SECONDS * 69n;
       const unlockedRewards = await stakingERC721.connect(owner).getStakeRewards(1n, timeDuration, false);
       const lockedRewards = await stakingERC721.connect(owner).getStakeRewards(1n, timeDuration, true);
-      console.log(lockedRewards);
-      console.log(unlockedRewards);
+      // console.log(lockedRewards);
+      // console.log(unlockedRewards);
     });
 
     it("Should NOT deploy with zero values passed", async () => {
