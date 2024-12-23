@@ -35,8 +35,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         Config memory _config
     ) Ownable(_config.contractOwner) {
         if (
-            _config.stakingToken.code.length == 0 ||
-            address(_config.rewardsToken).code.length == 0 ||
             _config.rewardsPerPeriod == 0 ||
             _config.periodLength == 0
         ) revert InitializedWithZero();
@@ -68,6 +66,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
         config.rewardsPerPeriod = _rewardsPerPeriod;
+        emit RewardsPerPeriodSet(owner(), _rewardsPerPeriod);
     }
 
     /**
@@ -78,6 +77,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function setPeriodLength(uint256 _periodLength) public override onlyOwner {
         config.periodLength = _periodLength;
+        emit PeriodLengthSet(owner(), _periodLength);
     }
 
     /**
@@ -99,6 +99,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
         config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
+        emit MinimumRewardsMultiplierSet(owner(), _minimumRewardsMultiplier);
     }
 
     /**
@@ -109,6 +110,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
         config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
+        emit MaximumRewardsMultiplierSet(owner(), _maximumRewardsMultiplier);
     }
 
     /**
@@ -281,7 +283,11 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         if (rewards == 0) revert ZeroRewards();
 
-        config.rewardsToken.safeTransfer(msg.sender, rewards);
+        if (address(config.rewardsToken) == address(0)) {
+            payable(msg.sender).transfer(rewards);
+        } else {
+            config.rewardsToken.safeTransfer(msg.sender, rewards);
+        }
 
         emit Claimed(msg.sender, rewards);
     }

@@ -7,6 +7,8 @@ import {
   BaseConfig,
 } from "./types";
 
+import * as hre from "hardhat";
+
 import {
   DEFAULT_PERIOD_LENGTH_ERC721,
   PRECISION_DIVISOR,
@@ -21,15 +23,15 @@ import {
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 export const createDefaultStakingConfig = async (
-  rewardsERC20 : MockERC20,
   contractOwner : SignerWithAddress,
+  rewardsERC20 ?: MockERC20,
   erc721 ?: MockERC721,
   stakeERC20 ?: MockERC20,
   stakeRepERC20 ?: ZeroVotingERC20,
   stakeRepERC721 ?: ZeroVotingERC721,
 ) => {
   const config : Partial<BaseConfig> = {
-    rewardsToken: await rewardsERC20.getAddress(),
+    rewardsToken: rewardsERC20 ? await rewardsERC20.getAddress() : hre.ethers.ZeroAddress,
     minimumLockTime: DEFAULT_MINIMUM_LOCK,
     divisor: PRECISION_DIVISOR,
     lockedDivisor: LOCKED_PRECISION_DIVISOR,
@@ -45,14 +47,17 @@ export const createDefaultStakingConfig = async (
     config.stakeRepToken = await (stakeRepERC721 as ZeroVotingERC721).getAddress();
 
     return config as BaseConfig;
-  } else if (stakeERC20) {
-    config.stakingToken = await stakeERC20.getAddress();
+  } else {
+    if (stakeERC20) {
+      config.stakingToken = await stakeERC20.getAddress();
+    } else {
+      config.stakingToken = hre.ethers.ZeroAddress;
+    }
+
     config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC20;
     config.periodLength = DEFAULT_PERIOD_LENGTH_ERC20;
     config.stakeRepToken = await (stakeRepERC20 as ZeroVotingERC20).getAddress();
 
     return config as BaseConfig;
   }
-
-  throw new Error("No valid staking token provided");
 };

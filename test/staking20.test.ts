@@ -30,7 +30,6 @@ import {
   DAY_IN_SECONDS,
   calcLockedRewards,
   calcTotalUnlockedRewards,
-  calcTotalLockedRewards,
   calcStakeRewards,
   DEFAULT_MINIMUM_LOCK,
 } from "./helpers/staking";
@@ -77,8 +76,8 @@ describe("StakingERC20", () => {
       stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", owner);
 
       config = await createDefaultStakingConfig(
-        rewardsToken,
         owner,
+        rewardsToken,
         undefined,
         stakeToken,
         stakeRepToken,
@@ -127,6 +126,74 @@ describe("StakingERC20", () => {
   });
 
   describe("#getContractRewardsBalance", () => {
+    it.only("native token flow", async () => {
+      // When neither erc20 or erc721 specified it will assume erc20 with native token
+      // same with rewards
+      config = await createDefaultStakingConfig(
+        owner,
+        undefined,
+        undefined,
+        undefined,
+        stakeRepToken,
+      );
+
+      const localStakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+      const localContract = await localStakingFactory.deploy(config) as StakingERC20;
+
+      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await localContract.getAddress());
+      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await localContract.getAddress());
+
+      // Provide rewards funding in native token
+      await owner.sendTransaction({
+        to: await localContract.getAddress(),
+        value: hre.ethers.parseEther("9999"),
+      })
+
+      const userBalBefore = await hre.ethers.provider.getBalance(stakerA.address);
+      const contrBalBefore = await hre.ethers.provider.getBalance(await localContract.getAddress());
+
+      
+
+      const stakeTx = await localContract.connect(stakerA).stakeWithoutLock(
+        DEFAULT_STAKED_AMOUNT,
+        {
+          value: DEFAULT_STAKED_AMOUNT,
+        }
+      );
+      const stakedAt = BigInt(await time.latest());
+
+      const receipt = await stakeTx.wait();
+
+      const userBalAfter = await hre.ethers.provider.getBalance(stakerA.address);
+      const contrBalAfter = await hre.ethers.provider.getBalance(await localContract.getAddress());
+
+      expect(userBalAfter).to.eq(userBalBefore - DEFAULT_STAKED_AMOUNT - (receipt!.gasUsed * receipt!.gasPrice));
+      expect(contrBalAfter).to.eq(contrBalBefore + DEFAULT_STAKED_AMOUNT);
+
+      await time.increase(DEFAULT_LOCK / 2n);
+
+      const rewardsBefore = await hre.ethers.provider.getBalance(stakerA.address);
+      const contrRewardsBalBefore = await hre.ethers.provider.getBalance(await localContract.getAddress());
+
+
+      const claimTx = await localContract.connect(stakerA).claim();
+      const claimedAt = BigInt(await time.latest());
+
+      const claimReceipt = await claimTx.wait();
+
+      const rewardsAfter = await hre.ethers.provider.getBalance(stakerA.address);
+      const contrRewardsBalAfter = await hre.ethers.provider.getBalance(await localContract.getAddress());
+
+      const stakeRewards = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        claimedAt - stakedAt,
+        false,
+        config
+      );
+
+      expect(rewardsAfter).to.eq(rewardsBefore + stakeRewards - (claimReceipt!.gasUsed * claimReceipt!.gasPrice));
+      expect(contrRewardsBalAfter).to.eq(contrRewardsBalBefore - stakeRewards);
+    });
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await contract.getContractRewardsBalance();
       const poolBalance = await rewardsToken.balanceOf(await contract.getAddress());
@@ -1287,8 +1354,8 @@ describe("StakingERC20", () => {
       await reset();
 
       const localConfig = await createDefaultStakingConfig(
-        rewardsToken,
         owner,
+        rewardsToken,
         undefined,
         stakeToken,
         stakeRepToken

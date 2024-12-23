@@ -27,6 +27,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     ) StakingBase(_config)
     {}
 
+    // We must be able to receive in the case that the
+    // `stakingToken` is the chain's native token
+    receive() external payable {}
+    fallback() external payable {} 
+
     /**
      * @notice Stake an amount of ERC20 with a lock period By locking,
      * a user cannot access their funds until the lock period is over, but they
@@ -38,7 +43,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to stake
      * @param lockDuration The duration of the lock period
      */
-    function stakeWithLock(uint256 amount, uint256 lockDuration) external override {
+    function stakeWithLock(uint256 amount, uint256 lockDuration) payable external override {
         if (lockDuration < config.minimumLockTime) {
             revert LockTimeTooShort();
         }
@@ -52,7 +57,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to stake
      */
-    function stakeWithoutLock(uint256 amount) external override {
+    function stakeWithoutLock(uint256 amount) payable external override {
         _stake(amount, 0);
     }
 
@@ -72,7 +77,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to withdraw
      */
-    function unstake(uint256 amount, bool exit) external override {
+    function unstake(uint256 amount, bool exit) external payable override {
         _unstake(amount, false, exit);
     }
 
@@ -83,7 +88,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to withdraw
      * @param exit Boolean if user wants to forfeit rewards
      */
-    function unstakeLocked(uint256 amount, bool exit) public override {
+    function unstakeLocked(uint256 amount, bool exit) external payable override {
         _unstake(amount, true, exit);
     }
 
@@ -110,14 +115,26 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             revert ZeroValue();
         }
 
+        // If stakingToken is gas token, `msg.value` must equal `amount`
+        if (config.stakingToken == address(0)) {
+            if (msg.value != amount) {
+                revert InsufficientValue();
+            }
+        }
+
         Staker storage staker = stakers[msg.sender];
 
         _coreStake(staker, amount, lockDuration);
 
         totalStaked += amount;
 
-        // Transfers user's funds to this contract
-        IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+        // Transfers user's funds to this contract  
+        if (config.stakingToken != address(0)) {
+            IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+        }
+
+        // IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+
         // Mint the user's stake as a representative token
         IERC20MintableBurnable(config.stakeRepToken).mint(msg.sender, amount);
 

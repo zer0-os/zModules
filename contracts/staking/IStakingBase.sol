@@ -78,6 +78,26 @@ interface IStakingBase {
     );
 
     /**
+     * @notice Emit when `reqwardsPerPeriod` is set
+     * @param owner The address of the contract owner
+     * @param rewardsPerPeriod The new rewards per period value 
+     */
+    event RewardsPerPeriodSet(
+        address indexed owner,
+        uint256 indexed rewardsPerPeriod
+    );
+
+    /**
+     * @notice Emit when the period length is set
+     * @param owner The address of the contract owner
+     * @param periodLength The new period length value
+     */
+    event PeriodLengthSet(
+        address indexed owner,
+        uint256 indexed periodLength
+    );
+
+    /**
      * @notice Emit when the multiplier is set
      * @param owner The address of the contract owner
      * @param multiplier The new multiplier value
@@ -95,6 +115,26 @@ interface IStakingBase {
     event MinimumLockTimeSet(
         address indexed owner,
         uint256 indexed minimumLockTime
+    );
+
+    /**
+     * @notice Emit when the minimum rewards multiplier is set
+     * @param owner The address of the contract owner
+     * @param minimumRewardsMultiplier The new minimum rewards multiplier
+     */
+    event MinimumRewardsMultiplierSet(
+        address indexed owner,
+        uint256 indexed minimumRewardsMultiplier
+    );
+
+    /**
+     * @notice Emit when the maximum rewards multiplier is set
+     * @param owner The address of the contract owner
+     * @param maximumRewardsMultiplier The new maximum rewards multiplier
+     */
+    event MaximumRewardsMultiplierSet(
+        address indexed owner,
+        uint256 indexed maximumRewardsMultiplier
     );
 
     /**

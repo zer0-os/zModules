@@ -39,7 +39,12 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         Config memory config
     )
         StakingBase(config)
-    {}
+    {
+        if (_config.stakingToken.code.length == 0) {
+            revert InitializedWithZero();
+        }
+
+    }
 
     /**
      * @notice Stake one or more ERC721 tokens with a lock period
