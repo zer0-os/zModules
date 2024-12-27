@@ -7,7 +7,6 @@ import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 import { IERC20MintableBurnable } from "../../types/IERC20MintableBurnable.sol";
 
-
 /**
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
@@ -131,9 +130,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // Transfers user's funds to this contract  
         if (config.stakingToken != address(0)) {
             IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
-        }
-
-        // IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+        } // the `else` case is handled by including `recieve` above to accept `msg.value`
 
         // Mint the user's stake as a representative token
         IERC20MintableBurnable(config.stakeRepToken).mint(msg.sender, amount);
@@ -167,11 +164,12 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 staker.lastTimestampLocked = 0;
                 staker.unlockedTimestamp = 0;
             } else if (_getRemainingLockTime(staker) > 0) {
-                // if still locked and not exiting, revert
+                // if still locked revert
                 revert TimeLockNotPassed();
             } else {
-                // If claims happen after lock period has passed, the lastTimestamp is more accurate
+                // If claims happen after lock period has passed, the lastTimestampLocked is more accurate
                 // but if they don't happen, then lastTimestampLocked may still be the original stake timestamp
+                // and we should use `unlockedTimestamp` instead. 
                 // so we have to calculate which is more recent before calculating rewards
                 uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 
@@ -244,14 +242,17 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         if (rewards > 0) {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding for this
-            config.rewardsToken.safeTransfer(msg.sender, rewards);
+            // If rewards address is `0x0` we use the chain's native token
+            _transferToken(config.rewardsToken, rewards);
+
             emit Claimed(msg.sender, rewards);
         }
 
         totalStaked -= amount;
 
         // Return the user's initial stake
-        IERC20(config.stakingToken).safeTransfer(msg.sender, amount);
+        _transferToken(config.stakingToken, amount);
+
         // Burn the user's stake representative token
         IERC20MintableBurnable(config.stakeRepToken).burn(msg.sender, amount);
 
@@ -265,9 +266,15 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * return the balance of the rewards token minus the total staked amount
      */
     function _getContractRewardsBalance() internal view override returns (uint256) {
-        uint256 balance = super._getContractRewardsBalance();
+        uint256 balance;
 
-        if (address(config.rewardsToken) == config.stakingToken) {
+        if (address(config.rewardsToken) == address(0)) {
+            balance = address(this).balance;
+        } else {
+            balance = IERC20(config.rewardsToken).balanceOf(address(this));
+        }
+
+        if (config.rewardsToken == config.stakingToken) {
             return balance - totalStaked;
         }
 

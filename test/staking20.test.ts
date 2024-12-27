@@ -1,7 +1,7 @@
 import * as hre from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { setBalance, time } from "@nomicfoundation/hardhat-network-helpers";
 import {
   MockERC20,
   StakingERC20, ZeroVotingERC20,
@@ -32,6 +32,9 @@ import {
   calcTotalUnlockedRewards,
   calcStakeRewards,
   DEFAULT_MINIMUM_LOCK,
+  getNativeSetup,
+  getDefaultERC20Setup,
+  fundAndApprove,
 } from "./helpers/staking";
 
 
@@ -75,125 +78,63 @@ describe("StakingERC20", () => {
       rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
       stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", owner);
 
-      config = await createDefaultStakingConfig(
+      const ownerBal = await hre.ethers.provider.getBalance(owner.address);
+
+      // Give the owner ample funds for transfers in native token case
+      await setBalance(owner.address, INIT_BALANCE * 10n);
+
+      [contract, config] = await getDefaultERC20Setup(
         owner,
         rewardsToken,
-        undefined,
         stakeToken,
         stakeRepToken,
-      );
-
-      contract = await stakingFactory.deploy(config) as StakingERC20;
-
-      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await contract.getAddress());
-      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await contract.getAddress());
+      )
 
       // Give each user funds to stake
-      await stakeToken.connect(owner).transfer(
-        stakerA.address,
-        INIT_BALANCE
+      await fundAndApprove(
+        owner,
+        [
+          stakerA,
+          stakerB,
+          stakerC,
+          stakerD,
+          stakerF,
+        ],
+        stakeToken,
+        await contract.getAddress(),
       );
-
-      await stakeToken.connect(owner).transfer(
-        stakerB.address,
-        INIT_BALANCE
-      );
-
-      await stakeToken.connect(owner).transfer(
-        stakerC.address,
-        INIT_BALANCE
-      );
-
-      await stakeToken.connect(owner).transfer(
-        stakerD.address,
-        INIT_BALANCE
-      );
-
-      await stakeToken.connect(owner).transfer(
-        stakerF.address,
-        INIT_BALANCE
-      );
-
-      // Approve staking contract to spend staker funds
-      await stakeToken.connect(stakerA).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-      await stakeToken.connect(stakerB).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-      await stakeToken.connect(stakerC).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-      await stakeToken.connect(stakerD).approve(await contract.getAddress(), hre.ethers.MaxUint256);
-      await stakeToken.connect(stakerF).approve(await contract.getAddress(), hre.ethers.MaxUint256);
     };
 
     await reset();
   });
 
   describe("#getContractRewardsBalance", () => {
-    it.only("native token flow", async () => {
-      // When neither erc20 or erc721 specified it will assume erc20 with native token
-      // same with rewards
-      config = await createDefaultStakingConfig(
-        owner,
-        undefined,
-        undefined,
-        undefined,
-        stakeRepToken,
-      );
-
-      const localStakingFactory = await hre.ethers.getContractFactory("StakingERC20");
-      const localContract = await localStakingFactory.deploy(config) as StakingERC20;
-
-      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await localContract.getAddress());
-      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await localContract.getAddress());
+    it("it accounts for balance when rewards and stake are same token", async () => {
+      const localContract = await getNativeSetup(owner, stakeRepToken);
 
       // Provide rewards funding in native token
       await owner.sendTransaction({
         to: await localContract.getAddress(),
         value: hre.ethers.parseEther("9999"),
-      })
+      });
 
-      const userBalBefore = await hre.ethers.provider.getBalance(stakerA.address);
-      const contrBalBefore = await hre.ethers.provider.getBalance(await localContract.getAddress());
-
-      
-
-      const stakeTx = await localContract.connect(stakerA).stakeWithoutLock(
-        DEFAULT_STAKED_AMOUNT,
+      const stakeAmount = DEFAULT_STAKED_AMOUNT
+      await localContract.connect(stakerA).stakeWithoutLock(
+        stakeAmount,
         {
-          value: DEFAULT_STAKED_AMOUNT,
+          value: stakeAmount,
         }
       );
-      const stakedAt = BigInt(await time.latest());
 
-      const receipt = await stakeTx.wait();
+      const totalStaked = await localContract.totalStaked();
+      expect(totalStaked).to.eq(stakeAmount);
 
-      const userBalAfter = await hre.ethers.provider.getBalance(stakerA.address);
-      const contrBalAfter = await hre.ethers.provider.getBalance(await localContract.getAddress());
+      const contrRewardsBal = await hre.ethers.provider.getBalance(await localContract.getAddress());
+      const contrRewardsBalFromContract = await localContract.getContractRewardsBalance();
 
-      expect(userBalAfter).to.eq(userBalBefore - DEFAULT_STAKED_AMOUNT - (receipt!.gasUsed * receipt!.gasPrice));
-      expect(contrBalAfter).to.eq(contrBalBefore + DEFAULT_STAKED_AMOUNT);
-
-      await time.increase(DEFAULT_LOCK / 2n);
-
-      const rewardsBefore = await hre.ethers.provider.getBalance(stakerA.address);
-      const contrRewardsBalBefore = await hre.ethers.provider.getBalance(await localContract.getAddress());
-
-
-      const claimTx = await localContract.connect(stakerA).claim();
-      const claimedAt = BigInt(await time.latest());
-
-      const claimReceipt = await claimTx.wait();
-
-      const rewardsAfter = await hre.ethers.provider.getBalance(stakerA.address);
-      const contrRewardsBalAfter = await hre.ethers.provider.getBalance(await localContract.getAddress());
-
-      const stakeRewards = calcStakeRewards(
-        DEFAULT_STAKED_AMOUNT,
-        claimedAt - stakedAt,
-        false,
-        config
-      );
-
-      expect(rewardsAfter).to.eq(rewardsBefore + stakeRewards - (claimReceipt!.gasUsed * claimReceipt!.gasPrice));
-      expect(contrRewardsBalAfter).to.eq(contrRewardsBalBefore - stakeRewards);
+      expect(contrRewardsBalFromContract).to.eq(contrRewardsBal - totalStaked);
     });
+
     it("Allows a user to see the total rewards remaining in a pool", async () => {
       const rewardsInPool = await contract.getContractRewardsBalance();
       const poolBalance = await rewardsToken.balanceOf(await contract.getAddress());
@@ -456,6 +397,10 @@ describe("StakingERC20", () => {
 
       expect(stakerData.lastTimestampLocked).to.eq(stakedAt);
       expect(stakerData.owedRewards).to.eq(0n);
+    });
+
+    it("Fails when using native token and `amount` does not equal `msg.value`", async () => {
+
     });
 
     it("Fails when the staker locks for less than the minimum lock time", async () => {
@@ -1349,6 +1294,143 @@ describe("StakingERC20", () => {
   });
 
   describe("Different configs", async () => {
+    it("Stakes, claims, partially and fully unstakes when stake and reward token are chain token", async () => {
+      // When neither erc20 or erc721 specified it will assume erc20 with native token
+      // same with rewards
+      config = await createDefaultStakingConfig(
+        owner,
+        undefined,
+        undefined,
+        undefined,
+        stakeRepToken,
+      );
+
+      const localStakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+      const localContract = await localStakingFactory.deploy(config) as StakingERC20;
+
+      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await localContract.getAddress());
+      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await localContract.getAddress());
+
+      // Provide rewards funding in native token
+      await owner.sendTransaction({
+        to: await localContract.getAddress(),
+        value: hre.ethers.parseEther("9999"),
+      })
+
+      const userBalBefore = await hre.ethers.provider.getBalance(stakerA.address);
+      const contrBalBefore = await hre.ethers.provider.getBalance(await localContract.getAddress());
+
+      // #stake
+      const stakeAmount = DEFAULT_STAKED_AMOUNT
+      const stakeTx = await localContract.connect(stakerA).stakeWithoutLock(
+        stakeAmount,
+        {
+          value: stakeAmount,
+        }
+      );
+      const stakedAt = BigInt(await time.latest());
+
+      const receipt = await stakeTx.wait();
+
+      const userBalAfter = await hre.ethers.provider.getBalance(stakerA.address);
+      const contrBalAfter = await hre.ethers.provider.getBalance(await localContract.getAddress());
+
+      expect(userBalAfter).to.eq(userBalBefore - stakeAmount - (receipt!.gasUsed * receipt!.gasPrice));
+      expect(contrBalAfter).to.eq(contrBalBefore + stakeAmount);
+
+      await time.increase(DEFAULT_LOCK / 2n);
+
+      const rewardsBefore = await hre.ethers.provider.getBalance(stakerA.address);
+      const contrRewardsBalBefore = await hre.ethers.provider.getBalance(await localContract.getAddress());
+      const contrRewardsBalBeforeFromContract = await localContract.getContractRewardsBalance();
+
+      // If `stakingToken` and `rewardsToken` are the same, we subtract the difference when checking 
+      // the balance. Verify this here.
+      expect(contrRewardsBalBeforeFromContract).to.eq(contrRewardsBalBefore - await localContract.totalStaked());
+
+      // #claim
+      const claimTx = await localContract.connect(stakerA).claim();
+      const claimedAt = BigInt(await time.latest());
+
+      const claimReceipt = await claimTx.wait();
+
+      const rewardsAfter = await hre.ethers.provider.getBalance(stakerA.address);
+      const contrRewardsBalAfter = await hre.ethers.provider.getBalance(await localContract.getAddress());
+      const contrRewardsBalAfterFromContract = await localContract.getContractRewardsBalance();
+
+      const totalStaked = await localContract.totalStaked();
+      expect(contrRewardsBalAfterFromContract).to.eq(contrRewardsBalAfter - totalStaked);
+
+      const stakeRewards = calcStakeRewards(
+        DEFAULT_STAKED_AMOUNT,
+        claimedAt - stakedAt,
+        false,
+        config
+      );
+
+      expect(rewardsAfter).to.eq(
+        rewardsBefore + stakeRewards - (claimReceipt!.gasUsed * claimReceipt!.gasPrice)
+      );
+      expect(contrRewardsBalAfter).to.eq(contrRewardsBalBefore - stakeRewards);
+
+      await time.increase(DEFAULT_LOCK / 2n);
+
+      // Partial unstake
+      const stakerData = await localContract.stakers(stakerA.address);
+      const unstakeAmount = stakerData.amountStaked / 2n;
+
+      const rewardsBeforeUnstake = await hre.ethers.provider.getBalance(stakerA.address);
+
+      // partial #unstake
+      const partialUnstakeTx = await localContract.connect(stakerA).unstake(unstakeAmount, false);
+      const unstakedAt = BigInt(await time.latest());
+
+      const partialUnstakeReceipt = await partialUnstakeTx.wait();
+
+      const stakerDataAfter = await localContract.stakers(stakerA.address);
+
+      const rewardsAfterUnstake = await hre.ethers.provider.getBalance(stakerA.address);
+
+      const stakeRewardsUnstake = calcStakeRewards(
+        unstakeAmount,
+        unstakedAt - claimedAt,
+        false,
+        config
+      );
+
+      expect(stakerDataAfter.amountStaked).to.eq(stakeAmount - unstakeAmount);
+      expect(rewardsAfterUnstake).to.eq(
+        rewardsBeforeUnstake + unstakeAmount + stakeRewardsUnstake
+        - (partialUnstakeReceipt!.gasPrice * partialUnstakeReceipt!.gasUsed)
+      );
+
+      // # full unstake
+      const fullUnstakeTx = await localContract.connect(stakerA).unstake(stakerDataAfter.amountStaked, false);
+      const fullUnstakedAt = BigInt(await time.latest());
+
+      const stakerDataAfterFull = await localContract.stakers(stakerA.address);
+
+      const stakeRewardsFullnstake = calcStakeRewards(
+        stakerDataAfter.amountStaked,
+        fullUnstakedAt - unstakedAt,
+        false,
+        config
+      );
+
+      const rewardsAfterFullUnstake = await hre.ethers.provider.getBalance(stakerA.address);
+
+      const fullUnstakeReceipt = await fullUnstakeTx.wait();
+
+      expect(await localContract.totalStaked()).to.eq(0n);
+      expect(stakerDataAfterFull.amountStaked).to.eq(0n);
+      expect(stakerDataAfterFull.owedRewards).to.eq(0n);
+
+      expect(rewardsAfterFullUnstake).to.eq(
+        rewardsAfterUnstake + stakerDataAfter.amountStaked + stakeRewardsFullnstake
+        - (fullUnstakeReceipt!.gasPrice * fullUnstakeReceipt!.gasUsed)
+      );
+    });
+
     it("Stakes, claims, and unstakes correctly with an entirely different config", async () => {
       // Even though we are manipulating the config here we still reset to be sure all token balances are what we expect
       await reset();

@@ -40,7 +40,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     )
         StakingBase(config)
     {
-        if (_config.stakingToken.code.length == 0) {
+        if (config.stakingToken.code.length == 0) {
             revert InitializedWithZero();
         }
 
@@ -306,8 +306,8 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         if (!exit) {
             // Transfer the user's rewards
-            // Will fail if the contract does not have funding
-            config.rewardsToken.safeTransfer(msg.sender, rewards);
+            _transferToken(config.rewardsToken, rewards);
+
             emit Claimed(msg.sender, rewards);
         }
 

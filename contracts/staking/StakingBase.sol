@@ -53,7 +53,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Do not send empty transfer
         if (balance == 0) revert InsufficientContractBalance();
 
-        config.rewardsToken.safeTransfer(owner(), balance);
+        _transferToken(config.rewardsToken, balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
@@ -156,7 +156,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Get the rewards token address
      */
-    function getRewardsToken() public view override returns (IERC20) {
+    function getRewardsToken() public view override returns (address) {
         return config.rewardsToken;
     }
 
@@ -283,11 +283,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         if (rewards == 0) revert ZeroRewards();
 
-        if (address(config.rewardsToken) == address(0)) {
-            payable(msg.sender).transfer(rewards);
-        } else {
-            config.rewardsToken.safeTransfer(msg.sender, rewards);
-        }
+        _transferToken(config.rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
     }
@@ -380,6 +376,18 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @dev Get the rewards balance of this contract
      */
     function _getContractRewardsBalance() internal view virtual returns (uint256) {
-        return config.rewardsToken.balanceOf(address(this));
+        return IERC20(config.rewardsToken).balanceOf(address(this));
+    }
+
+    /**
+     * @dev Transfer funds to a recipient after deciding whether to use
+     * native or ERC20 tokens
+     */
+    function _transferToken(address token, uint256 amount) internal {
+        if (token == address(0)) {
+            payable(msg.sender).transfer(amount);
+        } else {
+            IERC20(token).safeTransfer(msg.sender, amount);
+        }
     }
 }

@@ -47,7 +47,7 @@ interface IStakingBase {
     struct Config {
         address stakingToken;
         address contractOwner;
-        IERC20 rewardsToken;
+        address rewardsToken;
         address stakeRepToken;
         uint256 rewardsPerPeriod;
         uint256 periodLength;
@@ -201,7 +201,7 @@ interface IStakingBase {
 
     function getStakingToken() external view returns(address);
 
-    function getRewardsToken() external view returns(IERC20);
+    function getRewardsToken() external view returns(address);
 
     function getStakeRepToken() external view returns (address);
 
