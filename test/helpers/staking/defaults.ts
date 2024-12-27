@@ -2,6 +2,7 @@ import {
   MockERC721,
   MockERC20, ZeroVotingERC20, ZeroVotingERC721,
   StakingERC20,
+  StakingERC721,
 } from "../../../typechain";
 
 import {
@@ -64,10 +65,6 @@ export const createDefaultStakingConfig = async (
   }
 };
 
-export const getDefaultERC721Setup = async () => {
-  // TODO impl
-};
-
 export const getDefaultERC20Setup = async (
   owner : SignerWithAddress,
   rewardsToken : MockERC20,
@@ -92,9 +89,7 @@ export const getDefaultERC20Setup = async (
   return [contract, config];
 }
 
-// todo `getmodified erc20 setup`
-
-export const getNativeSetup = async (
+export const getNativeSetupERC20 = async (
   owner : SignerWithAddress,
   stakeRepToken : ZeroVotingERC20,
 ) => {
@@ -121,7 +116,35 @@ export const getNativeSetup = async (
   return localContract;
 }
 
-// TODO modify with types for possibly using erc721
+export const getNativeSetupERC721 = async (
+  owner : SignerWithAddress,
+  stakeToken : MockERC721,
+  stakeRepToken : ZeroVotingERC721
+) => {
+  const config = await createDefaultStakingConfig(
+    owner,
+    undefined,
+    stakeToken,
+    undefined,
+    undefined,
+    stakeRepToken,
+  );
+
+  const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+  const contract = await stakingFactory.deploy(config) as StakingERC721;
+
+  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await contract.getAddress());
+  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await contract.getAddress());
+
+  // Provide rewards funding in native token
+  await owner.sendTransaction({
+    to: await contract.getAddress(),
+    value: hre.ethers.parseEther("9999"),
+  });
+
+  return contract;
+}
+
 export const fundAndApprove = async (
   owner : SignerWithAddress,
   addresses : Array<SignerWithAddress>,

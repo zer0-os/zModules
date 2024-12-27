@@ -32,7 +32,7 @@ import {
   calcTotalUnlockedRewards,
   calcStakeRewards,
   DEFAULT_MINIMUM_LOCK,
-  getNativeSetup,
+  getNativeSetupERC20,
   getDefaultERC20Setup,
   fundAndApprove,
 } from "./helpers/staking";
@@ -70,15 +70,12 @@ describe("StakingERC20", () => {
     ] = await hre.ethers.getSigners();
 
     const mockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
-    const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
     const stakeRepFactory = await hre.ethers.getContractFactory("ZeroVotingERC20");
 
     reset = async () => {
       stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
       rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
       stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", owner);
-
-      const ownerBal = await hre.ethers.provider.getBalance(owner.address);
 
       // Give the owner ample funds for transfers in native token case
       await setBalance(owner.address, INIT_BALANCE * 10n);
@@ -110,7 +107,7 @@ describe("StakingERC20", () => {
 
   describe("#getContractRewardsBalance", () => {
     it("it accounts for balance when rewards and stake are same token", async () => {
-      const localContract = await getNativeSetup(owner, stakeRepToken);
+      const localContract = await getNativeSetupERC20(owner, stakeRepToken);
 
       // Provide rewards funding in native token
       await owner.sendTransaction({
@@ -1293,29 +1290,13 @@ describe("StakingERC20", () => {
     });
   });
 
-  describe("Different configs", async () => {
+  describe("Other configs", async () => {
     it("Stakes, claims, partially and fully unstakes when stake and reward token are chain token", async () => {
-      // When neither erc20 or erc721 specified it will assume erc20 with native token
-      // same with rewards
-      config = await createDefaultStakingConfig(
+      // When neither erc20 or erc721 specified we assume erc20 with native token
+      const localContract = await getNativeSetupERC20(
         owner,
-        undefined,
-        undefined,
-        undefined,
-        stakeRepToken,
+        stakeRepToken
       );
-
-      const localStakingFactory = await hre.ethers.getContractFactory("StakingERC20");
-      const localContract = await localStakingFactory.deploy(config) as StakingERC20;
-
-      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await localContract.getAddress());
-      await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await localContract.getAddress());
-
-      // Provide rewards funding in native token
-      await owner.sendTransaction({
-        to: await localContract.getAddress(),
-        value: hre.ethers.parseEther("9999"),
-      })
 
       const userBalBefore = await hre.ethers.provider.getBalance(stakerA.address);
       const contrBalBefore = await hre.ethers.provider.getBalance(await localContract.getAddress());

@@ -24,6 +24,7 @@ import {
   DEFAULT_MINIMUM_LOCK,
   DEFAULT_MINIMUM_RM,
   DEFAULT_MAXIMUM_RM,
+  getNativeSetupERC721,
 } from "./helpers/staking";
 import {
   FAILED_INNER_CALL_ERR,
@@ -73,17 +74,6 @@ describe("StakingERC721", () => {
   let unstakedAtA : bigint;
   let unstakedAtB : bigint;
 
-  let secondUnstakedAt : bigint;
-
-  let balanceAtStakeOneA : bigint;
-  let balanceAtStakeTwoA : bigint;
-
-  let balanceAtStakeOneB : bigint;
-  let balanceAtStakeTwoB : bigint;
-
-  let durationOne : bigint;
-  let durationTwo : bigint;
-
   // Default token ids
   const tokenIdA = 1n;
   const tokenIdB = 2n;
@@ -130,8 +120,8 @@ describe("StakingERC721", () => {
       stakingTokenAddress = await stakingToken.getAddress();
 
       config = await createDefaultStakingConfig(
-        rewardToken,
         owner,
+        rewardToken,
         stakingToken,
         undefined,
         undefined,
@@ -165,10 +155,6 @@ describe("StakingERC721", () => {
       await stakingToken.connect(owner).mint(stakerC.address, tokenIdJ);
 
       await stakingToken.connect(owner).mint(owner.address, unStakedTokenId);
-
-
-      // fails to mint?
-      // await stakingToken.mint(notStaker.address, unStakedTokenId);
 
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
@@ -312,9 +298,6 @@ describe("StakingERC721", () => {
 
       const supplyAfter = await stakeRepToken.totalSupply();
 
-      // Get balance of sNFTs
-      balanceAtStakeOneA = await stakeRepToken.balanceOf(stakerA.address);
-
       const stakerData = await stakingERC721.connect(stakerA).nftStakers(stakerA.address);
 
       const stakes = await stakingERC721.connect(stakerA).getStakedTokenIds();
@@ -345,9 +328,6 @@ describe("StakingERC721", () => {
 
       const supplyAfter = await stakeRepToken.totalSupply();
 
-      // Get balance of sNFTs
-      balanceAtStakeOneA = await stakeRepToken.balanceOf(stakerB.address);
-
       const stakerData = await stakingERC721.connect(stakerB).nftStakers(stakerB.address);
       const stakes = await stakingERC721.connect(stakerB).getStakedTokenIds();
 
@@ -376,8 +356,6 @@ describe("StakingERC721", () => {
       secondStakedAtA = BigInt(await time.latest());
 
       const supplyAfter = await stakeRepToken.totalSupply();
-
-      balanceAtStakeTwoA = await stakeRepToken.balanceOf(stakerA.address);
 
       const stakerData = await stakingERC721.connect(stakerA).nftStakers(stakerA.address);
 
@@ -413,10 +391,7 @@ describe("StakingERC721", () => {
 
       const supplyAfter = await stakeRepToken.totalSupply();
 
-      balanceAtStakeTwoA = await stakeRepToken.balanceOf(stakerB.address);
-
       const stakerData = await stakingERC721.connect(stakerB).nftStakers(stakerB.address);
-
 
       // const amountStaked = await stakingERC721.connect(stakerB).getAmountStaked();
       const tokenIds = await stakingERC721.connect(stakerB).getStakedTokenIds();
@@ -1152,6 +1127,29 @@ describe("StakingERC721", () => {
   });
 
   describe("Other configs", () => {
+    it("Can set the rewards token as native token", async () => {
+      const localContract : StakingERC721 = await getNativeSetupERC721(
+        owner, 
+        stakingToken,
+        stakeRepToken
+      )
+
+      await stakingToken.connect(stakerA).approve(await localContract.getAddress(), tokenIdA);
+
+      await localContract.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
+      const stakedAt = BigInt(await time.latest());
+      
+      await time.increase(DEFAULT_LOCK / 2n);
+
+      await localContract.connect(stakerA).claim();
+      const claimedAt = BigInt(await time.latest());
+
+      await time.increase(DEFAULT_LOCK / 2n);
+
+      await localContract.connect(stakerA).unstake([tokenIdA], false);
+      const unstakedAt = BigInt(await time.latest());
+    });
+
     it ("Can't use the StakingERC721 contract when an IERC20 is the staking token", async () => {
       const localConfig = {
         stakingToken: await rewardToken.getAddress(),

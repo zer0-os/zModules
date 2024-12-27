@@ -41,6 +41,11 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         config = _config;
     }
 
+    // We must be able to receive in the case that the
+    // `stakingToken` is the chain's native token
+    receive() external payable {}
+    fallback() external payable {} 
+
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.

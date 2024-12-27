@@ -26,11 +26,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     ) StakingBase(_config)
     {}
 
-    // We must be able to receive in the case that the
-    // `stakingToken` is the chain's native token
-    receive() external payable {}
-    fallback() external payable {} 
-
     /**
      * @notice Stake an amount of ERC20 with a lock period By locking,
      * a user cannot access their funds until the lock period is over, but they
