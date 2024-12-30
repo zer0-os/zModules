@@ -238,7 +238,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding for this
             // If rewards address is `0x0` we use the chain's native token
-            _transferToken(config.rewardsToken, rewards);
+            _transferAmount(config.rewardsToken, rewards);
 
             emit Claimed(msg.sender, rewards);
         }
@@ -246,7 +246,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         totalStaked -= amount;
 
         // Return the user's initial stake
-        _transferToken(config.stakingToken, amount);
+        _transferAmount(config.stakingToken, amount);
 
         // Burn the user's stake representative token
         IERC20MintableBurnable(config.stakeRepToken).burn(msg.sender, amount);

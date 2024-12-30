@@ -171,8 +171,9 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                 tokenIds[i]
             );
 
-            // Add to array and to mapping for indexing in unstake
+            // Add to array and to mapping for when unstaking
             nftStaker.tokenIds.push(tokenIds[i]);
+            nftStaker.staked[tokenIds[i]] = true;
             nftStaker.locked[tokenIds[i]] = lockDuration > 0;
 
             // Mint user sNFT
@@ -188,6 +189,10 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     }
 
     function _unstakeMany(uint256[] memory _tokenIds, bool exit) internal {
+        // its possible that token IDs that are already unstaked are passed here
+        // because removing them from the users tokenIds[] would be gas expensive
+        // and so burning will fail with `non-existent token` error
+        // so we check if the token is owned by the user and if not, skip it
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
         uint256 rewards;
@@ -203,7 +208,8 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256 i;
         for (i; i < _tokenIds.length;) {
             if (
-                IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) == address(0)
+                nftStaker.staked[_tokenIds[i]] == false
+                || IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) == address(0)
                 || IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) != msg.sender
             ) {
                 // Either the list of tokenIds contains a non-existent token
@@ -241,9 +247,8 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                         if (!rewardsGivenLocked) {
                             rewards += nftStaker.stake.owedRewardsLocked;
 
-                            // set to 0 so they don't get it again in future calls
+                            // can only get this once per tx, not each loop, so set to 0
                             nftStaker.stake.owedRewardsLocked = 0;
-
                             rewardsGivenLocked = true;
                         }
                     }
@@ -254,6 +259,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                     // Unstake if they are passed their lock time or exiting
                     _unstake(_tokenIds[i]);
                     --nftStaker.stake.amountStakedLocked;
+                    nftStaker.staked[_tokenIds[i]] = false;
                     isAction = true;
                 } else {
                     // stake is locked and cannot be unstaked
@@ -281,6 +287,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
                 _unstake(_tokenIds[i]);
                 --nftStaker.stake.amountStaked;
+                nftStaker.staked[_tokenIds[i]] = false;
                 isAction = true;
             }
 
@@ -306,7 +313,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         if (!exit) {
             // Transfer the user's rewards
-            _transferToken(config.rewardsToken, rewards);
+            _transferAmount(config.rewardsToken, rewards);
 
             emit Claimed(msg.sender, rewards);
         }
@@ -314,12 +321,11 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         // If a complete withdrawal, delete the staker struct for this user as well
         if (nftStaker.stake.amountStaked == 0 && nftStaker.stake.amountStakedLocked == 0) {
             delete nftStakers[msg.sender];
-        } else if (nftStaker.stake.amountStaked != 0) {
+        } else if (nftStaker.stake.amountStaked != 0 && nftStaker.stake.amountStakedLocked == 0) {
             nftStaker.stake.amountStakedLocked = 0;
             nftStaker.stake.lastTimestampLocked = 0;
             nftStaker.stake.unlockedTimestamp = 0;
-            nftStaker.stake.lockDuration = 0;
-        } else {
+        } else if (nftStaker.stake.amountStaked == 0 && nftStaker.stake.amountStakedLocked != 0) {
             nftStaker.stake.amountStaked = 0;
             nftStaker.stake.lastTimestamp = 0;
         }

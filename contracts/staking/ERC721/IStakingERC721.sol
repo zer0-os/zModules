@@ -15,7 +15,15 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
      */
     struct NFTStaker {
         Staker stake;
-        uint256[] tokenIds;
+
+        // A) have array of token ids AND `staked` mapping
+        // This way we can mark tokens as `unstaked` without iterating
+        // `tokenIds` array each time.
+        // B) we can just remove the `unstakeAll` option because the front end could do this
+        // Considering we don't yet have a subgraph for this it might be tricky
+        uint256[] tokenIds; // use sNFT as proof of ownership of stake, and `amountStaked(locked)` as quantity
+        // TODO look at gas costs for this and see if off chain tids is a better solution (with a subgraph)
+        mapping(uint256 tokenId => bool staked) staked;
         mapping(uint256 tokenId => bool locked) locked;
     }
 

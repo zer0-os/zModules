@@ -8,7 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-
+import { console } from "hardhat/console.sol";
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
@@ -58,7 +58,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Do not send empty transfer
         if (balance == 0) revert InsufficientContractBalance();
 
-        _transferToken(config.rewardsToken, balance);
+        _transferAmount(config.rewardsToken, balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
@@ -126,7 +126,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param locked Boolean if the stake is locked
      */
     function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public override view returns (uint256) {
-
         uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
 
         return _getStakeRewards(
@@ -288,7 +287,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         if (rewards == 0) revert ZeroRewards();
 
-        _transferToken(config.rewardsToken, rewards);
+        _transferAmount(config.rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
     }
@@ -373,7 +372,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     function _calcRewardsMultiplier(uint256 lock) internal view returns (uint256) {
         return config.minimumRewardsMultiplier
         + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
-        * (lock )
+        * (lock)
         / config.periodLength;
     }
 
@@ -381,15 +380,25 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @dev Get the rewards balance of this contract
      */
     function _getContractRewardsBalance() internal view virtual returns (uint256) {
-        return IERC20(config.rewardsToken).balanceOf(address(this));
+        if (config.rewardsToken == address(0)) {
+            return address(this).balance;
+        } else {
+            return IERC20(config.rewardsToken).balanceOf(address(this));
+        }
     }
 
     /**
      * @dev Transfer funds to a recipient after deciding whether to use
      * native or ERC20 tokens
+     * 
+     * We give `token` as an argument here because in ERC721 it is always the
+     * reward token to transfer, but in ERC20 it could be either staking or rewards
+     * token and we won't know which to check.
      */
-    function _transferToken(address token, uint256 amount) internal {
+    function _transferAmount(address token, uint256 amount) internal {
         if (token == address(0)) {
+            if (address(this).balance < amount) revert InsufficientContractBalance();
+
             payable(msg.sender).transfer(amount);
         } else {
             IERC20(token).safeTransfer(msg.sender, amount);

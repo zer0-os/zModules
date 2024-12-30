@@ -102,18 +102,16 @@ export const getNativeSetupERC20 = async (
   );
 
   const localStakingFactory = await hre.ethers.getContractFactory("StakingERC20");
-  const localContract = await localStakingFactory.deploy(config) as StakingERC20;
+  const contract = await localStakingFactory.deploy(config) as StakingERC20;
+  const contractAddress = await contract.getAddress();
 
-  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await localContract.getAddress());
-  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await localContract.getAddress());
+  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), contractAddress);
+  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), contractAddress);
 
   // Provide rewards funding in native token
-  await owner.sendTransaction({
-    to: await localContract.getAddress(),
-    value: hre.ethers.parseEther("9999"),
-  });
+  fundRewards(contractAddress);
 
-  return localContract;
+  return contract;
 }
 
 export const getNativeSetupERC721 = async (
@@ -132,19 +130,18 @@ export const getNativeSetupERC721 = async (
 
   const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
   const contract = await stakingFactory.deploy(config) as StakingERC721;
+  const contractAddress = await contract.getAddress();
 
-  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await contract.getAddress());
-  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await contract.getAddress());
+  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), contractAddress);
+  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), contractAddress);
 
   // Provide rewards funding in native token
-  await owner.sendTransaction({
-    to: await contract.getAddress(),
-    value: hre.ethers.parseEther("9999"),
-  });
+  await fundRewards(contractAddress)
 
   return contract;
 }
 
+// Fund users and approve for an amount
 export const fundAndApprove = async (
   owner : SignerWithAddress,
   addresses : Array<SignerWithAddress>,
@@ -161,4 +158,13 @@ export const fundAndApprove = async (
       contractAddress, amount ?? INIT_BALANCE
     );
   }
+}
+
+
+const fundRewards = async (contractAddress : string) => {
+  await hre.network.provider.send("hardhat_setBalance", [
+    contractAddress,
+    `0x${hre.ethers.parseEther("999999999").toString()}`,
+  ]
+);
 }
