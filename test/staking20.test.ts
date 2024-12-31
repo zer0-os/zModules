@@ -396,16 +396,6 @@ describe("StakingERC20", () => {
       expect(stakerData.owedRewards).to.eq(0n);
     });
 
-    it("Fails when using native token and `amount` does not equal `msg.value`", async () => {
-      await expect(
-        contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT,
-          {
-            value: DEFAULT_STAKED_AMOUNT - 1n,
-          }
-        )
-      ).to.be.revertedWithCustomError(contract, INSUFFICIENT_VALUE_ERR);
-    });
-
     it("Fails when the staker locks for less than the minimum lock time", async () => {
       await expect(
         contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_MINIMUM_LOCK - 1n)
@@ -1405,6 +1395,21 @@ describe("StakingERC20", () => {
         rewardsAfterUnstake + stakerDataAfter.amountStaked + stakeRewardsFullnstake
         - (fullUnstakeReceipt!.gasPrice * fullUnstakeReceipt!.gasUsed)
       );
+    });
+
+    it("Fails when using native token and `amount` does not equal `msg.value`", async () => {
+      const localContract = await getNativeSetupERC20(
+        owner,
+        stakeRepToken
+      );
+
+      await expect(
+        localContract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT,
+          {
+            value: DEFAULT_STAKED_AMOUNT - 1n,
+          }
+        )
+      ).to.be.revertedWithCustomError(contract, INSUFFICIENT_VALUE_ERR);
     });
 
     it("Stakes, claims, and unstakes correctly with an entirely different config", async () => {
