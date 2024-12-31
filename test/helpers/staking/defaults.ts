@@ -70,7 +70,7 @@ export const getDefaultERC20Setup = async (
   rewardsToken : MockERC20,
   stakeToken : MockERC20,
   stakeRepToken : ZeroVotingERC20,
-): Promise<[StakingERC20, BaseConfig]> => {
+) : Promise<[StakingERC20, BaseConfig]> => {
   const config = await createDefaultStakingConfig(
     owner,
     rewardsToken,
@@ -87,7 +87,7 @@ export const getDefaultERC20Setup = async (
   await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await contract.getAddress());
 
   return [contract, config];
-}
+};
 
 export const getNativeSetupERC20 = async (
   owner : SignerWithAddress,
@@ -109,10 +109,10 @@ export const getNativeSetupERC20 = async (
   await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), contractAddress);
 
   // Provide rewards funding in native token
-  fundRewards(contractAddress);
+  await fundRewards(contractAddress);
 
   return contract;
-}
+};
 
 export const getNativeSetupERC721 = async (
   owner : SignerWithAddress,
@@ -136,10 +136,10 @@ export const getNativeSetupERC721 = async (
   await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), contractAddress);
 
   // Provide rewards funding in native token
-  await fundRewards(contractAddress)
+  await fundRewards(contractAddress);
 
   return contract;
-}
+};
 
 // Fund users and approve for an amount
 export const fundAndApprove = async (
@@ -149,16 +149,17 @@ export const fundAndApprove = async (
   contractAddress : string,
   amount ?: bigint,
 ) => {
-  for (let i = 0; i < addresses.length; i++) {
+  for (const address of addresses) {
     await stakeToken.connect(owner).transfer(
-      addresses[i].address, amount ?? INIT_BALANCE
+      address,
+      amount ?? INIT_BALANCE
     );
 
-    await stakeToken.connect(addresses[i]).approve(
+    await stakeToken.connect(address).approve(
       contractAddress, amount ?? INIT_BALANCE
     );
   }
-}
+};
 
 
 const fundRewards = async (contractAddress : string) => {
@@ -166,5 +167,5 @@ const fundRewards = async (contractAddress : string) => {
     contractAddress,
     `0x${hre.ethers.parseEther("999999999").toString()}`,
   ]
-);
-}
+  );
+};

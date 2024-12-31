@@ -42,8 +42,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
     // We must be able to receive in the case that the
     // `stakingToken` is the chain's native token
-    receive() external payable {}
-    fallback() external payable {} 
+    receive() external override payable {}
+
+    fallback() external override payable {} 
 
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
@@ -292,6 +293,24 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
+     * @dev Transfer funds to a recipient after deciding whether to use
+     * native or ERC20 tokens
+     * 
+     * We give `token` as an argument here because in ERC721 it is always the
+     * reward token to transfer, but in ERC20 it could be either staking or rewards
+     * token and we won't know which to check.
+     */
+    function _transferAmount(address token, uint256 amount) internal {
+        if (token == address(0)) {
+            if (address(this).balance < amount) revert InsufficientContractBalance();
+
+            payable(msg.sender).transfer(amount);
+        } else {
+            IERC20(token).safeTransfer(msg.sender, amount);
+        }
+    }
+
+    /**
      * @dev Calculate the time remaining for a staker's lock. Return 0 if no locked funds or if passed lock time
      * @param staker The staker to get the lock time for
      */
@@ -383,24 +402,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             return address(this).balance;
         } else {
             return IERC20(config.rewardsToken).balanceOf(address(this));
-        }
-    }
-
-    /**
-     * @dev Transfer funds to a recipient after deciding whether to use
-     * native or ERC20 tokens
-     * 
-     * We give `token` as an argument here because in ERC721 it is always the
-     * reward token to transfer, but in ERC20 it could be either staking or rewards
-     * token and we won't know which to check.
-     */
-    function _transferAmount(address token, uint256 amount) internal {
-        if (token == address(0)) {
-            if (address(this).balance < amount) revert InsufficientContractBalance();
-
-            payable(msg.sender).transfer(amount);
-        } else {
-            IERC20(token).safeTransfer(msg.sender, amount);
         }
     }
 }

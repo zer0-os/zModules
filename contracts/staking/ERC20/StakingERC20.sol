@@ -37,7 +37,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to stake
      * @param lockDuration The duration of the lock period
      */
-    function stakeWithLock(uint256 amount, uint256 lockDuration) payable external override {
+    function stakeWithLock(uint256 amount, uint256 lockDuration) external payable override {
         if (lockDuration < config.minimumLockTime) {
             revert LockTimeTooShort();
         }
@@ -51,7 +51,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to stake
      */
-    function stakeWithoutLock(uint256 amount) payable external override {
+    function stakeWithoutLock(uint256 amount) external payable override {
         _stake(amount, 0);
     }
 

@@ -9,7 +9,6 @@ import { OWNABLE_UNAUTHORIZED_ERR } from "./helpers/errors";
 describe("StakingBase Unit Tests", () => {
   let owner : SignerWithAddress;
   let user : SignerWithAddress;
-  let mockAcc : SignerWithAddress;
 
   let initialConfig : BaseConfig;
 
@@ -19,7 +18,7 @@ describe("StakingBase Unit Tests", () => {
   let mockErc3 : MockERC20;
 
   before(async () => {
-    [owner, user, mockAcc] = await hre.ethers.getSigners();
+    [owner, user] = await hre.ethers.getSigners();
 
     const erc20Fact = await hre.ethers.getContractFactory("MockERC20");
     mockErc1 = await erc20Fact.deploy("reward", "symbol");
@@ -29,8 +28,8 @@ describe("StakingBase Unit Tests", () => {
     const fact = await hre.ethers.getContractFactory("StakingBase");
 
     initialConfig = await createDefaultStakingConfig(
-      mockErc1,
       owner,
+      mockErc1,
       undefined,
       mockErc2,
       mockErc3 as ZeroVotingERC20,
