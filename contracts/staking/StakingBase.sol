@@ -8,7 +8,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
@@ -35,13 +34,17 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         Config memory _config
     ) Ownable(_config.contractOwner) {
         if (
-            _config.stakingToken.code.length == 0 ||
-            address(_config.rewardsToken).code.length == 0 ||
             _config.rewardsPerPeriod == 0 ||
             _config.periodLength == 0
         ) revert InitializedWithZero();
         config = _config;
     }
+
+    // We must be able to receive in the case that the
+    // `stakingToken` is the chain's native token
+    receive() external override payable {}
+
+    fallback() external override payable {} 
 
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
@@ -55,7 +58,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Do not send empty transfer
         if (balance == 0) revert InsufficientContractBalance();
 
-        config.rewardsToken.safeTransfer(owner(), balance);
+        _transferAmount(config.rewardsToken, balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
@@ -68,6 +71,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
         config.rewardsPerPeriod = _rewardsPerPeriod;
+        emit RewardsPerPeriodSet(owner(), _rewardsPerPeriod);
     }
 
     /**
@@ -78,6 +82,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function setPeriodLength(uint256 _periodLength) public override onlyOwner {
         config.periodLength = _periodLength;
+        emit PeriodLengthSet(owner(), _periodLength);
     }
 
     /**
@@ -99,6 +104,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
         config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
+        emit MinimumRewardsMultiplierSet(owner(), _minimumRewardsMultiplier);
     }
 
     /**
@@ -109,6 +115,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
         config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
+        emit MaximumRewardsMultiplierSet(owner(), _maximumRewardsMultiplier);
     }
 
     /**
@@ -119,7 +126,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param locked Boolean if the stake is locked
      */
     function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public override view returns (uint256) {
-
         uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
 
         return _getStakeRewards(
@@ -154,7 +160,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice Get the rewards token address
      */
-    function getRewardsToken() public view override returns (IERC20) {
+    function getRewardsToken() public view override returns (address) {
         return config.rewardsToken;
     }
 
@@ -281,9 +287,27 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         if (rewards == 0) revert ZeroRewards();
 
-        config.rewardsToken.safeTransfer(msg.sender, rewards);
+        _transferAmount(config.rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
+    }
+
+    /**
+     * @dev Transfer funds to a recipient after deciding whether to use
+     * native or ERC20 tokens
+     * 
+     * We give `token` as an argument here because in ERC721 it is always the
+     * reward token to transfer, but in ERC20 it could be either staking or rewards
+     * token and we won't know which to check.
+     */
+    function _transferAmount(address token, uint256 amount) internal {
+        if (token == address(0)) {
+            if (address(this).balance < amount) revert InsufficientContractBalance();
+
+            payable(msg.sender).transfer(amount);
+        } else {
+            IERC20(token).safeTransfer(msg.sender, amount);
+        }
     }
 
     /**
@@ -366,7 +390,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     function _calcRewardsMultiplier(uint256 lock) internal view returns (uint256) {
         return config.minimumRewardsMultiplier
         + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
-        * (lock )
+        * (lock)
         / config.periodLength;
     }
 
@@ -374,6 +398,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @dev Get the rewards balance of this contract
      */
     function _getContractRewardsBalance() internal view virtual returns (uint256) {
-        return config.rewardsToken.balanceOf(address(this));
+        if (config.rewardsToken == address(0)) {
+            return address(this).balance;
+        } else {
+            return IERC20(config.rewardsToken).balanceOf(address(this));
+        }
     }
 }

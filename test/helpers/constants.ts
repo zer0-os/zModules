@@ -5,12 +5,13 @@ export const DAY_IN_SECONDS = 86400n;
 export const DEFAULT_REWARDS_PER_PERIOD_ERC20 = 50n;
 export const DEFAULT_PERIOD_LENGTH_ERC20 = 365n * DAY_IN_SECONDS;
 
-export const DEFAULT_REWARDS_PER_PERIOD_ERC721 = ethers.parseEther("1500");
-export const DEFAULT_PERIOD_LENGTH_ERC721 = DAY_IN_SECONDS;
+export const DEFAULT_REWARDS_PER_PERIOD_ERC721 = ethers.parseEther("1000000");
+export const DEFAULT_PERIOD_LENGTH_ERC721 = 365n * DAY_IN_SECONDS;
 
 export const DEFAULT_LOCK = 365n * DAY_IN_SECONDS;
 export const DEFAULT_MINIMUM_LOCK = 30n * DAY_IN_SECONDS;
 
+// 1.0 and 10.0, respectively
 export const DEFAULT_MINIMUM_RM = 100n;
 export const DEFAULT_MAXIMUM_RM = 1000n;
 
