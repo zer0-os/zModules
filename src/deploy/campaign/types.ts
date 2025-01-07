@@ -13,10 +13,13 @@ import {
 export interface IERC20DeployArgs {
   stakingToken ?: string;
   rewardsToken ?: string;
+  stakeRepToken ?: string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
-  timeLockPeriod : bigint;
+  minimumLockTime : bigint;
   contractOwner : string;
+  minimumRewardsMultiplier : bigint;
+  maximumRewardsMultiplier : bigint;
 }
 
 export interface IERC721DeployArgs extends IERC20DeployArgs {

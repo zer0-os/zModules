@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { IERC20DeployArgs, IERC721DeployArgs, IMatchDeployArgs, IZModulesConfig } from "./types.campaign";
+import { IERC20DeployArgs, IERC721DeployArgs, IMatchDeployArgs, IZModulesConfig } from "./types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import assert from "assert";
+import { findMissingEnvVars } from "../../environment/validate";
 
 
 export const getCampaignConfig = ({
@@ -76,14 +77,18 @@ export const getStaking20DeployConfig = (
   config ?: IERC20DeployArgs
 ) : IERC20DeployArgs | undefined => {
   let configReturn;
+  // TODO dep: what is this and why do we need it? No need for this extra env var here,
+  //  just use default values in "dev" if `config` is not provided
   if (env === "dev" && process.env.STAKING20_USE_DEV_ENV_VALUES !== "true") {
     configReturn = config;
   } else {
     if (
       !process.env.STAKING20_REWARDS_PER_PERIOD ||
       !process.env.STAKING20_PERIOD_LENGTH ||
-      !process.env.STAKING20_TIMELOCK_PERIOD ||
-      !process.env.STAKING20_CONTRACT_OWNER
+      !process.env.STAKING20_MIN_LOCK_TIME ||
+      !process.env.STAKING20_CONTRACT_OWNER ||
+      !process.env.STAKING20_MIN_REWARDS_MULTIPLIER ||
+      !process.env.STAKING20_MAX_REWARDS_MULTIPLIER
     ) {
       throw new Error("Missing required env variables for StakingERC20!");
     }
@@ -99,10 +104,13 @@ export const getStaking20DeployConfig = (
     configReturn = {
       stakingToken: process.env.STAKING20_STAKING_TOKEN,
       rewardsToken: process.env.STAKING20_REWARDS_TOKEN,
+      stakeRepToken: !!process.env.STAKING20_REP_TOKEN ? process.env.STAKING20_REP_TOKEN : undefined,
       rewardsPerPeriod: BigInt(process.env.STAKING20_REWARDS_PER_PERIOD),
       periodLength: BigInt(process.env.STAKING20_PERIOD_LENGTH),
-      timeLockPeriod: BigInt(process.env.STAKING20_TIMELOCK_PERIOD),
+      minimumLockTime: BigInt(process.env.STAKING20_MIN_LOCK_TIME),
       contractOwner: process.env.STAKING20_CONTRACT_OWNER,
+      minimumRewardsMultiplier: BigInt(process.env.STAKING20_MIN_REWARDS_MULTIPLIER),
+      maximumRewardsMultiplier: BigInt(process.env.STAKING20_MAX_REWARDS_MULTIPLIER),
     };
   }
 
@@ -126,6 +134,8 @@ export const getStaking721DeployConfig = (
   config ?: IERC721DeployArgs
 ) : IERC721DeployArgs | undefined => {
   let configReturn;
+  // TODO dep: what is this and why do we need it? No need for this extra env var here,
+  //  just use default values in "dev" if `config` is not provided
   if (env === "dev" && process.env.STAKING721_USE_DEV_ENV_VALUES !== "true") {
     configReturn = config;
   } else {
@@ -133,10 +143,15 @@ export const getStaking721DeployConfig = (
       !process.env.STAKING721_TOKEN_NAME ||
       !process.env.STAKING721_TOKEN_SYMBOL ||
       !process.env.STAKING721_BASE_URI ||
+      !process.env.STAKING721_STAKING_TOKEN ||
+      !process.env.STAKING721_REWARDS_TOKEN ||
+      !process.env.STAKING721_REP_TOKEN ||
       !process.env.STAKING721_REWARDS_PER_PERIOD ||
       !process.env.STAKING721_PERIOD_LENGTH ||
-      !process.env.STAKING721_TIMELOCK_PERIOD ||
-      !process.env.STAKING721_CONTRACT_OWNER
+      !process.env.STAKING721_MIN_LOCK_TIME ||
+      !process.env.STAKING721_CONTRACT_OWNER ||
+      !process.env.STAKING721_MIN_REWARDS_MULTIPLIER ||
+      !process.env.STAKING721_MAX_REWARDS_MULTIPLIER
     ) {
       throw new Error("Missing required env variables for StakingERC721!");
     }
@@ -157,8 +172,10 @@ export const getStaking721DeployConfig = (
       rewardsToken: process.env.STAKING721_REWARDS_TOKEN,
       rewardsPerPeriod: BigInt(process.env.STAKING721_REWARDS_PER_PERIOD),
       periodLength: BigInt(process.env.STAKING721_PERIOD_LENGTH),
-      timeLockPeriod: BigInt(process.env.STAKING721_TIMELOCK_PERIOD),
+      minimumLockTime: BigInt(process.env.STAKING721_MIN_LOCK_TIME),
       contractOwner: process.env.STAKING721_CONTRACT_OWNER,
+      minimumRewardsMultiplier: BigInt(process.env.STAKING721_MIN_REWARDS_MULTIPLIER),
+      maximumRewardsMultiplier: BigInt(process.env.STAKING721_MAX_REWARDS_MULTIPLIER),
     };
   }
 
@@ -228,6 +245,8 @@ export const getMatchDeployConfig = (
 };
 
 export const validateEnv = (env : string) =>  {
+  findMissingEnvVars();
+
   if (
     env !== "dev" &&
     env !== "test" &&
@@ -236,22 +255,11 @@ export const validateEnv = (env : string) =>  {
     throw new Error("Provide correct ENV_LEVEL (dev / test / prod)");
   }
 
-  if (env === "prod") {
-    assert.ok(
-      process.env.TENDERLY_PROJECT_SLUG,
-      "Must provide TENDERLY_PROJECT_SLUG in prod environment!"
-    );
-  }
-
   if (env !== "dev")
     assert.ok(
-      !process.env.MONGO_DB_URI!.includes("localhost"),
+      !process.env.MONGO_DB_URI.includes("localhost"),
       "Cannot use local mongo URI in 'prod' or 'test' environment!"
     );
-
-  if (!process.env.MONGO_DB_URI || !process.env.MONGO_DB_NAME) {
-    throw new Error(`Must provide proper MONGO data used for ${env} environment!`);
-  }
 
   if (process.env.VERIFY_CONTRACTS === "true") {
     assert.ok(!!process.env.ETHERSCAN_API_KEY, "Must provide an Etherscan API Key to verify contracts");
