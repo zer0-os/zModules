@@ -1,0 +1,35 @@
+import { IStaking20Environment, IStaking721Environment } from "../types";
+
+/**
+ * Default environment for StakingERC20
+ */
+export const staking20Config : IStaking20Environment = {
+  STAKING20_STAKING_TOKEN: "",
+  STAKING20_REWARDS_TOKEN: "",
+  STAKING20_REP_TOKEN: "",
+  STAKING20_CONTRACT_OWNER: "",
+  STAKING20_REWARDS_PER_PERIOD: "",
+  STAKING20_PERIOD_LENGTH: "",
+  STAKING20_MIN_LOCK_TIME: "",
+  STAKING20_MIN_REWARDS_MULTIPLIER: "",
+  STAKING20_MAX_REWARDS_MULTIPLIER: "",
+};
+
+/**
+ * Default environment for StakingERC721
+ */
+export const staking721Config : IStaking721Environment = {
+  // Staking for ERC721
+  STAKING721_TOKEN_NAME: "",
+  STAKING721_TOKEN_SYMBOL: "",
+  STAKING721_BASE_URI: "",
+  STAKING721_STAKING_TOKEN: "",
+  STAKING721_REWARDS_TOKEN: "",
+  STAKING721_REP_TOKEN: "",
+  STAKING721_CONTRACT_OWNER: "",
+  STAKING721_REWARDS_PER_PERIOD: "",
+  STAKING721_PERIOD_LENGTH: "",
+  STAKING721_MIN_LOCK_TIME: "",
+  STAKING721_MIN_REWARDS_MULTIPLIER: "",
+  STAKING721_MAX_REWARDS_MULTIPLIER: "",
+};
