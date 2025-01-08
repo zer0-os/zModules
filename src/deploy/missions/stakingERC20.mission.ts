@@ -4,7 +4,7 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesConfig, IERC721DeployArgs, IZModulesContracts } from "../campaign/types.campaign";
+import { IZModulesConfig, IERC20DeployArgs, IZModulesContracts } from "../campaign/types";
 import { contractNames } from "../contractNames";
 
 
@@ -30,40 +30,86 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
         },
         mock20STK,
         mock20REW,
+        votingErc20,
       } = this.campaign;
 
-      const {
+      let {
         stakingToken,
         rewardsToken,
+      } = stakingERC20Config as IERC20DeployArgs;
+
+      const {
         rewardsPerPeriod,
         periodLength,
-        timeLockPeriod,
+        minimumLockTime,
         contractOwner,
-      } = stakingERC20Config as IERC721DeployArgs;
+        minimumRewardsMultiplier,
+        maximumRewardsMultiplier,
+      } = stakingERC20Config as IERC20DeployArgs;
 
-      if (mockTokens && (!stakingToken && !rewardsToken)) {
-        return [
-          await mock20STK.getAddress(),
-          await mock20REW.getAddress(),
-          rewardsPerPeriod,
-          periodLength,
-          timeLockPeriod,
-          contractOwner,
-        ];
+      if (mockTokens) {
+        stakingToken = await mock20STK.getAddress();
+        rewardsToken = await mock20REW.getAddress();
       } else {
         if (!stakingToken || !rewardsToken) {
           throw new Error("Must provide Staking and Reward tokens if not mocking");
         }
+      }
 
-        return [
+      return [
+        {
           stakingToken,
           rewardsToken,
+          stakeRepToken: await votingErc20.getAddress(),
           rewardsPerPeriod,
           periodLength,
-          timeLockPeriod,
+          minimumLockTime,
           contractOwner,
-        ];
-      }
+          minimumRewardsMultiplier,
+          maximumRewardsMultiplier,
+        },
+      ];
+    }
+
+    async needsPostDeploy () : Promise<boolean> {
+      const {
+        votingErc20,
+        [this.instanceName]: staking20,
+      } = this.campaign;
+
+      const stakingAddress = await staking20.getAddress();
+
+      const hasMinter = await votingErc20.hasRole(await votingErc20.MINTER_ROLE(), stakingAddress);
+      const hasBurner = await votingErc20.hasRole(await votingErc20.BURNER_ROLE(), stakingAddress);
+
+      const needs = !hasMinter || !hasBurner;
+      const msg = needs ? "needs" : "doesn't need";
+
+      this.logger.debug(`${this.contractName} ${msg} post deploy sequence`);
+
+      return needs;
+    }
+
+    async postDeploy () {
+      const {
+        votingErc20,
+        [this.instanceName]: staking20,
+        config: {
+          voting20Config: {
+            admin,
+          },
+        },
+      } = this.campaign;
+
+      const stakingAddress = await staking20.getAddress();
+
+      await votingErc20
+        .connect(admin)
+        .grantRole(await votingErc20.MINTER_ROLE(), stakingAddress);
+
+      await votingErc20
+        .connect(admin)
+        .grantRole(await votingErc20.BURNER_ROLE(), stakingAddress);
     }
   }
 
