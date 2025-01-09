@@ -4,8 +4,8 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesConfig, IERC20DeployArgs, IZModulesContracts } from "../campaign/types";
-import { contractNames } from "../contractNames";
+import { IZModulesConfig, IStakingERC20DeployArgs, IZModulesContracts } from "../../campaign/types";
+import { contractNames } from "../../contractNames";
 
 
 export const getStakingERC20Mission = (_instanceName ?: string) => {
@@ -36,7 +36,7 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
       let {
         stakingToken,
         rewardsToken,
-      } = stakingERC20Config as IERC20DeployArgs;
+      } = stakingERC20Config as IStakingERC20DeployArgs;
 
       const {
         rewardsPerPeriod,
@@ -45,7 +45,7 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
         contractOwner,
         minimumRewardsMultiplier,
         maximumRewardsMultiplier,
-      } = stakingERC20Config as IERC20DeployArgs;
+      } = stakingERC20Config as IStakingERC20DeployArgs;
 
       if (mockTokens) {
         stakingToken = await mock20STK.getAddress();

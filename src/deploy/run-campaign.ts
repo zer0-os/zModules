@@ -1,16 +1,19 @@
-import { getCampaignConfig } from "./campaign/environment";
 import { getLogger } from "@zero-tech/zdc";
 import * as hre from "hardhat";
 import { runZModulesCampaign } from "./campaign/campaign";
-import { getStakingERC20Mission } from "./missions/stakingERC20.mission";
-import { getStakingERC721Mission } from "./missions/stakingERC721Mission";
-import { ZModulesMatchDM } from "./missions/match.mission";
-import { IZModulesConfig } from "./campaign/types.campaign";
-import { getMockERC20Mission, TokenTypes } from "./missions/mockERC20.mission";
-import { getMockERC721Mission } from "./missions/mockERC721.mission";
+import { getCampaignConfig } from "./campaign/getCampaignConfig";
+import { IZModulesConfig } from "./campaign/types";
+import { getMockERC20Mission, TokenTypes } from "./missions/mocks/mockERC20.mission";
+import { getStakingERC20Mission } from "./missions/stakingERC20/stakingERC20.mission";
+import { getMockERC721Mission } from "./missions/mocks/mockERC721.mission";
+import { getStakingERC721Mission } from "./missions/stakingERC721/stakingERC721Mission";
+import { getVotingERC20Mission } from "./missions/votingERC20/votingERC20.mission";
+import { ZModulesMatchDM } from "./missions/match/match.mission";
 
 
-const logger = getLogger();
+const logger = getLogger({
+  silence: process.env.SILENT_LOGGER === "true",
+});
 
 const runCampaign = async () => {
   const [ deployAdmin ] = await hre.ethers.getSigners();
@@ -31,6 +34,8 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
     stakingERC20Config,
     stakingERC721Config,
     matchConfig,
+    votingERC20Config,
+    votingERC721Config,
     mockTokens,
   } = config;
 
@@ -51,6 +56,14 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
     }
 
     missions.push(getStakingERC721Mission());
+  }
+
+  if (!!votingERC20Config) {
+    missions.push(getVotingERC20Mission());
+  }
+
+  if (!!votingERC721Config) {
+    missions.push(getVotingERC20Mission());
   }
 
   if (!!matchConfig) {

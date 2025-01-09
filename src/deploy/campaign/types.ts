@@ -3,14 +3,16 @@ import {
   IDeployCampaignConfig,
 } from "@zero-tech/zdc";
 import {
+  IVotes,
   StakingERC20,
   StakingERC721,
+  TimelockController,
 } from "../../../typechain";
 import {
   SignerWithAddress,
 } from "@nomicfoundation/hardhat-ethers/signers";
 
-export interface IERC20DeployArgs {
+export interface IStakingERC20DeployArgs {
   stakingToken ?: string;
   rewardsToken ?: string;
   stakeRepToken ?: string;
@@ -22,10 +24,35 @@ export interface IERC20DeployArgs {
   maximumRewardsMultiplier : bigint;
 }
 
-export interface IERC721DeployArgs extends IERC20DeployArgs {
+export interface IStakingERC721DeployArgs extends IStakingERC20DeployArgs {
   name : string;
   symbol : string;
   baseUri : string;
+}
+
+export interface IVotingERC20DeployArgs {
+  name : string;
+  symbol : string;
+  admin : SignerWithAddress;
+}
+
+export interface IVotingERC721DeployArgs {
+  name : string;
+  symbol : string;
+  version : string;
+  baseUri : string;
+  admin : string;
+}
+
+export interface IDAODeployArgs {
+  governorName : string;
+  token : IVotes;
+  timelock : TimelockController;
+  votingDelay : bigint;
+  votingPeriod : bigint;
+  proposalThreshold : bigint;
+  quorumPercentage : bigint;
+  voteExtension : bigint;
 }
 
 export interface IMatchDeployArgs {
@@ -38,8 +65,8 @@ export interface IMatchDeployArgs {
 
 export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
   mockTokens : boolean;
-  stakingERC20Config ?: IERC20DeployArgs;
-  stakingERC721Config ?: IERC721DeployArgs;
+  stakingERC20Config ?: IStakingERC20DeployArgs;
+  stakingERC721Config ?: IStakingERC721DeployArgs;
   matchConfig ?: IMatchDeployArgs;
 }
 
@@ -52,12 +79,12 @@ export interface IZModulesContracts extends IContractState<ZModulesContract> {
   stakingERC721 : StakingERC721;
 }
 
-export interface TestIERC721DeployArgs extends IERC721DeployArgs {
+export interface TestIERC721DeployArgs extends IStakingERC721DeployArgs {
   stakingToken : string;
   rewardsToken : string;
 }
 
-export interface TestIERC20DeployArgs extends IERC20DeployArgs {
+export interface TestIERC20DeployArgs extends IStakingERC20DeployArgs {
   stakingToken : string;
   rewardsToken : string;
 }

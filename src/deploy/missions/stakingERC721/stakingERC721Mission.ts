@@ -5,8 +5,8 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesConfig, IERC721DeployArgs, IZModulesContracts } from "../campaign/types.campaign";
-import { contractNames } from "../contractNames";
+import { contractNames } from "../../contractNames";
+import { IZModulesConfig, IZModulesContracts, IStakingERC721DeployArgs } from "../../campaign/types";
 
 
 export const getStakingERC721Mission = () => {
@@ -43,7 +43,7 @@ export const getStakingERC721Mission = () => {
         periodLength,
         timeLockPeriod,
         contractOwner,
-      } = stakingERC721Config as IERC721DeployArgs;
+      } = stakingERC721Config as IStakingERC721DeployArgs;
 
       if (mockTokens && (!stakingToken && !rewardsToken)) {
         return [

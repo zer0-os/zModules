@@ -3,9 +3,8 @@ import { tagFilePath } from "./constants";
 import { getLogger } from "@zero-tech/zdc";
 
 
-const logger = getLogger();
-
 export const getGitTag = () => {
+  const logger = getLogger();
   if (!fs.existsSync(tagFilePath)) {
     throw Error(`No git tag found at ${tagFilePath}`);
   }

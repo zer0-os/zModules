@@ -21,4 +21,16 @@ export const contractNames = {
       instance: "mock721",
     },
   },
+  votingERC20: {
+    contract: "ZeroVotingERC20",
+    instance: "zeroVotingERC20",
+  },
+  votingERC721: {
+    contract: "ZeroVotingERC721",
+    instance: "zeroVotingERC721",
+  },
+  dao: {
+    contract: "ZDAO",
+    instance: "zDao",
+  },
 };
