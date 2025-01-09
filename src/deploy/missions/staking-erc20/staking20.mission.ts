@@ -5,7 +5,7 @@ import {
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IZModulesConfig, IStakingERC20DeployArgs, IZModulesContracts } from "../../campaign/types";
-import { contractNames } from "../../contractNames";
+import { contractNames } from "../../contract-names";
 
 
 export const getStakingERC20Mission = (_instanceName ?: string) => {

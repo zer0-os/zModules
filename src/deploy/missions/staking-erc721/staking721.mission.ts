@@ -5,7 +5,7 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { contractNames } from "../../contractNames";
+import { contractNames } from "../../contract-names";
 import { IZModulesConfig, IZModulesContracts, IStakingERC721DeployArgs } from "../../campaign/types";
 
 

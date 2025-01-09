@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IVotingERC20DeployArgs, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
-import { contractNames } from "../../contractNames";
+import { contractNames } from "../../contract-names";
 
 export const getVotingERC20Mission = (_instanceName ?: string) => {
   class ZModulesVotingERC20DM extends BaseDeployMission<

@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IDAODeployArgs, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
-import { contractNames } from "../../contractNames";
+import { contractNames } from "../../contract-names";
 
 export class ZModulesDaoDM extends BaseDeployMission<
 HardhatRuntimeEnvironment,

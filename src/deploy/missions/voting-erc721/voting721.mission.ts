@@ -6,7 +6,7 @@ import {
   IZModulesConfig,
   IZModulesContracts,
 } from "../../campaign/types";
-import { contractNames } from "../../contractNames";
+import { contractNames } from "../../contract-names";
 
 export const getVotingERC721Mission = (_instanceName ?: string) => {
   class ZModulesVotingERC721DM extends BaseDeployMission<

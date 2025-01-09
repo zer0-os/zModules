@@ -4,10 +4,10 @@ import { runZModulesCampaign } from "./campaign/campaign";
 import { getCampaignConfig } from "./campaign/getCampaignConfig";
 import { IZModulesConfig } from "./campaign/types";
 import { getMockERC20Mission, TokenTypes } from "./missions/mocks/mockERC20.mission";
-import { getStakingERC20Mission } from "./missions/stakingERC20/stakingERC20.mission";
+import { getStakingERC20Mission } from "./missions/staking-erc20/staking20.mission";
 import { getMockERC721Mission } from "./missions/mocks/mockERC721.mission";
-import { getStakingERC721Mission } from "./missions/stakingERC721/stakingERC721Mission";
-import { getVotingERC20Mission } from "./missions/votingERC20/votingERC20.mission";
+import { getStakingERC721Mission } from "./missions/staking-erc721/staking721.mission";
+import { getVotingERC20Mission } from "./missions/voting-erc20/voting20.mission";
 import { ZModulesMatchDM } from "./missions/match/match.mission";
 
 

@@ -10,11 +10,11 @@ import {
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import assert from "assert";
 import { findMissingEnvVars } from "../../environment/validate";
-import { getStaking20DeployConfig } from "../missions/stakingERC20/staking20Config";
-import { getVoting721DeployConfig } from "../missions/votingERC721/voting721Config";
-import { getStaking721DeployConfig } from "../missions/stakingERC721/staking721Config";
-import { getMatchDeployConfig } from "../missions/match/matchConfig";
-import { getVoting20DeployConfig } from "../missions/votingERC20/voting20Config";
+import { getStaking20DeployConfig } from "../missions/staking-erc20/staking20.config";
+import { getVoting721DeployConfig } from "../missions/voting-erc721/voting721.config";
+import { getStaking721DeployConfig } from "../missions/staking-erc721/staking721.config";
+import { getMatchDeployConfig } from "../missions/match/match.config";
+import { getVoting20DeployConfig } from "../missions/voting-erc20/voting20.config";
 
 
 export const getCampaignConfig = ({
