@@ -4,8 +4,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IVotingERC20DeployArgs, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 
+
 export const getVotingERC20Mission = (_instanceName ?: string) => {
-  class ZModulesVotingERC20DM extends BaseDeployMission<
+  class ZModulesZeroVotingERC20DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
   IZModulesConfig,
@@ -34,10 +35,10 @@ export const getVotingERC20Mission = (_instanceName ?: string) => {
       return [
         name,
         symbol,
-        admin,
+        admin.address,
       ];
     }
   }
 
-  return ZModulesVotingERC20DM;
+  return ZModulesZeroVotingERC20DM;
 };

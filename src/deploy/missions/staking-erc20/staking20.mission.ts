@@ -4,7 +4,12 @@ import {
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesConfig, IStakingERC20DeployArgs, IZModulesContracts } from "../../campaign/types";
+import {
+  IZModulesConfig,
+  IStakingERC20DeployArgs,
+  IZModulesContracts,
+  IVotingERC20DeployArgs,
+} from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 
 
@@ -28,8 +33,8 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
           stakingERC20Config,
           mockTokens,
         },
-        mock20STK,
-        mock20REW,
+        mockErc20STK,
+        mockErc20REW,
         votingErc20,
       } = this.campaign;
 
@@ -48,8 +53,8 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
       } = stakingERC20Config as IStakingERC20DeployArgs;
 
       if (mockTokens) {
-        stakingToken = await mock20STK.getAddress();
-        rewardsToken = await mock20REW.getAddress();
+        stakingToken = await mockErc20STK.getAddress();
+        rewardsToken = await mockErc20REW.getAddress();
       } else {
         if (!stakingToken || !rewardsToken) {
           throw new Error("Must provide Staking and Reward tokens if not mocking");
@@ -95,11 +100,13 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
         votingErc20,
         [this.instanceName]: staking20,
         config: {
-          voting20Config: {
-            admin,
-          },
+          votingERC20Config,
         },
       } = this.campaign;
+
+      const {
+        admin,
+      } = votingERC20Config as IVotingERC20DeployArgs;
 
       const stakingAddress = await staking20.getAddress();
 
