@@ -1,11 +1,15 @@
+import { TEnvironment, TSupportedChain } from "@zero-tech/zdc";
+
+
 export interface IZModulesEnvironment extends
   IBaseEnvironment,
   IStaking20Environment,
   IStaking721Environment {}
 
 export interface IBaseEnvironment {
-  ENV_LEVEL : string;
-  CONFIRMATION_N ?: string;
+  ENV_LEVEL : TEnvironment;
+  CONFIRMATIONS_N : string;
+  SRC_CHAIN_NAME : TSupportedChain;
   MAINNET_RPC_URL ?: string;
   SEPOLIA_RPC_URL ?: string;
   ZCHAIN_MOONWALKER_RPC_URL ?: string;
@@ -22,16 +26,20 @@ export interface IBaseEnvironment {
   LOG_LEVEL : string;
   SILENT_LOGGER : string;
   MAKE_LOG_FILE ?: string;
-  VERIFY_CONTRACTS : string;
   ETHERSCAN_API_KEY ?: string;
-  MOCK_TOKENS : string;
+  MONITOR_CONTRACTS : string;
+  VERIFY_CONTRACTS : string;
+  TENDERLY_PROJECT_SLUG ?: string;
 }
 
 export interface IStaking20Environment {
-  STAKING20_STAKING_TOKEN : string;
-  STAKING20_REWARDS_TOKEN : string;
-  STAKING20_REP_TOKEN : string;
-  STAKING20_CONTRACT_OWNER : string;
+  MOCK_TOKENS : string;
+  STAKING20_STAKING_TOKEN ?: string;
+  STAKING20_REWARDS_TOKEN ?: string;
+  STAKING20_REP_TOKEN ?: string;
+  // TODO dep: decide what to do with it cause we need to pass it as Private Key to HH config to get a signer
+  //  into campaign config. Same for Staking721
+  STAKING20_CONTRACT_OWNER ?: string;
   STAKING20_REWARDS_PER_PERIOD : string;
   STAKING20_PERIOD_LENGTH : string;
   STAKING20_MIN_LOCK_TIME : string;
@@ -43,8 +51,8 @@ export interface IStaking721Environment {
   STAKING721_TOKEN_NAME : string;
   STAKING721_TOKEN_SYMBOL : string;
   STAKING721_BASE_URI : string;
-  STAKING721_STAKING_TOKEN : string;
-  STAKING721_REWARDS_TOKEN : string;
+  STAKING721_STAKING_TOKEN ?: string;
+  STAKING721_REWARDS_TOKEN ?: string;
   STAKING721_REP_TOKEN : string;
   STAKING721_CONTRACT_OWNER : string;
   STAKING721_REWARDS_PER_PERIOD : string;

@@ -7,7 +7,8 @@ import { IBaseEnvironment } from "../types";
 // TODO dep: type this like it is in zNS on `zdc-update-multi-chain` branch
 export const baseConfig : IBaseEnvironment = {
   ENV_LEVEL: "dev",
-  CONFIRMATION_N: "0",
+  CONFIRMATIONS_N: "0",
+  SRC_CHAIN_NAME: "zchain",
   // RPCs for actual networks
   MAINNET_RPC_URL: "",
   SEPOLIA_RPC_URL: "",
@@ -31,5 +32,6 @@ export const baseConfig : IBaseEnvironment = {
   //  Etherscan
   VERIFY_CONTRACTS: "false",
   ETHERSCAN_API_KEY: "",
-  MOCK_TOKENS: "true",
+  MONITOR_CONTRACTS: "false",
+  TENDERLY_PROJECT_SLUG: "",
 };

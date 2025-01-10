@@ -12,7 +12,9 @@ import {
   SignerWithAddress,
 } from "@nomicfoundation/hardhat-ethers/signers";
 
+
 export interface IStakingERC20DeployArgs {
+  mockTokens : boolean;
   stakingToken ?: string;
   rewardsToken ?: string;
   stakeRepToken ?: string;
@@ -30,6 +32,8 @@ export interface IStakingERC721DeployArgs extends IStakingERC20DeployArgs {
   baseUri : string;
 }
 
+// TODO dep: rename all these ints that are configs from DeployArgs to DeployConfig,
+//  since it's not all args and names are misleading
 export interface IVotingERC20DeployArgs {
   name : string;
   symbol : string;
@@ -41,7 +45,7 @@ export interface IVotingERC721DeployArgs {
   symbol : string;
   version : string;
   baseUri : string;
-  admin : string;
+  admin : SignerWithAddress;
 }
 
 export interface IDAODeployArgs {
@@ -63,8 +67,9 @@ export interface IMatchDeployArgs {
   gameFeePercentage : bigint;
 }
 
-export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
-  mockTokens : boolean;
+export interface IZModulesConfig {
+  votingERC20Config ?: IVotingERC20DeployArgs;
+  votingERC721Config ?: IVotingERC721DeployArgs;
   stakingERC20Config ?: IStakingERC20DeployArgs;
   stakingERC721Config ?: IStakingERC721DeployArgs;
   matchConfig ?: IMatchDeployArgs;
@@ -77,16 +82,6 @@ export type ZModulesContract =
 export interface IZModulesContracts extends IContractState<ZModulesContract> {
   stakingERC20 : StakingERC20;
   stakingERC721 : StakingERC721;
-}
-
-export interface TestIERC721DeployArgs extends IStakingERC721DeployArgs {
-  stakingToken : string;
-  rewardsToken : string;
-}
-
-export interface TestIERC20DeployArgs extends IStakingERC20DeployArgs {
-  stakingToken : string;
-  rewardsToken : string;
 }
 
 export interface TestIMatchDeployArgs extends IMatchDeployArgs {
