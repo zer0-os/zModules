@@ -1,4 +1,4 @@
-import { IZModulesConfig, IZModulesContracts } from "./types.campaign";
+import { IZModulesConfig, IZModulesContracts } from "./types";
 import * as hre from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
@@ -33,10 +33,11 @@ export const runZModulesCampaign = async ({
       hre,
       signer: config.deployAdmin,
       env: config.env,
+      confirmationsN: config.confirmationsN,
     });
   }
 
-  const logger = await getLogger({
+  const logger = getLogger({
     silence: process.env.SILENT_LOGGER === "true",
   });
 

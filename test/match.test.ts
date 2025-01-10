@@ -19,11 +19,11 @@ import {
   contractNames,
   runZModulesCampaign,
 } from "../src/deploy";
-import { ZModulesMatchDM } from "../src/deploy/missions/match.mission";
-import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mockERC20.mission";
-import { getCampaignConfig } from "../src/deploy/campaign/environment";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
+import { getCampaignConfig } from "../src/deploy/campaign/get-campaign-config";
+import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mocks/mockERC20.mission";
+import { ZModulesMatchDM } from "../src/deploy/missions/match/match.mission";
 
 const getPlayerBalances = async (
   players : Array<string>,

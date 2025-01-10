@@ -1,6 +1,6 @@
 
 const required = [
-  "CONFIRMATION_N",
+  "CONFIRMATIONS_N",
   "MONGO_DB_URI",
   "MONGO_DB_NAME",
   "ARCHIVE_PREVIOUS_DB_VERSION",

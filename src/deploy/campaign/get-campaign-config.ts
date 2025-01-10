@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import * as hre from "hardhat";
 import {
   IMatchDeployArgs,
   IStakingERC20DeployArgs,
@@ -15,7 +16,30 @@ import { getVoting721DeployConfig } from "../missions/voting-erc721/voting721.co
 import { getStaking721DeployConfig } from "../missions/staking-erc721/staking721.config";
 import { getMatchDeployConfig } from "../missions/match/match.config";
 import { getVoting20DeployConfig } from "../missions/voting-erc20/voting20.config";
+import { IDeployCampaignConfig } from "@zero-tech/zdc";
 
+
+export const getBaseZModulesConfig = async ({
+  deployAdmin,
+} : {
+  deployAdmin ?: SignerWithAddress;
+} = {}) : Promise<IDeployCampaignConfig<SignerWithAddress>> => {
+  if (!deployAdmin) [ deployAdmin ] = await hre.ethers.getSigners();
+
+  validateEnv(process.env.ENV_LEVEL);
+
+  return {
+    env: process.env.ENV_LEVEL,
+    deployAdmin,
+    confirmationsN: Number(process.env.CONFIRMATIONS_N),
+    srcChainName: process.env.SRC_CHAIN_NAME,
+    postDeploy : {
+      tenderlyProjectSlug: process.env.TENDERLY_PROJECT_SLUG!,
+      monitorContracts: process.env.MONITOR_CONTRACTS === "true",
+      verifyContracts: process.env.VERIFY_CONTRACTS === "true",
+    },
+  };
+};
 
 export const getCampaignConfig = ({
   env,
@@ -97,7 +121,7 @@ export const validateEnv = (env : string) =>  {
   findMissingEnvVars();
 
   assert.ok(
-    env !== "dev" && env !== "test" && env !== "prod",
+    env === "dev" || env === "test" || env === "prod",
     "Provide correct ENV_LEVEL (dev / test / prod)"
   );
 

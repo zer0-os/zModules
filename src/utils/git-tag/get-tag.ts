@@ -4,7 +4,9 @@ import { getLogger } from "@zero-tech/zdc";
 
 
 export const getGitTag = () => {
-  const logger = getLogger();
+  const logger = getLogger({
+    silence: process.env.SILENT_LOGGER === "true",
+  });
   if (!fs.existsSync(tagFilePath)) {
     throw Error(`No git tag found at ${tagFilePath}`);
   }
