@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { TimelockController, ZDAO, ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { mineBlocks } from "./helpers/voting/blocksSkip";
+import { mineBlocks } from "./helpers/voting/mine";
 
 
 describe("Governor Voting Flow Test", () => {
