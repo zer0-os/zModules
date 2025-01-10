@@ -8,8 +8,9 @@ import {
 } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 
+
 export const getVotingERC721Mission = (_instanceName ?: string) => {
-  class ZModulesVotingERC721DM extends BaseDeployMission<
+  class ZModulesZeroVotingERC721DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
   IZModulesConfig,
@@ -47,5 +48,5 @@ export const getVotingERC721Mission = (_instanceName ?: string) => {
     }
   }
 
-  return ZModulesVotingERC721DM;
+  return ZModulesZeroVotingERC721DM;
 };
