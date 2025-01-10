@@ -1,8 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesConfig, IZModulesContracts } from "../campaign/types";
-import { contractNames } from "../contractNames";
+import { IZModulesConfig, IZModulesContracts } from "../../campaign/types";
+import { contractNames } from "../../contract-names";
 
 
 export type TTokenType = "STK" | "REW" | "";

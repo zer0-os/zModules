@@ -25,7 +25,9 @@ export const getZModulesMongoAdapter = async ({
 };
 
 export const startMongo = async () => {
-  const logger = getLogger();
+  const logger = getLogger({
+    silence: process.env.SILENT_LOGGER === "true",
+  });
 
   try {
     exec("npm run mongo:start");
@@ -42,7 +44,9 @@ export const startMongo = async () => {
 };
 
 export const stopMongo = async () => {
-  const logger = getLogger();
+  const logger = getLogger({
+    silence: process.env.SILENT_LOGGER === "true",
+  });
 
   try {
     await execAsync("npm run mongo:stop");

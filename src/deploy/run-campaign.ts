@@ -1,7 +1,7 @@
 import { getLogger } from "@zero-tech/zdc";
 import * as hre from "hardhat";
 import { runZModulesCampaign } from "./campaign/campaign";
-import { getCampaignConfig } from "./campaign/getCampaignConfig";
+import { getCampaignConfig } from "./campaign/get-campaign-config";
 import { IZModulesConfig } from "./campaign/types";
 import { getMockERC20Mission, TokenTypes } from "./missions/mocks/mockERC20.mission";
 import { getStakingERC20Mission } from "./missions/staking-erc20/staking20.mission";
@@ -11,12 +11,9 @@ import { getVotingERC20Mission } from "./missions/voting-erc20/voting20.mission"
 import { ZModulesMatchDM } from "./missions/match/match.mission";
 
 
-const logger = getLogger({
-  silence: process.env.SILENT_LOGGER === "true",
-});
-
 const runCampaign = async () => {
   const [ deployAdmin ] = await hre.ethers.getSigners();
+
   const config = getCampaignConfig({
     deployAdmin,
   });
@@ -80,6 +77,10 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
 
 runCampaign()
   .catch(error => {
+    const logger = getLogger({
+      silence: process.env.SILENT_LOGGER === "true",
+    });
+
     logger.error(error.stack);
     process.exit(1);
   }).finally(() => {
