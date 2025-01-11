@@ -4,7 +4,8 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IDAODeployArgs, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 
-export class ZModulesDaoDM extends BaseDeployMission<
+
+export class ZModulesZDAODM extends BaseDeployMission<
 HardhatRuntimeEnvironment,
 SignerWithAddress,
 IZModulesConfig,
@@ -87,4 +88,6 @@ IZModulesContracts
       ];
     }
   }
+
+  // TODO dep: add post deploy to set roles !!
 }
