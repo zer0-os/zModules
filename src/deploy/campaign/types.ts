@@ -67,7 +67,15 @@ export interface IMatchDeployArgs {
   gameFeePercentage : bigint;
 }
 
-export interface IZModulesConfig {
+export interface ITimelockDeployArgs {
+  delay : bigint;
+  proposers : Array<string>;
+  executors : Array<string>;
+  admin : SignerWithAddress;
+  votingTokenInstName : string;
+}
+
+export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
   votingERC20Config ?: IVotingERC20DeployArgs;
   votingERC721Config ?: IVotingERC721DeployArgs;
   stakingERC20Config ?: IStakingERC20DeployArgs;
