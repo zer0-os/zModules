@@ -36,6 +36,7 @@ export const getBaseZModulesConfig = async ({
     deployAdmin,
     confirmationsN: Number(process.env.CONFIRMATIONS_N),
     srcChainName: process.env.SRC_CHAIN_NAME,
+    mockTokens: process.env.MOCK_TOKENS === "true",
     postDeploy : {
       tenderlyProjectSlug: process.env.TENDERLY_PROJECT_SLUG!,
       monitorContracts: process.env.MONITOR_CONTRACTS === "true",

@@ -1,16 +1,11 @@
-import {
-  IContractState,
-  IDeployCampaignConfig,
-} from "@zero-tech/zdc";
+import { IContractState } from "@zero-tech/zdc";
 import {
   IVotes,
   StakingERC20,
   StakingERC721,
   TimelockController,
 } from "../../../typechain";
-import {
-  SignerWithAddress,
-} from "@nomicfoundation/hardhat-ethers/signers";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 
 export interface IStakingERC20DeployArgs {
@@ -73,6 +68,7 @@ export interface IZModulesConfig {
   stakingERC20Config ?: IStakingERC20DeployArgs;
   stakingERC721Config ?: IStakingERC721DeployArgs;
   matchConfig ?: IMatchDeployArgs;
+  mockTokens : boolean;
 }
 
 export type ZModulesContract =

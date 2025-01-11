@@ -6,15 +6,72 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { getVotingERC20Mission } from "../src/deploy/missions/voting-erc20/voting20.mission";
 import { getStakingERC20Mission } from "../src/deploy/missions/staking-erc20/staking20.mission";
 import { getStaking20DeployConfig } from "../src/deploy/missions/staking-erc20/staking20.config";
-import { IZModulesConfig } from "../src/deploy/campaign/types";
-import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mocks/mockERC20.mission";
+import {
+  IStakingERC20DeployArgs,
+  IStakingERC721DeployArgs,
+  IVotingERC20DeployArgs,
+  IVotingERC721DeployArgs,
+  IZModulesConfig,
+  IZModulesContracts,
+} from "../src/deploy/campaign/types";
+import {
+  getMockERC20Mission,
+  TokenTypes,
+} from "../src/deploy/missions/mocks/mockERC20.mission";
 import { getVoting721DeployConfig } from "../src/deploy/missions/voting-erc721/voting721.config";
+import { expect } from "chai";
+import {
+  Addressable,
+  Signer,
+} from "ethers";
+import {
+  DeployCampaign,
+  IDeployCampaignConfig,
+} from "@zero-tech/zdc";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { getStaking721DeployConfig } from "../src/deploy/missions/staking-erc721/staking721.config";
+import { getMockERC721Mission } from "../src/deploy/missions/mocks/mockERC721.mission";
+import { getVotingERC721Mission } from "../src/deploy/missions/voting-erc721/voting721.mission";
+import { getStakingERC721Mission } from "../src/deploy/missions/staking-erc721/staking721.mission";
+import {
+  StakingERC20,
+  StakingERC20__factory,
+  StakingERC721,
+  StakingERC721__factory,
+  ZeroVotingERC20,
+  ZeroVotingERC20__factory,
+  ZeroVotingERC721,
+  ZeroVotingERC721__factory,
+} from "../typechain";
 
 
 describe("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
   let votingTokenAdmin : SignerWithAddress;
   let stakingContractOwner : SignerWithAddress;
+
+  let baseConfig : IDeployCampaignConfig<Signer>;
+  let votingConfig : IVotingERC20DeployArgs | IVotingERC721DeployArgs;
+  let stakingConfig : IStakingERC20DeployArgs | IStakingERC721DeployArgs;
+  let config : IZModulesConfig;
+
+  let stakingFactory : StakingERC20__factory | StakingERC721__factory;
+  let staking : StakingERC20 | StakingERC721;
+  let stakingAddress : string | Addressable;
+
+  let stakeTokenAddress : string | Addressable;
+  let rewardsTokenAddress : string | Addressable;
+
+  let stakeRepTokenFactory : ZeroVotingERC20__factory | ZeroVotingERC721__factory;
+  let stakeRepToken : ZeroVotingERC20 | ZeroVotingERC721;
+  let stakeRepTokenAddress : string | Addressable;
+
+  let campaign : DeployCampaign<
+  HardhatRuntimeEnvironment,
+  SignerWithAddress,
+  IZModulesConfig,
+  IZModulesContracts
+  >;
 
 
   before(async () => {
@@ -23,25 +80,25 @@ describe("zModules Deploy Integration Test", () => {
 
   describe("Staking", () => {
     it("Should deploy StakingERC20 with zDC and default config", async () => {
-      const baseConfig = await getBaseZModulesConfig({
+      baseConfig = await getBaseZModulesConfig({
         deployAdmin,
       });
 
-      const votingConfig = getVoting20DeployConfig({
+      votingConfig = getVoting20DeployConfig({
         tokenAdmin: votingTokenAdmin,
       });
 
-      const stakingConfig = getStaking20DeployConfig({
+      stakingConfig = getStaking20DeployConfig({
         contractOwner: stakingContractOwner,
-      });
+      }) as IStakingERC20DeployArgs;
 
-      const config : IZModulesConfig = {
+      config = {
         ...baseConfig,
         votingERC20Config: votingConfig,
         stakingERC20Config: stakingConfig,
       };
 
-      const campaign = await runZModulesCampaign({
+      campaign = await runZModulesCampaign({
         config,
         missions: [
           getMockERC20Mission({
@@ -59,46 +116,145 @@ describe("zModules Deploy Integration Test", () => {
         ],
       });
 
-      // TODO dep: check all state vars on all contracts, but mocks after deploy against env variables
-      //     against all incoming values (from test or ENV, based on where they came from)
+      stakingAddress = await campaign.state.contracts.stakingERC20.target;
+      stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+      staking = stakingFactory.attach(stakingAddress) as StakingERC20;
+
+      stakeTokenAddress = await campaign.state.contracts.mockErc20STK.target;
+      rewardsTokenAddress = await campaign.state.contracts.mockErc20REW.target;
+
+      stakeRepTokenAddress = await campaign.state.contracts.votingErc20.target;
+      stakeRepTokenFactory = await hre.ethers.getContractFactory("ZeroVotingERC20");
+      stakeRepToken = stakeRepTokenFactory.attach(stakeRepTokenAddress) as ZeroVotingERC20;
+
+      // tokens
+      expect(await staking.getStakingToken()).to.eq(stakeTokenAddress);
+      expect(await staking.getRewardsToken()).to.eq(rewardsTokenAddress);
+      expect(await staking.getStakeRepToken()).to.eq(stakeRepTokenAddress);
+
+      // config
+      expect(
+        await staking.getMinimumLockTime()
+      ).to.eq(
+        stakingConfig?.minimumLockTime
+      );
+      expect(
+        await staking.getMinimumRewardsMultiplier()
+      ).to.eq(
+        stakingConfig?.minimumRewardsMultiplier
+      );
+      expect(
+        await staking.getMaximumRewardsMultiplier()
+      ).to.eq(
+        stakingConfig?.maximumRewardsMultiplier
+      );
+      expect(
+        await staking.getRewardsPerPeriod()
+      ).to.eq(
+        stakingConfig?.rewardsPerPeriod
+      );
+    });
+
+    it("StakingERC20 should have MINTER_ROLE and BURNER_ROLE of StakeRepToken", async () => {
+      expect(
+        await stakeRepToken.hasRole(await stakeRepToken.MINTER_ROLE(), stakingAddress)
+      ).to.eq(
+        true
+      );
+      expect(
+        await stakeRepToken.hasRole(await stakeRepToken.BURNER_ROLE(), stakingAddress)
+      ).to.eq(
+        true
+      );
     });
 
     it("Should deploy StakingERC721 with zDC and default config", async () => {
-      const baseConfig = await getBaseZModulesConfig({
+      baseConfig = await getBaseZModulesConfig({
         deployAdmin,
       });
 
-      const votingConfig = getVoting721DeployConfig({
+      votingConfig = getVoting721DeployConfig({
         tokenAdmin: votingTokenAdmin,
       });
 
-      const stakingConfig = getStaking20DeployConfig({
+      stakingConfig = getStaking721DeployConfig({
         contractOwner: stakingContractOwner,
-      });
+      }) as IStakingERC721DeployArgs;
 
-      const config : IZModulesConfig = {
+      config = {
         ...baseConfig,
-        votingERC20Config: votingConfig,
-        stakingERC20Config: stakingConfig,
+        votingERC721Config: votingConfig as IVotingERC721DeployArgs,
+        stakingERC721Config: stakingConfig as IStakingERC721DeployArgs,
       };
 
-      const campaign = await runZModulesCampaign({
+      campaign = await runZModulesCampaign({
         config,
         missions: [
-          getMockERC20Mission({
+          getMockERC721Mission({
             tokenType: TokenTypes.staking,
             tokenName: "Staking Token",
             tokenSymbol: "STK",
+            baseUri: "0://NFT/",
           }),
           getMockERC20Mission({
             tokenType: TokenTypes.rewards,
             tokenName: "Rewards Token",
             tokenSymbol: "RWD",
           }),
-          getVotingERC20Mission(),
-          getStakingERC20Mission(),
+          getVotingERC721Mission(),
+          getStakingERC721Mission(),
         ],
       });
+
+      stakingAddress = await campaign.state.contracts.stakingERC721.target;
+      stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+      staking = stakingFactory.attach(stakingAddress) as StakingERC721;
+
+      stakeTokenAddress = await campaign.state.contracts.mockErc721STK.target;
+
+      stakeRepTokenAddress = await campaign.state.contracts.votingErc721.target;
+      stakeRepTokenFactory = await hre.ethers.getContractFactory("ZeroVotingERC721");
+      stakeRepToken = stakeRepTokenFactory.attach(stakeRepTokenAddress) as ZeroVotingERC721;
+
+      // tokens
+      expect(await staking.getStakingToken()).to.eq(stakeTokenAddress);
+      expect(await staking.getRewardsToken()).to.eq(rewardsTokenAddress);
+      expect(await staking.getStakeRepToken()).to.eq(stakeRepTokenAddress);
+
+      // config
+      expect(
+        await staking.getMinimumLockTime()
+      ).to.eq(
+        stakingConfig?.minimumLockTime
+      );
+      expect(
+        await staking.getMinimumRewardsMultiplier()
+      ).to.eq(
+        stakingConfig?.minimumRewardsMultiplier
+      );
+      expect(
+        await staking.getMaximumRewardsMultiplier()
+      ).to.eq(
+        stakingConfig?.maximumRewardsMultiplier
+      );
+      expect(
+        await staking.getRewardsPerPeriod()
+      ).to.eq(
+        stakingConfig?.rewardsPerPeriod
+      );
+    });
+
+    it("StakingERC721 should have MINTER_ROLE and BURNER_ROLE of StakeRepToken", async () => {
+      expect(
+        await stakeRepToken.hasRole(await stakeRepToken.MINTER_ROLE(), stakingAddress)
+      ).to.eq(
+        true
+      );
+      expect(
+        await stakeRepToken.hasRole(await stakeRepToken.BURNER_ROLE(), stakingAddress)
+      ).to.eq(
+        true
+      );
     });
 
     // TODO dep: add test and logic for staking deploy with gas token !!!

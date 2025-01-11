@@ -7,7 +7,7 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { contractNames } from "../../contract-names";
 import {
-  ZModulesConfig,
+  IZModulesConfig,
   IZModulesContracts,
   IStakingERC721DeployArgs,
   IVotingERC721DeployArgs,
@@ -35,7 +35,7 @@ export const getStakingERC721Mission = (_instanceName ?: string) => {
           mockTokens,
         },
         mockErc721STK,
-        mockErc721REW,
+        mockErc20REW,
         votingErc721,
       } = this.campaign;
 
@@ -55,7 +55,7 @@ export const getStakingERC721Mission = (_instanceName ?: string) => {
 
       if (mockTokens) {
         stakingToken = await mockErc721STK.getAddress();
-        rewardsToken = await mockErc721REW.getAddress();
+        rewardsToken = await mockErc20REW.getAddress();
       } else {
         if (!stakingToken || !rewardsToken) {
           throw new Error("Must provide Staking and Reward tokens if not mocking");
