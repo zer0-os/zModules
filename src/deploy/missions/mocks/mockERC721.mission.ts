@@ -1,8 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesConfig, IZModulesContracts } from "../campaign/types.campaign";
-import { contractNames } from "../contractNames";
+import { IZModulesConfig, IZModulesContracts } from "../../campaign/types";
+import { contractNames } from "../../contract-names";
 
 
 export const MOCK721_TOKEN_NAME_DEFAULT = "MOCK ERC 721";

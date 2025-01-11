@@ -1,19 +1,19 @@
-import { getCampaignConfig } from "./campaign/environment";
 import { getLogger } from "@zero-tech/zdc";
 import * as hre from "hardhat";
 import { runZModulesCampaign } from "./campaign/campaign";
-import { getStakingERC20Mission } from "./missions/stakingERC20.mission";
-import { getStakingERC721Mission } from "./missions/stakingERC721Mission";
-import { ZModulesMatchDM } from "./missions/match.mission";
-import { IZModulesConfig } from "./campaign/types.campaign";
-import { getMockERC20Mission, TokenTypes } from "./missions/mockERC20.mission";
-import { getMockERC721Mission } from "./missions/mockERC721.mission";
+import { getCampaignConfig } from "./campaign/get-campaign-config";
+import { IZModulesConfig } from "./campaign/types";
+import { getMockERC20Mission, TokenTypes } from "./missions/mocks/mockERC20.mission";
+import { getStakingERC20Mission } from "./missions/staking-erc20/staking20.mission";
+import { getMockERC721Mission } from "./missions/mocks/mockERC721.mission";
+import { getStakingERC721Mission } from "./missions/staking-erc721/staking721.mission";
+import { getVotingERC20Mission } from "./missions/voting-erc20/voting20.mission";
+import { ZModulesMatchDM } from "./missions/match/match.mission";
 
-
-const logger = getLogger();
 
 const runCampaign = async () => {
   const [ deployAdmin ] = await hre.ethers.getSigners();
+
   const config = getCampaignConfig({
     deployAdmin,
   });
@@ -31,6 +31,8 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
     stakingERC20Config,
     stakingERC721Config,
     matchConfig,
+    votingERC20Config,
+    votingERC721Config,
     mockTokens,
   } = config;
 
@@ -53,6 +55,14 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
     missions.push(getStakingERC721Mission());
   }
 
+  if (!!votingERC20Config) {
+    missions.push(getVotingERC20Mission());
+  }
+
+  if (!!votingERC721Config) {
+    missions.push(getVotingERC20Mission());
+  }
+
   if (!!matchConfig) {
     if (mockTokens) {
       missions.push(getMockERC20Mission({ tokenType: TokenTypes.general }));
@@ -67,6 +77,10 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
 
 runCampaign()
   .catch(error => {
+    const logger = getLogger({
+      silence: process.env.SILENT_LOGGER === "true",
+    });
+
     logger.error(error.stack);
     process.exit(1);
   }).finally(() => {

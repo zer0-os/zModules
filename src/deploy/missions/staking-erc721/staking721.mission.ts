@@ -1,15 +1,16 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   BaseDeployMission,
   TDeployArgs,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesConfig, IERC721DeployArgs, IZModulesContracts } from "../campaign/types.campaign";
-import { contractNames } from "../contractNames";
+import { contractNames } from "../../contract-names";
+import { IZModulesConfig, IZModulesContracts, IStakingERC721DeployArgs } from "../../campaign/types";
 
 
-export const getStakingERC20Mission = (_instanceName ?: string) => {
-  class ZModulesStakingERC20DM extends BaseDeployMission<
+export const getStakingERC721Mission = () => {
+  class ZModulesStakingERC721DM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
   IZModulesConfig,
@@ -19,31 +20,37 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
       isProxy: false,
     };
 
-    contractName = contractNames.stakingERC20.contract;
-    instanceName = !_instanceName ? contractNames.stakingERC20.instance : _instanceName;
+    contractName = contractNames.stakingERC721.contract;
+    instanceName = contractNames.stakingERC721.instance;
 
     async deployArgs () : Promise<TDeployArgs> {
       const {
         config: {
-          stakingERC20Config,
+          stakingERC721Config,
           mockTokens,
         },
-        mock20STK,
         mock20REW,
+        mock721,
       } = this.campaign;
 
       const {
+        name,
+        symbol,
+        baseUri,
         stakingToken,
         rewardsToken,
         rewardsPerPeriod,
         periodLength,
         timeLockPeriod,
         contractOwner,
-      } = stakingERC20Config as IERC721DeployArgs;
+      } = stakingERC721Config as IStakingERC721DeployArgs;
 
       if (mockTokens && (!stakingToken && !rewardsToken)) {
         return [
-          await mock20STK.getAddress(),
+          name,
+          symbol,
+          baseUri,
+          await mock721.getAddress(),
           await mock20REW.getAddress(),
           rewardsPerPeriod,
           periodLength,
@@ -56,6 +63,9 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
         }
 
         return [
+          name,
+          symbol,
+          baseUri,
           stakingToken,
           rewardsToken,
           rewardsPerPeriod,
@@ -67,5 +77,5 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
     }
   }
 
-  return ZModulesStakingERC20DM;
+  return ZModulesStakingERC721DM;
 };
