@@ -6,18 +6,28 @@ async function main() {
   });
   // transfer gas token to see what it shows as on zchain, 13
   // transfer ownable erc20 to see how it recreates it on zchain (with param) 14
+  const userD = "0x0f3b88095e750bdD54A25B2109c7b166A34B6dDb" // userD
+  const userE = "0xd5B840269Ac41E070aFF85554dF9aad406A4d091" // userE
   
-  // deploy new that uses msg.sender, transfer ownable erc20 to see how it recreates it on zchain (msg.sender) ___
+  const depCnt = 18;
+
   const result = await api.get(
-    "/bridge",
+    "/bridges/" + userD,
     {
       params: {
-        deposit_cnt: 13,
+        deposit_cnt: depCnt,
+        // net_id: 1
       }
     }
   );
 
-    console.log(result.data)
+  for (const deposit of result.data.deposits) {
+    if (deposit.deposit_cnt == depCnt) {
+      console.log(deposit)
+    }
+  }
+
+  console.log(result.data.total_cnt)
   //   "/bridge",
   //   // "/bridges/" + BRIDGE_ADDRESS,
   //   {
@@ -29,21 +39,6 @@ async function main() {
   //     }
   //   }
   // );
-
-  // console.log(result.data)
-  // console.log(`Is message claimable? ${result.data.deposits[]}`);
-  // const latestDeposit = result.data.deposits[result.data.deposits.length - 1];
-
-  // const res = await api.get(
-  //   "/merkle-proof",
-  //   {
-  //     params: {
-  //       deposit_cnt: latestDeposit.deposit_cnt,
-  //       net_id: latestDeposit.orig_net,
-  //     },
-  //   }
-  // );
-
 }
 
 main().catch((error) => {

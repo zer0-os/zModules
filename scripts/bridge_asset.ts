@@ -14,21 +14,22 @@ async function main() {
   const bridge = getBridge(userE);
 
   const factory = await hre.ethers.getContractFactory("MockERC20Upgradeable");
-  const token = await factory.attach(SEP_OWN_UPGR_TST_ADDRESS) as MockERC20Upgradeable;
+  // const token = await factory.attach(SEP_OWN_UPGR_TST_ADDRESS) as MockERC20Upgradeable;
+  const token = await factory.attach(SEP_TST_ADDRESS) as MockERC20Upgradeable;
 
   console.log(userE.address);
 
   const amount = hre.ethers.parseEther("1");
 
   // Allow the bridge to spend transferred amount
-  await token.connect(userE).approve(BRIDGE_ADDRESS, amount);
+  await token.connect(userD).approve(BRIDGE_ADDRESS, amount);
 
   const zchainId = 1
 
   try {
-    const tx = await bridge.connect(userE).bridgeAsset(
+    const tx = await bridge.connect(userD).bridgeAsset(
       zchainId,
-      userE.address,
+      userD.address,
       amount,
       SEP_OWN_UPGR_TST_ADDRESS, // token contract address
       true,
