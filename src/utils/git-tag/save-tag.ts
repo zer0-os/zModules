@@ -1,15 +1,18 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import { getLogger } from "@zero-tech/zdc";
+import { getLogger, TLogger } from "@zero-tech/zdc";
 import fs from "fs";
 import { tagFilePath } from "./constants";
 
 
 const execAsync = promisify(exec);
-const logger = getLogger();
 
+let logger : TLogger;
 
 export const acquireLatestGitTag = async () => {
+  logger = getLogger({
+    silence: process.env.SILENT_LOGGER === "true",
+  });
   const gitTag = await execAsync("git describe --tags --abbrev=0");
   const tag = gitTag.stdout.trim();
 

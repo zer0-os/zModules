@@ -1,5 +1,4 @@
 #!/bin/bash
-
 tag=$(git describe --tags --abbrev=0)
 echo "Last tag: $tag"
 commit=$(git rev-list -n 1 "$tag")
