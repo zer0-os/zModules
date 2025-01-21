@@ -13,12 +13,18 @@ import {
   MockERC721,
 } from "../../typechain";
 import { ContractFactory } from "ethers";
-import { BRIDGE_ADDRESS, SEP_TNFT_ADDRESS, SEP_UPGR_TST_ADDRESS, STAKING_ERC20_ADDRESS, ZCHAIN_TST_ADDRESS, ZCHAIN_UPGR_TST_ADDRESS } from "./constants";
+import {
+  BRIDGE_ADDRESS,
+  SEP_TNFT_ADDRESS,
+  SEP_UPGR_TST_ADDRESS,
+  ZCHAIN_MEOW_ADDRESS,
+  ZCHAIN_STAKING_ERC20_ADDRESS
+} from "./constants";
 import { KindType } from "./types"
 
 export const getToken = (signer ?: SignerWithAddress) => {
   const tokenFactory = new MockERC20__factory(signer);
-  const token = tokenFactory.attach(ZCHAIN_TST_ADDRESS) as MockERC20;
+  const token = tokenFactory.attach(ZCHAIN_MEOW_ADDRESS) as MockERC20;
 
   return token;
 }
@@ -52,7 +58,7 @@ export const getUpgradeableToken = async (signer ?: SignerWithAddress) => {
 
 export const getStakingERC20 = (signer ?: SignerWithAddress) => {
   const factory = new StakingERC20__factory(signer);
-  const contract = factory.attach(STAKING_ERC20_ADDRESS) as StakingERC20;
+  const contract = factory.attach(ZCHAIN_STAKING_ERC20_ADDRESS) as StakingERC20;
 
   return contract;
 };

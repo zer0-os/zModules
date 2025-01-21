@@ -64,17 +64,21 @@ const config : HardhatUserConfig = {
     enabled: false,
   },
   networks: {
-    // mainnet: {
-    // //   url: `${process.env.MAINNET_RPC_URL}`,
-    // //   gasPrice: 80000000000,
-    // },
+    mainnet: {
+      url: `${process.env.MAINNET_RPC_URL}`,
+      accounts: [
+        `${process.env.TESTNET_PRIVATE_KEY_D}`,
+        `${process.env.TESTNET_PRIVATE_KEY_DEPL}`,
+      ],
+    //   gasPrice: 80000000000,
+    },
     zchain: {
       url: `${process.env.ZCHAIN_RPC_URL}`,
       timeout: 10000000,
       
       accounts: [
-        `${process.env.PRIVATE_KEY_D}`,
-        `${process.env.PRIVATE_KEY_E}`,
+        `${process.env.TESTNET_PRIVATE_KEY_D}`,
+        `${process.env.TESTNET_PRIVATE_KEY_E}`,
       ],
       // // Must have to avoid instead failing as `invalid length for result data` error
       // throwOnCallFailures: false, // not sure if this even works
@@ -83,8 +87,8 @@ const config : HardhatUserConfig = {
       url: `${process.env.SEPOLIA_RPC_URL}`,
       timeout: 10000000,
       accounts: [ // Comment out for CI, uncomment this when using Sepolia
-        `${process.env.PRIVATE_KEY_D}`,
-        `${process.env.PRIVATE_KEY_E}`
+        `${process.env.TESTNET_PRIVATE_KEY_D}`,
+        `${process.env.TESTNET_PRIVATE_KEY_E}`
       ],
       // // Must have to avoid instead failing as `invalid length for result data` error
       // throwOnCallFailures: false, // not sure if this even works

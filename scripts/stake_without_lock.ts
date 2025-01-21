@@ -13,12 +13,14 @@ async function main() {
 
   // if (allowance < DEFAULT_STAKE) {
   //   // Approve contract to spend funds on staker's behalf
-  //   let tx = await token.connect(userD).approve(await contract.getAddress(), DEFAULT_STAKE);
+    // let tx = await token.connect(userD).approve(await contract.getAddress(), DEFAULT_STAKE);
   //   await tx.wait();
   // }
 
   try {
-    const tx = await contract.connect(userD).stakeWithoutLock(DEFAULT_STAKE, 
+    // stake of 0 amount should fail, will this submit though?
+    const tx = await contract.connect(userD).stakeWithoutLock(
+      0,
       {
         gasLimit: 500000
       }
@@ -29,6 +31,7 @@ async function main() {
     console.log(receipt);
   } catch(e) {
     console.log(e);
+    throw Error("Failed to stake");
   }
 
   console.log(`Successfully staked: ${DEFAULT_STAKE}`);

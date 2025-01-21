@@ -4,7 +4,7 @@ import {
   StakingERC20,
   StakingERC20__factory,
 } from "../typechain";
-import { ZCHAIN_TST_ADDRESS } from "./helpers/constants";
+import { ZCHAIN_MEOW_ADDRESS } from "./helpers/constants";
 import { deployContract } from "./helpers";
 
 async function main() {
@@ -13,8 +13,8 @@ async function main() {
   const factory = new StakingERC20__factory(userD);
 
   const contract = await factory.deploy(
-    ZCHAIN_TST_ADDRESS,
-    ZCHAIN_TST_ADDRESS,
+    ZCHAIN_MEOW_ADDRESS,
+    ZCHAIN_MEOW_ADDRESS,
     100,
     userD.address
 
