@@ -35,7 +35,7 @@ import {
   DEFAULT_MINIMUM_LOCK,
   getNativeSetupERC20,
   getDefaultERC20Setup,
-  fundAndApprove,
+  fundAndApprove, calcRewardsMultiplier,
 } from "./helpers/staking";
 
 
@@ -333,7 +333,6 @@ describe("StakingERC20", () => {
         stakerData.unlockedTimestamp - latest - 1n, // amount of time remaining in lock
         true,
         config,
-        stakerData.rewardsMultiplier,
       );
 
       // Additional locked stakes disregard the incoming lock duration
@@ -531,7 +530,6 @@ describe("StakingERC20", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier,
       );
 
       await time.increase(DEFAULT_LOCK);
@@ -622,7 +620,6 @@ describe("StakingERC20", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier
       );
 
       const interimRewards = calcStakeRewards(
@@ -820,7 +817,6 @@ describe("StakingERC20", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier,
       );
 
       await time.increase(DEFAULT_LOCK);
@@ -1190,7 +1186,6 @@ describe("StakingERC20", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier
       );
 
       const interimRewards = calcStakeRewards(
@@ -1630,7 +1625,7 @@ describe("StakingERC20", () => {
       const futureExpectedRewards = calcLockedRewards(
         BigInt(await time.latest()) - stakedAt + 2n,
         DEFAULT_STAKED_AMOUNT,
-        stakerData.rewardsMultiplier,
+        1n, // random number
         config
       );
 
@@ -1657,6 +1652,66 @@ describe("StakingERC20", () => {
         contract.connect(owner).withdrawLeftoverRewards()
       ).to.emit(contract, WITHDRAW_EVENT)
         .withArgs(owner.address, amount);
+    });
+  });
+
+  describe("Audit fixes", () => {
+    it("6.2 - Should use proper `rewardsMultiplier` when adding to an existing locked stake", async () => {
+      await reset();
+
+      const stakeAmtInitial = hre.ethers.parseEther("137");
+      const lockTime = DAY_IN_SECONDS * 112n;
+
+      await contract.connect(stakerA).stakeWithLock(stakeAmtInitial, lockTime);
+
+      // leave 2 days before end of lock period
+      await time.increase(lockTime - DAY_IN_SECONDS * 2n);
+
+      const stakeAmtAdd = hre.ethers.parseEther("73");
+      // the `lockTime` value passed to `stakeWithLock` below should NOT be taken into account on the contract
+      await contract.connect(stakerA).stakeWithLock(stakeAmtAdd, lockTime);
+
+      const totalStakedAmt = stakeAmtInitial + stakeAmtAdd;
+
+      // fund contract with the exact amount of rewards that should be owed
+      const expectedRewardsInitial = calcStakeRewards(
+        stakeAmtInitial,
+        lockTime,
+        true,
+        config,
+      );
+
+      const remainingLockTime = await contract.connect(stakerA).getRemainingLockTime();
+      const expectedRewardsAdd = calcStakeRewards(
+        stakeAmtAdd,
+        remainingLockTime,
+        true,
+        config,
+      );
+
+      const extraTime = 73n;
+      await time.increase(remainingLockTime + extraTime);
+
+      const extraTimeRewards = calcStakeRewards(
+        stakeAmtInitial + stakeAmtAdd,
+        extraTime + 2n,
+        false,
+        config
+      );
+
+      const totalRewardsRef = expectedRewardsInitial + expectedRewardsAdd + extraTimeRewards;
+
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        totalRewardsRef
+      );
+
+      const rewardBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+      // unstake to get rewards
+      await contract.connect(stakerA).unstakeLocked(totalStakedAmt, false);
+      const rewardBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      expect(rewardBalanceAfter - rewardBalanceBefore).to.eq(totalRewardsRef);
     });
   });
 });

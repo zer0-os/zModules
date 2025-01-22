@@ -10,7 +10,6 @@ interface IStakingBase {
     /**
      * @notice Struct to track an individual staker's data
      *
-     * @param rewardsMultiplier The multiplier for rewards
      * @param lockDuration The duration of the lock
      * @param unlockedTimestamp The timestamp when the stake unlocks
      * @param amountStaked The amount of tokens staked
@@ -21,7 +20,6 @@ interface IStakingBase {
      * @param lastTimestampLocked The timestamp of the last locked action
      */
     struct Staker {
-        uint256 rewardsMultiplier;
         uint256 lockDuration;
         uint256 unlockedTimestamp;
         uint256 amountStaked;
@@ -79,7 +77,7 @@ interface IStakingBase {
     /**
      * @notice Emit when `reqwardsPerPeriod` is set
      * @param owner The address of the contract owner
-     * @param rewardsPerPeriod The new rewards per period value 
+     * @param rewardsPerPeriod The new rewards per period value
      */
     event RewardsPerPeriodSet(
         address indexed owner,

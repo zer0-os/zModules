@@ -122,7 +122,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         totalStaked += amount;
 
-        // Transfers user's funds to this contract  
+        // Transfers user's funds to this contract
         if (config.stakingToken != address(0)) {
             IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
         } // the `else` case is handled by including `recieve` above to accept `msg.value`
@@ -164,7 +164,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             } else {
                 // If claims happen after lock period has passed, the lastTimestampLocked is more accurate
                 // but if they don't happen, then lastTimestampLocked may still be the original stake timestamp
-                // and we should use `unlockedTimestamp` instead. 
+                // and we should use `unlockedTimestamp` instead.
                 // so we have to calculate which is more recent before calculating rewards
                 uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 

@@ -44,7 +44,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     // `stakingToken` is the chain's native token
     receive() external override payable {}
 
-    fallback() external override payable {} 
+    fallback() external override payable {}
 
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
@@ -243,21 +243,21 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
                 // Then we update appropriately
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
-                staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
 
                 // We precalculate the amount because we know the time frame
                 staker.owedRewardsLocked += _getStakeRewards(
                     amount,
-                    staker.rewardsMultiplier,
+                    _calcRewardsMultiplier(lockDuration),
                     lockDuration,
                     true
                 );
             } else {
+                uint256 remainingLockTime = _getRemainingLockTime(staker);
                 // Rewards value of the incoming stake given at staker's RM for remaining lock time
                 staker.owedRewardsLocked += _getStakeRewards(
                     amount,
-                    staker.rewardsMultiplier,
-                    _getRemainingLockTime(staker),
+                    _calcRewardsMultiplier(remainingLockTime),
+                    remainingLockTime,
                     true
                 );
             }
@@ -295,7 +295,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @dev Transfer funds to a recipient after deciding whether to use
      * native or ERC20 tokens
-     * 
+     *
      * We give `token` as an argument here because in ERC721 it is always the
      * reward token to transfer, but in ERC20 it could be either staking or rewards
      * token and we won't know which to check.
@@ -353,7 +353,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         // Only include rewards from locked funds the user is passed their lock period
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
-            // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked` 
+            // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked`
             // sum on stake, so we don't need to add it here as it would be double counted
             uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 
@@ -369,7 +369,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
-     * @dev Get the most recent timestamp for a staker  
+     * @dev Get the most recent timestamp for a staker
      * @param staker The staker to get the most recent timestamp for
      */
     function _mostRecentTimestamp(Staker storage staker) internal view returns (uint256) {
