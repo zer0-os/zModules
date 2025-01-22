@@ -47,7 +47,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     /**
      * @notice Stake one or more ERC721 tokens with a lock period
      * @dev These functions are separate intentionally for the sake of user clarity
-     * 
+     *
      * @param tokenIds The id(s) of the tokens to stake
      * @param tokenUris The associated metadata URIs of the tokens to stake
      * @param lockDuration The lock durations, in seconds, for each token
@@ -66,7 +66,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     /**
      * @notice Stake one or more ERC721 tokens without a lock period
      * @dev These functions are separate intentionally for the sake of user clarity
-     * 
+     *
      * @param tokenIds Array of tokenIds to be staked by the caller
      * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used!
      */
@@ -161,6 +161,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         _coreStake(nftStaker.stake, tokenIds.length, lockDuration);
 
         uint256 i;
+        bool locked = lockDuration > 0;
         for(i; i < tokenIds.length;) {
             // Transfer their NFT to this contract
             IERC721(config.stakingToken).safeTransferFrom(
@@ -172,7 +173,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             // Add to array and to mapping for when unstaking
             nftStaker.tokenIds.push(tokenIds[i]);
             nftStaker.staked[tokenIds[i]] = true;
-            nftStaker.locked[tokenIds[i]] = lockDuration > 0;
+            nftStaker.locked[tokenIds[i]] = locked;
 
             // Mint user sNFT
             IERC721MintableBurnableURIStorage(config.stakeRepToken)
@@ -198,7 +199,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         // Track if any action is taken, revert if not to avoid sucessful but empty tx
         bool isAction = false;
 
-        // Because of the possibility of having both locked and non-locked tokens 
+        // Because of the possibility of having both locked and non-locked tokens
         // unstaked at the same time, we track these values separately
         bool rewardsGiven = false;
         bool rewardsGivenLocked = false;
@@ -223,7 +224,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                 // Token was locked when staked
                 if (exit || _getRemainingLockTime(nftStaker.stake) == 0) {
 
-                    // we use `<` not `==` because incoming tokens may included non locked 
+                    // we use `<` not `==` because incoming tokens may included non locked
                     // tokens as well so incoming array has to at LEAST be equal
                     if (exit && _tokenIds.length < nftStaker.stake.amountStakedLocked) {
                         revert NotFullExit();
