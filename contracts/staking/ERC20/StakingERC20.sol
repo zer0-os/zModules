@@ -13,8 +13,12 @@ import { IERC20MintableBurnable } from "../../types/IERC20MintableBurnable.sol";
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC20 is StakingBase, IStakingERC20 {
-
     using SafeERC20 for IERC20;
+
+    /**
+     * @notice Mapping of each staker to that staker's data in the `Staker` struct
+     */
+    mapping(address user => Staker staker) public stakers;
 
     /**
      * @notice Track the total amount staked in the pool

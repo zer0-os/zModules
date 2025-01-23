@@ -21,11 +21,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     uint256 constant public LOCKED_PRECISION_DIVISOR = 100000;
 
     /**
-     * @notice Mapping of each staker to that staker's data in the `Staker` struct
-     */
-    mapping(address user => Staker staker) public stakers;
-
-    /**
      * @notice All required config variables, specified in the `Config` struct in `IStakingBase.sol`
      */
     Config public config;
