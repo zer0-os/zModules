@@ -37,7 +37,7 @@ describe("Voting tokens tests", () => {
 
     // ERC20 deploy
     const ERC20Factory = await ethers.getContractFactory(erc20Name);
-    erc20Token = await ERC20Factory.connect(owner).deploy(erc20Name, erc20Symbol, owner);
+    erc20Token = await ERC20Factory.connect(owner).deploy(erc20Name, erc20Symbol, "ZERO DAO", "1.0", owner);
     await erc20Token.waitForDeployment();
 
     // mint erc20 tokens to users and owner
@@ -47,7 +47,14 @@ describe("Voting tokens tests", () => {
 
     // ERC721 deploy
     const ERC721Factory = await ethers.getContractFactory(erc721Name) ;
-    erc721Token = await ERC721Factory.connect(owner).deploy(erc721Name, erc721Symbol, "1.0", initialBaseURI, owner);
+    erc721Token = await ERC721Factory.connect(owner).deploy(
+      erc721Name,
+      erc721Symbol,
+      initialBaseURI,
+      "ZERO DAO",
+      "1.0",
+      owner
+    );
     await erc721Token.waitForDeployment();
 
     // mint 10 NFTs to owner

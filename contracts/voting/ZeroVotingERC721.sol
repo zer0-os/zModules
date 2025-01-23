@@ -29,17 +29,20 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
      * @dev Initializes the ERC721 token with a name, symbol.
      * @param name The name of the ERC721 token.
      * @param symbol The symbol of the ERC721 token.
+     * @param domainName The name of the EIP712 signing domain.
+     * @param domainVersion The version of the EIP712 signing domain.
      * @param admin The admin of contract.
     */
     constructor(
         string memory name,
         string memory symbol,
-        string memory version,
         string memory baseUri,
+        string memory domainName,
+        string memory domainVersion,
         address admin
     )
         ERC721(name, symbol)
-        EIP712(name, version)
+        EIP712(domainName, domainVersion)
     {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(BURNER_ROLE, admin);

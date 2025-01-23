@@ -35,6 +35,8 @@ describe("Governor Voting Flow Test", () => {
     votingERC20 = await VotingERC20.deploy(
       "ZeroVotingERC20",
       "ZV",
+      "ZERO DAO",
+      "1",
       admin
     );
     await votingERC20.waitForDeployment();
@@ -44,8 +46,9 @@ describe("Governor Voting Flow Test", () => {
     votingERC721 = await VotingERC721.deploy(
       "ZeroVotingERC721",
       "ZV721",
-      "1.0",
       "dummyURI",
+      "ZERO DAO",
+      "1.0",
       admin,
     );
     await votingERC721.waitForDeployment();

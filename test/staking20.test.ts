@@ -76,7 +76,7 @@ describe("StakingERC20", () => {
     reset = async () => {
       stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
       rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
-      stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", owner);
+      stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", "ZERO DAO", "1", owner);
 
       // Give the owner ample funds for transfers in native token case
       await setBalance(owner.address, INIT_BALANCE * 10n);

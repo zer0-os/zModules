@@ -2,31 +2,34 @@
 pragma solidity 0.8.26;
 
 import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { IZeroVotingERC20 } from "./IZeroVotingERC20.sol";
 
 
-contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingERC20 {
+contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     /**
-     * @dev Initializes the token with name and symbol, also sets up ERC20Permit and ownership.
+     * @dev Initializes the token with name and symbol, also sets up ownership.
      * @param name The name of the ERC20 token.
      * @param symbol The symbol of the ERC20 token.
+     * @param domainName The name of the EIP712 signing domain.
+     * @param domainVersion The version of the EIP712 signing domain.
     */
     constructor(
         string memory name,
         string memory symbol,
+        string memory domainName,
+        string memory domainVersion,
         address admin
     )
         ERC20(name, symbol)
-        ERC20Permit(name)
+        EIP712(domainName, domainVersion)
     {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(BURNER_ROLE, admin);
@@ -64,15 +67,11 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
     }
 
     /**
-     * @dev Returns the current nonce for `owner`. This value must be
-     * included whenever a signature is generated for {permit}.
-     *
-     * Every successful call to {permit} increases ``owner``'s nonce by one. This
-     * prevents a signature from being used multiple times.
+     * @dev Returns the current nonce for `owner`.
     */
     function nonces(
         address owner
-    ) public view override(ERC20Permit, Nonces, IERC20Permit) returns (uint256) {
+    ) public view override returns (uint256) {
         return super.nonces(owner);
     }
 
@@ -83,7 +82,7 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
         address from,
         address to,
         uint256 value
-    ) internal override(ERC20, ERC20Votes) {
+    ) internal override(ERC20Votes) {
         if (from != address(0) && to != address(0)) {
             revert NonTransferrableToken();
         }

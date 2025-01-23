@@ -15,7 +15,6 @@ import {
   BaseConfig,
   WITHDRAW_EVENT,
   DEFAULT_LOCK,
-  calcTotalLockedRewards,
   calcTotalUnlockedRewards,
   PRECISION_DIVISOR,
   LOCKED_PRECISION_DIVISOR,
@@ -107,7 +106,7 @@ describe("StakingERC721", () => {
       stakingToken = await mockERC721Factory.deploy("WilderWheels", "WW", baseUri);
 
       const stakeRepFactory = await hre.ethers.getContractFactory("ZeroVotingERC721");
-      stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VNFT", "1.0", baseUri, owner.address);
+      stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VNFT", baseUri, "ZERO DAO", "1.0", owner.address);
 
       config = await createDefaultStakingConfig(
         owner,
