@@ -182,6 +182,11 @@ interface IStakingBase {
      */
     error InitializedWithZero();
 
+    /**
+     * @notice Throw when passing a multiplier to set that is not within the bounds
+     */
+    error InvalidMultiplierPassed();
+
     receive() external payable;
 
     function withdrawLeftoverRewards() external;

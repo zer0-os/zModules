@@ -101,6 +101,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
      */
     function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
+        if (_minimumRewardsMultiplier > config.maximumRewardsMultiplier) revert InvalidMultiplierPassed();
+
         config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
         emit MinimumRewardsMultiplierSet(owner(), _minimumRewardsMultiplier);
     }
@@ -112,6 +114,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
      */
     function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
+        if (_maximumRewardsMultiplier < config.minimumRewardsMultiplier) revert InvalidMultiplierPassed();
+
         config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
         emit MaximumRewardsMultiplierSet(owner(), _maximumRewardsMultiplier);
     }

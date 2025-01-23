@@ -32,6 +32,7 @@ export const INSUFFICIENT_CONTRACT_BALANCE_ERR = "InsufficientContractBalance";
 export const LOCK_TOO_SHORT_ERR = "LockTimeTooShort";
 export const ZERO_VALUE_ERR = "ZeroValue";
 export const NOT_FULL_EXIT_ERR = "NotFullExit";
+export const INVALID_MULTIPLIER_ERR = "InvalidMultiplierPassed";
 
 // eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";
