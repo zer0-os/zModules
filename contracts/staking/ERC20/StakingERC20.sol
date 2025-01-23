@@ -265,13 +265,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * return the balance of the rewards token minus the total staked amount
      */
     function _getContractRewardsBalance() internal view override returns (uint256) {
-        uint256 balance;
-
-        if (address(config.rewardsToken) == address(0)) {
-            balance = address(this).balance;
-        } else {
-            balance = IERC20(config.rewardsToken).balanceOf(address(this));
-        }
+        uint256 balance = super._getContractRewardsBalance();
 
         if (config.rewardsToken == config.stakingToken) {
             return balance - totalStaked;
