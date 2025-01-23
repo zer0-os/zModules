@@ -16,7 +16,7 @@ import {
   LOCK_TOO_SHORT_ERR,
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
   NOT_FULL_EXIT_ERR,
-  INSUFFICIENT_VALUE_ERR,
+  INSUFFICIENT_VALUE_ERR, NON_ZERO_VALUE_ERR,
 } from "./helpers/errors";
 import {
   WITHDRAW_EVENT,
@@ -35,7 +35,7 @@ import {
   DEFAULT_MINIMUM_LOCK,
   getNativeSetupERC20,
   getDefaultERC20Setup,
-  fundAndApprove, calcRewardsMultiplier,
+  fundAndApprove,
 } from "./helpers/staking";
 
 
@@ -1656,7 +1656,7 @@ describe("StakingERC20", () => {
   });
 
   describe("Audit fixes", () => {
-    it("6.2 - Should use proper `rewardsMultiplier` when adding to an existing locked stake", async () => {
+    it("Should use proper `rewardsMultiplier` when adding to an existing locked stake", async () => {
       await reset();
 
       const stakeAmtInitial = hre.ethers.parseEther("137");
@@ -1712,6 +1712,18 @@ describe("StakingERC20", () => {
       const rewardBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
 
       expect(rewardBalanceAfter - rewardBalanceBefore).to.eq(totalRewardsRef);
+    });
+
+    it("Should revert when sending gas token with ERC20 stake", async () => {
+      // without lock
+      await expect(
+        contract.stakeWithoutLock(DEFAULT_STAKED_AMOUNT, { value: DEFAULT_STAKED_AMOUNT })
+      ).to.be.revertedWithCustomError(contract, NON_ZERO_VALUE_ERR);
+
+      // with lock
+      await expect(
+        contract.stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, { value: DEFAULT_STAKED_AMOUNT })
+      ).to.be.revertedWithCustomError(contract, NON_ZERO_VALUE_ERR);
     });
   });
 });

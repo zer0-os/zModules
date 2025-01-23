@@ -114,6 +114,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             if (msg.value != amount) {
                 revert InsufficientValue();
             }
+        } else {
+            if (msg.value != 0) {
+                revert NonZeroMsgValue();
+            }
         }
 
         Staker storage staker = stakers[msg.sender];

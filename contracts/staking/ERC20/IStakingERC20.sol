@@ -39,6 +39,11 @@ interface IStakingERC20 {
      */
     error InsufficientValue();
 
+    /**
+     * @notice Revert when the user is sending gas token with ERC20 stake
+     */
+    error NonZeroMsgValue();
+
     function stakeWithLock(uint256 amount, uint256 lockDuration) external payable;
 
     function stakeWithoutLock(uint256 amount) external payable;

@@ -19,6 +19,7 @@ export const OPERATOR_NOT_ASSIGNED_ERR = "OperatorNotAssigned";
 export const UNEQUAL_UNSTAKE_ERR = "UnstakeMoreThanStake";
 export const ZERO_REWARDS_ERR = "ZeroRewards";
 export const INSUFFICIENT_VALUE_ERR = "InsufficientValue";
+export const NON_ZERO_VALUE_ERR = "NonZeroMsgValue";
 
 // StakingERC721
 export const TIME_LOCK_NOT_PASSED_ERR = "TimeLockNotPassed";
