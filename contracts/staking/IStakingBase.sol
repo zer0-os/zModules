@@ -184,8 +184,6 @@ interface IStakingBase {
 
     receive() external payable;
 
-    fallback() external payable;
-
     function withdrawLeftoverRewards() external;
 
     function setRewardsPerPeriod(uint256 _rewardsPerPeriod) external;
