@@ -315,6 +315,25 @@ describe("Voting tokens tests", () => {
       );
     });
 
+    it("Should decrement total supply after #burn() and increment after #safeMint()", async () => {
+      const totalSupplyInitial = await erc721Token.totalSupply();
+      const newTokenId = "3492342";
+      await erc721Token.connect(owner).safeMint(owner.address, newTokenId, "");
+
+      const totalSupplyAfterMint = await erc721Token.totalSupply();
+      expect(totalSupplyAfterMint).to.equal(totalSupplyInitial + 1n);
+
+      await erc721Token.connect(owner).burn(newTokenId);
+
+      const totalSupplyAfterBurn = await erc721Token.totalSupply();
+
+      expect(
+        totalSupplyAfterBurn
+      ).to.equal(
+        totalSupplyAfterMint - 1n
+      );
+    });
+
     describe("Voting functions", () => {
       it("Should delegate votes for ERC721 token", async () => {
         const balanceBefore = await erc721Token.balanceOf(owner.address);

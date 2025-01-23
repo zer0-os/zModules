@@ -103,6 +103,8 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
     function burn(
         uint256 tokenId
     ) external override onlyRole(BURNER_ROLE) {
+        --_totalSupply;
+
         _burn(tokenId);
     }
 
