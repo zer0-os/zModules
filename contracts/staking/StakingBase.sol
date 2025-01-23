@@ -306,7 +306,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         if (token == address(0)) {
             if (address(this).balance < amount) revert InsufficientContractBalance();
 
-            payable(msg.sender).transfer(amount);
+            (bool success, ) = payable(msg.sender).call{value: amount}("");
+            if (!success) revert GasTokenTransferFailed();
         } else {
             IERC20(token).safeTransfer(msg.sender, amount);
         }

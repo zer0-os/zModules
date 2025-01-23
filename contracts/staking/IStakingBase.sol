@@ -187,6 +187,11 @@ interface IStakingBase {
      */
     error InvalidMultiplierPassed();
 
+    /**
+     * @notice Throw when the transfer of gas token fails
+     */
+    error GasTokenTransferFailed();
+
     receive() external payable;
 
     function withdrawLeftoverRewards() external;
