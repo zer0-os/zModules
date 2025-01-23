@@ -132,6 +132,20 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         return _getPendingRewards(nftStakers[msg.sender].stake);
     }
 
+    /**
+     * @notice Check if a tokenID is staked
+     */
+    function isStaked(address staker, uint256 tokenId) public view override returns (bool) {
+        return nftStakers[staker].staked[tokenId];
+    }
+
+    /**
+     * @notice Check if a tokenID is locked
+     */
+    function isLocked(address staker, uint256 tokenId) public view override returns (bool) {
+        return nftStakers[staker].locked[tokenId];
+    }
+
     function onERC721Received(
         address,
         address,
@@ -222,6 +236,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             // If the token is unlocked, claim and unstake
             if (nftStaker.locked[_tokenIds[i]]) {
                 // Token was locked when staked
+                // TODO audit: optimize this call that happens twice in the same if!!!
                 if (exit || _getRemainingLockTime(nftStaker.stake) == 0) {
 
                     // we use `<` not `==` because incoming tokens may included non locked
@@ -259,6 +274,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                     _unstake(_tokenIds[i]);
                     --nftStaker.stake.amountStakedLocked;
                     nftStaker.staked[_tokenIds[i]] = false;
+                    nftStaker.locked[_tokenIds[i]] = false;
                     isAction = true;
                 } else {
                     // stake is locked and cannot be unstaked

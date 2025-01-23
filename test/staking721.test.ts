@@ -165,66 +165,6 @@ describe("StakingERC721", () => {
     await reset();
   });
 
-  it.skip("calcs correctly", async () => {
-
-    await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
-    await stakingERC721.connect(stakerB).stakeWithoutLock([tokenIdD], [emptyUri]);
-
-    await time.increase(DEFAULT_LOCK);
-
-    // Both users are given a sNFT
-    expect(await stakeRepToken.balanceOf(stakerA.address)).to.eq(1);
-    expect(await stakeRepToken.balanceOf(stakerB.address)).to.eq(1);
-
-    await stakingERC721.connect(stakerA).claim();
-    claimedAtA = BigInt(await time.latest());
-
-    await stakingERC721.connect(stakerB).claim();
-    claimedAtB = BigInt(await time.latest());
-
-    // Claim does not affect the staked balance
-    expect(await stakeRepToken.balanceOf(stakerA.address)).to.eq(1);
-    expect(await stakeRepToken.balanceOf(stakerB.address)).to.eq(1);
-
-    const stakerABalanceAfter = await rewardToken.balanceOf(stakerA.address);
-    const stakerBBalanceAfter = await rewardToken.balanceOf(stakerB.address);
-
-    // Increase time again before unstake to accrue more rewards
-    await time.increase(DEFAULT_LOCK);
-
-    await stakingERC721.connect(stakerA).unstakeAll(false);
-    unstakedAtA = BigInt(await time.latest());
-
-    await stakingERC721.connect(stakerB).unstakeAll(false);
-    unstakedAtB = BigInt(await time.latest());
-
-    // Unstaking burns the sNFT
-    expect(await stakeRepToken.balanceOf(stakerA.address)).to.eq(0n);
-    expect(await stakeRepToken.balanceOf(stakerB.address)).to.eq(0n);
-
-    const unstakeBalAfterA = await rewardToken.balanceOf(stakerA.address);
-    const unstakeBalAfterB = await rewardToken.balanceOf(stakerB.address);
-
-    const expectedRewardsAfterUnstakeA = calcTotalUnlockedRewards(
-      [unstakedAtA - claimedAtA],
-      [DEFAULT_LOCK],
-      config
-    );
-
-    const stakerData = await stakingERC721.nftStakers(stakerB.address);
-
-    const expectedRewardsAfterUnstakeB = calcTotalLockedRewards(
-      [unstakedAtB - claimedAtB],
-      [0n],
-      stakerData.rewardsMultiplier,
-      config
-    );
-
-    expect(expectedRewardsAfterUnstakeA).to.eq(unstakeBalAfterA - stakerABalanceAfter);
-    expect(expectedRewardsAfterUnstakeB).to.eq(unstakeBalAfterB - stakerBBalanceAfter);
-    expect(expectedRewardsAfterUnstakeA).to.be.gt(expectedRewardsAfterUnstakeB);
-  });
-
   it("Should NOT deploy with zero values passed", async () => {
     const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
 
@@ -272,8 +212,6 @@ describe("StakingERC721", () => {
       expect(rewardsInPool).to.eq(poolBalance);
     });
   });
-
-  // TODO list out cases, make sure all covered
 
   describe("#stake", () => {
     it("Can stake a single NFT using #stakeWithoutLock and mint `stakeRepToken`", async () => {
@@ -534,7 +472,6 @@ describe("StakingERC721", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier
       );
 
       expect(pendingRewards).to.eq(0n); // 0 as not passed lock time yet
@@ -680,7 +617,6 @@ describe("StakingERC721", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerDataBefore.rewardsMultiplier
       );
 
       const expectedLockedInterimRewards = calcStakeRewards(
@@ -763,7 +699,7 @@ describe("StakingERC721", () => {
         .withArgs(tokenIdA);
     });
 
-    it("Can unstake multiple unlocked tokens", async () => {
+    it("Can unstake multiple locked tokens", async () => {
       await reset();
 
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
@@ -793,7 +729,6 @@ describe("StakingERC721", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerDataBefore.rewardsMultiplier
       );
 
       const interimTimeRewards = calcStakeRewards(
@@ -821,6 +756,11 @@ describe("StakingERC721", () => {
       expect(stakerDataAfter.amountStakedLocked).to.eq(stakerDataBefore.amountStakedLocked - 2n);
       expect(stakerDataAfter.owedRewards).to.eq(0n);
       expect(stakerDataAfter.owedRewardsLocked).to.eq(0n); // Still staked, but haven't updated the rewards yet
+
+      expect(await stakingERC721.isStaked(stakerA.address, tokenIdB)).to.eq(false);
+      expect(await stakingERC721.isLocked(stakerA.address, tokenIdB)).to.eq(false);
+      expect(await stakingERC721.isStaked(stakerA.address, tokenIdC)).to.eq(false);
+      expect(await stakingERC721.isLocked(stakerA.address, tokenIdC)).to.eq(false);
 
       await expect(
         stakeRepToken.ownerOf(tokenIdB)
@@ -1367,7 +1307,7 @@ describe("StakingERC721", () => {
       expect(stakerDataFinal.unlockedTimestamp).to.eq(0n);
     });
 
-    it ("Can't use the StakingERC721 contract when an IERC20 is the staking token", async () => {
+    it("Can't use the StakingERC721 contract when an IERC20 is the staking token", async () => {
       const localConfig = {
         stakingToken: await rewardToken.getAddress(),
         rewardsToken: await stakingToken.getAddress(),
