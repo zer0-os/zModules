@@ -71,7 +71,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to withdraw
      */
-    function unstake(uint256 amount, bool exit) external payable override {
+    function unstake(uint256 amount, bool exit) external override {
         _unstake(amount, false, exit);
     }
 
@@ -82,7 +82,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to withdraw
      * @param exit Boolean if user wants to forfeit rewards
      */
-    function unstakeLocked(uint256 amount, bool exit) external payable override {
+    function unstakeLocked(uint256 amount, bool exit) external override {
         _unstake(amount, true, exit);
     }
 

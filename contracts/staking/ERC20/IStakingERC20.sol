@@ -35,7 +35,7 @@ interface IStakingERC20 {
     error UnstakeMoreThanStake();
 
     /**
-     * @notice Revert when the user is staking an amount inequal to the amount given 
+     * @notice Revert when the user is staking an amount inequal to the amount given
      */
     error InsufficientValue();
 
@@ -45,9 +45,9 @@ interface IStakingERC20 {
 
     function claim() external;
 
-    function unstake(uint256 amount, bool exit) external payable;
+    function unstake(uint256 amount, bool exit) external;
 
-    function unstakeLocked(uint256 amount, bool exit) external payable;
+    function unstakeLocked(uint256 amount, bool exit) external;
 
     function getRemainingLockTime() external view returns (uint256);
 
