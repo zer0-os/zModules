@@ -135,11 +135,6 @@ interface IStakingBase {
     );
 
     /**
-     * @notice Emit incoming stake is not valid
-     */
-    error InvalidStake();
-
-    /**
      * @notice Revert when the user tries to stake or unstake 0 tokens
      */
     error ZeroValue();
@@ -153,12 +148,6 @@ interface IStakingBase {
      * @notice Throw when the user tries to exit the pool without their full staked amount
      */
     error NotFullExit();
-
-    /**
-     * @notice Throw when trying to claim within an invalid period
-     * @dev Used to protect against reentrancy
-     */
-    error CannotClaim();
 
     /**
      * @notice Throw when trying to claim but user has no rewards
