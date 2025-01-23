@@ -222,7 +222,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         for (i; i < _tokenIds.length;) {
             if (
                 nftStaker.staked[_tokenIds[i]] == false
-                || IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) == address(0)
                 || IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) != msg.sender
             ) {
                 // Either the list of tokenIds contains a non-existent token
