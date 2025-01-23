@@ -182,7 +182,7 @@ export const getMatchDeployConfig = (
   config ?: IMatchDeployArgs
 ) : IMatchDeployArgs | undefined => {
   let configReturn;
-  if (env === "dev" && process.env.MATCH_USE_DEV_ENV_VALUES !== "true") {
+  if (env === "dev" && !!config) {
     configReturn = config;
   } else {
     if (
