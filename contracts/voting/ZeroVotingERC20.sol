@@ -20,7 +20,8 @@ contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
      * @param symbol The symbol of the ERC20 token.
      * @param domainName The name of the EIP712 signing domain.
      * @param domainVersion The version of the EIP712 signing domain.
-    */
+     * @param admin The admin of contract.
+     */
     constructor(
         string memory name,
         string memory symbol,
@@ -31,9 +32,11 @@ contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
         ERC20(name, symbol)
         EIP712(domainName, domainVersion)
     {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(BURNER_ROLE, admin);
-        _grantRole(MINTER_ROLE, admin);
+        if (admin != address(0)) {
+            _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        } else {
+            revert ZeroAddressError();
+        }
     }
 
     /**

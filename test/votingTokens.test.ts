@@ -31,31 +31,51 @@ describe("Voting tokens tests", () => {
   const initialBaseURI = "initialBaseURI";
   const newBaseURI = "the/Best/URI/";
 
+  const getFactories = async () => ({
+    ERC20Factory: await ethers.getContractFactory(erc20Name),
+    ERC721Factory: await ethers.getContractFactory(erc721Name),
+  });
 
   before(async () => {
+    const {
+      ERC20Factory,
+      ERC721Factory,
+    } = await getFactories();
+
     [owner, addr1, addr2] = await ethers.getSigners();
 
     // ERC20 deploy
-    const ERC20Factory = await ethers.getContractFactory(erc20Name);
-    erc20Token = await ERC20Factory.connect(owner).deploy(erc20Name, erc20Symbol, "ZERO DAO", "1.0", owner);
+    erc20Token = await ERC20Factory.connect(owner).deploy(
+      erc20Name,
+      erc20Symbol,
+      "ZERO DAO",
+      "1.0",
+      owner.address
+    );
     await erc20Token.waitForDeployment();
 
-    // mint erc20 tokens to users and owner
-    await erc20Token.connect(owner).mint(owner.address, ethers.parseEther("1000"));
-    await erc20Token.connect(owner).mint(addr1.address, ethers.parseEther("100"));
-    await erc20Token.connect(owner).mint(addr2.address, ethers.parseEther("50"));
-
     // ERC721 deploy
-    const ERC721Factory = await ethers.getContractFactory(erc721Name) ;
     erc721Token = await ERC721Factory.connect(owner).deploy(
       erc721Name,
       erc721Symbol,
       initialBaseURI,
       "ZERO DAO",
       "1.0",
-      owner
+      owner.address
     );
     await erc721Token.waitForDeployment();
+
+    // give minter and burner roles to owner
+    await erc20Token.connect(owner).grantRole(MINTER_ROLE, owner.address);
+    await erc20Token.connect(owner).grantRole(BURNER_ROLE, owner.address);
+
+    await erc721Token.connect(owner).grantRole(MINTER_ROLE, owner.address);
+    await erc721Token.connect(owner).grantRole(BURNER_ROLE, owner.address);
+
+    // mint erc20 tokens to users and owner
+    await erc20Token.connect(owner).mint(owner.address, ethers.parseEther("1000"));
+    await erc20Token.connect(owner).mint(addr1.address, ethers.parseEther("100"));
+    await erc20Token.connect(owner).mint(addr2.address, ethers.parseEther("50"));
 
     // mint 10 NFTs to owner
     for (let i = 0; i < 10; i++) {
@@ -117,6 +137,31 @@ describe("Voting tokens tests", () => {
     });
 
     describe("Access control", () => {
+      it("Should assign DEFAULT_ADMIN_ROLE to the provided admin if admin is not address(0)", async () => {
+        expect(
+          await erc20Token.hasRole(await erc20Token.DEFAULT_ADMIN_ROLE(), owner.address)
+        ).to.be.true;
+      });
+
+      it("should revert if admin is address(0)", async () => {
+        const {
+          ERC20Factory,
+        } = await getFactories();
+
+        await expect(
+          ERC20Factory.deploy(
+            erc20Name,
+            erc20Symbol,
+            "ZERO DAO",
+            "1.0",
+            ethers.ZeroAddress
+          )
+        ).to.be.revertedWithCustomError(
+          ERC20Factory,
+          "ZeroAddressError"
+        );
+      });
+
       it("Should revert when NON-ADMIN grants role", async () => {
         await expect(
           erc20Token.connect(addr2).grantRole(DEFAULT_ADMIN_ROLE, addr1.address)
@@ -386,6 +431,32 @@ describe("Voting tokens tests", () => {
     });
 
     describe("Access control", () => {
+      it("Should assign DEFAULT_ADMIN_ROLE to the provided admin if admin is not address(0)", async () => {
+        expect(
+          await erc721Token.hasRole(await erc20Token.DEFAULT_ADMIN_ROLE(), owner.address)
+        ).to.be.true;
+      });
+
+      it("should revert if admin is address(0)", async () => {
+        const {
+          ERC721Factory,
+        } = await getFactories();
+
+        await expect(
+          ERC721Factory.deploy(
+            erc721Name,
+            erc721Symbol,
+            initialBaseURI,
+            "ZERO DAO",
+            "1.0",
+            ethers.ZeroAddress
+          )
+        ).to.be.revertedWithCustomError(
+          ERC721Factory,
+          "ZeroAddressError"
+        );
+      });
+
       it("Should revert when NON-ADMIN grants role", async () => {
         await expect(
           erc721Token.connect(addr2).grantRole(DEFAULT_ADMIN_ROLE, addr1.address)
