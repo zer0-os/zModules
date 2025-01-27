@@ -7,11 +7,10 @@ import {
   MINTER_ROLE,
 } from "./helpers/voting/constants";
 import {
-  ERC20__factory,
-  ERC721__factory,
   ZeroVotingERC20,
   ZeroVotingERC20__factory,
   ZeroVotingERC721,
+  ZeroVotingERC721__factory,
 } from "../typechain";
 import { NON_TRANSFERRABLE_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
 
