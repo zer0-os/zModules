@@ -32,11 +32,11 @@ contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
         ERC20(name, symbol)
         EIP712(domainName, domainVersion)
     {
-        if (admin != address(0)) {
-            _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        } else {
-            revert ZeroAddressError();
+        if (admin == address(0)) {
+            revert ZeroAddressPassed();
         }
+
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     /**

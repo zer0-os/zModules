@@ -14,7 +14,7 @@ interface IZeroVotingERC721 is IAccessControl, IERC721, IVotes {
     event BaseURIUpdated(string baseURI);
 
     error NonTransferrableToken();
-    error ZeroAddressError();
+    error ZeroAddressPassed();
 
     function mint(
         address to,

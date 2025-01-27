@@ -6,8 +6,13 @@ import {
   DEFAULT_ADMIN_ROLE,
   MINTER_ROLE,
 } from "./helpers/voting/constants";
-import { ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
-import { NON_TRANSFERRABLE_ERR } from "./helpers/errors";
+import {
+  ERC20__factory,
+  ERC721__factory,
+  ZeroVotingERC20,
+  ZeroVotingERC721,
+} from "../typechain";
+import { NON_TRANSFERRABLE_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
 
 
 describe("Voting tokens tests", () => {
@@ -31,21 +36,17 @@ describe("Voting tokens tests", () => {
   const initialBaseURI = "initialBaseURI";
   const newBaseURI = "the/Best/URI/";
 
-  const getFactories = async () => ({
-    ERC20Factory: await ethers.getContractFactory(erc20Name),
-    ERC721Factory: await ethers.getContractFactory(erc721Name),
-  });
+  let ERC20Factory : ERC20__factory;
+  let ERC721Factory : ERC721__factory;
 
   before(async () => {
-    const {
-      ERC20Factory,
-      ERC721Factory,
-    } = await getFactories();
+    ERC20Factory = await ethers.getContractFactory(erc20Name);
+    ERC721Factory = await ethers.getContractFactory(erc721Name);
 
     [owner, addr1, addr2] = await ethers.getSigners();
 
     // ERC20 deploy
-    erc20Token = await ERC20Factory.connect(owner).deploy(
+    erc20Token = await ERC20Factory.deploy(
       erc20Name,
       erc20Symbol,
       "ZERO DAO",
@@ -55,7 +56,7 @@ describe("Voting tokens tests", () => {
     await erc20Token.waitForDeployment();
 
     // ERC721 deploy
-    erc721Token = await ERC721Factory.connect(owner).deploy(
+    erc721Token = await ERC721Factory.deploy(
       erc721Name,
       erc721Symbol,
       initialBaseURI,
@@ -144,10 +145,6 @@ describe("Voting tokens tests", () => {
       });
 
       it("should revert if admin is address(0)", async () => {
-        const {
-          ERC20Factory,
-        } = await getFactories();
-
         await expect(
           ERC20Factory.deploy(
             erc20Name,
@@ -158,7 +155,7 @@ describe("Voting tokens tests", () => {
           )
         ).to.be.revertedWithCustomError(
           ERC20Factory,
-          "ZeroAddressError"
+          ZERO_ADDRESS_ERR
         );
       });
 
@@ -438,10 +435,6 @@ describe("Voting tokens tests", () => {
       });
 
       it("should revert if admin is address(0)", async () => {
-        const {
-          ERC721Factory,
-        } = await getFactories();
-
         await expect(
           ERC721Factory.deploy(
             erc721Name,
@@ -453,7 +446,7 @@ describe("Voting tokens tests", () => {
           )
         ).to.be.revertedWithCustomError(
           ERC721Factory,
-          "ZeroAddressError"
+          ZERO_ADDRESS_ERR
         );
       });
 
