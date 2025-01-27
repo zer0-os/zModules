@@ -10,6 +10,7 @@ import {
   ERC20__factory,
   ERC721__factory,
   ZeroVotingERC20,
+  ZeroVotingERC20__factory,
   ZeroVotingERC721,
 } from "../typechain";
 import { NON_TRANSFERRABLE_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
@@ -36,8 +37,8 @@ describe("Voting tokens tests", () => {
   const initialBaseURI = "initialBaseURI";
   const newBaseURI = "the/Best/URI/";
 
-  let ERC20Factory : ERC20__factory;
-  let ERC721Factory : ERC721__factory;
+  let ERC20Factory : ZeroVotingERC20__factory;
+  let ERC721Factory : ZeroVotingERC721__factory;
 
   before(async () => {
     ERC20Factory = await ethers.getContractFactory(erc20Name);
