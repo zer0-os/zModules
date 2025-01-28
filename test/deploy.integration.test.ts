@@ -34,6 +34,7 @@ import { getMockERC721Mission } from "../src/deploy/missions/mocks/mockERC721.mi
 import { getVotingERC721Mission } from "../src/deploy/missions/voting-erc721/voting721.mission";
 import { getStakingERC721Mission } from "../src/deploy/missions/staking-erc721/staking721.mission";
 import {
+  MockERC20, MockERC721,
   StakingERC20,
   StakingERC20__factory,
   StakingERC721,
@@ -55,16 +56,12 @@ describe("zModules Deploy Integration Test", () => {
   let stakingConfig : IStakingERC20DeployArgs | IStakingERC721DeployArgs;
   let config : IZModulesConfig;
 
-  let stakingFactory : StakingERC20__factory | StakingERC721__factory;
   let staking : StakingERC20 | StakingERC721;
-  let stakingAddress : string | Addressable;
 
-  let stakeTokenAddress : string | Addressable;
-  let rewardsTokenAddress : string | Addressable;
+  let stakeToken : MockERC20 | MockERC721;
+  let rewardsToken : MockERC20 | MockERC721;
 
-  let stakeRepTokenFactory : ZeroVotingERC20__factory | ZeroVotingERC721__factory;
   let stakeRepToken : ZeroVotingERC20 | ZeroVotingERC721;
-  let stakeRepTokenAddress : string | Addressable;
 
   let campaign : DeployCampaign<
   HardhatRuntimeEnvironment,
@@ -78,7 +75,7 @@ describe("zModules Deploy Integration Test", () => {
     [ deployAdmin, votingTokenAdmin, stakingContractOwner ] = await hre.ethers.getSigners();
   });
 
-  describe("Staking", () => {
+  describe.only("Staking", () => {
     it("Should deploy StakingERC20 with zDC and default config", async () => {
       baseConfig = await getBaseZModulesConfig({
         deployAdmin,
@@ -116,53 +113,49 @@ describe("zModules Deploy Integration Test", () => {
         ],
       });
 
-      stakingAddress = await campaign.state.contracts.stakingERC20.target;
-      stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
-      staking = stakingFactory.attach(stakingAddress) as StakingERC20;
-
-      stakeTokenAddress = await campaign.state.contracts.mockErc20STK.target;
-      rewardsTokenAddress = await campaign.state.contracts.mockErc20REW.target;
-
-      stakeRepTokenAddress = await campaign.state.contracts.votingErc20.target;
-      stakeRepTokenFactory = await hre.ethers.getContractFactory("ZeroVotingERC20");
-      stakeRepToken = stakeRepTokenFactory.attach(stakeRepTokenAddress) as ZeroVotingERC20;
+      ({
+        staking20: staking,
+        votingErc20: stakeRepToken,
+        mockErc20STK: stakeToken,
+        mockErc20REW: rewardsToken,
+      } = campaign);
 
       // tokens
-      expect(await staking.getStakingToken()).to.eq(stakeTokenAddress);
-      expect(await staking.getRewardsToken()).to.eq(rewardsTokenAddress);
-      expect(await staking.getStakeRepToken()).to.eq(stakeRepTokenAddress);
+      expect(await staking.getStakingToken()).to.eq(stakeToken.target);
+      expect(await staking.getRewardsToken()).to.eq(rewardsToken.target);
+      expect(await staking.getStakeRepToken()).to.eq(stakeRepToken.target);
 
       // config
       expect(
         await staking.getMinimumLockTime()
       ).to.eq(
-        stakingConfig?.minimumLockTime
+        stakingConfig.minimumLockTime
       );
       expect(
         await staking.getMinimumRewardsMultiplier()
       ).to.eq(
-        stakingConfig?.minimumRewardsMultiplier
+        stakingConfig.minimumRewardsMultiplier
       );
       expect(
         await staking.getMaximumRewardsMultiplier()
       ).to.eq(
-        stakingConfig?.maximumRewardsMultiplier
+        stakingConfig.maximumRewardsMultiplier
       );
       expect(
         await staking.getRewardsPerPeriod()
       ).to.eq(
-        stakingConfig?.rewardsPerPeriod
+        stakingConfig.rewardsPerPeriod
       );
     });
 
     it("StakingERC20 should have MINTER_ROLE and BURNER_ROLE of StakeRepToken", async () => {
       expect(
-        await stakeRepToken.hasRole(await stakeRepToken.MINTER_ROLE(), stakingAddress)
+        await stakeRepToken.hasRole(await stakeRepToken.MINTER_ROLE(), staking.target)
       ).to.eq(
         true
       );
       expect(
-        await stakeRepToken.hasRole(await stakeRepToken.BURNER_ROLE(), stakingAddress)
+        await stakeRepToken.hasRole(await stakeRepToken.BURNER_ROLE(), staking.target)
       ).to.eq(
         true
       );
@@ -206,20 +199,17 @@ describe("zModules Deploy Integration Test", () => {
         ],
       });
 
-      stakingAddress = await campaign.state.contracts.stakingERC721.target;
-      stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
-      staking = stakingFactory.attach(stakingAddress) as StakingERC721;
-
-      stakeTokenAddress = await campaign.state.contracts.mockErc721STK.target;
-
-      stakeRepTokenAddress = await campaign.state.contracts.votingErc721.target;
-      stakeRepTokenFactory = await hre.ethers.getContractFactory("ZeroVotingERC721");
-      stakeRepToken = stakeRepTokenFactory.attach(stakeRepTokenAddress) as ZeroVotingERC721;
+      ({
+        staking721: staking,
+        votingErc721: stakeRepToken,
+        mockErc721STK: stakeToken,
+        mockErc20REW: rewardsToken,
+      } = campaign);
 
       // tokens
-      expect(await staking.getStakingToken()).to.eq(stakeTokenAddress);
-      expect(await staking.getRewardsToken()).to.eq(rewardsTokenAddress);
-      expect(await staking.getStakeRepToken()).to.eq(stakeRepTokenAddress);
+      expect(await staking.getStakingToken()).to.eq(stakeToken.target);
+      expect(await staking.getRewardsToken()).to.eq(rewardsToken.target);
+      expect(await staking.getStakeRepToken()).to.eq(stakeRepToken.target);
 
       // config
       expect(
@@ -246,12 +236,12 @@ describe("zModules Deploy Integration Test", () => {
 
     it("StakingERC721 should have MINTER_ROLE and BURNER_ROLE of StakeRepToken", async () => {
       expect(
-        await stakeRepToken.hasRole(await stakeRepToken.MINTER_ROLE(), stakingAddress)
+        await stakeRepToken.hasRole(await stakeRepToken.MINTER_ROLE(), staking.target)
       ).to.eq(
         true
       );
       expect(
-        await stakeRepToken.hasRole(await stakeRepToken.BURNER_ROLE(), stakingAddress)
+        await stakeRepToken.hasRole(await stakeRepToken.BURNER_ROLE(), staking.target)
       ).to.eq(
         true
       );

@@ -67,13 +67,18 @@ export interface IStaking721Environment {
 }
 
 export interface IVoting20Environment {
-  VOTING20_NAME : string;
-  VOTING20_SYMBOL : string;
+  VOTING20_TOKEN_NAME : string;
+  VOTING20_TOKEN_SYMBOL : string;
+  VOTING20_DOMAIN_NAME : string;
+  VOTING20_DOMAIN_VERSION : string;
 }
 
 export interface IVoting721Environment {
-  VOTING721_NAME : string;
-  VOTING721_SYMBOL : string;
+  VOTING721_TOKEN_NAME : string;
+  VOTING721_TOKEN_SYMBOL : string;
+  VOTING721_BASE_URI : string;
+  VOTING721_DOMAIN_NAME : string;
+  VOTING721_DOMAIN_VERSION : string;
 }
 
 export interface IDAOEnvironment {

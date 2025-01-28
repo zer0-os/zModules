@@ -1,4 +1,4 @@
-import { IContractState } from "@zero-tech/zdc";
+import { IContractState, IDeployCampaignConfig } from "@zero-tech/zdc";
 import {
   IVotes,
   StakingERC20,
@@ -76,9 +76,11 @@ export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress
   stakingERC20Config ?: IStakingERC20DeployArgs;
   stakingERC721Config ?: IStakingERC721DeployArgs;
   matchConfig ?: IMatchDeployArgs;
+  // TODO dep: do we need this var here or in each individual config ??
   mockTokens : boolean;
 }
 
+// TODO dep: add all possible contracts here and check where it is used
 export type ZModulesContract =
   StakingERC20 |
   StakingERC721;
