@@ -246,8 +246,9 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                 revert InvalidUnstake();
             }
 
+            // Update staker values
             nftStaker.stake.amountStakedLocked -= _tokenIds.length;
-            nftStaker.stake.lastTimestampLocked = block.timestamp;
+            nftStaker.stake.lastTimestampLocked = nftStaker.stake.amountStakedLocked == 0 ? 0 : block.timestamp;
             nftStaker.stake.owedRewardsLocked = 0;
         } else {
             owedRewards = nftStaker.stake.owedRewards;
@@ -259,8 +260,9 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                 revert InvalidUnstake();
             }
 
+            // Update staker values
             nftStaker.stake.amountStaked -= _tokenIds.length;
-            nftStaker.stake.lastTimestamp = block.timestamp;
+            nftStaker.stake.lastTimestamp = nftStaker.stake.amountStaked == 0 ? 0  : block.timestamp;
             nftStaker.stake.owedRewards = 0;
         }
 
