@@ -33,4 +33,8 @@ export const contractNames = {
     contract: "ZDAO",
     instance: "zDao",
   },
+  timelock: {
+    contract: "TimelockController",
+    instance: "timelock",
+  },
 };

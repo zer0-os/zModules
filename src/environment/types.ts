@@ -4,7 +4,11 @@ import { TEnvironment, TSupportedChain } from "@zero-tech/zdc";
 export interface IZModulesEnvironment extends
   IBaseEnvironment,
   IStaking20Environment,
-  IStaking721Environment {}
+  IStaking721Environment,
+  IVoting20Environment,
+  IVoting721Environment,
+  IDAOEnvironment,
+  ITimeLockEnvironment {}
 
 export interface IBaseEnvironment {
   ENV_LEVEL : TEnvironment;
@@ -60,4 +64,33 @@ export interface IStaking721Environment {
   STAKING721_MIN_LOCK_TIME : string;
   STAKING721_MIN_REWARDS_MULTIPLIER : string;
   STAKING721_MAX_REWARDS_MULTIPLIER : string;
+}
+
+export interface IVoting20Environment {
+  VOTING20_NAME : string;
+  VOTING20_SYMBOL : string;
+}
+
+export interface IVoting721Environment {
+  VOTING721_NAME : string;
+  VOTING721_SYMBOL : string;
+}
+
+export interface IDAOEnvironment {
+  DAO_GOV_NAME : string;
+  DAO_VOTING_TOKEN ?: string;
+  DAO_TIMELOCK_CONTROLLER ?: string;
+  DAO_VOTING_DELAY : string;
+  DAO_VOTING_PERIOD : string;
+  DAO_PROPOSAL_THRESHOLD : string;
+  DAO_QUORUM_PERCENTAGE : string;
+  DAO_VOTE_EXTENSION : string;
+}
+
+export interface ITimeLockEnvironment {
+  TIMELOCK_DELAY : string;
+  TIMELOCK_PROPOSERS ?: string;
+  TIMELOCK_EXECUTORS ?: string;
+  TIMELOCK_ADMIN ?: string;
+  TIMELOCK_VOTING_TOKEN_TYPE : string;
 }
