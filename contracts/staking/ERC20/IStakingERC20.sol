@@ -44,6 +44,11 @@ interface IStakingERC20 {
      */
     error NonZeroMsgValue();
 
+    /**
+     * @notice Throw when the user tries to exit the pool without their full staked amount
+     */
+    error NotFullExit();
+
     function stakeWithLock(uint256 amount, uint256 lockDuration) external payable;
 
     function stakeWithoutLock(uint256 amount) external payable;
