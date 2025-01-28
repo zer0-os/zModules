@@ -56,7 +56,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,
         uint256 lockDuration
-    ) external override {
+    ) external override nonReentrant {
         if (lockDuration < config.minimumLockTime) {
             revert LockTimeTooShort();
         }
@@ -73,14 +73,14 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     function stakeWithoutLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris
-    ) external override {
+    ) external override nonReentrant {
         _stake(tokenIds, tokenUris, 0);
     }
 
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claim() public override {
+    function claim() public override nonReentrant {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
         _coreClaim(nftStaker.stake);
@@ -91,7 +91,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @dev If a user is still within their lock this will revert
      * @dev OPTIMIZATION: make unstake flow more manageable by separating functionality
      */
-    function unstakeAll() public override {
+    function unstakeAll() public override nonReentrant {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
         _unstake(nftStaker.tokenIdsLocked, true);
@@ -105,7 +105,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * 
      * @param _tokenIds Array of tokens to unstake
      */
-    function unstakeUnlocked(uint256[] memory _tokenIds) public override {
+    function unstakeUnlocked(uint256[] memory _tokenIds) public override nonReentrant {
         _unstake(_tokenIds, false);
     }
 
@@ -117,7 +117,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * 
      * @param _tokenIds Array of tokens to unstake
      */
-    function unstakeLocked(uint256[] memory _tokenIds) public override {
+    function unstakeLocked(uint256[] memory _tokenIds) public override nonReentrant {
         _unstake(_tokenIds, true);
     }
 
@@ -127,7 +127,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * 
      * @param locked Indicates whether to withdraw locked or non-locked funds
      */
-    function exit(bool locked) public override {
+    function exit(bool locked) public override nonReentrant {
         _exit(locked);
     }
 
@@ -135,7 +135,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @notice Withdraw all staked funds receiving no rewards
      * @dev OPTIMIZATION: make unstake flow more manageable by separating functionality
      */
-    function exitAll() public {
+    function exitAll() public nonReentrant {
         _exit(true);
         _exit(false);
     }

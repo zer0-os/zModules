@@ -45,7 +45,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      *
      * @dev Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
      */
-    function withdrawLeftoverRewards() public override onlyOwner {
+    function withdrawLeftoverRewards() public override onlyOwner nonReentrant {
         uint256 balance = _getContractRewardsBalance();
 
         // Do not send empty transfer
@@ -62,7 +62,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      *
      * @param _rewardsPerPeriod The new rewards per period value
      */
-    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
+    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner nonReentrant {
         config.rewardsPerPeriod = _rewardsPerPeriod;
         emit RewardsPerPeriodSet(owner(), _rewardsPerPeriod);
     }
@@ -73,7 +73,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      *
      * @param _periodLength The new period length value
      */
-    function setPeriodLength(uint256 _periodLength) public override onlyOwner {
+    function setPeriodLength(uint256 _periodLength) public override onlyOwner nonReentrant {
         config.periodLength = _periodLength;
         emit PeriodLengthSet(owner(), _periodLength);
     }
@@ -84,7 +84,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      *
      * @param _minimumLockTime The new minimum lock time, in seconds
      */
-    function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
+    function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner nonReentrant {
         config.minimumLockTime = _minimumLockTime;
         emit MinimumLockTimeSet(owner(), _minimumLockTime);
     }
@@ -95,7 +95,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      *
      * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
      */
-    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
+    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner nonReentrant {
         if (_minimumRewardsMultiplier > config.maximumRewardsMultiplier) revert InvalidMultiplierPassed();
 
         config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
@@ -108,7 +108,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      *
      * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
      */
-    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
+    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner nonReentrant {
         if (_maximumRewardsMultiplier < config.minimumRewardsMultiplier) revert InvalidMultiplierPassed();
 
         config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
