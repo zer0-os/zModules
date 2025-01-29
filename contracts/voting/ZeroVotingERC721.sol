@@ -44,9 +44,11 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
         ERC721(name, symbol)
         EIP712(domainName, domainVersion)
     {
+        if (admin == address(0)) {
+            revert ZeroAddressPassed();
+        }
+
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(BURNER_ROLE, admin);
-        _grantRole(MINTER_ROLE, admin);
 
         if (bytes(baseUri).length > 0) {
             baseURI = baseUri;

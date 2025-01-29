@@ -91,6 +91,10 @@ describe("Governor Voting Flow Test", () => {
     // Grant minter role to the timelock to let it execute proposal on mint
     await votingERC20.grantRole(await votingERC20.MINTER_ROLE(), await timelock.getAddress());
 
+    // Give minter role to admin
+    await votingERC20.connect(admin).grantRole(await votingERC20.MINTER_ROLE(), admin.address);
+    await votingERC721.connect(admin).grantRole(await votingERC721.MINTER_ROLE(), admin.address);
+
     // Mint tokens to users
     await votingERC20.connect(admin).mint(user1.address, initialUser1Balance);
     await votingERC20.connect(admin).mint(user2.address, initialUser2Balance);
