@@ -248,6 +248,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         }
 
         uint256 rewards = owedRewards + _getStakeRewards(
+            // Audit fix, 6.4 - We use the user's entire staked balance for reward calculation
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
             block.timestamp - usedTimestamp,

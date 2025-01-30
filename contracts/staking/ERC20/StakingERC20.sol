@@ -180,7 +180,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // We already added the value they are owed in stake when pre calculating
                 // now we just add the value they are owed for rewards in between
                 rewards = staker.owedRewardsLocked + _getStakeRewards(
-                    amount,
+                    staker.amountStakedLocked,
                     1, // Rewards multiplier
                     block.timestamp - mostRecentTimestamp,
                     false
@@ -217,7 +217,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             } else {
                 // most recent timestamp?
                 rewards = staker.owedRewards + _getStakeRewards(
-                    amount,
+                    staker.amountStaked,
                     1, // Rewards multiplier
                     block.timestamp - staker.lastTimestamp,
                     false

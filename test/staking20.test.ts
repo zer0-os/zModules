@@ -523,7 +523,6 @@ describe("StakingERC20", () => {
       await reset();
 
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
-      const stakerData = await contract.stakers(stakerA.address);
 
       const stakeValue = calcStakeRewards(
         DEFAULT_STAKED_AMOUNT,
@@ -671,7 +670,8 @@ describe("StakingERC20", () => {
     it("Allows a user to unstake non-locked amount partially and burns `stakeRepToken`", async () => {
       await reset();
 
-      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      const amountStaked = DEFAULT_STAKED_AMOUNT;
+      await contract.connect(stakerA).stakeWithoutLock(amountStaked);
       const stakedAt = BigInt(await time.latest());
 
       await time.increase(DEFAULT_LOCK / 2n);
@@ -698,7 +698,7 @@ describe("StakingERC20", () => {
       const repTokenBalanceAfter = await stakeRepToken.balanceOf(stakerA.address);
 
       const stakeRewards = calcStakeRewards(
-        unstakeAmount,
+        amountStaked,
         unstakedAt - stakedAt,
         false,
         config
@@ -808,12 +808,12 @@ describe("StakingERC20", () => {
     it("Allows a user to partially unstake locked funds when passed their lock time and burns `stakeRepToken`", async () => {
       await reset();
 
-      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      const stakedAmount = DEFAULT_STAKED_AMOUNT;
+      await contract.connect(stakerA).stakeWithLock(stakedAmount, DEFAULT_LOCK);
       const stakedAt = BigInt(await time.latest());
 
-      const stakerData = await contract.stakers(stakerA.address);
       const stakeRewards = calcStakeRewards(
-        DEFAULT_STAKED_AMOUNT,
+        stakedAmount,
         DEFAULT_LOCK,
         true,
         config,
@@ -834,7 +834,7 @@ describe("StakingERC20", () => {
         stakeRewards * 2n
       );
 
-      const amount = DEFAULT_STAKED_AMOUNT / 2n;
+      const amount = stakedAmount / 2n;
 
       const repTokenBalanceBefore = await stakeRepToken.balanceOf(stakerA.address);
 
@@ -845,7 +845,7 @@ describe("StakingERC20", () => {
 
       // should only be 1s more than stakeValue
       const interimRewards = calcStakeRewards(
-        amount,
+        stakedAmount,
         unstakedAt - stakerDataBefore.unlockedTimestamp,
         false,
         config
@@ -1353,7 +1353,7 @@ describe("StakingERC20", () => {
       const rewardsAfterUnstake = await hre.ethers.provider.getBalance(stakerA.address);
 
       const stakeRewardsUnstake = calcStakeRewards(
-        unstakeAmount,
+        stakeAmount,
         unstakedAt - claimedAt,
         false,
         config
@@ -1505,7 +1505,7 @@ describe("StakingERC20", () => {
       const rewardsBalanceAfterUnstakeA = await rewardsToken.balanceOf(stakerA.address);
 
       const expectedRewardsUnstakeA = calcStakeRewards(
-        unstakeAmountA,
+        stakedAmountA,
         unstakedAtA - claimedAtA,
         false,
         localConfig
@@ -1583,7 +1583,7 @@ describe("StakingERC20", () => {
       unstakedAt = BigInt(await time.latest());
 
       const stakeRewards = calcStakeRewards(
-        unstakeAmount,
+        stakerData.amountStaked,
         unstakedAt - claimedAt,
         false,
         config
@@ -1724,6 +1724,40 @@ describe("StakingERC20", () => {
       await expect(
         contract.stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, { value: DEFAULT_STAKED_AMOUNT })
       ).to.be.revertedWithCustomError(contract, NON_ZERO_VALUE_ERR);
+    });
+
+    it("6.4 - User loses rewards when unstaking partial amounts", async () => {
+      await reset();
+
+      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      const stakedAt = BigInt(await time.latest());
+
+      await time.increase(DAY_IN_SECONDS * 37n);
+
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+
+      const stakerData = await contract.stakers(stakerA.address);
+
+      // 6.4 - Note we are calculating expected rewards with their ENTIRE balance
+      const futureExpectedRewards = calcTotalUnlockedRewards(
+        [BigInt(await time.latest()) - stakedAt + 2n],
+        [stakerData.amountStaked],
+        config
+      );
+
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        futureExpectedRewards
+      );
+
+      // Partial unstake
+      const unstakeAmount = DEFAULT_STAKED_AMOUNT / 2n;
+      await contract.connect(stakerA).unstake(unstakeAmount, false);
+
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      // Confirm that the expected rewards calculated using their FULL staked amount is accurate
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + futureExpectedRewards);
     });
   });
 });
