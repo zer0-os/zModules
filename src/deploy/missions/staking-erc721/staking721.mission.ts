@@ -9,8 +9,8 @@ import { contractNames } from "../../contract-names";
 import {
   IZModulesConfig,
   IZModulesContracts,
-  IStakingERC721DeployArgs,
-  IVotingERC721DeployArgs,
+  IStakingERC721Config,
+  IVotingERC721Config,
 } from "../../campaign/types";
 
 
@@ -42,7 +42,7 @@ export const getStakingERC721Mission = (_instanceName ?: string) => {
       let {
         stakingToken,
         rewardsToken,
-      } = stakingERC721Config as IStakingERC721DeployArgs;
+      } = stakingERC721Config as IStakingERC721Config;
 
       const {
         rewardsPerPeriod,
@@ -51,7 +51,7 @@ export const getStakingERC721Mission = (_instanceName ?: string) => {
         contractOwner,
         minimumRewardsMultiplier,
         maximumRewardsMultiplier,
-      } = stakingERC721Config as IStakingERC721DeployArgs;
+      } = stakingERC721Config as IStakingERC721Config;
 
       if (mockTokens) {
         stakingToken = await mockErc721STK.getAddress();
@@ -107,7 +107,7 @@ export const getStakingERC721Mission = (_instanceName ?: string) => {
 
       const {
         admin,
-      } = votingERC721Config as IVotingERC721DeployArgs;
+      } = votingERC721Config as IVotingERC721Config;
 
       const stakingAddress = await staking721.getAddress();
 

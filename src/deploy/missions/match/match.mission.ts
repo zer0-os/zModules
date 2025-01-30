@@ -3,7 +3,7 @@ import { BaseDeployMission } from "@zero-tech/zdc/dist/missions/base-deploy-miss
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
 import { TDeployArgs } from "@zero-tech/zdc/dist/missions/types";
 import { contractNames } from "../../contract-names";
-import { IMatchDeployArgs, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
+import { IMatchConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 
 
 export class ZModulesMatchDM extends BaseDeployMission<
@@ -34,7 +34,7 @@ IZModulesContracts
       owner,
       operators,
       gameFeePercentage,
-    } = matchConfig as IMatchDeployArgs;
+    } = matchConfig as IMatchConfig;
 
     if (mockTokens && !token) {
       return [

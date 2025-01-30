@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as hre from "hardhat";
 import {
-  IMatchDeployArgs,
-  IStakingERC20DeployArgs,
-  IStakingERC721DeployArgs,
-  IVotingERC20DeployArgs,
-  IVotingERC721DeployArgs,
   IZModulesConfig,
 } from "./types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
@@ -48,21 +43,11 @@ export const getBaseZModulesConfig = async ({
 export const getCampaignConfig = ({
   env,
   deployAdmin,
-  stk20Config,
-  stk721Config,
-  matchConfig,
-  votingERC20Config,
-  votingERC721Config,
   mockTokens,
   postDeploy,
 } : {
   env ?: string;
   deployAdmin : SignerWithAddress;
-  stk20Config ?: IStakingERC20DeployArgs;
-  stk721Config ?: IStakingERC721DeployArgs;
-  matchConfig ?: IMatchDeployArgs;
-  votingERC20Config ?: IVotingERC20DeployArgs;
-  votingERC721Config ?: IVotingERC721DeployArgs;
   mockTokens ?: boolean;
   postDeploy ?: {
     tenderlyProjectSlug : string;
@@ -70,36 +55,28 @@ export const getCampaignConfig = ({
     verifyContracts : boolean;
   };
 }) => {
-  let envLevel = process.env.ENV_LEVEL;
-  if (env) {
-    envLevel = env;
-  }
+  const envLevel = env || process.env.ENV_LEVEL;
 
   validateEnv(envLevel);
 
   const mockTokensFinal = mockTokens || process.env.MOCK_TOKENS === "true";
 
-  const stk20Conf = getStaking20DeployConfig(
+  const stk20Conf = getStaking20DeployConfig({
+    deployAdmin,
+  });
+  const stk721Conf = getStaking721DeployConfig({
+    deployAdmin,
+  });
+  const matchConf = getMatchDeployConfig({
     envLevel,
     mockTokensFinal,
-    stk20Config
-  );
-  const stk721Conf = getStaking721DeployConfig(
-    envLevel,
-    mockTokensFinal,
-    stk721Config
-  );
-  const matchConf = getMatchDeployConfig(
-    envLevel,
-    mockTokensFinal,
-    matchConfig
-  );
-  const voting20Conf = getVoting20DeployConfig(
-    votingERC20Config
-  );
-  const voting721Conf = getVoting721DeployConfig(
-    votingERC721Config
-  );
+  });
+  const voting20Conf = getVoting20DeployConfig({
+    deployAdmin,
+  });
+  const voting721Conf = getVoting721DeployConfig({
+    deployAdmin,
+  });
 
   const config : IZModulesConfig = {
     env: envLevel,

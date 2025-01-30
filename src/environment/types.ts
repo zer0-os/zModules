@@ -8,7 +8,8 @@ export interface IZModulesEnvironment extends
   IVoting20Environment,
   IVoting721Environment,
   IDAOEnvironment,
-  ITimeLockEnvironment {}
+  ITimeLockEnvironment,
+  IMatchEnvironment {}
 
 export interface IBaseEnvironment {
   ENV_LEVEL : TEnvironment;
@@ -99,3 +100,5 @@ export interface ITimeLockEnvironment {
   TIMELOCK_ADMIN ?: string;
   TIMELOCK_VOTING_TOKEN_TYPE : string;
 }
+
+export interface IMatchEnvironment {}

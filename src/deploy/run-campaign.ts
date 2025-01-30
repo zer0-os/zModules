@@ -33,13 +33,12 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
     matchConfig,
     votingERC20Config,
     votingERC721Config,
-    mockTokens,
   } = config;
 
   const missions = [];
 
   if (!!stakingERC20Config) {
-    if (mockTokens) {
+    if (stakingERC20Config.mockTokens) {
       missions.push(getMockERC20Mission({ tokenType: TokenTypes.staking }));
       missions.push(getMockERC20Mission({ tokenType: TokenTypes.rewards }));
     }
@@ -48,7 +47,7 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
   }
 
   if (!!stakingERC721Config) {
-    if (mockTokens) {
+    if (stakingERC721Config.mockTokens) {
       missions.push(getMockERC721Mission());
     }
 
@@ -64,7 +63,7 @@ export const getMissionsToDeploy = (config : IZModulesConfig) => {
   }
 
   if (!!matchConfig) {
-    if (mockTokens) {
+    if (matchConfig.mockTokens) {
       missions.push(getMockERC20Mission({ tokenType: TokenTypes.general }));
     }
 

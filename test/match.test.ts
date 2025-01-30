@@ -15,7 +15,7 @@ import {
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
 import {
-  TestIMatchDeployArgs,
+  TestIMatchConfig,
   contractNames,
   runZModulesCampaign,
 } from "../src/deploy";
@@ -58,7 +58,7 @@ describe("Match Contract",  () => {
 
   let dbAdapter : MongoDBAdapter;
 
-  let config : TestIMatchDeployArgs;
+  let config : TestIMatchConfig;
 
   let tokenForMatch : MockERC20;
 

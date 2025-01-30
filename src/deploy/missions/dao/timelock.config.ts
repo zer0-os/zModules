@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import assert from "assert";
-import { ITimelockDeployArgs } from "../../campaign/types";
+import { ITimelockConfig } from "../../campaign/types";
 
 
 export const getTimeLockControllerConfig = ({
@@ -9,7 +9,7 @@ export const getTimeLockControllerConfig = ({
 } : {
   timeLockAdmin : SignerWithAddress;
   votingTokenInstName : string;
-}) : ITimelockDeployArgs => {
+}) : ITimelockConfig => {
   assert.ok(
     !!process.env.TIMELOCK_DELAY,
     "Missing required env variable TIMELOCK_DELAY for TimeLockController!"

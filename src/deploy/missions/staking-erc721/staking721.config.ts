@@ -1,6 +1,6 @@
 import assert from "assert";
 import {
-  IStakingERC721DeployArgs,
+  IStakingERC721Config,
 } from "../../campaign/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
@@ -9,7 +9,7 @@ export const getStaking721DeployConfig = ({
   contractOwner,
 } : {
   contractOwner ?: SignerWithAddress;
-} = {}) : IStakingERC721DeployArgs | undefined => {
+} = {}) : IStakingERC721Config | undefined => {
   const env = process.env.ENV_LEVEL;
 
   let owner;

@@ -1,14 +1,19 @@
 import { IContractState, IDeployCampaignConfig } from "@zero-tech/zdc";
 import {
+  AccessControl,
   IVotes,
+  Match,
   StakingERC20,
   StakingERC721,
   TimelockController,
+  ZDAO,
+  ZeroVotingERC20,
+  ZeroVotingERC721,
 } from "../../../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 
-export interface IStakingERC20DeployArgs {
+export interface IStakingERC20Config {
   mockTokens : boolean;
   stakingToken ?: string;
   rewardsToken ?: string;
@@ -21,21 +26,19 @@ export interface IStakingERC20DeployArgs {
   maximumRewardsMultiplier : bigint;
 }
 
-export interface IStakingERC721DeployArgs extends IStakingERC20DeployArgs {
+export interface IStakingERC721Config extends IStakingERC20Config {
   name : string;
   symbol : string;
   baseUri : string;
 }
 
-// TODO dep: rename all these ints that are configs from DeployArgs to DeployConfig,
-//  since it's not all args and names are misleading
-export interface IVotingERC20DeployArgs {
+export interface IVotingERC20Config {
   name : string;
   symbol : string;
   admin : SignerWithAddress;
 }
 
-export interface IVotingERC721DeployArgs {
+export interface IVotingERC721Config {
   name : string;
   symbol : string;
   version : string;
@@ -43,7 +46,7 @@ export interface IVotingERC721DeployArgs {
   admin : SignerWithAddress;
 }
 
-export interface IDAODeployArgs {
+export interface IDAOConfig {
   governorName : string;
   token : IVotes;
   timelock : TimelockController;
@@ -54,7 +57,7 @@ export interface IDAODeployArgs {
   voteExtension : bigint;
 }
 
-export interface IMatchDeployArgs {
+export interface IMatchConfig {
   token ?: string;
   feeVault : string;
   owner : string;
@@ -62,7 +65,7 @@ export interface IMatchDeployArgs {
   gameFeePercentage : bigint;
 }
 
-export interface ITimelockDeployArgs {
+export interface ITimelockConfig {
   delay : bigint;
   proposers : Array<string>;
   executors : Array<string>;
@@ -71,25 +74,28 @@ export interface ITimelockDeployArgs {
 }
 
 export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
-  votingERC20Config ?: IVotingERC20DeployArgs;
-  votingERC721Config ?: IVotingERC721DeployArgs;
-  stakingERC20Config ?: IStakingERC20DeployArgs;
-  stakingERC721Config ?: IStakingERC721DeployArgs;
-  matchConfig ?: IMatchDeployArgs;
-  // TODO dep: do we need this var here or in each individual config ??
-  mockTokens : boolean;
+  votingERC20Config ?: IVotingERC20Config;
+  votingERC721Config ?: IVotingERC721Config;
+  stakingERC20Config ?: IStakingERC20Config;
+  stakingERC721Config ?: IStakingERC721Config;
+  matchConfig ?: IMatchConfig;
 }
 
-// TODO dep: add all possible contracts here and check where it is used
 export type ZModulesContract =
   StakingERC20 |
-  StakingERC721;
+  StakingERC721 |
+  ZeroVotingERC20 |
+  ZeroVotingERC721 |
+  ZDAO |
+  AccessControl |
+  Match |
+  TimelockController;
 
 export interface IZModulesContracts extends IContractState<ZModulesContract> {
   stakingERC20 : StakingERC20;
   stakingERC721 : StakingERC721;
 }
 
-export interface TestIMatchDeployArgs extends IMatchDeployArgs {
+export interface TestIMatchConfig extends IMatchConfig {
   token : string;
 }

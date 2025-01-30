@@ -1,11 +1,11 @@
-import { IDAODeployArgs } from "../../campaign/types";
+import { IDAOConfig } from "../../campaign/types";
 import assert from "assert";
 
 
 export const getDAODeployConfig = (
   env : string,
   mockTokens : boolean
-) : IDAODeployArgs => {
+) : IDAOConfig => {
   if (
     !process.env.DAO_GOV_NAME ||
       !process.env.DAO_VOTING_TOKEN ||

@@ -1,4 +1,4 @@
-import { IVotingERC721DeployArgs } from "../../campaign/types";
+import { IVotingERC721Config } from "../../campaign/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 
@@ -6,7 +6,7 @@ export const getVoting721DeployConfig = ({
   tokenAdmin,
 } : {
   tokenAdmin : SignerWithAddress;
-}) : IVotingERC721DeployArgs => {
+}) : IVotingERC721Config => {
   if (
     !process.env.VOTING721_TOKEN_NAME ||
       !process.env.VOTING721_TOKEN_SYMBOL ||

@@ -6,9 +6,9 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
   IZModulesConfig,
-  IStakingERC20DeployArgs,
+  IStakingERC20Config,
   IZModulesContracts,
-  IVotingERC20DeployArgs,
+  IVotingERC20Config,
 } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 
@@ -41,7 +41,7 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
       let {
         stakingToken,
         rewardsToken,
-      } = stakingERC20Config as IStakingERC20DeployArgs;
+      } = stakingERC20Config as IStakingERC20Config;
 
       const {
         rewardsPerPeriod,
@@ -50,7 +50,7 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
         contractOwner,
         minimumRewardsMultiplier,
         maximumRewardsMultiplier,
-      } = stakingERC20Config as IStakingERC20DeployArgs;
+      } = stakingERC20Config as IStakingERC20Config;
 
       if (mockTokens) {
         stakingToken = await mockErc20STK.getAddress();
@@ -106,7 +106,7 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
 
       const {
         admin,
-      } = votingERC20Config as IVotingERC20DeployArgs;
+      } = votingERC20Config as IVotingERC20Config;
 
       const stakingAddress = await staking20.getAddress();
 

@@ -1,12 +1,17 @@
 import assert from "assert";
-import { IMatchDeployArgs } from "../../campaign/types";
+import { IMatchConfig } from "../../campaign/types";
 
 
-export const getMatchDeployConfig = (
-  env : string,
-  mockTokens : boolean,
-  config ?: IMatchDeployArgs
-) : IMatchDeployArgs | undefined => {
+export const getMatchDeployConfig = ({
+  env,
+  mockTokens,
+  config,
+} : {
+  env : string;
+  mockTokens : boolean;
+  config ?: IMatchConfig;
+}) : IMatchConfig | undefined => {
+
   let configReturn;
 
   if (env === "dev" && process.env.MATCH_USE_DEV_ENV_VALUES !== "true") {

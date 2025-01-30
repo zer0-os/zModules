@@ -1,7 +1,7 @@
 import { BaseDeployMission } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { ITimelockDeployArgs, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
+import { ITimelockConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 
 
@@ -30,7 +30,7 @@ IZModulesContracts
       proposers,
       executors,
       admin,
-    } = timelockConfig as ITimelockDeployArgs;
+    } = timelockConfig as ITimelockConfig;
 
     return [
       delay,

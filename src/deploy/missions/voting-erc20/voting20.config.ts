@@ -1,12 +1,12 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { IVotingERC20DeployArgs } from "../../campaign/types";
+import { IVotingERC20Config } from "../../campaign/types";
 
 
 export const getVoting20DeployConfig = ({
   tokenAdmin,
 } : {
   tokenAdmin : SignerWithAddress;
-}) : IVotingERC20DeployArgs => {
+}) : IVotingERC20Config => {
   if (
     !process.env.VOTING20_TOKEN_NAME ||
     !process.env.VOTING20_TOKEN_SYMBOL ||

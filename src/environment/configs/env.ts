@@ -3,6 +3,7 @@ import { staking20Config, staking721Config } from "./staking.configenv";
 import { IZModulesEnvironment } from "../types";
 import { voting20Config, voting721Config } from "./voting.configenv";
 import { daoConfig, timelockConfig } from "./dao.configenv";
+import { matchConfig } from "./match.configenv";
 
 
 export const environment : IZModulesEnvironment = {
@@ -13,4 +14,5 @@ export const environment : IZModulesEnvironment = {
   ...staking721Config,
   ...daoConfig,
   ...timelockConfig,
+  ...matchConfig,
 };

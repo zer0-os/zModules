@@ -7,10 +7,10 @@ import { getVotingERC20Mission } from "../src/deploy/missions/voting-erc20/votin
 import { getStakingERC20Mission } from "../src/deploy/missions/staking-erc20/staking20.mission";
 import { getStaking20DeployConfig } from "../src/deploy/missions/staking-erc20/staking20.config";
 import {
-  IStakingERC20DeployArgs,
-  IStakingERC721DeployArgs,
-  IVotingERC20DeployArgs,
-  IVotingERC721DeployArgs,
+  IStakingERC20Config,
+  IStakingERC721Config,
+  IVotingERC20Config,
+  IVotingERC721Config,
   IZModulesConfig,
   IZModulesContracts,
 } from "../src/deploy/campaign/types";
@@ -21,7 +21,6 @@ import {
 import { getVoting721DeployConfig } from "../src/deploy/missions/voting-erc721/voting721.config";
 import { expect } from "chai";
 import {
-  Addressable,
   Signer,
 } from "ethers";
 import {
@@ -34,15 +33,12 @@ import { getMockERC721Mission } from "../src/deploy/missions/mocks/mockERC721.mi
 import { getVotingERC721Mission } from "../src/deploy/missions/voting-erc721/voting721.mission";
 import { getStakingERC721Mission } from "../src/deploy/missions/staking-erc721/staking721.mission";
 import {
-  MockERC20, MockERC721,
+  MockERC20,
+  MockERC721,
   StakingERC20,
-  StakingERC20__factory,
   StakingERC721,
-  StakingERC721__factory,
   ZeroVotingERC20,
-  ZeroVotingERC20__factory,
   ZeroVotingERC721,
-  ZeroVotingERC721__factory,
 } from "../typechain";
 
 
@@ -52,8 +48,8 @@ describe("zModules Deploy Integration Test", () => {
   let stakingContractOwner : SignerWithAddress;
 
   let baseConfig : IDeployCampaignConfig<Signer>;
-  let votingConfig : IVotingERC20DeployArgs | IVotingERC721DeployArgs;
-  let stakingConfig : IStakingERC20DeployArgs | IStakingERC721DeployArgs;
+  let votingConfig : IVotingERC20Config | IVotingERC721Config;
+  let stakingConfig : IStakingERC20Config | IStakingERC721Config;
   let config : IZModulesConfig;
 
   let staking : StakingERC20 | StakingERC721;
@@ -75,7 +71,7 @@ describe("zModules Deploy Integration Test", () => {
     [ deployAdmin, votingTokenAdmin, stakingContractOwner ] = await hre.ethers.getSigners();
   });
 
-  describe.only("Staking", () => {
+  describe("Staking", () => {
     it("Should deploy StakingERC20 with zDC and default config", async () => {
       baseConfig = await getBaseZModulesConfig({
         deployAdmin,
@@ -87,7 +83,7 @@ describe("zModules Deploy Integration Test", () => {
 
       stakingConfig = getStaking20DeployConfig({
         contractOwner: stakingContractOwner,
-      }) as IStakingERC20DeployArgs;
+      }) as IStakingERC20Config;
 
       config = {
         ...baseConfig,
@@ -172,12 +168,12 @@ describe("zModules Deploy Integration Test", () => {
 
       stakingConfig = getStaking721DeployConfig({
         contractOwner: stakingContractOwner,
-      }) as IStakingERC721DeployArgs;
+      }) as IStakingERC721Config;
 
       config = {
         ...baseConfig,
-        votingERC721Config: votingConfig as IVotingERC721DeployArgs,
-        stakingERC721Config: stakingConfig as IStakingERC721DeployArgs,
+        votingERC721Config: votingConfig as IVotingERC721Config,
+        stakingERC721Config: stakingConfig as IStakingERC721Config,
       };
 
       campaign = await runZModulesCampaign({

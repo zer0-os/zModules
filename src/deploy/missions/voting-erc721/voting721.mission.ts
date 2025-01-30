@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
-  IVotingERC721DeployArgs,
+  IVotingERC721Config,
   IZModulesConfig,
   IZModulesContracts,
 } from "../../campaign/types";
@@ -36,7 +36,7 @@ export const getVotingERC721Mission = (_instanceName ?: string) => {
         version,
         baseUri,
         admin,
-      } = votingERC721Config as IVotingERC721DeployArgs;
+      } = votingERC721Config as IVotingERC721Config;
 
       return [
         name,

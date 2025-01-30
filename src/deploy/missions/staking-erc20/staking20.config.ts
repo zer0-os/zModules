@@ -1,5 +1,5 @@
 import assert from "assert";
-import { IStakingERC20DeployArgs } from "../../campaign/types";
+import { IStakingERC20Config } from "../../campaign/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 
@@ -7,7 +7,7 @@ export const getStaking20DeployConfig = ({
   contractOwner,
 } : {
   contractOwner ?: SignerWithAddress;
-} = {}) : IStakingERC20DeployArgs | undefined => {
+} = {}) : IStakingERC20Config | undefined => {
   const env = process.env.ENV_LEVEL;
 
   let owner;
