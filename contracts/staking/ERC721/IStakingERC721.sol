@@ -16,14 +16,7 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
     struct NFTStaker {
         Staker stake;
 
-        // A) have array of token ids AND `staked` mapping
-        // This way we can mark tokens as `unstaked` without iterating
-        // `tokenIds` array each time.
-        // B) we can just remove the `unstakeAll` option because the front end could do this
-        // Considering we don't yet have a subgraph for this it might be tricky
-        uint256[] tokenIds; // use sNFT as proof of ownership of stake, and `amountStaked(locked)` as quantity
-        // TODO look at gas costs for this and see if off chain tids is a better solution (with a subgraph)
-        mapping(uint256 tokenId => bool staked) staked;
+        // Track if a token was locked when it was staked
         mapping(uint256 tokenId => bool locked) locked;
     }
 
@@ -53,7 +46,12 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
     error InvalidOwner();
 
     /**
-     * @notice Throw when call to unstake makes no changes
+     * @notice Throw when unstaking and caller is not owner of a token or tokenId is not staked
+     */
+    error InvalidOwnerOrStake();
+
+    /**
+     * @notice Throw when call to unstake makes no changes or is otherwise invalid
      */
     error InvalidUnstake();
 
@@ -63,29 +61,27 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
     error NonTransferrableToken();
 
     function stakeWithLock(
-        uint256[] calldata tokenIds,
-        string[] calldata tokenUris,
-        uint256 lockDuration
+        uint256[] calldata _tokenIds,
+        string[] calldata _tokenUris,
+        uint256 _lockDuration
     ) external;
 
     function stakeWithoutLock(
-        uint256[] calldata tokenIds,
-        string[] calldata tokenURIs
+        uint256[] calldata _tokenIds,
+        string[] calldata _tokenURIs
     ) external;
 
     function claim() external;
 
-    function unstake(uint256[] memory tokenIds, bool exit) external;
+    function unstakeUnlocked(uint256[] memory _tokenIds) external;
 
-    function unstakeAll(bool exit) external;
+    function unstakeLocked(uint256[] memory _tokenIds) external;
 
-    function getStakedTokenIds() external view returns(uint256[] memory);
+    function exit(uint256[] memory _tokenIds, bool _locked) external;
 
     function getPendingRewards() external view returns (uint256);
 
     function getRemainingLockTime() external view returns (uint256);
 
-    function isStaked(address staker, uint256 tokenId) external view returns (bool);
-
-    function isLocked(address staker, uint256 tokenId) external view returns (bool);
+    function isLocked(address _staker, uint256 _tokenId) external view returns (bool);
 }

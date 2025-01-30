@@ -10,7 +10,6 @@ interface IStakingBase {
     /**
      * @notice Struct to track an individual staker's data
      *
-     * @param lockDuration The duration of the lock
      * @param unlockedTimestamp The timestamp when the stake unlocks
      * @param amountStaked The amount of tokens staked
      * @param amountStakedLocked The amount of tokens locked
@@ -20,7 +19,6 @@ interface IStakingBase {
      * @param lastTimestampLocked The timestamp of the last locked action
      */
     struct Staker {
-        uint256 lockDuration;
         uint256 unlockedTimestamp;
         uint256 amountStaked;
         uint256 amountStakedLocked;
@@ -145,11 +143,6 @@ interface IStakingBase {
     error TimeLockNotPassed();
 
     /**
-     * @notice Throw when the user tries to exit the pool without their full staked amount
-     */
-    error NotFullExit();
-
-    /**
      * @notice Throw when trying to claim but user has no rewards
      */
     error ZeroRewards();
@@ -180,6 +173,11 @@ interface IStakingBase {
      * @notice Throw when the transfer of gas token fails
      */
     error GasTokenTransferFailed();
+
+    /**
+     * @notice Throw when the user tries to exit the pool without their full staked amount
+     */
+    error NotFullExit();
 
     receive() external payable;
 
