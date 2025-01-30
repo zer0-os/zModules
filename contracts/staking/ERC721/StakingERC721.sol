@@ -8,8 +8,6 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 import { IERC721MintableBurnableURIStorage } from "../../types/IERC721MintableBurnableURIStorage.sol";
 
-import { console } from "hardhat/console.sol";
-
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
@@ -263,7 +261,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                 checkLocked && !lockedInState
                 || !checkLocked && lockedInState
             ) {
-                console.log("2");
                 revert InvalidUnstake();
             }
 
@@ -277,7 +274,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         }
 
         if (_getContractRewardsBalance() < rewards) {
-            console.log("rewards: ", rewards);
             revert InsufficientContractBalance();
         }
 
@@ -317,6 +313,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             // Reset all "locked" values appropriately
             nftStaker.stake.unlockedTimestamp = 0;
             nftStaker.stake.amountStakedLocked = 0;
+            nftStaker.stake.owedRewardsLocked = 0;
             nftStaker.stake.lastTimestampLocked = 0;
         } else {
             // Reset all "unlocked" values appropriately
