@@ -32,15 +32,10 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         _;
     }
 
-    constructor(
-        Config memory config
-    )
-        StakingBase(config)
-    {
+    constructor(Config memory config) StakingBase(config) {
         if (config.stakingToken.code.length == 0) {
             revert InitializedWithZero();
         }
-
     }
 
     /**
@@ -93,7 +88,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @param _tokenIds Array of tokens to unstake
      */
     function unstakeUnlocked(uint256[] memory _tokenIds) public override {
-        _unstake(_tokenIds, false);
+        _unstakeUnlocked(_tokenIds);
     }
 
     /**
@@ -104,7 +99,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @param _tokenIds Array of tokens to unstake
      */
     function unstakeLocked(uint256[] memory _tokenIds) public override {
-        _unstake(_tokenIds, true);
+        _unstakeLocked(_tokenIds);
     }
 
         /**
@@ -115,6 +110,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @param _locked Indicates whether to withdraw locked or non-locked funds
      */
     function exit(uint256[] memory _tokenIds, bool _locked) public override {
+        if (!config.canExit) revert CannotExit();
         _exit(_tokenIds, _locked);
     }
 
@@ -194,74 +190,97 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         }
     }
 
-    // OPTIMIZATION: make unstake flow more manageable by separating functionality
-    function _unstake(uint256[] memory _tokenIds, bool checkLocked) internal {
+    function _unstakeLocked(uint256[] memory tokenIds) internal {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
-        uint256 owedRewards;
-        uint256 stakeBalance;
-        uint256 usedTimestamp;
+        uint256 stakeBalance = nftStaker.stake.amountStakedLocked;
 
-        // Store values we need and reset appropriately
-        if (checkLocked) {
-            stakeBalance = nftStaker.stake.amountStakedLocked;
+        // Revert to avoid underflow
+        if (tokenIds.length > stakeBalance) revert InvalidUnstake();
 
-            // Revert to avoid underflow
-            if (_tokenIds.length > stakeBalance) revert InvalidUnstake();
+        // If no stake or incoming array is empty revert
+        if (tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
 
-            // If no stake or incoming array is empty revert
-            if (_tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
+        // If still locked revert
+        if (_getRemainingLockTime(nftStaker.stake) > 0) revert TimeLockNotPassed();
 
-            // If still locked revert
-            if (_getRemainingLockTime(nftStaker.stake) > 0) revert TimeLockNotPassed();
-
-            usedTimestamp = _mostRecentTimestamp(nftStaker.stake);
-            owedRewards = nftStaker.stake.owedRewardsLocked;
-
-            // Update staker values
-            nftStaker.stake.amountStakedLocked -= _tokenIds.length;
-            nftStaker.stake.owedRewardsLocked = 0;
-
-            if (nftStaker.stake.amountStakedLocked == 0) {
-                nftStaker.stake.lastTimestampLocked = 0;
-                nftStaker.stake.unlockedTimestamp = 0; 
-            } else {
-                // No change to unlockedTimestamp if there are still locked funds
-                nftStaker.stake.lastTimestampLocked = block.timestamp;
-            }
-        } else {
-            stakeBalance = nftStaker.stake.amountStaked;
-
-            // Will underflow if incoming array is longer than `amountStaked`
-            if (_tokenIds.length > stakeBalance) revert InvalidUnstake();
-
-            // If no stake or incoming array is empty revert
-            if (_tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
-
-            usedTimestamp = nftStaker.stake.lastTimestamp;
-            owedRewards = nftStaker.stake.owedRewards;
-
-            // Update staker values
-            nftStaker.stake.amountStaked -= _tokenIds.length;
-            nftStaker.stake.lastTimestamp = nftStaker.stake.amountStaked == 0 ? 0  : block.timestamp;
-            nftStaker.stake.owedRewards = 0;
-        }
-
-        uint256 rewards = owedRewards + _getStakeRewards(
-            // Audit fix, 6.4 - We use the user's entire staked balance for reward calculation
+        // Calculate rewards before any state manipulation
+        uint256 rewards = nftStaker.stake.owedRewardsLocked + _getStakeRewards(
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
-            block.timestamp - usedTimestamp,
+            block.timestamp - _mostRecentTimestamp(nftStaker.stake),
             false
         );
 
+        // Update staker values
+        nftStaker.stake.amountStakedLocked -= tokenIds.length;
+        nftStaker.stake.owedRewardsLocked = 0;
+
+        if (nftStaker.stake.amountStakedLocked == 0) {
+            nftStaker.stake.lastTimestampLocked = 0;
+            nftStaker.stake.unlockedTimestamp = 0; 
+        } else {
+            // No change to unlockedTimestamp if there are still locked funds
+            nftStaker.stake.lastTimestampLocked = block.timestamp;
+        }
+
+        
+
+        uint256 i;
+        for (i; i < tokenIds.length;) {
+
+            // Revert if the user passes in tokenIds that were not locked
+            if (!nftStaker.locked[tokenIds[i]]) {
+                revert InvalidUnstake();
+            }
+
+            // Function is `onlySNFTOwner` guarded
+            _coreUnstake(tokenIds[i]);
+            nftStaker.locked[tokenIds[i]] = false;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        if (_getContractRewardsBalance() < rewards) {
+            revert InsufficientContractBalance();
+        }
+
+        _transferAmount(config.rewardsToken, rewards);
+
+        emit Claimed(msg.sender, rewards);
+    }
+
+    function _unstakeUnlocked(uint256[] memory _tokenIds) internal {
+        NFTStaker storage nftStaker = nftStakers[msg.sender];
+
+        // Store values we need and reset appropriately
+        uint256 stakeBalance = nftStaker.stake.amountStaked;
+
+        // Revert to avoid underflow if incoming array is longer than `amountStaked`
+        if (_tokenIds.length > stakeBalance) revert InvalidUnstake();
+
+        // If no stake or incoming array is empty revert
+        if (_tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
+
+        // Calculate rewards before any state manipulation
+        uint256 rewards = nftStaker.stake.owedRewards + _getStakeRewards(
+            stakeBalance,
+            1, // Rewards multiplier for interim period is 1
+            block.timestamp - nftStaker.stake.lastTimestamp,
+            false
+        );
+
+        // Update staker values
+        nftStaker.stake.amountStaked -= _tokenIds.length;
+        nftStaker.stake.lastTimestamp = nftStaker.stake.amountStaked == 0 ? 0  : block.timestamp;
+        nftStaker.stake.owedRewards = 0;
+
         uint256 i;
         for (i; i < _tokenIds.length;) {
-            bool lockedInState = nftStaker.locked[_tokenIds[i]];
-            if (
-                checkLocked && !lockedInState
-                || !checkLocked && lockedInState
-            ) {
+            // Revert if the user passes in tokenIds that were not locked
+            if (nftStaker.locked[_tokenIds[i]]) {
                 revert InvalidUnstake();
             }
 
@@ -283,7 +302,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         emit Claimed(msg.sender, rewards);
     }
 
-    // OPTIMIZATION: make unstake flow more manageable by separating functionality
     function _exit(uint256[] memory _tokenIds, bool _locked) internal {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
@@ -298,6 +316,14 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256 i;
         for(i; i < _tokenIds.length;) {
             uint256 tokenId = _tokenIds[i];
+
+            // If calling exit for locked/unlocked tokens, but provides valid and owned
+            // tokenIds of the opposite lock state, revert
+            if (_locked && !nftStaker.locked[tokenId]) {
+                revert NotFullExit();
+            } else if (!_locked && nftStaker.locked[tokenId]) {
+                revert NotFullExit();
+            }
 
             _coreUnstake(tokenId);
             nftStaker.locked[tokenId] = false;
@@ -322,6 +348,8 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             nftStaker.stake.owedRewards = 0;
             nftStaker.stake.lastTimestamp = 0;
         }
+
+        emit Exited(msg.sender, _tokenIds, _locked);
     }
 
     function _coreUnstake(

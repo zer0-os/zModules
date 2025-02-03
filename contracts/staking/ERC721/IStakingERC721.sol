@@ -41,6 +41,18 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
     );
 
     /**
+     * @notice Emit when a user exits with either locked or non locked funds
+     * @param staker The address of the user exiting
+     * @param tokenIds The tokens being removed
+     * @param locked If the user exited with locked funds or not
+     */
+    event Exited(
+        address indexed staker,
+        uint256[] indexed tokenIds,
+        bool indexed locked
+    );
+
+    /**
      * @notice Throw when caller is not the sNFT owner
      */
     error InvalidOwner();
@@ -60,28 +72,33 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
      */
     error NonTransferrableToken();
 
+    /**
+     * @notice Throw when the user tries to exit the pool without their full staked amount
+     */
+    error NotFullExit();
+
     function stakeWithLock(
-        uint256[] calldata _tokenIds,
-        string[] calldata _tokenUris,
-        uint256 _lockDuration
+        uint256[] calldata tokenIds,
+        string[] calldata tokenUris,
+        uint256 lockDuration
     ) external;
 
     function stakeWithoutLock(
-        uint256[] calldata _tokenIds,
-        string[] calldata _tokenURIs
+        uint256[] calldata tokenIds,
+        string[] calldata tokenURIs
     ) external;
 
     function claim() external;
 
-    function unstakeUnlocked(uint256[] memory _tokenIds) external;
+    function unstakeUnlocked(uint256[] memory tokenIds) external;
 
-    function unstakeLocked(uint256[] memory _tokenIds) external;
+    function unstakeLocked(uint256[] memory tokenIds) external;
 
-    function exit(uint256[] memory _tokenIds, bool _locked) external;
+    function exit(uint256[] memory tokenIds, bool locked) external;
 
     function getPendingRewards() external view returns (uint256);
 
     function getRemainingLockTime() external view returns (uint256);
 
-    function isLocked(address _staker, uint256 _tokenId) external view returns (bool);
+    function isLocked(address staker, uint256 tokenId) external view returns (bool);
 }

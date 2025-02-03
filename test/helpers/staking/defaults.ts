@@ -13,10 +13,8 @@ import * as hre from "hardhat";
 
 import {
   DEFAULT_PERIOD_LENGTH_ERC721,
-  PRECISION_DIVISOR,
   DEFAULT_REWARDS_PER_PERIOD_ERC20,
   DEFAULT_REWARDS_PER_PERIOD_ERC721,
-  LOCKED_PRECISION_DIVISOR,
   DEFAULT_PERIOD_LENGTH_ERC20,
   DEFAULT_MINIMUM_LOCK,
   DEFAULT_MINIMUM_RM,
@@ -36,11 +34,10 @@ export const createDefaultStakingConfig = async (
   const config : Partial<BaseConfig> = {
     rewardsToken: rewardsERC20 ? await rewardsERC20.getAddress() : hre.ethers.ZeroAddress,
     minimumLockTime: DEFAULT_MINIMUM_LOCK,
-    divisor: PRECISION_DIVISOR,
-    lockedDivisor: LOCKED_PRECISION_DIVISOR,
     minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
     maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
     contractOwner: contractOwner.address,
+    canExit: true,
   };
 
   if (erc721) {
@@ -63,6 +60,33 @@ export const createDefaultStakingConfig = async (
 
     return config as BaseConfig;
   }
+};
+
+export const getDefaultERC20SetupWithExit = async (
+  owner : SignerWithAddress,
+  rewardsToken : MockERC20,
+  stakeToken : MockERC20,
+  stakeRepToken : ZeroVotingERC20,
+  canExit : boolean
+) : Promise<StakingERC20> => {
+  const config = await createDefaultStakingConfig(
+    owner,
+    rewardsToken,
+    undefined,
+    stakeToken,
+    stakeRepToken
+  );
+
+  config.canExit = canExit;
+
+  const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+
+  const contract = await stakingFactory.deploy(config) as StakingERC20;
+
+  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.MINTER_ROLE(), await contract.getAddress());
+  await stakeRepToken.connect(owner).grantRole(await stakeRepToken.BURNER_ROLE(), await contract.getAddress());
+
+  return contract;
 };
 
 export const getDefaultERC20Setup = async (
@@ -160,7 +184,6 @@ export const fundAndApprove = async (
     );
   }
 };
-
 
 const fundRewards = async (contractAddress : string) => {
   await hre.network.provider.send("hardhat_setBalance", [

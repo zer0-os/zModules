@@ -36,6 +36,9 @@ import {
   INVALID_UNSTAKE_ERR,
   INSUFFICIENT_BALANCE_ERR,
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
+  NOT_FULL_EXIT_ERR,
+  INVALID_OWNER_ERR,
+  CANNOT_EXIT_ERR,
 } from "./helpers/errors";
 
 
@@ -75,7 +78,7 @@ describe("StakingERC721", () => {
   const tokenIdJ = 10n;
 
   const tokenIdDelayed = 11n; // Minted and used in stake at a later point in time
-  const unStakedTokenId = 12n; // Minted but never used in stake
+  const unstakedTokenId = 12n; // Minted but never used in stake
   const unmintedTokenId = 13n; // Never minted
 
   const baseUri = "0://staked-nfts";
@@ -139,7 +142,7 @@ describe("StakingERC721", () => {
       await stakingToken.mint(stakerC.address, tokenIdI);
       await stakingToken.mint(stakerC.address, tokenIdJ);
 
-      await stakingToken.mint(owner.address, unStakedTokenId);
+      await stakingToken.mint(owner.address, unstakedTokenId);
 
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
       await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
@@ -392,9 +395,9 @@ describe("StakingERC721", () => {
       await reset();
 
       await expect(
-        stakingERC721.connect(stakerA).stakeWithoutLock([unStakedTokenId], [emptyUri])
+        stakingERC721.connect(stakerA).stakeWithoutLock([unstakedTokenId], [emptyUri])
       ).to.be.revertedWithCustomError(stakingToken, INSUFFICIENT_APPROVAL_721_ERR)
-        .withArgs(stakingERC721.target, unStakedTokenId);
+        .withArgs(stakingERC721.target, unstakedTokenId);
 
       await expect(
         stakingERC721.connect(stakerA).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK)
@@ -643,7 +646,6 @@ describe("StakingERC721", () => {
         [emptyUri, emptyUri],
         DEFAULT_LOCK
       );
-
       stakedAtLocked = BigInt(await time.latest());
 
       const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
@@ -654,6 +656,8 @@ describe("StakingERC721", () => {
 
       await stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA]);
       unstakedAt = BigInt(await time.latest());
+
+      expect(stakerDataBefore.amountStaked).to.eq(1n);
 
       const expectedUnlocked = calcStakeRewards(
         stakerDataBefore.amountStaked,
@@ -797,7 +801,7 @@ describe("StakingERC721", () => {
     it("Fails to unstake when token id is not staked", async () => {
       // If the a token is not staked, the relevant does not exist and so we can't unstake it
       await expect(
-        stakingERC721.connect(stakerA).unstakeUnlocked([unStakedTokenId])
+        stakingERC721.connect(stakerA).unstakeUnlocked([unstakedTokenId])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
   });
@@ -867,25 +871,8 @@ describe("StakingERC721", () => {
   });
 
   describe("#exit", () => {
-
-    // TODO CASES
-    // stake 3 without lock
-    // stake stake 5 with lock
-
-    // case: unstake 3 locked tokens
-    // case: unstake 5 locked tokens
-    // case: unstake 7 locked tokens (revert)
-    // case: unstake 2 locked tokens and one unlocked (revert)
-    // case: unstake 0 locked tokens (will revert with InsufficientBalance error)
-    // case: call this when never staked any locked funds
-
-    // incoming array that includes not owned or not locked tokens should revert
-    // incoming array that is empty should revert
-    // incoming array that includes mix of locked / non locked should revert
-    // incoming array that includes ONLY locked and owned tokens should pass
-    // incoming array that includes ONLY locked and owned tokens should fail if not passed lock time
-
-
+    let amountStakedLocked : bigint;
+    let stakedAtLocked : bigint;
     it("Allows the user to remove a single stake within the timelock period without rewards", async () => {
       await reset();
 
@@ -959,6 +946,105 @@ describe("StakingERC721", () => {
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore - 3n);
       expect(stakeTokenBalanceAfter).to.eq(stakeTokenBalanceBefore + 3n);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore);
+    });
+
+    it("Fails when not providing full list of owned tokenIds", async () => {
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
+
+      amountStakedLocked = 3n;
+      await stakingERC721.connect(stakerA).stakeWithLock(
+        [tokenIdA, tokenIdB, tokenIdC],
+        [emptyUri, emptyUri, emptyUri],
+        DEFAULT_LOCK
+      );
+      stakedAtLocked = BigInt(await time.latest());
+
+      // Try to do a partial exit, confirm it will revert
+      await expect(
+        stakingERC721.connect(stakerA).exit([tokenIdA, tokenIdB], true)
+      ).to.be.revertedWithCustomError(stakingERC721, NOT_FULL_EXIT_ERR);
+    });
+
+    it("Fails when any of the incoming tokenIds are invalid", async () => {
+      const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataBefore.amountStakedLocked).to.eq(amountStakedLocked);
+      expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtLocked);
+      expect(stakerDataBefore.owedRewards).to.eq(0n); // Not tallied yet
+
+      // Try to do a partial exit, confirm it will revert
+      // It hits `NotFullExit` condition before it can validate if invalid tokenID exists
+      await expect(
+        stakingERC721.connect(stakerA).exit([tokenIdA, tokenIdB, unmintedTokenId], true)
+      ).to.be.revertedWithCustomError(stakingERC721, NOT_FULL_EXIT_ERR);
+    });
+
+    it("Fails when any of the incoming tokenIds are not owned by the caller", async () => {
+      const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataBefore.amountStakedLocked).to.eq(amountStakedLocked);
+      expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtLocked);
+      expect(stakerDataBefore.owedRewards).to.eq(0n); // Not tallied yet
+
+      // Try to do a partial exit, confirm it will revert
+      // Will hit `NotFullExit` condition in loop before it can validate owner
+      await expect(
+        stakingERC721.connect(stakerA).exit([tokenIdA, tokenIdB, tokenIdD], true)
+      ).to.be.revertedWithCustomError(stakingERC721, NOT_FULL_EXIT_ERR);
+    });
+
+    it("Fails when mix of locked and unlocked tokens are provided", async () => {
+      await reset();
+
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
+
+      await stakingERC721.connect(stakerA).stakeWithLock(
+        [tokenIdA, tokenIdB],
+        [emptyUri, emptyUri],
+        DEFAULT_LOCK
+      );
+
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdC], [emptyUri]);
+
+      await expect(
+        stakingERC721.connect(stakerA).exit([tokenIdA, tokenIdC], true)
+      ).to.be.revertedWithCustomError(stakingERC721, NOT_FULL_EXIT_ERR);
+    });
+
+    it("Fails when canExit is false", async () => {
+      await stakingERC721.connect(owner).setExit(false);
+
+      await expect(
+        stakingERC721.connect(stakerA).exit([tokenIdA, tokenIdB], true)
+      ).to.be.revertedWithCustomError(stakingERC721, CANNOT_EXIT_ERR);
+
+      await expect(
+        stakingERC721.connect(stakerA).exit([tokenIdC], false)
+      ).to.be.revertedWithCustomError(stakingERC721, CANNOT_EXIT_ERR);
+
+    });
+    it("Succeeds when canExit is true", async ()=> {
+      await stakingERC721.connect(owner).setExit(true);
+
+      const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+      const rewardsBefore = await rewardToken.balanceOf(stakerA.address);
+
+      expect(stakerDataBefore.amountStakedLocked).to.eq(2n);
+      expect(stakerDataBefore.amountStaked).to.eq(1n);
+
+      await stakingERC721.connect(stakerA).exit([tokenIdA, tokenIdB], true);
+      await stakingERC721.connect(stakerA).exit([tokenIdC], false);
+
+      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
+      const rewardsAfter = await rewardToken.balanceOf(stakerA.address);
+
+      expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
+      expect(stakerDataAfter.amountStaked).to.eq(0n);
+      expect(rewardsAfter).to.eq(rewardsBefore);
     });
   });
 
@@ -1422,11 +1508,10 @@ describe("StakingERC721", () => {
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
         minimumLockTime: DEFAULT_MINIMUM_LOCK,
-        divisor: PRECISION_DIVISOR,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR,
         minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
         maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
         contractOwner: owner.address,
+        canExit: true,
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1464,11 +1549,11 @@ describe("StakingERC721", () => {
         periodLength: BigInt(1),
         timeLockPeriod: BigInt(1),
         minimumLockTime: DEFAULT_MINIMUM_LOCK,
-        divisor: PRECISION_DIVISOR,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR,
         minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
         maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
         contractOwner: owner.address,
+        canExit: true,
+
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
@@ -1514,12 +1599,11 @@ describe("StakingERC721", () => {
         stakeRepToken: await stakeRepToken.getAddress(),
         rewardsPerPeriod: BigInt(1),
         periodLength: BigInt(1),
-        divisor: PRECISION_DIVISOR,
         minimumLockTime: DEFAULT_MINIMUM_LOCK,
-        lockedDivisor: LOCKED_PRECISION_DIVISOR,
         minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
         maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
         contractOwner: owner.address,
+        canExit: true,
       } as BaseConfig;
 
       const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");

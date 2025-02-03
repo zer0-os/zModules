@@ -57,6 +57,15 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
+     * @notice Set the `canExit` flag to true or false to allow users to call to `exit` or not
+     * @param exit The modified exit status
+     */
+    function setExit(bool exit) public override onlyOwner {
+        config.canExit = exit;
+        emit ExitSet(exit);
+    }
+
+    /**
      * @notice Set the rewards per period
      * @dev Will fail when called by anyone other than the contract owner
      *

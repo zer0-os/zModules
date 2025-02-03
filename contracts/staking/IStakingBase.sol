@@ -38,6 +38,7 @@ interface IStakingBase {
      * @param minimumLockTime The minimum amount of time a user must lock
      * @param minimumRewardsMultiplier The minimum multiplier for rewards
      * @param maximumRewardsMultiplier The maximum multiplier for rewards
+     * @param canExit Flag to indicate if `exit` is allowed or not
      */
     struct Config {
         address stakingToken;
@@ -49,6 +50,7 @@ interface IStakingBase {
         uint256 minimumLockTime;
         uint256 minimumRewardsMultiplier;
         uint256 maximumRewardsMultiplier;
+        bool canExit;
     }
 
     /**
@@ -133,6 +135,14 @@ interface IStakingBase {
     );
 
     /**
+     * @notice Emit when the `canExit` flag is set
+     * @param exit The new exit status
+     */
+    event ExitSet(
+        bool exit
+    );
+
+    /**
      * @notice Revert when the user tries to stake or unstake 0 tokens
      */
     error ZeroValue();
@@ -175,9 +185,9 @@ interface IStakingBase {
     error GasTokenTransferFailed();
 
     /**
-     * @notice Throw when the user tries to exit the pool without their full staked amount
+     * @notice Throw when a call to exit is disallowed
      */
-    error NotFullExit();
+    error CannotExit();
 
     receive() external payable;
 
@@ -192,6 +202,8 @@ interface IStakingBase {
     function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) external;
 
     function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) external;
+
+    function setExit(bool exit) external;
 
     function getContractRewardsBalance() external view returns (uint256);
 
