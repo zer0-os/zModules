@@ -16,8 +16,6 @@ import {
   WITHDRAW_EVENT,
   DEFAULT_LOCK,
   calcTotalUnlockedRewards,
-  PRECISION_DIVISOR,
-  LOCKED_PRECISION_DIVISOR,
   calcStakeRewards,
   DEFAULT_MINIMUM_LOCK,
   DEFAULT_MINIMUM_RM,
@@ -37,7 +35,6 @@ import {
   INSUFFICIENT_BALANCE_ERR,
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
   NOT_FULL_EXIT_ERR,
-  INVALID_OWNER_ERR,
   CANNOT_EXIT_ERR,
 } from "./helpers/errors";
 
@@ -1894,6 +1891,64 @@ describe("StakingERC721", () => {
       expect(stakerDataAfter.amountStaked).to.eq(amountStaked - amountUnstaked);
       expect(stakerDataAfter.lastTimestamp).to.eq(unstakedAt);
       expect(stakerDataAfter.owedRewards).to.eq(0n); // Just gave rewards to staker
+    });
+
+    it("6.5 - Array length manipulation allows partial exit in _unstakeMany(...)", async () => {
+      await reset();
+
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
+
+      const amountStaked = 3n;
+      await stakingERC721.connect(stakerA).stakeWithoutLock(
+        [tokenIdA, tokenIdB, tokenIdC],
+        [emptyUri, emptyUri, emptyUri]
+      );
+
+      const stakedAt = BigInt(await time.latest());
+
+      let stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataBefore.amountStaked).to.eq(amountStaked);
+      expect(stakerDataBefore.lastTimestamp).to.eq(stakedAt);
+      expect(stakerDataBefore.owedRewards).to.eq(0n); // Not tallied yet
+
+      // Try to do a partial exit
+      // confirm it will revert on owner check in `onlySNFTOwner` if we submit an invalid array of tokenIds
+      await expect(
+        stakingERC721.connect(stakerA).exit([tokenIdA, unstakedTokenId, unmintedTokenId], false)
+      ).to.be.revertedWithCustomError(stakeRepToken, NONEXISTENT_TOKEN_ERR);
+
+      // Confirm again with locked stake
+      await stakingERC721.connect(stakerA).exit([tokenIdA, tokenIdB, tokenIdC], false);
+
+      // Reapprove staking contract
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
+
+      // Restake
+      const amountStakedLocked = 3n;
+      await stakingERC721.connect(stakerA).stakeWithLock(
+        [tokenIdA, tokenIdB, tokenIdC],
+        [emptyUri, emptyUri, emptyUri],
+        DEFAULT_LOCK
+      );
+
+      const stakedAtLocked = BigInt(await time.latest());
+
+      stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataBefore.amountStakedLocked).to.eq(amountStakedLocked);
+      expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtLocked);
+      expect(stakerDataBefore.owedRewards).to.eq(0n); // Not tallied yet
+
+      // Try to do a partial exit, confirm it will revert, this time using real tokenIds but not the
+      // correct owner
+      await expect(
+        stakingERC721.connect(stakerA).exit([tokenIdA, unstakedTokenId, unmintedTokenId], true)
+      ).to.be.revertedWithCustomError(stakingERC721, NOT_FULL_EXIT_ERR);
     });
   });
 });
