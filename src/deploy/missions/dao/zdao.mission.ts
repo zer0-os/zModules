@@ -5,89 +5,61 @@ import { IDAOConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/
 import { contractNames } from "../../contract-names";
 
 
-export class ZModulesZDAODM extends BaseDeployMission<
-HardhatRuntimeEnvironment,
-SignerWithAddress,
-IZModulesConfig,
-IZModulesContracts
-> {
-  proxyData = {
-    isProxy: false,
-  };
+export const getDAOMission = (_instanceName ?: string) => {
+  class ZModulesZDAODM extends BaseDeployMission<
+  HardhatRuntimeEnvironment,
+  SignerWithAddress,
+  IZModulesConfig,
+  IZModulesContracts
+  > {
+    proxyData = {
+      isProxy: false,
+    };
 
-  contractName = contractNames.dao.contract;
-  instanceName = contractNames.dao.instance;
+    contractName = contractNames.dao.contract;
+    instanceName = !_instanceName ? contractNames.dao.instance : _instanceName;
 
-  async deployArgs () : Promise<TDeployArgs> {
-    const {
-      config: {
-        daoConfig,
-        mock,
-      },
-      mockToken,
-      mockTimelock,
-    } = this.campaign;
+    async deployArgs () : Promise<TDeployArgs> {
+      const {
+        config: {
+          daoConfig,
+        },
+        mockVotingToken,
+        mockTimelock,
+      } = this.campaign;
 
-    const {
-      governorName,
-      token,
-      timelock,
-      votingDelay,
-      votingPeriod,
-      proposalThreshold,
-      quorumPercentage,
-      voteExtension,
-    } = daoConfig as IDAOConfig;
-
-    if (mock && !token) {
-      return [
+      const {
         governorName,
-        await mockToken.getAddress(),
+        token,
         timelock,
         votingDelay,
         votingPeriod,
         proposalThreshold,
         quorumPercentage,
         voteExtension,
-      ];
-    } else if (mock && !timelock) {
-      return [
-        governorName,
-        token,
-        await mockTimelock.getAddress(),
-        votingDelay,
-        votingPeriod,
-        proposalThreshold,
-        quorumPercentage,
-        voteExtension,
-      ];
-    } else if (mockTimelock && mock) {
-      return [
-        governorName,
-        await mockToken.getAddress(),
-        await mockTimelock.getAddress(),
-        votingDelay,
-        votingPeriod,
-        proposalThreshold,
-        quorumPercentage,
-        voteExtension,
-      ];
-    } else {
-      if (!token) {
-        throw new Error("Must provide token to use for Match contract if not mocking");
+      } = daoConfig as IDAOConfig;
+
+      if (
+        (token || mockVotingToken) &&
+        (timelock || mockTimelock)
+      ) {
+        return [
+          governorName,
+          token ? token : await mockVotingToken.getAddress(),
+          timelock ? timelock : await mockTimelock.getAddress(),
+          votingDelay,
+          votingPeriod,
+          proposalThreshold,
+          quorumPercentage,
+          voteExtension,
+        ];
+      } else {
+        throw new Error("Must provide voting token and timelock controller to use for DAO contract");
       }
-      return [
-        governorName,
-        token,
-        timelock,
-        votingDelay,
-        votingPeriod,
-        proposalThreshold,
-        quorumPercentage,
-        voteExtension,
-      ];
     }
-  }
 
   // TODO dep: add post deploy to set roles !!
-}
+  }
+
+  return ZModulesZDAODM;
+};

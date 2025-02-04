@@ -1,7 +1,9 @@
-import { IContractState, IDeployCampaignConfig } from "@zero-tech/zdc";
+import {
+  IContractState,
+  IDeployCampaignConfig,
+} from "@zero-tech/zdc";
 import {
   AccessControl,
-  IVotes,
   Match,
   StakingERC20,
   StakingERC721,
@@ -47,9 +49,10 @@ export interface IVotingERC721Config {
 }
 
 export interface IDAOConfig {
+  mockTokens : boolean;
   governorName : string;
-  token : IVotes;
-  timelock : TimelockController;
+  token ?: string;
+  timelock ?: string;
   votingDelay : bigint;
   votingPeriod : bigint;
   proposalThreshold : bigint;
@@ -79,6 +82,8 @@ export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress
   stakingERC20Config ?: IStakingERC20Config;
   stakingERC721Config ?: IStakingERC721Config;
   matchConfig ?: IMatchConfig;
+  daoConfig ?: IDAOConfig;
+  timelockConfig ?: ITimelockConfig;
 }
 
 export type ZModulesContract =

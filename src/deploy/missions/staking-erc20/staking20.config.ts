@@ -23,10 +23,10 @@ export const getStaking20DeployConfig = ({
 
   if (
     !process.env.STAKING20_REWARDS_PER_PERIOD ||
-      !process.env.STAKING20_PERIOD_LENGTH ||
-      !process.env.STAKING20_MIN_LOCK_TIME ||
-      !process.env.STAKING20_MIN_REWARDS_MULTIPLIER ||
-      !process.env.STAKING20_MAX_REWARDS_MULTIPLIER
+    !process.env.STAKING20_PERIOD_LENGTH ||
+    !process.env.STAKING20_MIN_LOCK_TIME ||
+    !process.env.STAKING20_MIN_REWARDS_MULTIPLIER ||
+    !process.env.STAKING20_MAX_REWARDS_MULTIPLIER
   ) {
     throw new Error("Missing required env variables for StakingERC20!");
   }

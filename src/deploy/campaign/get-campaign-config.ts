@@ -12,6 +12,7 @@ import { getStaking721DeployConfig } from "../missions/staking-erc721/staking721
 import { getMatchDeployConfig } from "../missions/match/match.config";
 import { getVoting20DeployConfig } from "../missions/voting-erc20/voting20.config";
 import { IDeployCampaignConfig } from "@zero-tech/zdc";
+import { getDAOConfig } from "../missions/dao/zdao.config";
 
 // TODO dep: create a function that builds config for any configuration of contracts/missions
 //   and calls individual config getters based on the missions passed
@@ -41,12 +42,10 @@ export const getBaseZModulesConfig = async ({
 };
 
 export const getCampaignConfig = ({
-  env,
   deployAdmin,
   mockTokens,
   postDeploy,
 } : {
-  env ?: string;
   deployAdmin : SignerWithAddress;
   mockTokens ?: boolean;
   postDeploy ?: {
@@ -55,28 +54,28 @@ export const getCampaignConfig = ({
     verifyContracts : boolean;
   };
 }) => {
-  const envLevel = env || process.env.ENV_LEVEL;
+  const envLevel = process.env.ENV_LEVEL;
 
   validateEnv(envLevel);
 
   const mockTokensFinal = mockTokens || process.env.MOCK_TOKENS === "true";
 
   const stk20Conf = getStaking20DeployConfig({
-    deployAdmin,
+    contractOwner: deployAdmin,
   });
   const stk721Conf = getStaking721DeployConfig({
-    deployAdmin,
+    contractOwner: deployAdmin,
   });
   const matchConf = getMatchDeployConfig({
-    envLevel,
-    mockTokensFinal,
+    mockTokens: mockTokensFinal,
   });
   const voting20Conf = getVoting20DeployConfig({
-    deployAdmin,
+    tokenAdmin: deployAdmin,
   });
   const voting721Conf = getVoting721DeployConfig({
-    deployAdmin,
+    tokenAdmin: deployAdmin,
   });
+  const daoConf = getDAOConfig();
 
   const config : IZModulesConfig = {
     env: envLevel,
