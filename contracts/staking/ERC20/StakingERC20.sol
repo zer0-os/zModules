@@ -26,9 +26,16 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     uint256 public totalStaked;
 
     constructor(
+        address _stakingToken,
+        address _rewardsToken,
+        address _stakeRepToken,
         Config memory _config
-    ) StakingBase(_config)
-    {}
+    ) StakingBase(
+        _stakingToken,
+        _rewardsToken,
+        _stakeRepToken,
+        _config
+    ) {}
 
     /**
      * @notice Stake an amount of ERC20 with a lock period By locking,
@@ -42,7 +49,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param lockDuration The duration of the lock period
      */
     function stakeWithLock(uint256 amount, uint256 lockDuration) external payable override {
-        if (lockDuration < config.minimumLockTime) {
+        if (lockDuration < _getLatestConfig().minimumLockTime) {
             revert LockTimeTooShort();
         }
         _stake(amount, lockDuration);
@@ -94,7 +101,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     }
 
     function exit(bool locked) external override {
-        if (!config.canExit) revert CannotExit();
+        if (!_getLatestConfig().canExit) revert CannotExit();
         _exit(locked);
     }
 
@@ -122,7 +129,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         }
 
         // If stakingToken is gas token, `msg.value` must equal `amount`
-        if (config.stakingToken == address(0)) {
+        if (stakingToken == address(0)) {
             if (msg.value != amount) {
                 revert InsufficientValue();
             }
@@ -139,12 +146,12 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         totalStaked += amount;
 
         // Transfers user's funds to this contract
-        if (config.stakingToken != address(0)) {
-            IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+        if (stakingToken != address(0)) {
+            IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), amount);
         } // the `else` case is handled by including `recieve` above to accept `msg.value`
 
         // Mint the user's stake as a representative token
-        IERC20MintableBurnable(config.stakeRepToken).mint(msg.sender, amount);
+        IERC20MintableBurnable(stakeRepToken).mint(msg.sender, amount);
 
         emit Staked(msg.sender, amount, lockDuration);
     }
@@ -174,10 +181,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         }
 
         // Return user's stake
-        _transferAmount(config.stakingToken, amount);
+        _transferAmount(stakingToken, amount);
 
         // Burn the user's stake representative token
-        IERC20MintableBurnable(config.stakeRepToken).burn(msg.sender, amount);
+        IERC20MintableBurnable(stakeRepToken).burn(msg.sender, amount);
 
         emit Exited(msg.sender, amount, locked);
     }
@@ -216,7 +223,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding for this
             // If rewards address is `0x0` we use the chain's native token
-            _transferAmount(config.rewardsToken, rewards);
+            _transferAmount(rewardsToken, rewards);
 
             emit Claimed(msg.sender, rewards);
         }
@@ -224,10 +231,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         totalStaked -= amount;
 
         // Return the user's initial stake
-        _transferAmount(config.stakingToken, amount);
+        _transferAmount(stakingToken, amount);
 
         // Burn the user's stake representative token
-        IERC20MintableBurnable(config.stakeRepToken).burn(msg.sender, amount);
+        IERC20MintableBurnable(stakeRepToken).burn(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount);
     }
@@ -279,7 +286,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             // Transfer the user's rewards
             // Will fail if the contract does not have funding for this
             // If rewards address is `0x0` we use the chain's native token
-            _transferAmount(config.rewardsToken, rewards);
+            _transferAmount(rewardsToken, rewards);
 
             emit Claimed(msg.sender, rewards);
         }
@@ -287,10 +294,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         totalStaked -= amount;
 
         // Return the user's initial stake
-        _transferAmount(config.stakingToken, amount);
+        _transferAmount(stakingToken, amount);
 
         // Burn the user's stake representative token
-        IERC20MintableBurnable(config.stakeRepToken).burn(msg.sender, amount);
+        IERC20MintableBurnable(stakeRepToken).burn(msg.sender, amount);
 
         emit Unstaked(msg.sender, amount);
     }
@@ -304,7 +311,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     function _getContractRewardsBalance() internal view override returns (uint256) {
         uint256 balance = super._getContractRewardsBalance();
 
-        if (config.rewardsToken == config.stakingToken) {
+        if (rewardsToken == stakingToken) {
             return balance - totalStaked;
         }
 

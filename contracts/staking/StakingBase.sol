@@ -8,6 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import { console } from "hardhat/console.sol";
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
@@ -23,16 +24,51 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @notice All required config variables, specified in the `Config` struct in `IStakingBase.sol`
      */
-    Config public config;
+    // Config public config; // TODO eliminate singular "config" state var, always use mapping
+
+    /**
+     * @notice The address of the staking token
+     */
+    address public immutable stakingToken;
+
+    /**
+     * @notice The address of the rewards token
+     */
+    address public immutable rewardsToken;
+
+    /**
+     * @notice The address of the representative token minted with each stake
+     */
+    address public immutable stakeRepToken;
+
+    /**
+     * @notice List of timestamps that mark when a config was set
+     */
+    uint256[] public configTimestamps;
+
+    /**
+     * @notice Struct to hold each config we've used and when it was implemented
+     */
+    mapping(uint256 timestamp => Config config) public configs;
 
     constructor(
+        address _stakingToken,
+        address _rewardsToken,
+        address _stakeRepToken,
         Config memory _config
     ) Ownable(_config.contractOwner) {
         if (
             _config.rewardsPerPeriod == 0 ||
             _config.periodLength == 0
         ) revert InitializedWithZero();
-        config = _config;
+
+        stakingToken = _stakingToken;
+        rewardsToken = _rewardsToken;
+        stakeRepToken = _stakeRepToken;
+
+        // Initial config
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = _config;
     }
 
     // We must be able to receive in the case that the
@@ -51,18 +87,19 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Do not send empty transfer
         if (balance == 0) revert InsufficientContractBalance();
 
-        _transferAmount(config.rewardsToken, balance);
+        _transferAmount(rewardsToken, balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
-    /**
-     * @notice Set the `canExit` flag to true or false to allow users to call to `exit` or not
-     * @param exit The modified exit status
-     */
-    function setExit(bool exit) public override onlyOwner {
-        config.canExit = exit;
-        emit ExitSet(exit);
+    function setContractOwner(address _owner) public onlyOwner {
+        Config memory newConfig = _getLatestConfig();
+        newConfig.contractOwner = _owner;
+
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = newConfig;
+
+        emit OwnerSet(owner());
     }
 
     /**
@@ -72,7 +109,12 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param _rewardsPerPeriod The new rewards per period value
      */
     function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
-        config.rewardsPerPeriod = _rewardsPerPeriod;
+        Config memory newConfig = _getLatestConfig();
+        newConfig.rewardsPerPeriod = _rewardsPerPeriod;
+
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = newConfig;
+
         emit RewardsPerPeriodSet(owner(), _rewardsPerPeriod);
     }
 
@@ -83,7 +125,12 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param _periodLength The new period length value
      */
     function setPeriodLength(uint256 _periodLength) public override onlyOwner {
-        config.periodLength = _periodLength;
+        Config memory newConfig = _getLatestConfig();
+        newConfig.periodLength = _periodLength;
+
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = newConfig;
+
         emit PeriodLengthSet(owner(), _periodLength);
     }
 
@@ -94,7 +141,12 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param _minimumLockTime The new minimum lock time, in seconds
      */
     function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
-        config.minimumLockTime = _minimumLockTime;
+        Config memory newConfig = _getLatestConfig();
+        newConfig.minimumLockTime = _minimumLockTime;
+
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = newConfig;
+
         emit MinimumLockTimeSet(owner(), _minimumLockTime);
     }
 
@@ -105,9 +157,15 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
      */
     function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
-        if (_minimumRewardsMultiplier > config.maximumRewardsMultiplier) revert InvalidMultiplierPassed();
+        Config memory newConfig = _getLatestConfig();
 
-        config.minimumRewardsMultiplier = _minimumRewardsMultiplier;
+        if (_minimumRewardsMultiplier > newConfig.maximumRewardsMultiplier) revert InvalidMultiplierPassed();
+
+        newConfig.minimumRewardsMultiplier = _minimumRewardsMultiplier;
+
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = newConfig;
+
         emit MinimumRewardsMultiplierSet(owner(), _minimumRewardsMultiplier);
     }
 
@@ -118,11 +176,48 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
      */
     function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
-        if (_maximumRewardsMultiplier < config.minimumRewardsMultiplier) revert InvalidMultiplierPassed();
+        Config memory newConfig = _getLatestConfig();
 
-        config.maximumRewardsMultiplier = _maximumRewardsMultiplier;
+        if (_maximumRewardsMultiplier < newConfig.minimumRewardsMultiplier) revert InvalidMultiplierPassed();
+
+        newConfig.maximumRewardsMultiplier = _maximumRewardsMultiplier;
+
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = newConfig;
+
         emit MaximumRewardsMultiplierSet(owner(), _maximumRewardsMultiplier);
     }
+
+    /**
+     * @notice Set the `canExit` flag to true or false to allow users to call to `exit` or not
+     * @param exit The modified exit status
+     */
+    function setExit(bool exit) public override onlyOwner {
+        Config memory newConfig = _getLatestConfig();
+        newConfig.canExit = exit;
+
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = newConfig;
+
+        emit ExitSet(exit);
+    }
+
+    function setConfig(Config memory _config) public override onlyOwner {
+        if (
+            _config.maximumRewardsMultiplier < _config.minimumRewardsMultiplier
+            || _config.minimumRewardsMultiplier > _config.maximumRewardsMultiplier
+        ) revert InvalidMultiplierPassed();
+
+        configTimestamps.push(block.timestamp);
+        configs[block.timestamp] = _config;
+
+        emit ConfigSet(_config);
+    }
+
+    // TDOO 
+    // setter for each var (if eth optims dont figure out writing to storage slot same value)
+    // leave all independent functions IF solidity doesnt optimize for change
+    // if it optims, can do single config setter instead
 
     /**
      * @notice Return the potential rewards that would be earned for a given stake
@@ -146,7 +241,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @notice Get the representative token address minted with each stake
      */
     function getStakeRepToken() public view override returns (address) {
-        return config.stakeRepToken;
+        return stakeRepToken;
     }
 
     /**
@@ -160,49 +255,49 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @notice Get the staking token address
      */
     function getStakingToken() public view override returns (address) {
-        return config.stakingToken;
+        return stakingToken;
     }
 
     /**
      * @notice Get the rewards token address
      */
     function getRewardsToken() public view override returns (address) {
-        return config.rewardsToken;
+        return rewardsToken;
     }
 
     /**
      * @notice Get the rewards per period
      */
     function getRewardsPerPeriod() public view override returns (uint256) {
-        return config.rewardsPerPeriod;
+        return _getLatestConfig().rewardsPerPeriod;
     }
 
     /**
      * @notice Get the period length
      */
     function getPeriodLength() public view override returns (uint256) {
-        return config.periodLength;
+        return _getLatestConfig().periodLength;
     }
 
     /**
      * @notice Get the minimum lock time
      */
     function getMinimumLockTime() public view override returns(uint256) {
-        return config.minimumLockTime;
+        return _getLatestConfig().minimumLockTime;
     }
 
     /**
      * @notice Get the minimum rewards multiplier
      */
     function getMinimumRewardsMultiplier() public view override returns(uint256) {
-        return config.minimumRewardsMultiplier;
+        return _getLatestConfig().minimumRewardsMultiplier;
     }
 
     /**
      * @notice Get the maximum rewards multiplier
      */
     function getMaximumRewardsMultiplier() public view override returns(uint256) {
-        return config.maximumRewardsMultiplier;
+        return _getLatestConfig().maximumRewardsMultiplier;
     }
 
     ////////////////////////////////////
@@ -223,10 +318,16 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         if (lockDuration == 0) {
             // Get rewards they are owed from past unlocked stakes, if any
             // will return 0 if `amountStaked == 0`
-            staker.owedRewards += _getStakeRewards(
+
+            // if a config change happened while they have been staked
+            // calculate rewards based on past config time period as well
+            // but JUST amount of time they were staked, not full length of time for config
+
+            // Get staker rewards for this or past configs as necessary
+            staker.owedRewards += _updatedStakeRewards(
+                staker.lastTimestamp,
                 staker.amountStaked,
                 1, // Rewards multiplier is 1 for non-locked funds
-                block.timestamp - staker.lastTimestamp,
                 false
             );
 
@@ -236,30 +337,32 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             if (block.timestamp > staker.unlockedTimestamp) {
                 // The user has never locked or they have and we are past their lock period
 
-                // get the user's owed rewards from period in between `unlockedTimestamp` and present at rate of 1
-                uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
+                if (staker.amountStakedLocked > 0) {
+                    // if not a new stake, get interim rewrds from last lock if any
+                    // get the user's owed rewards from period in between `unlockedTimestamp` and present at rate of 1
 
-                // this will return 0 if `amountStakedLocked` == 0
-                staker.owedRewardsLocked += _getStakeRewards(
-                    staker.amountStakedLocked,
-                    1,
-                    block.timestamp - mostRecentTimestamp,
-                    false
-                );
+                    staker.owedRewardsLocked += _updatedStakeRewards(
+                        _mostRecentTimestamp(staker),
+                        staker.amountStakedLocked,
+                        1, // Rewards multiplier is 1 for non-locked funds
+                        false
+                    );
+                }
 
                 // Then we update appropriately
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
 
+
                 // We precalculate the amount because we know the time frame
-                staker.owedRewardsLocked += _getStakeRewards(
+                staker.owedRewardsLocked += _updatedStakeRewards(
+                    lockDuration,
                     amount,
                     _calcRewardsMultiplier(lockDuration),
-                    lockDuration,
                     true
                 );
             } else {
                 uint256 remainingLockTime = _getRemainingLockTime(staker);
-                // Rewards value of the incoming stake given at staker's RM for remaining lock time
+                // Rewards value of the incoming stake given for remaining lock time
                 staker.owedRewardsLocked += _getStakeRewards(
                     amount,
                     _calcRewardsMultiplier(remainingLockTime),
@@ -293,7 +396,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         if (rewards == 0) revert ZeroRewards();
 
-        _transferAmount(config.rewardsToken, rewards);
+        _transferAmount(rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
     }
@@ -342,7 +445,79 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     ) internal view returns (uint256) {
         uint256 divisor = locked ? LOCKED_PRECISION_DIVISOR : PRECISION_DIVISOR;
 
-        return rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
+        Config memory _config = _getLatestConfig();
+
+        return rewardsMultiplier * amount * _config.rewardsPerPeriod * timeDuration / _config.periodLength / divisor;
+    }
+
+    // TODO TEST FUNC REMOVE WHEN CONFIRMED 
+    function publicTestRewards(
+        uint256 timestamp,
+        uint256 amount,
+        uint256 rewardsMultiplier,
+        bool locked
+    ) public view returns(uint256) {
+        return _updatedStakeRewards(timestamp, amount, rewardsMultiplier, locked);
+    }
+
+    /** TODO do this? or just have extra param
+     * @dev When `locked` is true, `timestampOrDuration is a `duration`
+     * @dev When `locked` is false, `timestampOrDuration` is a `timestamp`
+     */
+    function _updatedStakeRewards(
+        uint256 timestampOrDuration,
+        uint256 amount,
+        uint256 rewardsMultiplier,
+        bool locked
+    ) internal view returns (uint256) {
+        // Always pre calculate locked rewards when the user stakes, so always use the current config
+        if (locked) {
+            Config memory _config = _getLatestConfig();
+            return rewardsMultiplier * amount * _config.rewardsPerPeriod * timestampOrDuration / _config.periodLength / LOCKED_PRECISION_DIVISOR;
+        }
+
+        uint256 rewards;
+
+        // We store as memory variable to be able to write to it
+        // console.log("block.timestamp: ", block.timestamp);
+        // console.log("timestamp: ", timestamp);
+        uint256 duration = block.timestamp - timestampOrDuration;
+        uint256 lastTimestamp = block.timestamp;
+
+        // do -1 in indexing only, not in loop
+        uint256 i = configTimestamps.length;
+        // console.log("configTimestamps.length: ", configTimestamps.length);
+
+        for (i; i > 0;) {
+            
+            // Only applies to interim or non locked stakes, no need for RM. 
+            // underflow?
+            // console.log("configTimestamps.length - 1: ", configTimestamps.length - 1);
+            // console.log("i: ", i);
+            // console.log("configTimestamps[i]: ", configTimestamps[i - 1]);
+            Config memory _config = configs[configTimestamps[i - 1]];
+
+            // If their last timestamp was before the most recent config change
+            if (timestampOrDuration < _config.timestamp) {
+                // rewards for entire period, loop again
+                uint256 effectiveDuration = lastTimestamp - _config.timestamp;
+                lastTimestamp = _config.timestamp; // Store for next iteration if needed
+                duration -= effectiveDuration;
+
+                rewards += amount * _config.rewardsPerPeriod * effectiveDuration / _config.periodLength / PRECISION_DIVISOR;
+            } else {
+                // rewards for duration of this period, break loop
+                rewards += amount * _config.rewardsPerPeriod * duration / _config.periodLength / PRECISION_DIVISOR;
+                return rewards;
+            }
+
+            unchecked {
+                --i;
+            }
+        }
+
+        return rewards;
+
     }
 
     /**
@@ -392,23 +567,31 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
     /**
      * @dev Locked rewards receive a multiplier based on the length of the lock
+     * @dev Because we precalc when user is staking, getting the latest config is okay
+     * 
      * @param lock The length of the lock in seconds
      */
     function _calcRewardsMultiplier(uint256 lock) internal view returns (uint256) {
-        return config.minimumRewardsMultiplier
-        + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
+        Config memory _config = _getLatestConfig();
+
+        return _config.minimumRewardsMultiplier
+        + (_config.maximumRewardsMultiplier - _config.minimumRewardsMultiplier)
         * (lock)
-        / config.periodLength;
+        / _config.periodLength;
     }
 
     /**
      * @dev Get the rewards balance of this contract
      */
     function _getContractRewardsBalance() internal view virtual returns (uint256) {
-        if (config.rewardsToken == address(0)) {
+        if (rewardsToken == address(0)) {
             return address(this).balance;
         } else {
-            return IERC20(config.rewardsToken).balanceOf(address(this));
+            return IERC20(rewardsToken).balanceOf(address(this));
         }
+    }
+
+    function _getLatestConfig() internal view returns (Config memory) {
+        return configs[configTimestamps[configTimestamps.length - 1]];
     }
 }

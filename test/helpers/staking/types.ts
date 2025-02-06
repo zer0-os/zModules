@@ -4,10 +4,8 @@ import {
 } from "ethers";
 
 export interface BaseConfig {
-  stakingToken : string;
+  timestamp : bigint;
   contractOwner : string;
-  rewardsToken : string;
-  stakeRepToken : string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
   minimumLockTime : bigint;

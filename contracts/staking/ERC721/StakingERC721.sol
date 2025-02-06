@@ -26,14 +26,26 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @notice Revert if a call is not from the SNFT owner
      */
     modifier onlySNFTOwner(uint256 tokenId) {
-        if (IERC721(config.stakeRepToken).ownerOf(tokenId) != msg.sender) {
+        if (IERC721(stakeRepToken).ownerOf(tokenId) != msg.sender) {
             revert InvalidOwner();
         }
         _;
     }
 
-    constructor(Config memory config) StakingBase(config) {
-        if (config.stakingToken.code.length == 0) {
+    constructor(
+        address stakingToken,
+        address rewardsToken,
+        address stakeRepToken,
+        Config memory config
+    )   
+        StakingBase(
+            stakingToken,
+            rewardsToken,
+            stakeRepToken,
+            config
+        )
+    {
+        if (stakingToken.code.length == 0) {
             revert InitializedWithZero();
         }
     }
@@ -51,7 +63,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         string[] calldata tokenUris,
         uint256 lockDuration
     ) external override {
-        if (lockDuration < config.minimumLockTime) {
+        if (lockDuration < _getLatestConfig().minimumLockTime) {
             revert LockTimeTooShort();
         }
         _stake(tokenIds, tokenUris, lockDuration);
@@ -110,7 +122,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @param _locked Indicates whether to withdraw locked or non-locked funds
      */
     function exit(uint256[] memory _tokenIds, bool _locked) public override {
-        if (!config.canExit) revert CannotExit();
+        if (!_getLatestConfig().canExit) revert CannotExit();
         _exit(_tokenIds, _locked);
     }
 
@@ -167,7 +179,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256 i;
         for(i; i < tokenIds.length;) {
             // Transfer their NFT to this contract
-            IERC721(config.stakingToken).safeTransferFrom(
+            IERC721(stakingToken).safeTransferFrom(
                 msg.sender,
                 address(this),
                 tokenIds[i]
@@ -179,7 +191,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             }
 
             // Mint user sNFT
-            IERC721MintableBurnableURIStorage(config.stakeRepToken)
+            IERC721MintableBurnableURIStorage(stakeRepToken)
                 .safeMint(msg.sender, tokenIds[i], tokenUris[i]);
 
             emit Staked(msg.sender, tokenIds[i]);
@@ -247,7 +259,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             revert InsufficientContractBalance();
         }
 
-        _transferAmount(config.rewardsToken, rewards);
+        _transferAmount(rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
     }
@@ -297,7 +309,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             revert InsufficientContractBalance();
         }
 
-        _transferAmount(config.rewardsToken, rewards);
+        _transferAmount(rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
     }
@@ -355,10 +367,10 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     function _coreUnstake(
         uint256 tokenId
     ) internal onlySNFTOwner(tokenId) {
-        IERC721MintableBurnableURIStorage(config.stakeRepToken).burn(tokenId);
+        IERC721MintableBurnableURIStorage(stakeRepToken).burn(tokenId);
 
         // Return NFT to staker
-        IERC721(config.stakingToken).safeTransferFrom(
+        IERC721(stakingToken).safeTransferFrom(
             address(this),
             msg.sender,
             tokenId

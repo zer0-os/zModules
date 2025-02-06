@@ -29,11 +29,10 @@ interface IStakingBase {
     }
     /**
      * @notice Struct to hold all required config variables
-     *
-     * @param stakingToken The address of the token being staked
+     * 
+     * @param timestamp When the config was set
      * @param contractOwner The address of the contract owner
-     * @param rewardsToken The address of the token being rewarded
-     * @param rewardsPerPeriod The amount of rewards per period
+     * @param rewardsPerPeriod The amount of rewards given per period
      * @param periodLength The length of each period
      * @param minimumLockTime The minimum amount of time a user must lock
      * @param minimumRewardsMultiplier The minimum multiplier for rewards
@@ -41,10 +40,8 @@ interface IStakingBase {
      * @param canExit Flag to indicate if `exit` is allowed or not
      */
     struct Config {
-        address stakingToken;
+        uint256 timestamp;
         address contractOwner;
-        address rewardsToken;
-        address stakeRepToken;
         uint256 rewardsPerPeriod;
         uint256 periodLength;
         uint256 minimumLockTime;
@@ -75,6 +72,14 @@ interface IStakingBase {
     );
 
     /**
+     * @notice Emit when a new contract owner is set
+     * @param owner The new owner
+     */
+    event OwnerSet(
+        address indexed owner
+    );
+
+    /**
      * @notice Emit when `reqwardsPerPeriod` is set
      * @param owner The address of the contract owner
      * @param rewardsPerPeriod The new rewards per period value
@@ -92,16 +97,6 @@ interface IStakingBase {
     event PeriodLengthSet(
         address indexed owner,
         uint256 indexed periodLength
-    );
-
-    /**
-     * @notice Emit when the multiplier is set
-     * @param owner The address of the contract owner
-     * @param multiplier The new multiplier value
-     */
-    event MultiplierSet(
-        address indexed owner,
-        uint256 indexed multiplier
     );
 
     /**
@@ -140,6 +135,14 @@ interface IStakingBase {
      */
     event ExitSet(
         bool exit
+    );
+
+    /**
+     * @notice Emit when the config is set
+     * @param config The incoming config
+     */
+    event ConfigSet(
+        Config indexed config
     );
 
     /**
@@ -204,6 +207,8 @@ interface IStakingBase {
     function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) external;
 
     function setExit(bool exit) external;
+
+    function setConfig(Config memory _config) external;
 
     function getContractRewardsBalance() external view returns (uint256);
 

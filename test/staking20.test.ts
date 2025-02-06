@@ -37,6 +37,8 @@ import {
   getDefaultERC20Setup,
   fundAndApprove,
   getDefaultERC20SetupWithExit,
+  calcUpdatedStakeRewards,
+  calcRewardsMultiplier,
 } from "./helpers/staking";
 
 
@@ -1744,4 +1746,244 @@ describe("StakingERC20", () => {
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + futureExpectedRewards);
     });
   });
+
+  // Preliminary tests to confirm helper function after change is calculating the same
+  // values as the contract rewards function in several scenarios
+  it("6.3 Prelim - Rewards between helper and contract are the same, no config change", async () => {
+    await reset();
+
+    // After changing the code for rewards to account for config changes in the past
+    // we want to make sure that the typescript helper code returns the same value
+    await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+
+    await time.increase(DAY_IN_SECONDS * 21n);
+
+    const stakerData = await contract.stakers(stakerA.address);
+
+    const rewardsFromHelper = await calcUpdatedStakeRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      false,
+      [config]
+    )
+
+    const rewardsFromContract = await contract.publicTestRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      1n,
+      false
+    )
+
+    console.log(rewardsFromHelper);
+    console.log(rewardsFromContract);
+
+    expect(rewardsFromHelper).to.eq(rewardsFromContract);
+  });
+
+  it("6.3 Prelim - One config change", async () => {
+    await reset();
+
+    await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+
+    await time.increase(DAY_IN_SECONDS * 9n);
+
+    const newConfig = config;
+    newConfig.canExit = !config.canExit;
+
+    // Evluated gas costs for `setConfig` vs. independent var setters
+    // and `setConfig` is cheaper
+    const tx = await contract.connect(owner).setConfig(config);
+
+    // fails when call to set contract owner? but not to config?
+    // const tx = await contract.connect(owner).setContractOwner(newConfig.contractOwner);
+    // const tx = await contract.connect(owner).setExit(newConfig.canExit);
+    // const tx = await contract.connect(owner).setRewardsPerPeriod(newConfig.rewardsPerPeriod);
+
+    const receipt = await tx.wait();
+    console.log(`Gas used: ${receipt!.gasUsed}`);
+
+    await time.increase(DAY_IN_SECONDS * 9n);
+
+    const stakerData = await contract.stakers(stakerA.address);
+
+    const rewardsFromHelper = await calcUpdatedStakeRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      false,
+      [config, newConfig]
+    )
+
+    const rewardsFromContract = await contract.publicTestRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      1n,
+      false
+    )
+
+    console.log(rewardsFromHelper);
+    console.log(rewardsFromContract);
+
+    expect(rewardsFromHelper).to.eq(rewardsFromContract);
+  })
+
+  it("6.3 Prelim - Two config changes", async () => {
+    await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+
+    await time.increase(DAY_IN_SECONDS * 9n);
+
+    const newConfigA = config;
+    newConfigA.rewardsPerPeriod = config.rewardsPerPeriod / 2n;
+    const tx = await contract.connect(owner).setConfig(newConfigA);
+
+    const receipt = await tx.wait();
+
+    console.log(`Gas used: ${receipt!.gasUsed}`);
+
+    await time.increase(DAY_IN_SECONDS * 35n);
+
+    const newConfigB = newConfigA;
+    newConfigB.periodLength = newConfigA.periodLength / 3n;
+    await contract.connect(owner).setConfig(newConfigB);
+
+    await time.increase(DAY_IN_SECONDS * 17n);
+
+    const stakerData = await contract.stakers(stakerA.address);
+
+    const rewardsFromHelper = await calcUpdatedStakeRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      false,
+      [config, newConfigA, newConfigB]
+    )
+
+    const rewardsFromContract = await contract.publicTestRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      1n,
+      false
+    )
+
+    console.log(rewardsFromHelper);
+    console.log(rewardsFromContract);
+
+    expect(rewardsFromHelper).to.eq(rewardsFromContract);
+  })
+
+  it("6.3 Prelim - Two config changes, additional stake", async () => {
+    await reset();
+
+    await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+
+    await time.increase(DAY_IN_SECONDS * 4n);
+
+    const newConfigA = config;
+    newConfigA.rewardsPerPeriod = config.rewardsPerPeriod / 2n;
+    const tx = await contract.connect(owner).setConfig(newConfigA);
+
+    const receipt = await tx.wait();
+
+    console.log(`Gas used: ${receipt!.gasUsed}`);
+
+    await time.increase(DAY_IN_SECONDS * 12n);
+
+    await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+
+    await time.increase(DAY_IN_SECONDS * 22n);
+
+    const newConfigB = newConfigA;
+    newConfigB.periodLength = newConfigA.periodLength / 3n;
+    await contract.connect(owner).setConfig(newConfigB);
+
+    await time.increase(DAY_IN_SECONDS * 17n);
+
+    const stakerData = await contract.stakers(stakerA.address);
+
+    const rewardsFromHelper = await calcUpdatedStakeRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      false,
+      [config, newConfigA, newConfigB]
+    )
+
+    const rewardsFromContract = await contract.publicTestRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      1n,
+      false
+    )
+
+    console.log(rewardsFromHelper);
+    console.log(rewardsFromContract);
+
+    expect(rewardsFromHelper).to.eq(rewardsFromContract);
+  })
+
+  it("6.3 Prelim - One change, locked stake that unlocks", async () => {
+    await reset();
+
+    await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+
+    const rewards = calcUpdatedStakeRewards(
+      BigInt(await time.latest()),
+      DEFAULT_STAKED_AMOUNT,
+      true,
+      [config]
+    )
+
+    // Locked rewards are precalculated using the current config
+    const stakerDataBefore = await contract.stakers(stakerA.address);
+    expect(stakerDataBefore.owedRewardsLocked).to.eq(rewards);
+
+    await time.increase(DEFAULT_LOCK / 4n);
+
+    const newConfigA = config;
+    newConfigA.rewardsPerPeriod = config.rewardsPerPeriod / 2n;
+    const tx = await contract.connect(owner).setConfig(newConfigA);
+
+    // const receipt = await tx.wait();
+
+    // console.log(`Gas used: ${receipt!.gasUsed}`);
+
+    await time.increase(DEFAULT_LOCK / 4n);
+
+    // Setting a new config did not change amount owed for a stake that is still locked
+    const stakerDataAfter = await contract.stakers(stakerA.address);
+    expect(stakerDataAfter.owedRewardsLocked).to.eq(stakerDataBefore.owedRewardsLocked);
+
+    await time.increase(DEFAULT_LOCK / 4n);
+
+    const newConfigB = newConfigA;
+    newConfigB.periodLength = newConfigA.periodLength / 3n;
+    await contract.connect(owner).setConfig(newConfigB);
+
+    await time.increase(DAY_IN_SECONDS * 17n);
+
+    const stakerData = await contract.stakers(stakerA.address);
+
+    const rewardsFromHelper = await calcUpdatedStakeRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      false,
+      [config, newConfigA, newConfigB]
+    )
+
+    const rewardsFromContract = await contract.publicTestRewards(
+      stakerData.lastTimestamp,
+      DEFAULT_STAKED_AMOUNT,
+      1n,
+      false
+    )
+
+    console.log(rewardsFromHelper);
+    console.log(rewardsFromContract);
+
+    expect(rewardsFromHelper).to.eq(rewardsFromContract);
+  })
+
+  // todo 
+  // locked stakes
+  // locked and nonlocked stakes
+  // calcs on interim rewards after stakes unlock
+  // claim
+  // unstake
 });
