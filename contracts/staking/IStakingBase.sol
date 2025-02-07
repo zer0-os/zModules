@@ -196,18 +196,6 @@ interface IStakingBase {
 
     function withdrawLeftoverRewards() external;
 
-    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) external;
-
-    function setPeriodLength(uint256 _periodLength) external;
-
-    function setMinimumLockTime(uint256 _minimumLockTime) external;
-
-    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) external;
-
-    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) external;
-
-    function setExit(bool exit) external;
-
     function setConfig(Config memory _config) external;
 
     function getContractRewardsBalance() external view returns (uint256);

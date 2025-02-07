@@ -86,7 +86,7 @@ export const calcStakeRewards = (
 };
 
 export const calcUpdatedStakeRewards = async (
-  timestampOrDuration : bigint,
+  timeOrDuration : bigint,
   amount : bigint,
   locked : boolean,
   configs : BaseConfig[]
@@ -94,11 +94,11 @@ export const calcUpdatedStakeRewards = async (
   if (locked) {
     // Simply return calculation from latest config when locked
     const config = configs[configs.length - 1];
-    return calcRewardsMultiplier(timestampOrDuration, config) 
-      * amount * config.rewardsPerPeriod * timestampOrDuration / config.periodLength / LOCKED_PRECISION_DIVISOR;
+    return calcRewardsMultiplier(timeOrDuration, config) 
+      * amount * config.rewardsPerPeriod * timeOrDuration / config.periodLength / LOCKED_PRECISION_DIVISOR;
   }
 
-  const duration = BigInt(await time.latest()) - timestampOrDuration;
+  const duration = BigInt(await time.latest()) - timeOrDuration;
 
   // can write to incoming values but just for separation
   let durationCopy = duration;
@@ -110,13 +110,28 @@ export const calcUpdatedStakeRewards = async (
   for (i; i > 0; --i) {
     const config = configs[i - 1];
 
-    if (timestampOrDuration < config.timestamp ) {
+    if (timeOrDuration < config.timestamp ) {
       const effectiveDuration = lastTimestamp - config.timestamp;
       lastTimestamp = config.timestamp;
       durationCopy -= effectiveDuration;
 
+      // const a = amount * config.rewardsPerPeriod * effectiveDuration
+      // const b = config.periodLength
+      // const c = PRECISION_DIVISOR;
+
+      // const x = Math.floor(Number(a) / Number(b) / Number(c));
+
+      // // pick apart the calculation to get the right value that causes rounding error
+      // rewards += BigInt(x);
+
       rewards += amount * config.rewardsPerPeriod * effectiveDuration / config.periodLength / PRECISION_DIVISOR;
     } else {
+      // const a = amount * config.rewardsPerPeriod * durationCopy
+      // const b = config.periodLength
+      // const c = PRECISION_DIVISOR;
+
+      // const x = Math.floor(Number(a) / Number(b) / Number(c));
+
       rewards += amount * config.rewardsPerPeriod * durationCopy / config.periodLength / PRECISION_DIVISOR;
       return rewards;
     }

@@ -194,10 +194,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         if (amount > staker.amountStaked) revert UnstakeMoreThanStake();
 
-        uint256 rewards = staker.owedRewards + _getStakeRewards(
+        uint256 rewards = staker.owedRewards + _updatedStakeRewards(
+            staker.lastTimestamp,
             staker.amountStaked,
-            1, // Rewards multiplier
-            block.timestamp - staker.lastTimestamp,
+            1,
             false
         );
 
@@ -255,10 +255,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // If staker's funds are unlocked, we ignore exit
         // We already added the value they are owed in stake when pre calculating
         // now we just add the value they are owed for rewards in between
-        uint256 rewards = staker.owedRewardsLocked + _getStakeRewards(
+
+        uint256 rewards = staker.owedRewardsLocked + _updatedStakeRewards(
+            mostRecentTimestamp,
             staker.amountStakedLocked,
-            1, // Rewards multiplier for interim rewards
-            block.timestamp - mostRecentTimestamp,
+            1,
             false
         );
 

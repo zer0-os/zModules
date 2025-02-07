@@ -92,116 +92,13 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         emit LeftoverRewardsWithdrawn(owner(), balance);
     }
 
-    function setContractOwner(address _owner) public onlyOwner {
-        Config memory newConfig = _getLatestConfig();
-        newConfig.contractOwner = _owner;
-
-        configTimestamps.push(block.timestamp);
-        configs[block.timestamp] = newConfig;
-
-        emit OwnerSet(owner());
-    }
-
     /**
-     * @notice Set the rewards per period
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _rewardsPerPeriod The new rewards per period value
+     * @notice Set the config for the staking contract
+     * @dev Setting a value to the value it already is will not add extra gas
+     * so it is cheaper to set the entire config than to have individual setters
+     * 
+     * @param _config The incoming config
      */
-    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) public override onlyOwner {
-        Config memory newConfig = _getLatestConfig();
-        newConfig.rewardsPerPeriod = _rewardsPerPeriod;
-
-        configTimestamps.push(block.timestamp);
-        configs[block.timestamp] = newConfig;
-
-        emit RewardsPerPeriodSet(owner(), _rewardsPerPeriod);
-    }
-
-    /**
-     * @notice Set the period length
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _periodLength The new period length value
-     */
-    function setPeriodLength(uint256 _periodLength) public override onlyOwner {
-        Config memory newConfig = _getLatestConfig();
-        newConfig.periodLength = _periodLength;
-
-        configTimestamps.push(block.timestamp);
-        configs[block.timestamp] = newConfig;
-
-        emit PeriodLengthSet(owner(), _periodLength);
-    }
-
-    /**
-     * @notice Set the minimum lock time
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _minimumLockTime The new minimum lock time, in seconds
-     */
-    function setMinimumLockTime(uint256 _minimumLockTime) public override onlyOwner {
-        Config memory newConfig = _getLatestConfig();
-        newConfig.minimumLockTime = _minimumLockTime;
-
-        configTimestamps.push(block.timestamp);
-        configs[block.timestamp] = newConfig;
-
-        emit MinimumLockTimeSet(owner(), _minimumLockTime);
-    }
-
-    /**
-     * @notice Set the minimum rewards multiplier
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _minimumRewardsMultiplier The new minimum rewards multiplier value
-     */
-    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) public override onlyOwner {
-        Config memory newConfig = _getLatestConfig();
-
-        if (_minimumRewardsMultiplier > newConfig.maximumRewardsMultiplier) revert InvalidMultiplierPassed();
-
-        newConfig.minimumRewardsMultiplier = _minimumRewardsMultiplier;
-
-        configTimestamps.push(block.timestamp);
-        configs[block.timestamp] = newConfig;
-
-        emit MinimumRewardsMultiplierSet(owner(), _minimumRewardsMultiplier);
-    }
-
-    /**
-     * @notice Set the maximum rewards multiplier
-     * @dev Will fail when called by anyone other than the contract owner
-     *
-     * @param _maximumRewardsMultiplier The new maximum rewards multiplier value
-     */
-    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) public override onlyOwner {
-        Config memory newConfig = _getLatestConfig();
-
-        if (_maximumRewardsMultiplier < newConfig.minimumRewardsMultiplier) revert InvalidMultiplierPassed();
-
-        newConfig.maximumRewardsMultiplier = _maximumRewardsMultiplier;
-
-        configTimestamps.push(block.timestamp);
-        configs[block.timestamp] = newConfig;
-
-        emit MaximumRewardsMultiplierSet(owner(), _maximumRewardsMultiplier);
-    }
-
-    /**
-     * @notice Set the `canExit` flag to true or false to allow users to call to `exit` or not
-     * @param exit The modified exit status
-     */
-    function setExit(bool exit) public override onlyOwner {
-        Config memory newConfig = _getLatestConfig();
-        newConfig.canExit = exit;
-
-        configTimestamps.push(block.timestamp);
-        configs[block.timestamp] = newConfig;
-
-        emit ExitSet(exit);
-    }
-
     function setConfig(Config memory _config) public override onlyOwner {
         if (
             _config.maximumRewardsMultiplier < _config.minimumRewardsMultiplier
@@ -221,18 +118,22 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
     /**
      * @notice Return the potential rewards that would be earned for a given stake
+     * @dev When `locked` is true, `timeOrDuration is a `duration`
+     * @dev When `locked` is false, `timeOrDuration` is a `timestamp`
      *
+     * @param timeOrDuration The the amount of time given funds are staked, provide the lock duration if locking
      * @param amount The amount of the staking token to calculate rewards for
-     * @param timeDuration The the amount of time these funds will be staked, provide the lock duration if locking
      * @param locked Boolean if the stake is locked
      */
-    function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) public override view returns (uint256) {
-        uint256 rewardsMultiplier = locked ? _calcRewardsMultiplier(timeDuration) : 1;
-
-        return _getStakeRewards(
+    function getStakeRewards(
+        uint256 timeOrDuration,
+        uint256 amount,
+        bool locked
+    ) public override view returns (uint256) {
+        return _updatedStakeRewards(
+            timeOrDuration,
             amount,
-            rewardsMultiplier,
-            timeDuration,
+            locked ? _calcRewardsMultiplier(timeOrDuration) : 1,
             locked
         );
     }
@@ -450,22 +351,12 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         return rewardsMultiplier * amount * _config.rewardsPerPeriod * timeDuration / _config.periodLength / divisor;
     }
 
-    // TODO TEST FUNC REMOVE WHEN CONFIRMED 
-    function publicTestRewards(
-        uint256 timestamp,
-        uint256 amount,
-        uint256 rewardsMultiplier,
-        bool locked
-    ) public view returns(uint256) {
-        return _updatedStakeRewards(timestamp, amount, rewardsMultiplier, locked);
-    }
-
-    /** TODO do this? or just have extra param
-     * @dev When `locked` is true, `timestampOrDuration is a `duration`
-     * @dev When `locked` is false, `timestampOrDuration` is a `timestamp`
+    /**
+     * @dev When `locked` is true, `timeOrDuration` is the lock period
+     * @dev When `locked` is false, `timeOrDuration` is the timestamp of the last action
      */
     function _updatedStakeRewards(
-        uint256 timestampOrDuration,
+        uint256 timeOrDuration,
         uint256 amount,
         uint256 rewardsMultiplier,
         bool locked
@@ -473,7 +364,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Always pre calculate locked rewards when the user stakes, so always use the current config
         if (locked) {
             Config memory _config = _getLatestConfig();
-            return rewardsMultiplier * amount * _config.rewardsPerPeriod * timestampOrDuration / _config.periodLength / LOCKED_PRECISION_DIVISOR;
+            return rewardsMultiplier * amount * _config.rewardsPerPeriod * timeOrDuration / _config.periodLength / LOCKED_PRECISION_DIVISOR;
         }
 
         uint256 rewards;
@@ -481,24 +372,20 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // We store as memory variable to be able to write to it
         // console.log("block.timestamp: ", block.timestamp);
         // console.log("timestamp: ", timestamp);
-        uint256 duration = block.timestamp - timestampOrDuration;
+        uint256 duration = block.timestamp - timeOrDuration;
         uint256 lastTimestamp = block.timestamp;
 
-        // do -1 in indexing only, not in loop
+        // do - 1 in indexing to avoid not looping if only one config
         uint256 i = configTimestamps.length;
-        // console.log("configTimestamps.length: ", configTimestamps.length);
 
         for (i; i > 0;) {
-            
-            // Only applies to interim or non locked stakes, no need for RM. 
-            // underflow?
             // console.log("configTimestamps.length - 1: ", configTimestamps.length - 1);
             // console.log("i: ", i);
             // console.log("configTimestamps[i]: ", configTimestamps[i - 1]);
             Config memory _config = configs[configTimestamps[i - 1]];
 
             // If their last timestamp was before the most recent config change
-            if (timestampOrDuration < _config.timestamp) {
+            if (timeOrDuration < _config.timestamp) {
                 // rewards for entire period, loop again
                 uint256 effectiveDuration = lastTimestamp - _config.timestamp;
                 lastTimestamp = _config.timestamp; // Store for next iteration if needed
@@ -515,9 +402,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 --i;
             }
         }
-
         return rewards;
-
     }
 
     /**
@@ -526,26 +411,33 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
         // Get rewards from non-locked funds already accrued and also between the last timestamp and now
-        uint256 rewards = staker.owedRewards + _getStakeRewards(
+        uint256 rewards = staker.owedRewards + _updatedStakeRewards(
+            staker.lastTimestamp,
             staker.amountStaked,
-            1, // Rewards multiplier
-            block.timestamp - staker.lastTimestamp,
+            1, // Rewards multiplier is 1 for non-locked funds
             false
         );
+        // console.log("staker.lastTimestamp: ", staker.lastTimestamp);
+        // console.log("staker.amountStaked: ", staker.amountStaked);
+
+        // console.log("rewards: ", rewards);
 
         // Only include rewards from locked funds the user is passed their lock period
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
             // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked`
-            // sum on stake, so we don't need to add it here as it would be double counted
-            uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
+            // sum on stake, so dont add here again, would be double counting
 
-            rewards += staker.owedRewardsLocked + _getStakeRewards(
+            rewards += staker.owedRewardsLocked + _updatedStakeRewards(
+                _mostRecentTimestamp(staker),
                 staker.amountStakedLocked,
-                1, // Rewards multiplier
-                block.timestamp - mostRecentTimestamp,
-                false // Treat as non-locked funds
+                1, // Rewards multiplier is 1 for non-locked funds
+                false
             );
+
+            // console.log("rewards2: ", rewards);
         }
+
+        // console.log("rewards3: ", rewards);
 
         return rewards;
     }
