@@ -37,9 +37,10 @@ export const runZModulesCampaign = async ({
     });
   }
 
-  // TODO dep: update this and pass ENV vars as parameters to this function !!!
   const logger = getLogger({
     silence: process.env.SILENT_LOGGER === "true",
+    logLevel: process.env.LOG_LEVEL,
+    makeLogFile: process.env.MAKE_LOG_FILE === "false",
   });
 
   const dbAdapter = await getZModulesMongoAdapter();

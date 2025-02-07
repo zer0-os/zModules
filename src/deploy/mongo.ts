@@ -29,6 +29,8 @@ export const getZModulesMongoAdapter = async ({
 
 export const startMongo = async () => {
   const logger = getLogger({
+    logLevel: process.env.LOG_LEVEL,
+    makeLogFile: process.env.MAKE_LOG_FILE === "false",
     silence: process.env.SILENT_LOGGER === "true",
   });
 
