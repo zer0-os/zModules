@@ -3,7 +3,7 @@ import { getVoting20DeployConfig } from "../src/deploy/missions/voting-erc20/vot
 import { runZModulesCampaign } from "../src/deploy";
 import { getBaseZModulesConfig } from "../src/deploy/campaign/get-campaign-config";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { getVotingERC20Mission } from "../src/deploy/missions/voting-erc20/voting20.mission";
+import { ZModulesZeroVotingERC20DM } from "../src/deploy/missions/voting-erc20/voting20.mission";
 import { getStakingERC20Mission } from "../src/deploy/missions/staking-erc20/staking20.mission";
 import { getStaking20DeployConfig } from "../src/deploy/missions/staking-erc20/staking20.config";
 import {
@@ -36,15 +36,16 @@ import {
   MockERC721,
   StakingERC20,
   StakingERC721,
-  ZDAO,
   ZeroVotingERC20,
   ZeroVotingERC721,
 } from "../typechain";
 import { getDAOConfig } from "../src/deploy/missions/dao/zdao.config";
 import { getTimeLockControllerConfig } from "../src/deploy/missions/dao/timelock.config";
-import { getTimelockControllerMission } from "../src/deploy/missions/dao/timelock.mission";
 import { getDAOMission } from "../src/deploy/missions/dao/zdao.mission";
 import { daoConfig } from "../src/environment/configs/dao.configenv";
+import { ZModulesTimelockControllerDM } from "../src/deploy/missions/dao/timelock.mission";
+import { roles } from "../src/deploy/constants";
+import { getStaking20SystemConfig } from "../src/deploy/campaign/staking-system-config";
 
 
 describe.only("zModules Deploy Integration Test", () => {
@@ -74,6 +75,12 @@ describe.only("zModules Deploy Integration Test", () => {
   IZModulesConfig,
   IZModulesContracts>;
 
+  const {
+    DEFAULT_ADMIN_ROLE,
+    PROPOSER_ROLE,
+    EXECUTOR_ROLE,
+  } = roles.timelock;
+
 
   before(async () => {
     [ deployAdmin, votingTokenAdmin, stakingContractOwner ] = await hre.ethers.getSigners();
@@ -86,36 +93,32 @@ describe.only("zModules Deploy Integration Test", () => {
     });
   });
 
-  describe("Staking", () => {
-    it("Should deploy VotingERC20 with zDC and default config", async () => {
-      config = {
-        ...baseConfig,
-        votingERC20Config: votingConfig,
-      };
+  it("Should deploy VotingERC20 with zDC and default config", async () => {
+    config = {
+      ...baseConfig,
+      votingERC20Config: votingConfig,
+    };
 
-      campaign = await runZModulesCampaign({
-        config,
-        missions: [
-          getVotingERC20Mission(),
-        ],
-      });
-
-      ({ votingErc20: stakeRepToken } = campaign);
-
-      expect(await stakeRepToken.name()).to.eq(votingConfig.name);
-      expect(await stakeRepToken.symbol()).to.eq(votingConfig.symbol);
+    campaign = await runZModulesCampaign({
+      config,
+      missions: [
+        ZModulesZeroVotingERC20DM,
+      ],
     });
 
+    ({ votingErc20: stakeRepToken } = campaign);
+
+    expect(await stakeRepToken.name()).to.eq(votingConfig.name);
+    expect(await stakeRepToken.symbol()).to.eq(votingConfig.symbol);
+  });
+
+  describe("Staking", () => {
     it("Should deploy StakingERC20 with zDC and default config", async () => {
       stakingConfig = getStaking20DeployConfig({
         contractOwner: stakingContractOwner,
       }) as IStakingERC20Config;
 
-      config = {
-        ...baseConfig,
-        votingERC20Config: votingConfig,
-        stakingERC20Config: stakingConfig,
-      };
+      config = getStaking20SystemConfig({ deployAdmin });
 
       campaign = await runZModulesCampaign({
         config,
@@ -130,7 +133,7 @@ describe.only("zModules Deploy Integration Test", () => {
             tokenName: "Rewards Token",
             tokenSymbol: "RWD",
           }),
-          getVotingERC20Mission(),
+          ZModulesZeroVotingERC20DM,
           getStakingERC20Mission(),
         ],
       });
@@ -290,8 +293,8 @@ describe.only("zModules Deploy Integration Test", () => {
       campaign = await runZModulesCampaign({
         config,
         missions: [
-          getVotingERC20Mission("mockVotingToken"),
-          getTimelockControllerMission(),
+          ZModulesZeroVotingERC20DM,
+          ZModulesTimelockControllerDM,
           getDAOMission(),
         ],
       });
@@ -320,7 +323,7 @@ describe.only("zModules Deploy Integration Test", () => {
 
       expect(
         await timelockController.hasRole(
-          await timelockController.PROPOSER_ROLE(),
+          PROPOSER_ROLE,
           zDao.target
         )
       ).to.eq(
@@ -329,11 +332,20 @@ describe.only("zModules Deploy Integration Test", () => {
 
       expect(
         await timelockController.hasRole(
-          await timelockController.EXECUTOR_ROLE(),
+          EXECUTOR_ROLE,
           zDao.target
         )
       ).to.eq(
         true
+      );
+
+      expect(
+        await timelockController.hasRole(
+          DEFAULT_ADMIN_ROLE,
+          deployAdmin.address
+        )
+      ).to.eq(
+        false
       );
     });
   });

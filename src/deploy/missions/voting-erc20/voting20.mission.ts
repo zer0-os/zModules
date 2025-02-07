@@ -5,40 +5,36 @@ import { IVotingERC20Config, IZModulesConfig, IZModulesContracts } from "../../c
 import { contractNames } from "../../contract-names";
 
 
-export const getVotingERC20Mission = (_instanceName ?: string) => {
-  class ZModulesZeroVotingERC20DM extends BaseDeployMission<
-  HardhatRuntimeEnvironment,
-  SignerWithAddress,
-  IZModulesConfig,
-  IZModulesContracts
-  > {
-    proxyData = {
-      isProxy: false,
-    };
+export class ZModulesZeroVotingERC20DM extends BaseDeployMission<
+HardhatRuntimeEnvironment,
+SignerWithAddress,
+IZModulesConfig,
+IZModulesContracts
+> {
+  proxyData = {
+    isProxy: false,
+  };
 
-    contractName = contractNames.votingERC20.contract;
-    instanceName = !_instanceName ? contractNames.votingERC20.instance : _instanceName;
+  contractName = contractNames.votingERC20.contract;
+  instanceName = contractNames.votingERC20.instance;
 
-    async deployArgs () : Promise<TDeployArgs> {
-      const {
-        config: {
-          votingERC20Config,
-        },
-      } = this.campaign;
+  async deployArgs () : Promise<TDeployArgs> {
+    const {
+      config: {
+        votingERC20Config,
+      },
+    } = this.campaign;
 
-      const {
-        name,
-        symbol,
-        admin,
-      } = votingERC20Config as IVotingERC20Config;
+    const {
+      name,
+      symbol,
+      admin,
+    } = votingERC20Config as IVotingERC20Config;
 
-      return [
-        name,
-        symbol,
-        admin.address,
-      ];
-    }
+    return [
+      name,
+      symbol,
+      admin.address,
+    ];
   }
-
-  return ZModulesZeroVotingERC20DM;
-};
+}

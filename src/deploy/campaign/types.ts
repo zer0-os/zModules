@@ -49,6 +49,7 @@ export interface IVotingERC721Config {
 }
 
 export interface IDAOConfig {
+  shouldRevokeAdminRole : boolean;
   governorName : string;
   votingToken ?: string;
   timelockController ?: string;

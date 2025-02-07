@@ -3,6 +3,7 @@ import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IDAOConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
+import { roles } from "../../constants";
 
 
 export const getDAOMission = () => {
@@ -24,17 +25,21 @@ export const getDAOMission = () => {
         config: {
           daoConfig,
         },
-        // TODO dep: add logic to determine which token type we need here
-        //  voting token can be votingERC20 or votingERC721
-        //  we need to pick the right one!
-        mockVotingToken,
+        votingErc20,
+        votingErc721,
+        timelockController,
       } = this.campaign;
 
-      let {
-        votingToken,
-        timelockController,
-      } = daoConfig as IDAOConfig;
+      if (votingErc20 && votingErc721) {
+        throw new Error("Both votingERC20 and votingERC721 tokens are provided. Only one token should be specified.");
+      } else if (!votingErc20 && !votingErc721) {
+        throw new Error("No voting token provided.");
+      }
+
+      const votingToken = votingErc20 || votingErc721;
+
       const {
+        shouldRevokeAdminRole,
         governorName,
         votingDelay,
         votingPeriod,
@@ -43,26 +48,13 @@ export const getDAOMission = () => {
         voteExtension,
       } = daoConfig as IDAOConfig;
 
-      timelockController = timelockController || this.campaign.state.contracts[contractNames.timelock.instance].target;
-
       if (!timelockController) throw new Error("Must provide Timelock Controller address");
 
-      if (mockTokens) {
-        votingToken = await mockVotingToken.getAddress();
-      } else {
-        if (!votingToken) {
-          throw new Error("Must provide Voting token if not mocking");
-        }
-      }
-
-      if (
-        (votingToken || mockVotingToken) &&
-        (timelockController)
-      ) {
+      if (votingToken && timelockController) {
         return [
           governorName,
-          votingToken ? votingToken : await mockVotingToken.getAddress(),
-          timelockController,
+          votingToken.target,
+          timelockController.target,
           votingDelay,
           votingPeriod,
           proposalThreshold,
@@ -83,18 +75,18 @@ export const getDAOMission = () => {
         timelockController,
       } = this.campaign;
 
-      const adminRole = await timelockController.DEFAULT_ADMIN_ROLE();
-      const proposerRole = await timelockController.PROPOSER_ROLE();
-      const executorRole = await timelockController.EXECUTOR_ROLE();
+      const {
+        DEFAULT_ADMIN_ROLE,
+        PROPOSER_ROLE,
+        EXECUTOR_ROLE,
+      } = roles.timelock;
 
-      const hasAdmin = await timelockController.hasRole(adminRole, deployAdmin.address);
-      const hasMinter = await timelockController.hasRole(proposerRole, zDao.target);
-      const hasBurner = await timelockController.hasRole(executorRole, zDao.target);
+      const needs =
+        !await timelockController.hasRole(DEFAULT_ADMIN_ROLE, deployAdmin.address) ||
+        !await timelockController.hasRole(PROPOSER_ROLE, zDao.target) ||
+        !await timelockController.hasRole(EXECUTOR_ROLE, zDao.target);
 
-      const needs = !hasMinter || !hasBurner || !hasAdmin;
-      const msg = needs ? "needs" : "doesn't need";
-
-      this.logger.debug(`${this.contractName} ${msg} post deploy sequence`);
+      this.logger.debug(`${this.contractName} ${needs ? "needs" : "doesn't need"} post deploy sequence`);
 
       return needs;
     }
@@ -110,13 +102,22 @@ export const getDAOMission = () => {
         timelockController,
       } = this.campaign;
 
-      const adminRole = await timelockController.DEFAULT_ADMIN_ROLE();
-      const proposerRole = await timelockController.PROPOSER_ROLE();
-      const executorRole = await timelockController.EXECUTOR_ROLE();
+      const {
+        shouldRevokeAdminRole,
+      } = this.campaign.config.daoConfig as IDAOConfig;
 
-      await timelockController.grantRole(adminRole, deployAdmin.address);
-      await timelockController.grantRole(proposerRole, zDao.target);
-      await timelockController.grantRole(executorRole, zDao.target);
+      const {
+        DEFAULT_ADMIN_ROLE,
+        PROPOSER_ROLE,
+        EXECUTOR_ROLE,
+      } = roles.timelock;
+
+      await timelockController.grantRole(DEFAULT_ADMIN_ROLE, deployAdmin.address);
+      await timelockController.grantRole(PROPOSER_ROLE, zDao.target);
+      await timelockController.grantRole(EXECUTOR_ROLE, zDao.target);
+
+      // revoke admin role after granting procoser and executor roles
+      if (shouldRevokeAdminRole) await timelockController.revokeRole(DEFAULT_ADMIN_ROLE, deployAdmin.address);
     }
   }
 
