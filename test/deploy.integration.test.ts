@@ -47,7 +47,7 @@ import { getDAOMission } from "../src/deploy/missions/dao/zdao.mission";
 import { daoConfig } from "../src/environment/configs/dao.configenv";
 
 
-describe("zModules Deploy Integration Test", () => {
+describe.only("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
   let votingTokenAdmin : SignerWithAddress;
   let stakingContractOwner : SignerWithAddress;
@@ -65,7 +65,6 @@ describe("zModules Deploy Integration Test", () => {
   let rewardsToken : MockERC20 | MockERC721;
 
   let stakeRepToken : ZeroVotingERC20 | ZeroVotingERC721;
-  let dao : ZDAO;
 
   const votingInstanceName = "zeroVotingERC20";
 
@@ -315,13 +314,13 @@ describe("zModules Deploy Integration Test", () => {
 
     it("DAO should have PROPOSER_ROLE and EXECUTOR_ROLE of Timelock", async () => {
       const {
-        mockTimelock,
+        timelockController,
         zDao,
       } = campaign;
 
       expect(
-        await mockTimelock.hasRole(
-          await mockTimelock.PROPOSER_ROLE(),
+        await timelockController.hasRole(
+          await timelockController.PROPOSER_ROLE(),
           zDao.target
         )
       ).to.eq(
@@ -329,8 +328,8 @@ describe("zModules Deploy Integration Test", () => {
       );
 
       expect(
-        await mockTimelock.hasRole(
-          await mockTimelock.EXECUTOR_ROLE(),
+        await timelockController.hasRole(
+          await timelockController.EXECUTOR_ROLE(),
           zDao.target
         )
       ).to.eq(
@@ -338,4 +337,6 @@ describe("zModules Deploy Integration Test", () => {
       );
     });
   });
+
+  describe("Deploy using ENV vars", () => {});
 });

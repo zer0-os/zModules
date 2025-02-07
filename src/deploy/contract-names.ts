@@ -35,6 +35,6 @@ export const contractNames = {
   },
   timelock: {
     contract: "TimelockController",
-    instance: "timelock",
+    instance: "timelockController",
   },
 };

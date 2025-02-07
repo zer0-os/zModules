@@ -29,17 +29,21 @@ export const getDAOMission = () => {
 
       let {
         votingToken,
+        timelockController,
       } = daoConfig as IDAOConfig;
       const {
         mockTokens,
         governorName,
-        timelockController,
         votingDelay,
         votingPeriod,
         proposalThreshold,
         quorumPercentage,
         voteExtension,
       } = daoConfig as IDAOConfig;
+
+      timelockController = timelockController || this.campaign.state.contracts[contractNames.timelock.instance].target;
+
+      if (!timelockController) throw new Error("Must provide Timelock Controller address");
 
       if (mockTokens) {
         votingToken = await mockVotingToken.getAddress();
@@ -77,7 +81,7 @@ export const getDAOMission = () => {
         timelockController,
       } = this.campaign;
 
-      const adminRole = await timelockController.TIMELOCK_ADMIN_ROLE();
+      const adminRole = await timelockController.DEFAULT_ADMIN_ROLE();
       const proposerRole = await timelockController.PROPOSER_ROLE();
       const executorRole = await timelockController.EXECUTOR_ROLE();
 
@@ -102,7 +106,7 @@ export const getDAOMission = () => {
         timelockController,
       } = this.campaign;
 
-      const adminRole = await timelockController.TIMELOCK_ADMIN_ROLE();
+      const adminRole = await timelockController.DEFAULT_ADMIN_ROLE();
       const proposerRole = await timelockController.PROPOSER_ROLE();
       const executorRole = await timelockController.EXECUTOR_ROLE();
 
