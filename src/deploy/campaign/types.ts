@@ -49,7 +49,6 @@ export interface IVotingERC721Config {
 }
 
 export interface IDAOConfig {
-  mockTokens : boolean;
   governorName : string;
   votingToken ?: string;
   timelockController ?: string;

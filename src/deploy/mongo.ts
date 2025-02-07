@@ -7,6 +7,8 @@ import { getGitTag } from "../utils/git-tag/get-tag";
 const execAsync = promisify(exec);
 
 
+// TODO dep: update function to pass all env variables from local repo as parameters
+//  to the zDC function!
 export const getZModulesMongoAdapter = async ({
   contractsVersion,
   logger,
@@ -18,6 +20,7 @@ export const getZModulesMongoAdapter = async ({
     contractsVersion = getGitTag();
   }
 
+  // TODO dep: pass here !!!
   return getMongoAdapter({
     logger,
     contractsVersion,

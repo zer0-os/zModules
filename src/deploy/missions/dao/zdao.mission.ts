@@ -24,6 +24,9 @@ export const getDAOMission = () => {
         config: {
           daoConfig,
         },
+        // TODO dep: add logic to determine which token type we need here
+        //  voting token can be votingERC20 or votingERC721
+        //  we need to pick the right one!
         mockVotingToken,
       } = this.campaign;
 
@@ -32,7 +35,6 @@ export const getDAOMission = () => {
         timelockController,
       } = daoConfig as IDAOConfig;
       const {
-        mockTokens,
         governorName,
         votingDelay,
         votingPeriod,
@@ -97,6 +99,8 @@ export const getDAOMission = () => {
       return needs;
     }
 
+    // TODO dep: add admin renouncing logic that is turned on by a ENV var !!!
+    //  do it for Voting tokens as well !!!
     async postDeploy () : Promise<void> {
       const {
         config: {

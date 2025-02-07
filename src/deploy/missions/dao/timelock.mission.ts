@@ -5,41 +5,38 @@ import { ITimelockConfig, IZModulesConfig, IZModulesContracts } from "../../camp
 import { contractNames } from "../../contract-names";
 
 
-export const getTimelockControllerMission = () => {
-  class ZModulesTimelockControllerDM extends BaseDeployMission<
-  HardhatRuntimeEnvironment,
-  SignerWithAddress,
-  IZModulesConfig,
-  IZModulesContracts
-  > {
-    proxyData = {
-      isProxy: false,
-    };
+export class ZModulesTimelockControllerDM extends BaseDeployMission<
+HardhatRuntimeEnvironment,
+SignerWithAddress,
+IZModulesConfig,
+IZModulesContracts
+> {
+  proxyData = {
+    isProxy: false,
+  };
 
-    contractName = contractNames.timelock.contract;
-    instanceName = contractNames.timelock.instance;
+  contractName = contractNames.timelock.contract;
+  instanceName = contractNames.timelock.instance;
 
-    async deployArgs () {
-      const {
-        config: {
-          timelockConfig,
-        },
-      } = this.campaign;
+  async deployArgs () {
+    const {
+      config: {
+        timelockConfig,
+      },
+    } = this.campaign;
 
-      const {
-        delay,
-        proposers,
-        executors,
-        admin,
-      } = timelockConfig as ITimelockConfig;
+    const {
+      delay,
+      proposers,
+      executors,
+      admin,
+    } = timelockConfig as ITimelockConfig;
 
-      return [
-        delay,
-        proposers,
-        executors,
-        admin.address,
-      ];
-    }
+    return [
+      delay,
+      proposers,
+      executors,
+      admin.address,
+    ];
   }
-  return ZModulesTimelockControllerDM;
-};
+}

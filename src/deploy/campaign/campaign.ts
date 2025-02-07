@@ -37,6 +37,7 @@ export const runZModulesCampaign = async ({
     });
   }
 
+  // TODO dep: update this and pass ENV vars as parameters to this function !!!
   const logger = getLogger({
     silence: process.env.SILENT_LOGGER === "true",
   });
