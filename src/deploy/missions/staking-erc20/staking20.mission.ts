@@ -31,7 +31,6 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
       const {
         config: {
           stakingERC20Config,
-          mockTokens,
         },
         mockErc20STK,
         mockErc20REW,
@@ -41,6 +40,9 @@ export const getStakingERC20Mission = (_instanceName ?: string) => {
       let {
         stakingToken,
         rewardsToken,
+      } = stakingERC20Config as IStakingERC20Config;
+      const {
+        mockTokens,
       } = stakingERC20Config as IStakingERC20Config;
 
       const {

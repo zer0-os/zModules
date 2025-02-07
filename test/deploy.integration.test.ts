@@ -69,6 +69,12 @@ describe("zModules Deploy Integration Test", () => {
 
   const votingInstanceName = "zeroVotingERC20";
 
+  let campaign : DeployCampaign<
+  HardhatRuntimeEnvironment,
+  SignerWithAddress,
+  IZModulesConfig,
+  IZModulesContracts>;
+
 
   before(async () => {
     [ deployAdmin, votingTokenAdmin, stakingContractOwner ] = await hre.ethers.getSigners();
@@ -88,12 +94,7 @@ describe("zModules Deploy Integration Test", () => {
         votingERC20Config: votingConfig,
       };
 
-      const campaign : DeployCampaign<
-      HardhatRuntimeEnvironment,
-      SignerWithAddress,
-      IZModulesConfig,
-      IZModulesContracts
-      > = await runZModulesCampaign({
+      campaign = await runZModulesCampaign({
         config,
         missions: [
           getVotingERC20Mission(),
@@ -117,7 +118,7 @@ describe("zModules Deploy Integration Test", () => {
         stakingERC20Config: stakingConfig,
       };
 
-      const campaign = await runZModulesCampaign({
+      campaign = await runZModulesCampaign({
         config,
         missions: [
           getMockERC20Mission({
@@ -202,7 +203,7 @@ describe("zModules Deploy Integration Test", () => {
         stakingERC721Config: stakingConfig as IStakingERC721Config,
       };
 
-      const campaign = await runZModulesCampaign({
+      campaign = await runZModulesCampaign({
         config,
         missions: [
           getMockERC721Mission({
@@ -287,11 +288,11 @@ describe("zModules Deploy Integration Test", () => {
         daoConfig: daoCnfg,
       };
 
-      const campaign = await runZModulesCampaign({
+      campaign = await runZModulesCampaign({
         config,
         missions: [
           getVotingERC20Mission("mockVotingToken"),
-          getTimelockControllerMission("mockTimelock"),
+          getTimelockControllerMission(),
           getDAOMission(),
         ],
       });
@@ -310,6 +311,31 @@ describe("zModules Deploy Integration Test", () => {
       expect(await zDao.votingDelay()).to.eq(DAO_VOTING_DELAY);
       expect(await zDao.votingPeriod()).to.eq(DAO_VOTING_PERIOD);
       expect(await zDao.proposalThreshold()).to.eq(DAO_PROPOSAL_THRESHOLD);
+    });
+
+    it("DAO should have PROPOSER_ROLE and EXECUTOR_ROLE of Timelock", async () => {
+      const {
+        mockTimelock,
+        zDao,
+      } = campaign;
+
+      expect(
+        await mockTimelock.hasRole(
+          await mockTimelock.PROPOSER_ROLE(),
+          zDao.target
+        )
+      ).to.eq(
+        true
+      );
+
+      expect(
+        await mockTimelock.hasRole(
+          await mockTimelock.EXECUTOR_ROLE(),
+          zDao.target
+        )
+      ).to.eq(
+        true
+      );
     });
   });
 });

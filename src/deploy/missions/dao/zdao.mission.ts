@@ -5,7 +5,7 @@ import { IDAOConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/
 import { contractNames } from "../../contract-names";
 
 
-export const getDAOMission = (_instanceName ?: string) => {
+export const getDAOMission = () => {
   class ZModulesZDAODM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -17,7 +17,7 @@ export const getDAOMission = (_instanceName ?: string) => {
     };
 
     contractName = contractNames.dao.contract;
-    instanceName = !_instanceName ? contractNames.dao.instance : _instanceName;
+    instanceName = contractNames.dao.instance;
 
     async deployArgs () : Promise<TDeployArgs> {
       const {
@@ -25,13 +25,15 @@ export const getDAOMission = (_instanceName ?: string) => {
           daoConfig,
         },
         mockVotingToken,
-        mockTimelock,
       } = this.campaign;
 
+      let {
+        votingToken,
+      } = daoConfig as IDAOConfig;
       const {
+        mockTokens,
         governorName,
-        token,
-        timelock,
+        timelockController,
         votingDelay,
         votingPeriod,
         proposalThreshold,
@@ -39,14 +41,22 @@ export const getDAOMission = (_instanceName ?: string) => {
         voteExtension,
       } = daoConfig as IDAOConfig;
 
+      if (mockTokens) {
+        votingToken = await mockVotingToken.getAddress();
+      } else {
+        if (!votingToken) {
+          throw new Error("Must provide Voting token if not mocking");
+        }
+      }
+
       if (
-        (token || mockVotingToken) &&
-        (timelock || mockTimelock)
+        (votingToken || mockVotingToken) &&
+        (timelockController)
       ) {
         return [
           governorName,
-          token ? token : await mockVotingToken.getAddress(),
-          timelock ? timelock : await mockTimelock.getAddress(),
+          votingToken ? votingToken : await mockVotingToken.getAddress(),
+          timelockController,
           votingDelay,
           votingPeriod,
           proposalThreshold,
@@ -58,7 +68,48 @@ export const getDAOMission = (_instanceName ?: string) => {
       }
     }
 
-  // TODO dep: add post deploy to set roles !!
+    async needsPostDeploy () : Promise<boolean> {
+      const {
+        config: {
+          deployAdmin,
+        },
+        zDao,
+        timelockController,
+      } = this.campaign;
+
+      const adminRole = await timelockController.TIMELOCK_ADMIN_ROLE();
+      const proposerRole = await timelockController.PROPOSER_ROLE();
+      const executorRole = await timelockController.EXECUTOR_ROLE();
+
+      const hasAdmin = await timelockController.hasRole(adminRole, deployAdmin.address);
+      const hasMinter = await timelockController.hasRole(proposerRole, zDao.target);
+      const hasBurner = await timelockController.hasRole(executorRole, zDao.target);
+
+      const needs = !hasMinter || !hasBurner || !hasAdmin;
+      const msg = needs ? "needs" : "doesn't need";
+
+      this.logger.debug(`${this.contractName} ${msg} post deploy sequence`);
+
+      return needs;
+    }
+
+    async postDeploy () : Promise<void> {
+      const {
+        config: {
+          deployAdmin,
+        },
+        zDao,
+        timelockController,
+      } = this.campaign;
+
+      const adminRole = await timelockController.TIMELOCK_ADMIN_ROLE();
+      const proposerRole = await timelockController.PROPOSER_ROLE();
+      const executorRole = await timelockController.EXECUTOR_ROLE();
+
+      await timelockController.grantRole(adminRole, deployAdmin.address);
+      await timelockController.grantRole(proposerRole, zDao.target);
+      await timelockController.grantRole(executorRole, zDao.target);
+    }
   }
 
   return ZModulesZDAODM;

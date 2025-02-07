@@ -5,7 +5,7 @@ import { ITimelockConfig, IZModulesConfig, IZModulesContracts } from "../../camp
 import { contractNames } from "../../contract-names";
 
 
-export const getTimelockControllerMission = (_instanceName ?: string) => {
+export const getTimelockControllerMission = () => {
   class ZModulesTimelockControllerDM extends BaseDeployMission<
   HardhatRuntimeEnvironment,
   SignerWithAddress,
@@ -17,7 +17,7 @@ export const getTimelockControllerMission = (_instanceName ?: string) => {
     };
 
     contractName = contractNames.timelock.contract;
-    instanceName = !_instanceName ? contractNames.timelock.instance : _instanceName;
+    instanceName = contractNames.timelock.instance;
 
     async deployArgs () {
       const {

@@ -21,6 +21,10 @@ export const getStaking20DeployConfig = ({
     owner = contractOwner.address;
   }
 
+  const mockTokens =
+      (env === "dev" || env === "test") &&
+      (!process.env.STAKING20_STAKING_TOKEN || !process.env.STAKING20_REWARDS_TOKEN);
+
   if (
     !process.env.STAKING20_REWARDS_PER_PERIOD ||
     !process.env.STAKING20_PERIOD_LENGTH ||
@@ -39,8 +43,6 @@ export const getStaking20DeployConfig = ({
     throw new Error("Missing required env tokens for StakingERC20!");
   }
 
-  const mockTokens = process.env.MOCK_TOKENS === "true";
-
   if (env === "dev" || env === "test") {
     if (!mockTokens) {
       assert.ok(
@@ -53,6 +55,7 @@ export const getStaking20DeployConfig = ({
   }
 
   const config = {
+    mockTokens,
     stakingToken: process.env.STAKING20_STAKING_TOKEN,
     rewardsToken: process.env.STAKING20_REWARDS_TOKEN,
     stakeRepToken: !!process.env.STAKING20_REP_TOKEN ? process.env.STAKING20_REP_TOKEN : undefined,

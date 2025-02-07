@@ -1,9 +1,14 @@
+import assert from "assert";
 import { IDAOConfig } from "../../campaign/types";
 
 
 export const getDAOConfig = () : IDAOConfig => {
   const env = process.env.ENV_LEVEL;
   let config = {} as IDAOConfig;
+
+  const mockTokens =
+      (env === "dev" || env === "test") &&
+      (!process.env.DAO_VOTING_TOKEN || !process.env.DAO_TIMELOCK_CONTROLLER);
 
   if (
     !process.env.DAO_GOV_NAME ||
@@ -16,22 +21,22 @@ export const getDAOConfig = () : IDAOConfig => {
     throw new Error("Missing required env variables for DAO!");
   }
 
-  if (env === "prod" &&
-      (!process.env.DAO_VOTING_TOKEN ||
-      !process.env.DAO_TIMELOCK_CONTROLLER)
-  ) {
-    throw new Error("Missing required env variables for DAO!");
+  if (env === "dev" || env === "test") {
+    if (!mockTokens) {
+      assert.ok(
+        !!process.env.DAO_VOTING_TOKEN && !!process.env.DAO_TIMELOCK_CONTROLLER,
+        "Must provide Voting token and Timelock controller addresses for DAO when not mocking!"
+      );
+    }
+  } else {
+    assert.ok(!mockTokens, "Cannot MOCK_TOKENS in prod environment!");
   }
-
-  const mockTokens =
-    (env === "dev" || env === "test") &&
-    (!process.env.DAO_VOTING_TOKEN || !process.env.DAO_TIMELOCK_CONTROLLER);
 
   config = {
     mockTokens,
     governorName: process.env.DAO_GOV_NAME,
-    token: process.env.DAO_VOTING_TOKEN,
-    timelock: process.env.DAO_TIMELOCK_CONTROLLER,
+    votingToken: process.env.DAO_VOTING_TOKEN,
+    timelockController: process.env.DAO_TIMELOCK_CONTROLLER,
     votingDelay: BigInt(process.env.DAO_VOTING_DELAY),
     votingPeriod: BigInt(process.env.DAO_VOTING_PERIOD),
     proposalThreshold: BigInt(process.env.DAO_PROPOSAL_THRESHOLD),
