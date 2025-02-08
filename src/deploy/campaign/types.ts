@@ -52,7 +52,7 @@ export interface IDAOConfig {
   shouldRevokeAdminRole : boolean;
   governorName : string;
   votingToken ?: string;
-  timelockController ?: string;
+  timeLockController ?: string;
   votingDelay : bigint;
   votingPeriod : bigint;
   proposalThreshold : bigint;
@@ -83,7 +83,7 @@ export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress
   stakingERC721Config ?: IStakingERC721Config;
   matchConfig ?: IMatchConfig;
   daoConfig ?: IDAOConfig;
-  timelockConfig ?: ITimelockConfig;
+  timeLockConfig ?: ITimelockConfig;
 }
 
 export type ZModulesContract =

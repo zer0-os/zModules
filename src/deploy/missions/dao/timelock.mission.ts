@@ -21,7 +21,7 @@ IZModulesContracts
   async deployArgs () {
     const {
       config: {
-        timelockConfig,
+        timeLockConfig,
       },
     } = this.campaign;
 
@@ -30,7 +30,7 @@ IZModulesContracts
       proposers,
       executors,
       admin,
-    } = timelockConfig as ITimelockConfig;
+    } = timeLockConfig as ITimelockConfig;
 
     return [
       delay,

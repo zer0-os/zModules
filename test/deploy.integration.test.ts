@@ -1,33 +1,22 @@
 import * as hre from "hardhat";
-import { getVoting20DeployConfig } from "../src/deploy/missions/voting-erc20/voting20.config";
-import { runZModulesCampaign } from "../src/deploy";
-import { getBaseZModulesConfig } from "../src/deploy/campaign/get-campaign-config";
+import { contractNames, runZModulesCampaign } from "../src/deploy";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ZModulesZeroVotingERC20DM } from "../src/deploy/missions/voting-erc20/voting20.mission";
 import { getStakingERC20Mission } from "../src/deploy/missions/staking-erc20/staking20.mission";
-import { getStaking20DeployConfig } from "../src/deploy/missions/staking-erc20/staking20.config";
 import {
-  IDAOConfig,
-  IStakingERC20Config,
-  IStakingERC721Config,
-  ITimelockConfig,
-  IVotingERC20Config,
-  IVotingERC721Config,
   IZModulesConfig,
   IZModulesContracts,
+  ZModulesContract,
 } from "../src/deploy/campaign/types";
 import {
   getMockERC20Mission,
   TokenTypes,
 } from "../src/deploy/missions/mocks/mockERC20.mission";
-import { getVoting721DeployConfig } from "../src/deploy/missions/voting-erc721/voting721.config";
 import { expect } from "chai";
 import {
   DeployCampaign,
-  IDeployCampaignConfig,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getStaking721DeployConfig } from "../src/deploy/missions/staking-erc721/staking721.config";
 import { getMockERC721Mission } from "../src/deploy/missions/mocks/mockERC721.mission";
 import { getVotingERC721Mission } from "../src/deploy/missions/voting-erc721/voting721.mission";
 import { getStakingERC721Mission } from "../src/deploy/missions/staking-erc721/staking721.mission";
@@ -39,35 +28,28 @@ import {
   ZeroVotingERC20,
   ZeroVotingERC721,
 } from "../typechain";
-import { getDAOConfig } from "../src/deploy/missions/dao/zdao.config";
-import { getTimeLockControllerConfig } from "../src/deploy/missions/dao/timelock.config";
 import { getDAOMission } from "../src/deploy/missions/dao/zdao.mission";
 import { daoConfig } from "../src/environment/configs/dao.configenv";
 import { ZModulesTimelockControllerDM } from "../src/deploy/missions/dao/timelock.mission";
 import { roles } from "../src/deploy/constants";
-import { getStaking20SystemConfig } from "../src/deploy/campaign/staking-system-config";
+import { getStaking20SystemConfig, getStaking721SystemConfig } from "../src/deploy/campaign/staking-system-config";
+import { staking20Config, staking721Config } from "../src/environment/configs/staking.configenv";
+import { IStaking20Environment, IStaking721Environment } from "../src/environment/types";
+import { getDaoSystemConfig } from "../src/deploy/campaign/dao-system-config";
+import { dropDB } from "../src/utils/drop-db";
 
 
 describe.only("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
-  let votingTokenAdmin : SignerWithAddress;
-  let stakingContractOwner : SignerWithAddress;
+  let contractOwner : SignerWithAddress;
 
-  let baseConfig : IDeployCampaignConfig<SignerWithAddress>;
-  let votingConfig : IVotingERC20Config | IVotingERC721Config;
-  let stakingConfig : IStakingERC20Config | IStakingERC721Config;
-  let daoCnfg : IDAOConfig;
-  let timelockConfig : ITimelockConfig;
+  let stakingConfig : IStaking20Environment | IStaking721Environment;
   let config : IZModulesConfig;
 
   let staking : StakingERC20 | StakingERC721;
-
   let stakeToken : MockERC20 | MockERC721;
   let rewardsToken : MockERC20 | MockERC721;
-
   let stakeRepToken : ZeroVotingERC20 | ZeroVotingERC721;
-
-  const votingInstanceName = "zeroVotingERC20";
 
   let campaign : DeployCampaign<
   HardhatRuntimeEnvironment,
@@ -83,42 +65,12 @@ describe.only("zModules Deploy Integration Test", () => {
 
 
   before(async () => {
-    [ deployAdmin, votingTokenAdmin, stakingContractOwner ] = await hre.ethers.getSigners();
-
-    baseConfig = await getBaseZModulesConfig({
-      deployAdmin,
-    });
-    votingConfig = getVoting20DeployConfig({
-      tokenAdmin: votingTokenAdmin,
-    });
-  });
-
-  it("Should deploy VotingERC20 with zDC and default config", async () => {
-    config = {
-      ...baseConfig,
-      votingERC20Config: votingConfig,
-    };
-
-    campaign = await runZModulesCampaign({
-      config,
-      missions: [
-        ZModulesZeroVotingERC20DM,
-      ],
-    });
-
-    ({ votingErc20: stakeRepToken } = campaign);
-
-    expect(await stakeRepToken.name()).to.eq(votingConfig.name);
-    expect(await stakeRepToken.symbol()).to.eq(votingConfig.symbol);
+    [ deployAdmin ] = await hre.ethers.getSigners();
   });
 
   describe("Staking", () => {
     it("Should deploy StakingERC20 with zDC and default config", async () => {
-      stakingConfig = getStaking20DeployConfig({
-        contractOwner: stakingContractOwner,
-      }) as IStakingERC20Config;
-
-      config = getStaking20SystemConfig({ deployAdmin });
+      config = await getStaking20SystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -151,25 +103,26 @@ describe.only("zModules Deploy Integration Test", () => {
       expect(await staking.getStakeRepToken()).to.eq(stakeRepToken.target);
 
       // config
+      stakingConfig = staking20Config;
       expect(
         await staking.getMinimumLockTime()
       ).to.eq(
-        stakingConfig.minimumLockTime
+        stakingConfig.STAKING20_MIN_LOCK_TIME
       );
       expect(
         await staking.getMinimumRewardsMultiplier()
       ).to.eq(
-        stakingConfig.minimumRewardsMultiplier
+        stakingConfig.STAKING20_MIN_REWARDS_MULTIPLIER
       );
       expect(
         await staking.getMaximumRewardsMultiplier()
       ).to.eq(
-        stakingConfig.maximumRewardsMultiplier
+        stakingConfig.STAKING20_MAX_REWARDS_MULTIPLIER
       );
       expect(
         await staking.getRewardsPerPeriod()
       ).to.eq(
-        stakingConfig.rewardsPerPeriod
+        stakingConfig.STAKING20_REWARDS_PER_PERIOD
       );
     });
 
@@ -187,23 +140,7 @@ describe.only("zModules Deploy Integration Test", () => {
     });
 
     it("Should deploy StakingERC721 with zDC and default config", async () => {
-      baseConfig = await getBaseZModulesConfig({
-        deployAdmin,
-      });
-
-      votingConfig = getVoting721DeployConfig({
-        tokenAdmin: votingTokenAdmin,
-      });
-
-      stakingConfig = getStaking721DeployConfig({
-        contractOwner: stakingContractOwner,
-      }) as IStakingERC721Config;
-
-      config = {
-        ...baseConfig,
-        votingERC721Config: votingConfig as IVotingERC721Config,
-        stakingERC721Config: stakingConfig as IStakingERC721Config,
-      };
+      config = await getStaking721SystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -237,25 +174,27 @@ describe.only("zModules Deploy Integration Test", () => {
       expect(await staking.getStakeRepToken()).to.eq(stakeRepToken.target);
 
       // config
+      stakingConfig = staking721Config;
+
       expect(
         await staking.getMinimumLockTime()
       ).to.eq(
-        stakingConfig?.minimumLockTime
+        stakingConfig.STAKING721_MIN_LOCK_TIME
       );
       expect(
         await staking.getMinimumRewardsMultiplier()
       ).to.eq(
-        stakingConfig?.minimumRewardsMultiplier
+        stakingConfig.STAKING721_MIN_REWARDS_MULTIPLIER
       );
       expect(
         await staking.getMaximumRewardsMultiplier()
       ).to.eq(
-        stakingConfig?.maximumRewardsMultiplier
+        stakingConfig.STAKING721_MAX_REWARDS_MULTIPLIER
       );
       expect(
         await staking.getRewardsPerPeriod()
       ).to.eq(
-        stakingConfig?.rewardsPerPeriod
+        stakingConfig.STAKING721_REWARDS_PER_PERIOD
       );
     });
 
@@ -276,19 +215,9 @@ describe.only("zModules Deploy Integration Test", () => {
   });
 
   describe("DAO", () => {
-    it("Should deploy DAO with zDC and default config", async () => {
-      daoCnfg = getDAOConfig();
-      timelockConfig = getTimeLockControllerConfig({
-        timeLockAdmin: deployAdmin,
-        votingTokenInstName: votingInstanceName,
-      });
+    it("Should deploy DAO with ERC20 token zDC and default config", async () => {
 
-      config = {
-        ...baseConfig,
-        votingERC20Config: votingConfig,
-        timelockConfig,
-        daoConfig: daoCnfg,
-      };
+      config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
 
       campaign = await runZModulesCampaign({
         config,
@@ -348,7 +277,107 @@ describe.only("zModules Deploy Integration Test", () => {
         false
       );
     });
+
+    it("Should NOT have DEFAULT_ADMIN_ROLE by defualt", async () => {
+      const {
+        timelockController,
+      } = campaign;
+
+      expect(
+        await timelockController.hasRole(
+          DEFAULT_ADMIN_ROLE,
+          deployAdmin.address
+        )
+      ).to.eq(
+        false
+      );
+    });
   });
 
-  describe("Deploy using ENV vars", () => {});
+  describe("Deploy using ENV vars", () => {
+    let stakeToken20 : ZModulesContract;
+    let rewardsToken20 : ZModulesContract;
+
+    let envCampaign : DeployCampaign<
+    HardhatRuntimeEnvironment,
+    SignerWithAddress,
+    IZModulesConfig,
+    IZModulesContracts>;
+
+    before(async () => {
+      await dropDB();
+      [ contractOwner ] = await hre.ethers.getSigners();
+
+      envCampaign = await runZModulesCampaign({
+        config,
+        missions: [
+          getMockERC20Mission({
+            tokenType: TokenTypes.staking,
+            tokenName: "Staking Token",
+            tokenSymbol: "STK",
+          }),
+          getMockERC20Mission({
+            tokenType: TokenTypes.rewards,
+            tokenName: "Rewards Token",
+            tokenSymbol: "RWD",
+          }),
+        ],
+      });
+
+      ({
+        mockErc20STK: stakeToken20,
+        mockErc20REW: rewardsToken20,
+      } = envCampaign.state.contracts);
+    });
+
+    it("Should deploy StakingERC20 with zDC", async () => {
+      // set env vars
+      process.env.STAKING20_STAKING_TOKEN = stakeToken20.target.toString();
+      process.env.STAKING20_REWARDS_TOKEN = rewardsToken20.target.toString();
+      process.env.STAKING20_CONTRACT_OWNER = contractOwner.address.toString();
+      process.env.STAKING20_REWARDS_PER_PERIOD = "30";
+      process.env.STAKING20_PERIOD_LENGTH = (86400n * 365n * 2n).toString();  // 2 years in seconds
+      process.env.STAKING20_MIN_LOCK_TIME = (86400n * 30n * 2n).toString();   // 2 months in seconds
+      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = "10";
+      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = "100";
+
+      config = await getStaking20SystemConfig(deployAdmin);
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesZeroVotingERC20DM,
+          getStakingERC20Mission(),
+        ],
+      });
+
+      // tokens
+      expect(await staking.getStakingToken()).to.eq(stakeToken20.target);
+      expect(await staking.getRewardsToken()).to.eq(rewardsToken20.target);
+      expect(await staking.getStakeRepToken()).to.eq(campaign.state.contracts.votingErc20.target);
+
+      // config
+      stakingConfig = staking20Config;
+      expect(
+        await staking.getMinimumLockTime()
+      ).to.eq(
+        stakingConfig.STAKING20_MIN_LOCK_TIME
+      );
+      expect(
+        await staking.getMinimumRewardsMultiplier()
+      ).to.eq(
+        stakingConfig.STAKING20_MIN_REWARDS_MULTIPLIER
+      );
+      expect(
+        await staking.getMaximumRewardsMultiplier()
+      ).to.eq(
+        stakingConfig.STAKING20_MAX_REWARDS_MULTIPLIER
+      );
+      expect(
+        await staking.getRewardsPerPeriod()
+      ).to.eq(
+        stakingConfig.STAKING20_REWARDS_PER_PERIOD
+      );
+    });
+  });
 });

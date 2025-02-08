@@ -39,7 +39,6 @@ export const getDAOMission = () => {
       const votingToken = votingErc20 || votingErc721;
 
       const {
-        shouldRevokeAdminRole,
         governorName,
         votingDelay,
         votingPeriod,

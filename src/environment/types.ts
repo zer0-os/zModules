@@ -83,6 +83,7 @@ export interface IVoting721Environment {
 }
 
 export interface IDAOEnvironment {
+  DAO_REVOKE_ADMIN_ROLE : string;
   DAO_GOV_NAME : string;
   DAO_VOTING_TOKEN ?: string;
   DAO_TIMELOCK_CONTROLLER ?: string;

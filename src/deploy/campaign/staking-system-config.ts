@@ -11,8 +11,8 @@ export const getStaking20SystemConfig = async (admin : HardhatEthersSigner) => {
 
   return {
     ...baseConfig,
-    votingERC20Config: await getVoting20DeployConfig({ tokenAdmin: admin }),
-    stakingERC20Config: await getStaking20DeployConfig({ contractOwner: admin }),
+    votingERC20Config: getVoting20DeployConfig({ tokenAdmin: admin }),
+    stakingERC20Config: getStaking20DeployConfig({ contractOwner: admin }),
   };
 };
 
@@ -21,7 +21,7 @@ export const getStaking721SystemConfig = async (admin : HardhatEthersSigner) => 
 
   return {
     ...baseConfig,
-    votingERC721Config: await getVoting721DeployConfig({ tokenAdmin: admin }),
-    stakingERC721Config: await getStaking721DeployConfig({ contractOwner: admin }),
+    votingERC721Config: getVoting721DeployConfig({ tokenAdmin: admin }),
+    stakingERC721Config: getStaking721DeployConfig({ contractOwner: admin }),
   };
 };

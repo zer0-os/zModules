@@ -5,6 +5,7 @@ import { IDAOEnvironment, ITimeLockEnvironment } from "../types";
  * Default environment for ZDAO
  */
 export const daoConfig : IDAOEnvironment = {
+  DAO_REVOKE_ADMIN_ROLE: "true",
   DAO_GOV_NAME: "ZDAO",
   DAO_VOTING_TOKEN: "",
   DAO_TIMELOCK_CONTROLLER: "",

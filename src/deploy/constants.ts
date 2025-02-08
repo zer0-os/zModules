@@ -15,14 +15,4 @@ export const roles = {
       ["EXECUTOR_ROLE"]
     ),
   },
-  voting: {
-    MINTER_ROLE: ethers.solidityPackedKeccak256(
-      ["string"],
-      ["MINTER_ROLE"]
-    ),
-    BURNER_ROLE: ethers.solidityPackedKeccak256(
-      ["string"],
-      ["BURNER_ROLE"]
-    ),
-  },
 };
