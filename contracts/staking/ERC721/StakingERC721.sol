@@ -141,13 +141,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         return _getPendingRewards(nftStakers[msg.sender].stake);
     }
 
-    /**
-     * @notice Check if a tokenID is locked
-     */
-    function isLocked(address staker, uint256 tokenId) public view override returns (bool) {
-        return nftStakers[staker].locked[tokenId];
-    }
-
     function onERC721Received(
         address,
         address,

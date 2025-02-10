@@ -67,6 +67,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         stakeRepToken = _stakeRepToken;
 
         // Initial config
+        _config.timestamp = block.timestamp;
         configTimestamps.push(block.timestamp);
         configs[block.timestamp] = _config;
     }
@@ -110,11 +111,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         emit ConfigSet(_config);
     }
-
-    // TDOO 
-    // setter for each var (if eth optims dont figure out writing to storage slot same value)
-    // leave all independent functions IF solidity doesnt optimize for change
-    // if it optims, can do single config setter instead
 
     /**
      * @notice Return the potential rewards that would be earned for a given stake
@@ -370,8 +366,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         uint256 rewards;
 
         // We store as memory variable to be able to write to it
-        // console.log("block.timestamp: ", block.timestamp);
-        // console.log("timestamp: ", timestamp);
         uint256 duration = block.timestamp - timeOrDuration;
         uint256 lastTimestamp = block.timestamp;
 
@@ -387,6 +381,12 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             // If their last timestamp was before the most recent config change
             if (timeOrDuration < _config.timestamp) {
                 // rewards for entire period, loop again
+
+                // TODO this causes panic code in pendingRewards in some cases?
+                console.log("lastTimestamp: ", lastTimestamp);
+                console.log("confTimestamp: ", _config.timestamp);
+                console.log("lts > cfg.ts ?: ", lastTimestamp > _config.timestamp);
+
                 uint256 effectiveDuration = lastTimestamp - _config.timestamp;
                 lastTimestamp = _config.timestamp; // Store for next iteration if needed
                 duration -= effectiveDuration;
@@ -411,8 +411,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
         // Get rewards from non-locked funds already accrued and also between the last timestamp and now
+        console.log("getPendingRewards");
         uint256 rewards = staker.owedRewards + _updatedStakeRewards(
-            staker.lastTimestamp,
+            staker.lastTimestamp, // or mostRecenttimestamp?
             staker.amountStaked,
             1, // Rewards multiplier is 1 for non-locked funds
             false

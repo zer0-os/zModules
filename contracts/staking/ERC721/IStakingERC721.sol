@@ -99,6 +99,4 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
     function getPendingRewards() external view returns (uint256);
 
     function getRemainingLockTime() external view returns (uint256);
-
-    function isLocked(address staker, uint256 tokenId) external view returns (bool);
 }

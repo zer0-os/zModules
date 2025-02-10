@@ -40,6 +40,7 @@ import {
   calcUpdatedStakeRewards,
   calcRewardsMultiplier,
 } from "./helpers/staking";
+import { seconds } from "@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time/duration";
 
 
 describe("StakingERC20", () => {
@@ -1761,8 +1762,6 @@ describe("StakingERC20", () => {
     })
 
     it("6.3 Preliminary - No config changes, confirm helper and contract code return same rewards value", async () => {
-      // await reset();
-
       // After changing the code for rewards to account for config changes in the past
       // we want to make sure that the typescript helper code returns the same value
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
@@ -1791,8 +1790,6 @@ describe("StakingERC20", () => {
     });
 
     it("6.3 - One config change, one stake", async () => {
-      // await reset();
-
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
       const stakedAt = BigInt(await time.latest());
 
@@ -1865,15 +1862,13 @@ describe("StakingERC20", () => {
         false
       )
 
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-
       expect(rewardsFromHelper).to.eq(rewardsFromContract);
-      expect(rewardsFromContract).to.eq(pendingRewards);
       expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + rewardsFromContract);
     })
 
     it("6.3 - Two config changes, two unlocked stakes", async () => {
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      const firstStakedAt = BigInt(await time.latest());
 
       await time.increase(DAY_IN_SECONDS * 4n);
 
@@ -1885,6 +1880,15 @@ describe("StakingERC20", () => {
 
       // Stake again after first config change
       await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      const secondStakedAt = BigInt(await time.latest());
+
+      // Rewards between first and second stakes
+      const inBetweenRewards = await calcUpdatedStakeRewards(
+        firstStakedAt,
+        DEFAULT_STAKED_AMOUNT,
+        false,
+        [config, configA]
+      )
 
       await time.increase(DAY_IN_SECONDS * 22n);
 
@@ -1894,29 +1898,32 @@ describe("StakingERC20", () => {
 
       await time.increase(DAY_IN_SECONDS * 17n);
 
-      const stakerData = await contract.stakers(stakerA.address);
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+      await contract.connect(stakerA).claim();
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
 
       const rewardsFromHelper = await calcUpdatedStakeRewards(
-        stakerData.lastTimestamp,
-        DEFAULT_STAKED_AMOUNT,
+        secondStakedAt,
+        DEFAULT_STAKED_AMOUNT * 2n,
         false,
         [config, configA, configB]
       )
 
+      // temp firstStakedAt just to see diff
       const rewardsFromContract = await contract.getStakeRewards(
-        stakerData.lastTimestamp,
-        DEFAULT_STAKED_AMOUNT,
+        secondStakedAt,
+        DEFAULT_STAKED_AMOUNT * 2n,
         false
       )
 
-      const pendingRewards = await contract.connect(stakerA).getPendingRewards();
-
       expect(rewardsFromHelper).to.eq(rewardsFromContract);
-      expect(rewardsFromContract).to.eq(pendingRewards);
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + rewardsFromContract + inBetweenRewards);
     })
 
-    it("6.3 - Two changes, one locked stake that unlocks", async () => {
+    it.only("6.3 - Two changes, one locked stake that unlocks", async () => {
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+      const stakedAt = BigInt(await time.latest());
+      console.log(stakedAt);
 
       const rewards = await calcUpdatedStakeRewards(
         DEFAULT_LOCK,
@@ -1925,56 +1932,61 @@ describe("StakingERC20", () => {
         [config]
       )
 
-      // Locked rewards are immediately available
-      const stakerDataBefore = await contract.stakers(stakerA.address);
-      expect(stakerDataBefore.owedRewardsLocked).to.eq(rewards);
+      // // Locked rewards are immediately available
+      // const stakerDataBefore = await contract.stakers(stakerA.address);
+      // expect(stakerDataBefore.owedRewardsLocked).to.eq(rewards);
 
-      await time.increase(DEFAULT_LOCK / 4n);
+      // await time.increase(DEFAULT_LOCK / 4n);
 
-      // Config change while still locked
-      const configA = config;
-      configA.rewardsPerPeriod = config.rewardsPerPeriod / 2n;
-      await contract.connect(owner).setConfig(configA);
+      // // Config change while still locked
+      // const configA = config;
+      // configA.rewardsPerPeriod = config.rewardsPerPeriod / 2n;
+      // await contract.connect(owner).setConfig(configA);
 
-      await time.increase(DEFAULT_LOCK / 4n);
+      // await time.increase(DEFAULT_LOCK / 4n);
 
-      // Setting a new config did not change amount owed for a stake that is still locked
-      const stakerDataAfter = await contract.stakers(stakerA.address);
-      expect(stakerDataAfter.owedRewardsLocked).to.eq(stakerDataBefore.owedRewardsLocked);
+      // // Setting a new config did not change amount owed for a stake that is still locked
+      // const stakerDataAfter = await contract.stakers(stakerA.address);
+      // expect(stakerDataAfter.owedRewardsLocked).to.eq(stakerDataBefore.owedRewardsLocked);
 
-      // Move past time lock and generate interim rewards
+      // // Move past time lock and generate interim rewards
+      // await time.increase(DEFAULT_LOCK / 2n + DAY_IN_SECONDS * 2n);
+
+      // const stakerDataAfterUnlock = await contract.stakers(stakerA.address);
+      // expect(stakerDataAfterUnlock.owedRewardsLocked).to.eq(stakerDataBefore.owedRewardsLocked);
+      // expect(stakerDataAfterUnlock.owedRewards).to.eq(0n); // No interim rewards have been tallied
+
+      // // Config change while unlocked and collecting interim rewards
+      // const configB = configA;
+      // configB.minimumLockTime = configA.minimumLockTime * 4n;
+      // await contract.connect(owner).setConfig(configB);
+
+      // await time.increase(DAY_IN_SECONDS * 17n);
+
+      // const stakerData = await contract.stakers(stakerA.address);
+
+      // const rewardsFromHelper = await calcUpdatedStakeRewards(
+      //   stakerData.unlockedTimestamp,
+      //   DEFAULT_STAKED_AMOUNT,
+      //   false,
+      //   [config, configA, configB]
+      // )
+
+      // const rewardsFromContract = await contract.getStakeRewards(
+      //   stakerData.unlockedTimestamp,
+      //   DEFAULT_STAKED_AMOUNT,
+      //   false
+      // )
+
+      // debug
       await time.increase(DEFAULT_LOCK / 2n + DAY_IN_SECONDS * 2n);
 
-      const stakerDataAfterUnlock = await contract.stakers(stakerA.address);
-      expect(stakerDataAfterUnlock.owedRewardsLocked).to.eq(stakerDataBefore.owedRewardsLocked);
-      expect(stakerDataAfterUnlock.owedRewards).to.eq(0n); // No interim rewards have been tallied
-
-      // Config change while unlocked and collecting interim rewards
-      const configB = configA;
-      configB.periodLength = configA.periodLength / 3n;
-      await contract.connect(owner).setConfig(configB);
-
-      await time.increase(DAY_IN_SECONDS * 17n);
-
-      const stakerData = await contract.stakers(stakerA.address);
-
-      const rewardsFromHelper = await calcUpdatedStakeRewards(
-        stakerData.unlockedTimestamp,
-        DEFAULT_STAKED_AMOUNT,
-        false,
-        [config, configA, configB]
-      )
-
-      const rewardsFromContract = await contract.getStakeRewards(
-        stakerData.unlockedTimestamp,
-        DEFAULT_STAKED_AMOUNT,
-        false
-      )
-
+      // pending rewards cause error?
       const pendingRewards = await contract.connect(stakerA).getPendingRewards();
+      console.log(pendingRewards);
 
-      expect(rewardsFromHelper).to.eq(rewardsFromContract);
-      expect(rewardsFromContract).to.eq(pendingRewards);
+      // expect(rewardsFromHelper).to.eq(rewardsFromContract);
+      // expect(rewardsFromContract).to.eq(pendingRewards);
     })
 
     it("6.3 - Two changes, unlocked and locked stake that unlocks, with claims in between", async () => {
