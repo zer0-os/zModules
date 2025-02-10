@@ -8,7 +8,7 @@ import { ERC20Mod } from "./ERC20Mod.sol";
 
 // Don't enforce linter in mock token
 /* solhint-disable */
-contract MockERC20 is ERC20Mod, Ownable, Pausable {
+contract TestMockERC20 is ERC20Mod, Ownable, Pausable {
     constructor(
         string memory name,
         string memory symbol,
