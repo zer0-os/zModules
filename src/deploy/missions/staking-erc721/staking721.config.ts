@@ -25,10 +25,10 @@ export const getStaking721DeployConfig = ({
 
   if (
     !process.env.STAKING721_REWARDS_PER_PERIOD ||
-      !process.env.STAKING721_PERIOD_LENGTH ||
-      !process.env.STAKING721_MIN_LOCK_TIME ||
-      !process.env.STAKING721_MIN_REWARDS_MULTIPLIER ||
-      !process.env.STAKING721_MAX_REWARDS_MULTIPLIER
+    !process.env.STAKING721_PERIOD_LENGTH ||
+    !process.env.STAKING721_MIN_LOCK_TIME ||
+    !process.env.STAKING721_MIN_REWARDS_MULTIPLIER ||
+    !process.env.STAKING721_MAX_REWARDS_MULTIPLIER
   ) {
     throw new Error("Missing required env variables for StakingERC721!");
   }
@@ -41,7 +41,9 @@ export const getStaking721DeployConfig = ({
     throw new Error("Missing required env tokens for StakingERC721!");
   }
 
-  const mockTokens = process.env.MOCK_TOKENS === "true";
+  const mockTokens =
+      (env === "dev" || env === "test") &&
+      (!process.env.STAKING20_STAKING_TOKEN || !process.env.STAKING20_REWARDS_TOKEN);
 
   if (env === "dev" || env === "test") {
     if (!mockTokens) {
@@ -55,6 +57,7 @@ export const getStaking721DeployConfig = ({
   }
 
   const config = {
+    mockTokens,
     stakingToken: process.env.STAKING721_STAKING_TOKEN,
     rewardsToken: process.env.STAKING721_REWARDS_TOKEN,
     stakeRepToken: !!process.env.STAKING721_REP_TOKEN ? process.env.STAKING721_REP_TOKEN : undefined,

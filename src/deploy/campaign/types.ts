@@ -28,11 +28,7 @@ export interface IStakingERC20Config {
   maximumRewardsMultiplier : bigint;
 }
 
-export interface IStakingERC721Config extends IStakingERC20Config {
-  name : string;
-  symbol : string;
-  baseUri : string;
-}
+export interface IStakingERC721Config extends IStakingERC20Config {}
 
 export interface IVotingERC20Config {
   name : string;

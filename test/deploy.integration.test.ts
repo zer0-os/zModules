@@ -15,10 +15,11 @@ import {
 import { expect } from "chai";
 import {
   DeployCampaign,
+  MongoDBAdapter,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getMockERC721Mission } from "../src/deploy/missions/mocks/mockERC721.mission";
-import { getVotingERC721Mission } from "../src/deploy/missions/voting-erc721/voting721.mission";
+import { getVotingERC721Mission, ZModulesZeroVotingERC721DM } from "../src/deploy/missions/voting-erc721/voting721.mission";
 import { getStakingERC721Mission } from "../src/deploy/missions/staking-erc721/staking721.mission";
 import {
   MockERC20,
@@ -36,7 +37,6 @@ import { getStaking20SystemConfig, getStaking721SystemConfig } from "../src/depl
 import { staking20Config, staking721Config } from "../src/environment/configs/staking.configenv";
 import { IStaking20Environment, IStaking721Environment } from "../src/environment/types";
 import { getDaoSystemConfig } from "../src/deploy/campaign/dao-system-config";
-import { dropDB } from "../src/utils/drop-db";
 
 
 describe.only("zModules Deploy Integration Test", () => {
@@ -56,6 +56,7 @@ describe.only("zModules Deploy Integration Test", () => {
   SignerWithAddress,
   IZModulesConfig,
   IZModulesContracts>;
+  let dbAdapter : MongoDBAdapter;
 
   const {
     DEFAULT_ADMIN_ROLE,
@@ -95,6 +96,7 @@ describe.only("zModules Deploy Integration Test", () => {
         votingErc20: stakeRepToken,
         mockErc20STK: stakeToken,
         mockErc20REW: rewardsToken,
+        dbAdapter,
       } = campaign);
 
       // tokens
@@ -156,7 +158,7 @@ describe.only("zModules Deploy Integration Test", () => {
             tokenName: "Rewards Token",
             tokenSymbol: "RWD",
           }),
-          getVotingERC721Mission(),
+          ZModulesZeroVotingERC721DM,
           getStakingERC721Mission(),
         ],
       });
@@ -278,7 +280,7 @@ describe.only("zModules Deploy Integration Test", () => {
       );
     });
 
-    it("Should NOT have DEFAULT_ADMIN_ROLE by defualt", async () => {
+    it("Should NOT have DEFAULT_ADMIN_ROLE, revoked by defualt", async () => {
       const {
         timelockController,
       } = campaign;
@@ -296,6 +298,7 @@ describe.only("zModules Deploy Integration Test", () => {
 
   describe("Deploy using ENV vars", () => {
     let stakeToken20 : ZModulesContract;
+    let stakeToken721 : ZModulesContract;
     let rewardsToken20 : ZModulesContract;
 
     let envCampaign : DeployCampaign<
@@ -304,10 +307,19 @@ describe.only("zModules Deploy Integration Test", () => {
     IZModulesConfig,
     IZModulesContracts>;
 
+    // env vars
+    const rewardsPerPeriod = "30";
+    const periodLength = (86400n * 365n * 2n).toString();  // 2 years in seconds
+    const minLockTime = (86400n * 30n * 2n).toString();   // 2 months in seconds
+    const minRewardsMultiplier = "10";
+    const maxRewardsMultiplier = "100";
+
     before(async () => {
-      await dropDB();
+      await dbAdapter.dropDB();
+
       [ contractOwner ] = await hre.ethers.getSigners();
 
+      // a separate campaign with "pre-deployed" tokens
       envCampaign = await runZModulesCampaign({
         config,
         missions: [
@@ -321,25 +333,36 @@ describe.only("zModules Deploy Integration Test", () => {
             tokenName: "Rewards Token",
             tokenSymbol: "RWD",
           }),
+          getMockERC721Mission({
+            tokenType: TokenTypes.staking,
+            tokenName: "Staking Token",
+            tokenSymbol: "STK",
+            baseUri: "0://NFT/",
+          }),
         ],
       });
 
       ({
         mockErc20STK: stakeToken20,
         mockErc20REW: rewardsToken20,
+        mockErc721STK: stakeToken721,
       } = envCampaign.state.contracts);
     });
 
     it("Should deploy StakingERC20 with zDC", async () => {
       // set env vars
-      process.env.STAKING20_STAKING_TOKEN = stakeToken20.target.toString();
-      process.env.STAKING20_REWARDS_TOKEN = rewardsToken20.target.toString();
-      process.env.STAKING20_CONTRACT_OWNER = contractOwner.address.toString();
-      process.env.STAKING20_REWARDS_PER_PERIOD = "30";
-      process.env.STAKING20_PERIOD_LENGTH = (86400n * 365n * 2n).toString();  // 2 years in seconds
-      process.env.STAKING20_MIN_LOCK_TIME = (86400n * 30n * 2n).toString();   // 2 months in seconds
-      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = "10";
-      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = "100";
+      const stakingTokenAddress = stakeToken20.target.toString();
+      const rewardsTokenAddress = rewardsToken20.target.toString();
+      const contractOwnerAddress = contractOwner.address.toString();
+
+      process.env.STAKING20_STAKING_TOKEN = stakingTokenAddress;
+      process.env.STAKING20_REWARDS_TOKEN = rewardsTokenAddress;
+      process.env.STAKING20_CONTRACT_OWNER = contractOwnerAddress;
+      process.env.STAKING20_REWARDS_PER_PERIOD = rewardsPerPeriod;
+      process.env.STAKING20_PERIOD_LENGTH = periodLength;
+      process.env.STAKING20_MIN_LOCK_TIME = minLockTime;
+      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = minRewardsMultiplier;
+      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = maxRewardsMultiplier;
 
       config = await getStaking20SystemConfig(deployAdmin);
 
@@ -351,32 +374,91 @@ describe.only("zModules Deploy Integration Test", () => {
         ],
       });
 
+      ({
+        staking20: staking,
+      } = campaign);
+
       // tokens
       expect(await staking.getStakingToken()).to.eq(stakeToken20.target);
       expect(await staking.getRewardsToken()).to.eq(rewardsToken20.target);
       expect(await staking.getStakeRepToken()).to.eq(campaign.state.contracts.votingErc20.target);
 
       // config
-      stakingConfig = staking20Config;
       expect(
         await staking.getMinimumLockTime()
       ).to.eq(
-        stakingConfig.STAKING20_MIN_LOCK_TIME
+        minLockTime
       );
       expect(
         await staking.getMinimumRewardsMultiplier()
       ).to.eq(
-        stakingConfig.STAKING20_MIN_REWARDS_MULTIPLIER
+        minRewardsMultiplier
       );
       expect(
         await staking.getMaximumRewardsMultiplier()
       ).to.eq(
-        stakingConfig.STAKING20_MAX_REWARDS_MULTIPLIER
+        maxRewardsMultiplier
       );
       expect(
         await staking.getRewardsPerPeriod()
       ).to.eq(
-        stakingConfig.STAKING20_REWARDS_PER_PERIOD
+        rewardsPerPeriod
+      );
+    });
+
+    it("Should deploy StakingERC721 with zDC", async () => {
+      const stakingTokenAddress = stakeToken721.target.toString();
+      const rewardsTokenAddress = rewardsToken20.target.toString();
+      const contractOwnerAddress = contractOwner.address.toString();
+
+      process.env.STAKING721_STAKING_TOKEN = stakingTokenAddress;
+      process.env.STAKING721_REWARDS_TOKEN = rewardsTokenAddress;
+      process.env.STAKING721_CONTRACT_OWNER = contractOwnerAddress;
+      process.env.STAKING721_REWARDS_PER_PERIOD = rewardsPerPeriod;
+      process.env.STAKING721_PERIOD_LENGTH = periodLength;
+      process.env.STAKING721_MIN_LOCK_TIME = minLockTime;
+      process.env.STAKING721_MIN_REWARDS_MULTIPLIER = minRewardsMultiplier;
+      process.env.STAKING721_MAX_REWARDS_MULTIPLIER = maxRewardsMultiplier;
+
+      config = await getStaking721SystemConfig(deployAdmin);
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesZeroVotingERC721DM,
+          getStakingERC721Mission(),
+        ],
+      });
+
+      ({
+        staking721: staking,
+      } = campaign);
+
+      // tokens
+      expect(await staking.getStakingToken()).to.eq(stakeToken721.target);
+      expect(await staking.getRewardsToken()).to.eq(rewardsToken20.target);
+      expect(await staking.getStakeRepToken()).to.eq(campaign.state.contracts.votingErc721.target);
+
+      // config
+      expect(
+        await staking.getMinimumLockTime()
+      ).to.eq(
+        minLockTime
+      );
+      expect(
+        await staking.getMinimumRewardsMultiplier()
+      ).to.eq(
+        minRewardsMultiplier
+      );
+      expect(
+        await staking.getMaximumRewardsMultiplier()
+      ).to.eq(
+        maxRewardsMultiplier
+      );
+      expect(
+        await staking.getRewardsPerPeriod()
+      ).to.eq(
+        rewardsPerPeriod
       );
     });
   });
