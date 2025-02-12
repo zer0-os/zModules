@@ -96,7 +96,3 @@ export interface IZModulesContracts extends IContractState<ZModulesContract> {
   stakingERC20 : StakingERC20;
   stakingERC721 : StakingERC721;
 }
-
-export interface TestIMatchConfig extends IMatchConfig {
-  token : string;
-}

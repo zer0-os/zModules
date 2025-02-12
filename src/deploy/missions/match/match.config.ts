@@ -3,18 +3,17 @@ import { IMatchConfig } from "../../campaign/types";
 
 
 export const getMatchDeployConfig = ({
-  env,
   mockTokens,
   config,
 } : {
-  env : string;
   mockTokens : boolean;
   config ?: IMatchConfig;
 }) : IMatchConfig | undefined => {
 
   let configReturn;
+  const env = process.env.ENV_LEVEL;
 
-  if (env === "dev" && process.env.MATCH_USE_DEV_ENV_VALUES !== "true") {
+  if (config) {
     configReturn = config;
   } else {
     if (

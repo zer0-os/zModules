@@ -25,7 +25,7 @@ IZModulesContracts
         matchConfig,
         mockTokens,
       },
-      mock20,
+      mockErc20,
     } = this.campaign;
 
     const {
@@ -38,7 +38,7 @@ IZModulesContracts
 
     if (mockTokens && !token) {
       return [
-        await mock20.getAddress(),
+        await mockErc20.getAddress(),
         feeVault,
         owner,
         operators,

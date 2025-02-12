@@ -5,9 +5,6 @@ import assert from "assert";
 import { findMissingEnvVars } from "../../environment/validate";
 import { IDeployCampaignConfig } from "@zero-tech/zdc";
 
-// TODO dep: create a function that builds config for any configuration of contracts/missions
-//   and calls individual config getters based on the missions passed
-//   once all individual module deploys and tests are ready and tested
 
 export const getBaseZModulesConfig = async ({
   deployAdmin,

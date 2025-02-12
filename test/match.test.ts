@@ -15,15 +15,16 @@ import {
 } from "./helpers/errors";
 import { getPayouts } from "./helpers/match/payouts";
 import {
-  TestIMatchConfig,
+  IMatchConfig,
   contractNames,
   runZModulesCampaign,
 } from "../src/deploy";
 import { MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
-import { getCampaignConfig } from "../src/deploy/campaign/get-campaign-config";
 import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mocks/mockERC20.mission";
 import { ZModulesMatchDM } from "../src/deploy/missions/match/match.mission";
+import { getMatchDeployConfig } from "../src/deploy/missions/match/match.config";
+import { getBaseZModulesConfig } from "../src/deploy/campaign/get-campaign-config";
 
 const getPlayerBalances = async (
   players : Array<string>,
@@ -58,7 +59,7 @@ describe("Match Contract",  () => {
 
   let dbAdapter : MongoDBAdapter;
 
-  let config : TestIMatchConfig;
+  let config : IMatchConfig;
 
   let tokenForMatch : MockERC20;
 
@@ -66,8 +67,9 @@ describe("Match Contract",  () => {
   const gameFeePercInitial = 1000n; // 10%
   const gameFeePerc = 500n; // 5%
 
+  const mockTokens = process.env.MOCK_TOKENS === "true";
+
   before(async () => {
-    const mockTokens = process.env.MOCK_TOKENS === "true";
     [
       owner,
       player1,
@@ -91,6 +93,10 @@ describe("Match Contract",  () => {
       player6,
     ];
 
+    const baseConfig = await getBaseZModulesConfig({
+      deployAdmin: owner,
+    });
+
     const argsForDeployMatch = {
       feeVault: feeVault.address,
       owner: owner.address,
@@ -102,16 +108,13 @@ describe("Match Contract",  () => {
       gameFeePercentage: gameFeePercInitial,
     };
 
-    const campaignConfig = getCampaignConfig({
-      mockTokens,
-      deployAdmin: owner,
-      postDeploy: {
-        tenderlyProjectSlug: "string",
-        monitorContracts: false,
-        verifyContracts: false,
-      },
-      matchConfig: argsForDeployMatch,
-    });
+    const campaignConfig = {
+      ...baseConfig,
+      matchConfig: await getMatchDeployConfig({
+        mockTokens,
+        config: argsForDeployMatch,
+      }),
+    };
 
     const campaign = await runZModulesCampaign({
       config: campaignConfig,
@@ -593,6 +596,8 @@ describe("Match Contract",  () => {
   describe("Separate tokens", () => {
     let match2 : Match;
     before(async () => {
+      await dbAdapter.dropDB();
+
       [
         owner,
         operator1,
@@ -603,6 +608,10 @@ describe("Match Contract",  () => {
 
       const tokenForMatchFactory = await hre.ethers.getContractFactory("MockERC20");
       tokenForMatch = await tokenForMatchFactory.deploy("Meow", "MEOW");
+
+      const baseConfig = await getBaseZModulesConfig({
+        deployAdmin: owner,
+      });
 
       const argsForDeployMatch = {
         token: await tokenForMatch.getAddress(),
@@ -616,16 +625,13 @@ describe("Match Contract",  () => {
         gameFeePercentage: gameFeePercInitial,
       };
 
-      const campaignConfig = getCampaignConfig({
-        mockTokens: false,
-        deployAdmin: owner,
-        postDeploy: {
-          tenderlyProjectSlug: "string",
-          monitorContracts: false,
-          verifyContracts: false,
-        },
-        matchConfig: argsForDeployMatch,
-      });
+      const campaignConfig = {
+        ...baseConfig,
+        matchConfig: await getMatchDeployConfig({
+          mockTokens,
+          config: argsForDeployMatch,
+        }),
+      };
 
       const campaign = await runZModulesCampaign({
         config: campaignConfig,

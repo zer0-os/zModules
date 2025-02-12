@@ -39,7 +39,7 @@ import { IStaking20Environment, IStaking721Environment } from "../src/environmen
 import { getDaoSystemConfig } from "../src/deploy/campaign/dao-system-config";
 
 
-describe.only("zModules Deploy Integration Test", () => {
+describe("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
   let contractOwner : SignerWithAddress;
 
