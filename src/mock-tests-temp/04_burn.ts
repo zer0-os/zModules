@@ -3,38 +3,47 @@ import { TestMockERC20, TestMockERC20__factory } from "../../typechain";
 
 // 4. Burn tokens from 2 different addresses
 
-// TODO add when deployed
-const addr = "";
+const addr = "0xbafF8973Df466a7F620068a53975311EB31E931c";
 
-async function main() {
-  const [owner, holderA, holderB] = await hre.ethers.getSigners();
+const main = async () => {
+  const [owner, holderA] = await hre.ethers.getSigners();
 
   const factory = new TestMockERC20__factory(owner);
-  const contract = await factory.attach(addr) as TestMockERC20;
+  const contract = factory.attach(addr) as TestMockERC20;
 
   const balanceBeforeA = await contract.balanceOf(holderA.address);
-  const balanceBeforeB = await contract.balanceOf(holderB.address);
+  const balanceBeforeB = await contract.balanceOf(owner.address);
 
-  const txA = await contract.connect(owner).burn(holderA.address, hre.ethers.parseEther("0.5"));
+  const burnAmt1= hre.ethers.parseEther("3.759");
+
+  const txA = await contract.connect(owner).burn(
+    holderA.address,
+    burnAmt1
+  );
 
   const receiptA = await txA.wait();
   console.log("txA hash: ", receiptA?.hash);
 
-  const txB = await contract.connect(owner).burn(holderB.address, hre.ethers.parseEther("0.5"));
-  const receiptB = await txB.wait();
+  const txB = await contract.connect(owner).burn(
+    owner.address,
+    burnAmt1 * 2n
+  );
+  const receiptB = await txB.wait(2);
   console.log("txB hash: ", receiptB?.hash);
 
   const balanceAfterA = await contract.balanceOf(holderA.address);
-  const balanceAfterB = await contract.balanceOf(holderB.address);
+  const balanceAfterB = await contract.balanceOf(owner.address);
 
   console.log("holderA balance before: ", balanceBeforeA.toString());
   console.log("holderA balance after: ", balanceAfterA.toString());
 
   console.log("holderB balance before: ", balanceBeforeB.toString());
   console.log("holderA balance after: ", balanceAfterB.toString());
-}
+};
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });

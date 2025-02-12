@@ -5,20 +5,21 @@ import * as hre from "hardhat";
 
 import { TestMockERC20, TestMockERC20__factory } from "../../typechain";
 
-// TODO add when deployed
-const addr = "";
+const addr = "0xbafF8973Df466a7F620068a53975311EB31E931c";
 
-async function main() {
-  const [sender, receiver] = await hre.ethers.getSigners();
+const main = async () => {
+  const [receiver, sender] = await hre.ethers.getSigners();
 
   const factory = new TestMockERC20__factory(sender);
-  const contract = await factory.attach(addr) as TestMockERC20;
+  const contract = factory.attach(addr) as TestMockERC20;
 
   const balanceBefore = await contract.balanceOf(sender.address);
   const receiverBalanceBefore = await contract.balanceOf(receiver.address);
 
-  const tx = await contract.connect(sender).transfer(receiver.address, hre.ethers.parseEther("1"));
-  const receipt = await tx.wait();
+  const transferAmt = hre.ethers.parseEther("13");
+
+  const tx = await contract.connect(sender).transfer(receiver.address, transferAmt);
+  const receipt = await tx.wait(2);
 
   console.log("tx hash: ", receipt?.hash);
 
@@ -30,9 +31,11 @@ async function main() {
 
   console.log("receiver balance before: ", receiverBalanceBefore.toString());
   console.log("receiver balance after: ", receiverBalanceAfter.toString());
-}
+};
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
