@@ -33,8 +33,9 @@ interface IZeroVotingERC721 is IAccessControl, IERC721, IVotes {
 
     function setBaseURI(string memory baseUri) external;
 
-    function setTokenURI(uint256 tokenId, string memory tokenUri) external;
+    function baseURI() external view returns (string memory);
 
+    function setTokenURI(uint256 tokenId, string memory tokenUri) external;
 
     function totalSupply() external view returns (uint256);
 
