@@ -48,7 +48,7 @@ export interface IDAOConfig {
   shouldRevokeAdminRole : boolean;
   governorName : string;
   votingToken ?: string;
-  timeLockController ?: string;
+  timelockController ?: string;
   votingDelay : bigint;
   votingPeriod : bigint;
   proposalThreshold : bigint;

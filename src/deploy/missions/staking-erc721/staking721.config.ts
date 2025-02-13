@@ -9,7 +9,7 @@ export const getStaking721DeployConfig = ({
   contractOwner,
 } : {
   contractOwner ?: SignerWithAddress;
-} = {}) : IStakingERC721Config | undefined => {
+} = {}) : IStakingERC721Config => {
   const env = process.env.ENV_LEVEL;
 
   let owner;

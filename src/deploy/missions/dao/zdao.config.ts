@@ -19,7 +19,7 @@ export const getDAOConfig = () : IDAOConfig => {
     shouldRevokeAdminRole: Boolean(process.env.DAO_REVOKE_ADMIN_ROLE),
     governorName: process.env.DAO_GOV_NAME,
     votingToken: process.env.DAO_VOTING_TOKEN,
-    timeLockController: process.env.DAO_TIMELOCK_CONTROLLER,
+    timelockController: process.env.DAO_TIMELOCK_CONTROLLER,
     votingDelay: BigInt(process.env.DAO_VOTING_DELAY),
     votingPeriod: BigInt(process.env.DAO_VOTING_PERIOD),
     proposalThreshold: BigInt(process.env.DAO_PROPOSAL_THRESHOLD),

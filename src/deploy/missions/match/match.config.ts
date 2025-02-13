@@ -8,7 +8,7 @@ export const getMatchDeployConfig = ({
 } : {
   mockTokens : boolean;
   config ?: IMatchConfig;
-}) : IMatchConfig | undefined => {
+}) : IMatchConfig => {
 
   let configReturn;
   const env = process.env.ENV_LEVEL;

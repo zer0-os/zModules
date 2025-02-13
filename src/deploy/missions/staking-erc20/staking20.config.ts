@@ -7,7 +7,7 @@ export const getStaking20DeployConfig = ({
   contractOwner,
 } : {
   contractOwner ?: SignerWithAddress;
-} = {}) : IStakingERC20Config | undefined => {
+} = {}) : IStakingERC20Config => {
   const env = process.env.ENV_LEVEL;
 
   let owner;

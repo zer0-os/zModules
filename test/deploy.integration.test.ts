@@ -19,7 +19,7 @@ import {
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getMockERC721Mission } from "../src/deploy/missions/mocks/mockERC721.mission";
-import { getVotingERC721Mission, ZModulesZeroVotingERC721DM } from "../src/deploy/missions/voting-erc721/voting721.mission";
+import { ZModulesZeroVotingERC721DM } from "../src/deploy/missions/voting-erc721/voting721.mission";
 import { getStakingERC721Mission } from "../src/deploy/missions/staking-erc721/staking721.mission";
 import {
   MockERC20,
@@ -29,7 +29,7 @@ import {
   ZeroVotingERC20,
   ZeroVotingERC721,
 } from "../typechain";
-import { getDAOMission } from "../src/deploy/missions/dao/zdao.mission";
+import { ZModulesZDAODM } from "../src/deploy/missions/dao/zdao.mission";
 import { daoConfig } from "../src/environment/configs/dao.configenv";
 import { ZModulesTimelockControllerDM } from "../src/deploy/missions/dao/timelock.mission";
 import { roles } from "../src/deploy/constants";
@@ -39,7 +39,7 @@ import { IStaking20Environment, IStaking721Environment } from "../src/environmen
 import { getDaoSystemConfig } from "../src/deploy/campaign/dao-system-config";
 
 
-describe("zModules Deploy Integration Test", () => {
+describe.only("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
   let contractOwner : SignerWithAddress;
 
@@ -226,7 +226,7 @@ describe("zModules Deploy Integration Test", () => {
         missions: [
           ZModulesZeroVotingERC20DM,
           ZModulesTimelockControllerDM,
-          getDAOMission(),
+          ZModulesZDAODM,
         ],
       });
 
@@ -300,6 +300,7 @@ describe("zModules Deploy Integration Test", () => {
     let stakeToken20 : ZModulesContract;
     let stakeToken721 : ZModulesContract;
     let rewardsToken20 : ZModulesContract;
+    let timelockController : ZModulesContract;
 
     let envCampaign : DeployCampaign<
     HardhatRuntimeEnvironment,
@@ -339,6 +340,7 @@ describe("zModules Deploy Integration Test", () => {
             tokenSymbol: "STK",
             baseUri: "0://NFT/",
           }),
+          ZModulesTimelockControllerDM,
         ],
       });
 
@@ -346,7 +348,12 @@ describe("zModules Deploy Integration Test", () => {
         mockErc20STK: stakeToken20,
         mockErc20REW: rewardsToken20,
         mockErc721STK: stakeToken721,
+        timelockController,
       } = envCampaign.state.contracts);
+    });
+
+    after(async () => {
+      await dbAdapter.dropDB();
     });
 
     it("Should deploy StakingERC20 with zDC", async () => {
@@ -460,6 +467,45 @@ describe("zModules Deploy Integration Test", () => {
       ).to.eq(
         rewardsPerPeriod
       );
+    });
+
+    it("Should deploy DAO with ERC20 token using zDC", async () => {
+      const votingTokenAddress = stakeToken20.target.toString();
+      const timelockAddress = timelockController.target.toString();
+      const votingDelay = "1"; // 1 second
+      const votingPeriod = "5"; // 5 blocks
+      const proposalThreshold = "5"; // 5 tokens
+      const quorumPercentage = "5"; // 5%
+      const voteExtension = "2"; // 2 blocks
+
+      process.env.DAO_VOTING_TOKEN = votingTokenAddress;
+      process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
+      process.env.DAO_VOTING_DELAY = votingDelay;
+      process.env.DAO_VOTING_PERIOD = votingPeriod;
+      process.env.DAO_PROPOSAL_THRESHOLD = proposalThreshold;
+      process.env.DAO_QUORUM_PERCENTAGE = quorumPercentage;
+      process.env.DAO_VOTE_EXTENSION = voteExtension;
+      process.env.DAO_REVOKE_ADMIN_ROLE = "false";
+
+      config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesZDAODM,
+        ],
+      });
+
+      const {
+        zDao,
+      } = campaign;
+
+      expect(await zDao.votingDelay()).to.eq(votingDelay);
+      expect(await zDao.votingPeriod()).to.eq(votingPeriod);
+      expect(await zDao.proposalThreshold()).to.eq(proposalThreshold);
+
+      // tokens
+      expect(await zDao.token()).to.eq(votingTokenAddress);
     });
   });
 });
