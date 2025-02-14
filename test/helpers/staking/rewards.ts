@@ -98,41 +98,33 @@ export const calcUpdatedStakeRewards = async (
       * amount * config.rewardsPerPeriod * timeOrDuration / config.periodLength / LOCKED_PRECISION_DIVISOR;
   }
 
-  const duration = BigInt(await time.latest()) - timeOrDuration;
-
-  // can write to incoming values but just for separation
-  let durationCopy = duration;
-
   let rewards = 0n
-  let lastTimestamp = BigInt(Math.floor(Date.now() / 1000));
+  let duration = BigInt(await time.latest()) - timeOrDuration;
+  let lastTimestamp = BigInt(await time.latest()); // TODO maybe also off by 1 error depending when this happens relative to claim
 
   let i = configs.length;
   for (i; i > 0; --i) {
+    // console.log("rewards so far: ", rewards);
+    // console.log("h: i: ", i - 1);
     const config = configs[i - 1];
 
-    if (timeOrDuration < config.timestamp ) {
+    if (config.timestamp > timeOrDuration) {
+      // console.log("h: stake WAS before last config change");
+
       const effectiveDuration = lastTimestamp - config.timestamp;
       lastTimestamp = config.timestamp;
-      durationCopy -= effectiveDuration;
+      duration -= effectiveDuration;
 
-      // const a = amount * config.rewardsPerPeriod * effectiveDuration
-      // const b = config.periodLength
-      // const c = PRECISION_DIVISOR;
-
-      // const x = Math.floor(Number(a) / Number(b) / Number(c));
-
-      // // pick apart the calculation to get the right value that causes rounding error
-      // rewards += BigInt(x);
-
-      rewards += amount * config.rewardsPerPeriod * effectiveDuration / config.periodLength / PRECISION_DIVISOR;
+      const addedAmount = amount * config.rewardsPerPeriod * effectiveDuration / config.periodLength / PRECISION_DIVISOR
+      // console.log("h: addedAmount: ", addedAmount);
+      
+      rewards += addedAmount;
     } else {
-      // const a = amount * config.rewardsPerPeriod * durationCopy
-      // const b = config.periodLength
-      // const c = PRECISION_DIVISOR;
+      // console.log("stake WAS NOT before last config change");
+      const addedAmount = amount * config.rewardsPerPeriod * duration / config.periodLength / PRECISION_DIVISOR
 
-      // const x = Math.floor(Number(a) / Number(b) / Number(c));
-
-      rewards += amount * config.rewardsPerPeriod * durationCopy / config.periodLength / PRECISION_DIVISOR;
+      rewards += addedAmount;
+      // console.log("h: addedAmount: ", addedAmount);
       return rewards;
     }
   }

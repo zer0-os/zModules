@@ -52,11 +52,12 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     mapping(uint256 timestamp => Config config) public configs;
 
     constructor(
+        address _contractOwner,
         address _stakingToken,
         address _rewardsToken,
         address _stakeRepToken,
         Config memory _config
-    ) Ownable(_config.contractOwner) {
+    ) Ownable(_contractOwner) {
         if (
             _config.rewardsPerPeriod == 0 ||
             _config.periodLength == 0
@@ -106,8 +107,11 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             || _config.minimumRewardsMultiplier > _config.maximumRewardsMultiplier
         ) revert InvalidMultiplierPassed();
 
-        configTimestamps.push(block.timestamp);
-        configs[block.timestamp] = _config;
+        uint256 timestamp = block.timestamp;
+
+        _config.timestamp = timestamp;
+        configTimestamps.push(timestamp);
+        configs[timestamp] = _config;
 
         emit ConfigSet(_config);
     }
@@ -195,6 +199,15 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function getMaximumRewardsMultiplier() public view override returns(uint256) {
         return _getLatestConfig().maximumRewardsMultiplier;
+    }
+
+    /**
+     * @notice Return if a user is able to exit
+     * @dev True if exitting is enabled
+     * @dev False if exitting is disabled
+     */
+    function canExit() public view override returns(bool) {
+        return _getLatestConfig().canExit;
     }
 
     ////////////////////////////////////
@@ -366,7 +379,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         uint256 rewards;
 
         // We store as memory variable to be able to write to it
-        uint256 duration = block.timestamp - timeOrDuration;
+        uint256 duration = block.timestamp - timeOrDuration; // timestamp, as `locked` is false
         uint256 lastTimestamp = block.timestamp;
 
         // do - 1 in indexing to avoid not looping if only one config
@@ -374,27 +387,45 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         for (i; i > 0;) {
             // console.log("configTimestamps.length - 1: ", configTimestamps.length - 1);
-            // console.log("i: ", i);
+            // console.log("i: ", i - 1);
             // console.log("configTimestamps[i]: ", configTimestamps[i - 1]);
             Config memory _config = configs[configTimestamps[i - 1]];
 
+            // console.log("c: rpp: ", _config.rewardsPerPeriod);
+
+            // console.log("c: confTimestamp: ", _config.timestamp);
+            // console.log("c: timeOrDuration: ", timeOrDuration);
+            // console.log("c: a > b ?: ", _config.timestamp > timeOrDuration);
             // If their last timestamp was before the most recent config change
-            if (timeOrDuration < _config.timestamp) {
+            // if (timeOrDuration < _config.timestamp) {
+            if (_config.timestamp > timeOrDuration) {
+                // console.log("stake WAS before last config change");
                 // rewards for entire period, loop again
 
                 // TODO this causes panic code in pendingRewards in some cases?
-                console.log("lastTimestamp: ", lastTimestamp);
-                console.log("confTimestamp: ", _config.timestamp);
-                console.log("lts > cfg.ts ?: ", lastTimestamp > _config.timestamp);
+                // console.log("lastTimestamp: ", lastTimestamp);
+                 // should be same as unlockedTimestamp
+                // console.log("lts > cfg.ts ?: ", lastTimestamp > _config.timestamp);
 
                 uint256 effectiveDuration = lastTimestamp - _config.timestamp;
                 lastTimestamp = _config.timestamp; // Store for next iteration if needed
                 duration -= effectiveDuration;
-
-                rewards += amount * _config.rewardsPerPeriod * effectiveDuration / _config.periodLength / PRECISION_DIVISOR;
+                
+                uint256 addedAmount = amount * _config.rewardsPerPeriod * effectiveDuration / _config.periodLength / PRECISION_DIVISOR;
+                // console.log("addedAmount: ", addedAmount);
+                rewards += addedAmount;
             } else {
+                // console.log("stake WAS NOT before last config change");
+
+                // console.log("lastTimestamp: ", lastTimestamp);
+                // console.log("confTimestamp: ", _config.timestamp);
+                // console.log("timeOrDuration: ", timeOrDuration); // should be same as unlockedTimestamp
+                // console.log("lts > cfg.ts ?: ", lastTimestamp > _config.timestamp);
+
                 // rewards for duration of this period, break loop
-                rewards += amount * _config.rewardsPerPeriod * duration / _config.periodLength / PRECISION_DIVISOR;
+                uint256 addedAmount = amount * _config.rewardsPerPeriod * duration / _config.periodLength / PRECISION_DIVISOR;
+                // console.log("addedAmount: ", addedAmount);
+                rewards += addedAmount;
                 return rewards;
             }
 
@@ -411,31 +442,52 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
         // Get rewards from non-locked funds already accrued and also between the last timestamp and now
-        console.log("getPendingRewards");
-        uint256 rewards = staker.owedRewards + _updatedStakeRewards(
-            staker.lastTimestamp, // or mostRecenttimestamp?
-            staker.amountStaked,
-            1, // Rewards multiplier is 1 for non-locked funds
-            false
-        );
+        // console.log("\ngetPendingRewards::unlocked");
+        
+        uint256 rewards;
+        if (staker.amountStaked != 0) {
+            rewards = staker.owedRewards + _updatedStakeRewards(
+                staker.lastTimestamp, // or mostRecenttimestamp?
+                staker.amountStaked,
+                1, // Rewards multiplier is 1 for non-locked funds
+                false
+            );
+            // console.log("unlocked rewards: ", rewards);
+        }
         // console.log("staker.lastTimestamp: ", staker.lastTimestamp);
         // console.log("staker.amountStaked: ", staker.amountStaked);
 
-        // console.log("rewards: ", rewards);
 
         // Only include rewards from locked funds the user is passed their lock period
+        // console.log("staker.unlockedTimestamp: ", staker.unlockedTimestamp);
+        // console.log("remainingLockTime: ", _getRemainingLockTime(staker));
+
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
             // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked`
             // sum on stake, so dont add here again, would be double counting
-
-            rewards += staker.owedRewardsLocked + _updatedStakeRewards(
+            // console.log("\ngetPendingRewards::locked");
+            
+            // I think issue with passing `mostRecentTimestamp` here
+            // because we want the entire duration of the stake
+            // but future calls don't, they only want to know how much to reward
+            // issue with 2 timestamps for locked users?
+            // console.log("staker.lastTimestampLocked: ", staker.lastTimestampLocked);
+            // console.log("staker.unlockedTimestamp: ", staker.unlockedTimestamp);
+            // console.log("mostRecentTimestamp: ", _mostRecentTimestamp(staker));
+            uint256 calcRewards = _updatedStakeRewards(
                 _mostRecentTimestamp(staker),
                 staker.amountStakedLocked,
                 1, // Rewards multiplier is 1 for non-locked funds
                 false
             );
 
-            // console.log("rewards2: ", rewards);
+            // console.log("calcRewards: ", calcRewards);
+            // console.log("staker.owedRewardsLocked: ", staker.owedRewardsLocked);
+
+            rewards += staker.owedRewardsLocked + calcRewards; // should be init amount from lock + interim of 2 days
+
+
+            // console.log("locked rewards: ", rewards);
         }
 
         // console.log("rewards3: ", rewards);

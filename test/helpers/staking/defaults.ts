@@ -22,9 +22,9 @@ import {
   INIT_BALANCE,
 } from "../constants";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 export const createDefaultStakingConfig = async (
-  contractOwner : SignerWithAddress,
   rewardsERC20 ?: MockERC20,
   erc721 ?: MockERC721,
   stakeERC20 ?: MockERC20,
@@ -35,9 +35,7 @@ export const createDefaultStakingConfig = async (
     minimumLockTime: DEFAULT_MINIMUM_LOCK,
     minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
     maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
-    contractOwner: contractOwner.address,
     canExit: true,
-    timestamp: BigInt(Math.floor(Date.now() / 1000)),
   };
   
   const rewardsToken = rewardsERC20 ? await rewardsERC20.getAddress() : hre.ethers.ZeroAddress;
@@ -91,7 +89,6 @@ export const getDefaultERC20SetupWithExit = async (
     stakeRepToken,
     config
   ] = await createDefaultStakingConfig(
-    owner,
     incRewardsToken,
     undefined,
     stakeToken,
@@ -103,6 +100,7 @@ export const getDefaultERC20SetupWithExit = async (
   const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
 
   const contract = await stakingFactory.deploy(
+    owner.address,
     stakingToken,
     rewardsToken,
     stakeRepToken,
@@ -128,7 +126,6 @@ export const getDefaultERC20Setup = async (
     stakeRepTokenAddress,
     config
   ] = await createDefaultStakingConfig(
-    owner,
     rewardsToken,
     undefined,
     stakeToken,
@@ -137,7 +134,11 @@ export const getDefaultERC20Setup = async (
 
   const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
 
+  // Add 1n for hardhat auto mine
+  config.timestamp = BigInt(await time.latest()) + 1n;
+
   const contract = await stakingFactory.deploy(
+    owner.address,
     stakingTokenAddress,
     rewardsTokenAddress,
     stakeRepTokenAddress,
@@ -160,7 +161,6 @@ export const getNativeSetupERC20 = async (
     stakeRepTokenAddress,
     config
   ] = await createDefaultStakingConfig(
-    owner,
     undefined,
     undefined,
     undefined,
@@ -169,6 +169,7 @@ export const getNativeSetupERC20 = async (
 
   const localStakingFactory = await hre.ethers.getContractFactory("StakingERC20");
   const contract = await localStakingFactory.deploy(
+    owner.address,
     stakeTokenAddress, // will be 0x0
     rewardsTokenAddress, // will be 0x0
     stakeRepTokenAddress,
@@ -197,7 +198,6 @@ export const getNativeSetupERC721 = async (
     stakeRepTokenAddress,
     config
   ] = await createDefaultStakingConfig(
-    owner,
     undefined,
     stakeToken,
     undefined,
@@ -207,6 +207,7 @@ export const getNativeSetupERC721 = async (
 
   const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
   const contract = await stakingFactory.deploy(
+    owner.address,
     stakingTokenAddress, // will be 0x0
     rewardsTokenAddress, // will be 0x0
     stakeRepTokenAddress,

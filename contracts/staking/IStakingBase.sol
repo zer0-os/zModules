@@ -31,7 +31,6 @@ interface IStakingBase {
      * @notice Struct to hold all required config variables
      * 
      * @param timestamp When the config was set
-     * @param contractOwner The address of the contract owner
      * @param rewardsPerPeriod The amount of rewards given per period
      * @param periodLength The length of each period
      * @param minimumLockTime The minimum amount of time a user must lock
@@ -41,7 +40,6 @@ interface IStakingBase {
      */
     struct Config {
         uint256 timestamp;
-        address contractOwner;
         uint256 rewardsPerPeriod;
         uint256 periodLength;
         uint256 minimumLockTime;
@@ -217,4 +215,6 @@ interface IStakingBase {
     function getMinimumRewardsMultiplier() external view returns(uint256);
 
     function getMaximumRewardsMultiplier() external view returns(uint256);
+
+    function canExit() external view returns(bool);
 }

@@ -33,18 +33,22 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     }
 
     constructor(
-        address stakingToken,
-        address rewardsToken,
-        address stakeRepToken,
-        Config memory config
+        address _contractOwner,
+        address _stakingToken,
+        address _rewardsToken,
+        address _stakeRepToken,
+        Config memory _config
     )   
         StakingBase(
-            stakingToken,
-            rewardsToken,
-            stakeRepToken,
-            config
+            _contractOwner,
+            _stakingToken,
+            _rewardsToken,
+            _stakeRepToken,
+            _config
         )
     {
+        // Disallow use of native token as staking token
+        // must be specifically an ERC721 token here
         if (stakingToken.code.length == 0) {
             revert InitializedWithZero();
         }

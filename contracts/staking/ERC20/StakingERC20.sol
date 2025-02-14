@@ -26,11 +26,13 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     uint256 public totalStaked;
 
     constructor(
+        address _contractOwner,
         address _stakingToken,
         address _rewardsToken,
         address _stakeRepToken,
         Config memory _config
     ) StakingBase(
+        _contractOwner,
         _stakingToken,
         _rewardsToken,
         _stakeRepToken,
