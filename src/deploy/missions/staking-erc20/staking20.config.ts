@@ -56,6 +56,7 @@ export const getStaking20DeployConfig = ({
 
   const config = {
     mockTokens,
+    shouldRevokeAdminRole: process.env.STAKING20_REVOKE_ADMIN_ROLE !== "false",
     stakingToken: process.env.STAKING20_STAKING_TOKEN,
     rewardsToken: process.env.STAKING20_REWARDS_TOKEN,
     stakeRepToken: !!process.env.STAKING20_REP_TOKEN ? process.env.STAKING20_REP_TOKEN : undefined,

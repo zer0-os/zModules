@@ -12,6 +12,7 @@ import {
   IStakingERC721Config,
   IVotingERC721Config,
 } from "../../campaign/types";
+import { roles } from "../../constants";
 
 
 export const getStakingERC721Mission = (_instanceName ?: string) => {
@@ -111,6 +112,10 @@ export const getStakingERC721Mission = (_instanceName ?: string) => {
         admin,
       } = votingERC721Config as IVotingERC721Config;
 
+      const {
+        shouldRevokeAdminRole,
+      } = this.campaign.config.stakingERC721Config as IStakingERC721Config;
+
       const stakingAddress = await staking721.getAddress();
 
       await votingErc721
@@ -120,6 +125,10 @@ export const getStakingERC721Mission = (_instanceName ?: string) => {
       await votingErc721
         .connect(admin)
         .grantRole(await votingErc721.BURNER_ROLE(), stakingAddress);
+
+      // revoke admin role after granting minter and burner roles
+      if (shouldRevokeAdminRole)
+        await votingErc721.connect(admin).revokeRole(roles.voting.DEFAULT_ADMIN_ROLE, admin.address);
     }
   }
 

@@ -43,7 +43,7 @@ export const getStaking721DeployConfig = ({
 
   const mockTokens =
       (env === "dev" || env === "test") &&
-      (!process.env.STAKING20_STAKING_TOKEN || !process.env.STAKING20_REWARDS_TOKEN);
+      (!process.env.STAKING721_STAKING_TOKEN || !process.env.STAKING721_REWARDS_TOKEN);
 
   if (env === "dev" || env === "test") {
     if (!mockTokens) {
@@ -58,6 +58,7 @@ export const getStaking721DeployConfig = ({
 
   const config = {
     mockTokens,
+    shouldRevokeAdminRole: process.env.STAKING721_REVOKE_ADMIN_ROLE !== "false",
     stakingToken: process.env.STAKING721_STAKING_TOKEN,
     rewardsToken: process.env.STAKING721_REWARDS_TOKEN,
     stakeRepToken: !!process.env.STAKING721_REP_TOKEN ? process.env.STAKING721_REP_TOKEN : undefined,

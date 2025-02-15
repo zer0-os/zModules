@@ -1,13 +1,9 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import {
-  BURNER_ROLE,
-  DEFAULT_ADMIN_ROLE,
-  MINTER_ROLE,
-} from "./helpers/voting/constants";
 import { ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
 import { NON_TRANSFERRABLE_ERR } from "./helpers/errors";
+import { roles } from "../src/deploy/constants";
 
 
 describe("Voting tokens tests", () => {
@@ -30,6 +26,12 @@ describe("Voting tokens tests", () => {
 
   const initialBaseURI = "initialBaseURI";
   const newBaseURI = "the/Best/URI/";
+
+  const {
+    DEFAULT_ADMIN_ROLE,
+    MINTER_ROLE,
+    BURNER_ROLE,
+  } = roles.voting;
 
 
   before(async () => {

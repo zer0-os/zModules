@@ -3,7 +3,6 @@ import {
   IDeployCampaignConfig,
 } from "@zero-tech/zdc";
 import {
-  AccessControl,
   Match,
   StakingERC20,
   StakingERC721,
@@ -17,6 +16,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 export interface IStakingERC20Config {
   mockTokens : boolean;
+  shouldRevokeAdminRole : boolean;
   stakingToken ?: string;
   rewardsToken ?: string;
   stakeRepToken ?: string;
@@ -88,7 +88,6 @@ export type ZModulesContract =
   ZeroVotingERC20 |
   ZeroVotingERC721 |
   ZDAO |
-  AccessControl |
   Match |
   TimelockController;
 
