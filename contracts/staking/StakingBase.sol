@@ -262,7 +262,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 // Then we update appropriately
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
 
-
                 // We precalculate the amount because we know the time frame
                 staker.owedRewardsLocked += _updatedStakeRewards(
                     lockDuration,
@@ -273,10 +272,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             } else {
                 uint256 remainingLockTime = _getRemainingLockTime(staker);
                 // Rewards value of the incoming stake given for remaining lock time
-                staker.owedRewardsLocked += _getStakeRewards(
+                staker.owedRewardsLocked += _updatedStakeRewards(
+                    remainingLockTime,
                     amount,
                     _calcRewardsMultiplier(remainingLockTime),
-                    remainingLockTime,
                     true
                 );
             }
@@ -338,26 +337,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         if (staker.amountStakedLocked == 0 || staker.unlockedTimestamp < block.timestamp) return 0;
 
         return staker.unlockedTimestamp - block.timestamp;
-    }
-
-    /**
-     * @dev Calculate the rewards for a specific stake
-     * @param amount The amount of the staking token to calculate rewards for
-     * @param rewardsMultiplier The multiplier for the rewards
-     * @param timeDuration The amount of time these funds will be staked
-     * @param locked Boolean if the stake is locked
-     */
-    function _getStakeRewards(
-        uint256 amount,
-        uint256 rewardsMultiplier,
-        uint256 timeDuration,
-        bool locked
-    ) internal view returns (uint256) {
-        uint256 divisor = locked ? LOCKED_PRECISION_DIVISOR : PRECISION_DIVISOR;
-
-        Config memory _config = _getLatestConfig();
-
-        return rewardsMultiplier * amount * _config.rewardsPerPeriod * timeDuration / _config.periodLength / divisor;
     }
 
     /**
@@ -442,12 +421,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      */
     function _getPendingRewards(Staker storage staker) internal view returns (uint256) {
         // Get rewards from non-locked funds already accrued and also between the last timestamp and now
-        // console.log("\ngetPendingRewards::unlocked");
-        
         uint256 rewards;
         if (staker.amountStaked != 0) {
             rewards = staker.owedRewards + _updatedStakeRewards(
-                staker.lastTimestamp, // or mostRecenttimestamp?
+                staker.lastTimestamp,
                 staker.amountStaked,
                 1, // Rewards multiplier is 1 for non-locked funds
                 false
@@ -465,15 +442,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
             // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked`
             // sum on stake, so dont add here again, would be double counting
-            // console.log("\ngetPendingRewards::locked");
-            
-            // I think issue with passing `mostRecentTimestamp` here
-            // because we want the entire duration of the stake
-            // but future calls don't, they only want to know how much to reward
-            // issue with 2 timestamps for locked users?
-            // console.log("staker.lastTimestampLocked: ", staker.lastTimestampLocked);
-            // console.log("staker.unlockedTimestamp: ", staker.unlockedTimestamp);
-            // console.log("mostRecentTimestamp: ", _mostRecentTimestamp(staker));
+
             uint256 calcRewards = _updatedStakeRewards(
                 _mostRecentTimestamp(staker),
                 staker.amountStakedLocked,
@@ -481,16 +450,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 false
             );
 
-            // console.log("calcRewards: ", calcRewards);
-            // console.log("staker.owedRewardsLocked: ", staker.owedRewardsLocked);
-
             rewards += staker.owedRewardsLocked + calcRewards; // should be init amount from lock + interim of 2 days
-
-
-            // console.log("locked rewards: ", rewards);
         }
-
-        // console.log("rewards3: ", rewards);
 
         return rewards;
     }

@@ -214,10 +214,10 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         if (_getRemainingLockTime(nftStaker.stake) > 0) revert TimeLockNotPassed();
 
         // Calculate rewards before any state manipulation
-        uint256 rewards = nftStaker.stake.owedRewardsLocked + _getStakeRewards(
+        uint256 rewards = nftStaker.stake.owedRewardsLocked + _updatedStakeRewards(
+            block.timestamp - _mostRecentTimestamp(nftStaker.stake),
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
-            block.timestamp - _mostRecentTimestamp(nftStaker.stake),
             false
         );
 
@@ -274,10 +274,10 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         if (_tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
 
         // Calculate rewards before any state manipulation
-        uint256 rewards = nftStaker.stake.owedRewards + _getStakeRewards(
+        uint256 rewards = nftStaker.stake.owedRewards + _updatedStakeRewards(
+            block.timestamp - nftStaker.stake.lastTimestamp,
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
-            block.timestamp - nftStaker.stake.lastTimestamp,
             false
         );
 

@@ -7,6 +7,8 @@ import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 import { IERC20MintableBurnable } from "../../types/IERC20MintableBurnable.sol";
 
+
+import { console } from "hardhat/console.sol";
 /**
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
@@ -159,11 +161,12 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     }
 
     function _exit(bool locked) internal {
-        Staker memory staker = stakers[msg.sender];
+        Staker storage staker = stakers[msg.sender];
 
         uint256 amount;
 
         if (locked) {
+            console.log("exiting locked, set to zeros");
             amount = staker.amountStakedLocked;
 
             staker.amountStakedLocked = 0;
