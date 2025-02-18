@@ -10,7 +10,6 @@ interface IStakingBase {
     /**
      * @notice Struct to track an individual staker's data
      *
-     * @param rewardsMultiplier The multiplier for rewards
      * @param lockDuration The duration of the lock
      * @param unlockedTimestamp The timestamp when the stake unlocks
      * @param amountStaked The amount of tokens staked
@@ -21,7 +20,6 @@ interface IStakingBase {
      * @param lastTimestampLocked The timestamp of the last locked action
      */
     struct Staker {
-        uint256 rewardsMultiplier;
         uint256 lockDuration;
         uint256 unlockedTimestamp;
         uint256 amountStaked;
@@ -79,7 +77,7 @@ interface IStakingBase {
     /**
      * @notice Emit when `reqwardsPerPeriod` is set
      * @param owner The address of the contract owner
-     * @param rewardsPerPeriod The new rewards per period value 
+     * @param rewardsPerPeriod The new rewards per period value
      */
     event RewardsPerPeriodSet(
         address indexed owner,
@@ -137,11 +135,6 @@ interface IStakingBase {
     );
 
     /**
-     * @notice Emit incoming stake is not valid
-     */
-    error InvalidStake();
-
-    /**
      * @notice Revert when the user tries to stake or unstake 0 tokens
      */
     error ZeroValue();
@@ -155,12 +148,6 @@ interface IStakingBase {
      * @notice Throw when the user tries to exit the pool without their full staked amount
      */
     error NotFullExit();
-
-    /**
-     * @notice Throw when trying to claim within an invalid period
-     * @dev Used to protect against reentrancy
-     */
-    error CannotClaim();
 
     /**
      * @notice Throw when trying to claim but user has no rewards
@@ -184,9 +171,17 @@ interface IStakingBase {
      */
     error InitializedWithZero();
 
-    receive() external payable;
+    /**
+     * @notice Throw when passing a multiplier to set that is not within the bounds
+     */
+    error InvalidMultiplierPassed();
 
-    fallback() external payable;
+    /**
+     * @notice Throw when the transfer of gas token fails
+     */
+    error GasTokenTransferFailed();
+
+    receive() external payable;
 
     function withdrawLeftoverRewards() external;
 

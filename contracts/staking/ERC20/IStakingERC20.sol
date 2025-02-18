@@ -35,9 +35,14 @@ interface IStakingERC20 {
     error UnstakeMoreThanStake();
 
     /**
-     * @notice Revert when the user is staking an amount inequal to the amount given 
+     * @notice Revert when the user is staking an amount inequal to the amount given
      */
     error InsufficientValue();
+
+    /**
+     * @notice Revert when the user is sending gas token with ERC20 stake
+     */
+    error NonZeroMsgValue();
 
     function stakeWithLock(uint256 amount, uint256 lockDuration) external payable;
 
@@ -45,9 +50,9 @@ interface IStakingERC20 {
 
     function claim() external;
 
-    function unstake(uint256 amount, bool exit) external payable;
+    function unstake(uint256 amount, bool exit) external;
 
-    function unstakeLocked(uint256 amount, bool exit) external payable;
+    function unstakeLocked(uint256 amount, bool exit) external;
 
     function getRemainingLockTime() external view returns (uint256);
 

@@ -3,7 +3,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseConfig, createDefaultStakingConfig } from "./helpers/staking";
 import { MockERC20, StakingBase, ZeroVotingERC20 } from "../typechain";
 import { expect } from "chai";
-import { OWNABLE_UNAUTHORIZED_ERR } from "./helpers/errors";
+import { INVALID_MULTIPLIER_ERR, OWNABLE_UNAUTHORIZED_ERR } from "./helpers/errors";
 
 
 describe("StakingBase Unit Tests", () => {
@@ -88,6 +88,13 @@ describe("StakingBase Unit Tests", () => {
       ).to.be.revertedWithCustomError(stakingBase, OWNABLE_UNAUTHORIZED_ERR);
     });
 
+    it("#setMinimumRewardsMultiplier() should revert if multiplier passed is larger than maximum", async () => {
+      const currentMax = await stakingBase.getMaximumRewardsMultiplier();
+      await expect(
+        stakingBase.connect(owner).setMinimumRewardsMultiplier(currentMax + 1n),
+      ).to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
+    });
+
     it("#setMaximumRewardsMultiplier() should set value correctly", async () => {
       const maxRM = 123;
       await stakingBase.connect(owner).setMaximumRewardsMultiplier(maxRM);
@@ -98,6 +105,13 @@ describe("StakingBase Unit Tests", () => {
       await expect(
         stakingBase.connect(user).setMaximumRewardsMultiplier(123),
       ).to.be.revertedWithCustomError(stakingBase, OWNABLE_UNAUTHORIZED_ERR);
+    });
+
+    it("#setMaximumRewardsMultiplier() should revert if multiplier passed is smaller than minimum", async () => {
+      const currentMin = await stakingBase.getMinimumRewardsMultiplier();
+      await expect(
+        stakingBase.connect(owner).setMaximumRewardsMultiplier(currentMin - 1n),
+      ).to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
     });
 
     it("#getStakingToken() should return correct value", async () => {

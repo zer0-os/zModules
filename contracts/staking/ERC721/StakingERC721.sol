@@ -47,7 +47,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     /**
      * @notice Stake one or more ERC721 tokens with a lock period
      * @dev These functions are separate intentionally for the sake of user clarity
-     * 
+     *
      * @param tokenIds The id(s) of the tokens to stake
      * @param tokenUris The associated metadata URIs of the tokens to stake
      * @param lockDuration The lock durations, in seconds, for each token
@@ -66,7 +66,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     /**
      * @notice Stake one or more ERC721 tokens without a lock period
      * @dev These functions are separate intentionally for the sake of user clarity
-     * 
+     *
      * @param tokenIds Array of tokenIds to be staked by the caller
      * @param tokenUris (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used!
      */
@@ -132,6 +132,20 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         return _getPendingRewards(nftStakers[msg.sender].stake);
     }
 
+    /**
+     * @notice Check if a tokenID is staked
+     */
+    function isStaked(address staker, uint256 tokenId) public view override returns (bool) {
+        return nftStakers[staker].staked[tokenId];
+    }
+
+    /**
+     * @notice Check if a tokenID is locked
+     */
+    function isLocked(address staker, uint256 tokenId) public view override returns (bool) {
+        return nftStakers[staker].locked[tokenId];
+    }
+
     function onERC721Received(
         address,
         address,
@@ -161,6 +175,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         _coreStake(nftStaker.stake, tokenIds.length, lockDuration);
 
         uint256 i;
+        bool locked = lockDuration > 0;
         for(i; i < tokenIds.length;) {
             // Transfer their NFT to this contract
             IERC721(config.stakingToken).safeTransferFrom(
@@ -172,7 +187,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             // Add to array and to mapping for when unstaking
             nftStaker.tokenIds.push(tokenIds[i]);
             nftStaker.staked[tokenIds[i]] = true;
-            nftStaker.locked[tokenIds[i]] = lockDuration > 0;
+            nftStaker.locked[tokenIds[i]] = locked;
 
             // Mint user sNFT
             IERC721MintableBurnableURIStorage(config.stakeRepToken)
@@ -198,7 +213,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         // Track if any action is taken, revert if not to avoid sucessful but empty tx
         bool isAction = false;
 
-        // Because of the possibility of having both locked and non-locked tokens 
+        // Because of the possibility of having both locked and non-locked tokens
         // unstaked at the same time, we track these values separately
         bool rewardsGiven = false;
         bool rewardsGivenLocked = false;
@@ -207,7 +222,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         for (i; i < _tokenIds.length;) {
             if (
                 nftStaker.staked[_tokenIds[i]] == false
-                || IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) == address(0)
                 || IERC721(config.stakeRepToken).ownerOf(_tokenIds[i]) != msg.sender
             ) {
                 // Either the list of tokenIds contains a non-existent token
@@ -221,9 +235,10 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             // If the token is unlocked, claim and unstake
             if (nftStaker.locked[_tokenIds[i]]) {
                 // Token was locked when staked
+                // TODO audit: optimize this call that happens twice in the same if!!!
                 if (exit || _getRemainingLockTime(nftStaker.stake) == 0) {
 
-                    // we use `<` not `==` because incoming tokens may included non locked 
+                    // we use `<` not `==` because incoming tokens may included non locked
                     // tokens as well so incoming array has to at LEAST be equal
                     if (exit && _tokenIds.length < nftStaker.stake.amountStakedLocked) {
                         revert NotFullExit();
@@ -258,6 +273,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
                     _unstake(_tokenIds[i]);
                     --nftStaker.stake.amountStakedLocked;
                     nftStaker.staked[_tokenIds[i]] = false;
+                    nftStaker.locked[_tokenIds[i]] = false;
                     isAction = true;
                 } else {
                     // stake is locked and cannot be unstaked

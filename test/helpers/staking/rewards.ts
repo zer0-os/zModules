@@ -56,7 +56,10 @@ export const calcTotalLockedRewards = (
   return totalRewards;
 };
 
-const calculateRewardsMultiplier = (lockDuration : bigint, config : BaseConfig) => config.minimumRewardsMultiplier
+export const calcRewardsMultiplier = (
+  lockDuration : bigint,
+  config : BaseConfig
+) => config.minimumRewardsMultiplier
     + (config.maximumRewardsMultiplier - config.minimumRewardsMultiplier)
     * (lockDuration)
     / config.periodLength;
@@ -69,7 +72,7 @@ export const calcStakeRewards = (
   rewardsMultiplier ?: bigint,
 ) => {
   if (!rewardsMultiplier) {
-    rewardsMultiplier = locked ? calculateRewardsMultiplier(timeDuration, config) : 1n;
+    rewardsMultiplier = locked ? calcRewardsMultiplier(timeDuration, config) : 1n;
   }
 
   const divisor = locked ? 100000n : 1000n;

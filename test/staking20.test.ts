@@ -16,7 +16,7 @@ import {
   LOCK_TOO_SHORT_ERR,
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
   NOT_FULL_EXIT_ERR,
-  INSUFFICIENT_VALUE_ERR,
+  INSUFFICIENT_VALUE_ERR, NON_ZERO_VALUE_ERR,
 } from "./helpers/errors";
 import {
   WITHDRAW_EVENT,
@@ -76,7 +76,7 @@ describe("StakingERC20", () => {
     reset = async () => {
       stakeToken = await mockERC20Factory.deploy("MEOW", "MEOW");
       rewardsToken = await mockERC20Factory.deploy("WilderWorld", "WW");
-      stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", owner);
+      stakeRepToken = await stakeRepFactory.deploy("VotingToken", "VTKN", "ZERO DAO", "1", owner);
 
       // Give the owner ample funds for transfers in native token case
       await setBalance(owner.address, INIT_BALANCE * 10n);
@@ -333,7 +333,6 @@ describe("StakingERC20", () => {
         stakerData.unlockedTimestamp - latest - 1n, // amount of time remaining in lock
         true,
         config,
-        stakerData.rewardsMultiplier,
       );
 
       // Additional locked stakes disregard the incoming lock duration
@@ -531,7 +530,6 @@ describe("StakingERC20", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier,
       );
 
       await time.increase(DEFAULT_LOCK);
@@ -622,7 +620,6 @@ describe("StakingERC20", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier
       );
 
       const interimRewards = calcStakeRewards(
@@ -820,7 +817,6 @@ describe("StakingERC20", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier,
       );
 
       await time.increase(DEFAULT_LOCK);
@@ -1190,7 +1186,6 @@ describe("StakingERC20", () => {
         DEFAULT_LOCK,
         true,
         config,
-        stakerData.rewardsMultiplier
       );
 
       const interimRewards = calcStakeRewards(
@@ -1630,7 +1625,7 @@ describe("StakingERC20", () => {
       const futureExpectedRewards = calcLockedRewards(
         BigInt(await time.latest()) - stakedAt + 2n,
         DEFAULT_STAKED_AMOUNT,
-        stakerData.rewardsMultiplier,
+        1n, // random number
         config
       );
 
@@ -1657,6 +1652,78 @@ describe("StakingERC20", () => {
         contract.connect(owner).withdrawLeftoverRewards()
       ).to.emit(contract, WITHDRAW_EVENT)
         .withArgs(owner.address, amount);
+    });
+  });
+
+  describe("Audit fixes", () => {
+    it("Should use proper `rewardsMultiplier` when adding to an existing locked stake", async () => {
+      await reset();
+
+      const stakeAmtInitial = hre.ethers.parseEther("137");
+      const lockTime = DAY_IN_SECONDS * 112n;
+
+      await contract.connect(stakerA).stakeWithLock(stakeAmtInitial, lockTime);
+
+      // leave 2 days before end of lock period
+      await time.increase(lockTime - DAY_IN_SECONDS * 2n);
+
+      const stakeAmtAdd = hre.ethers.parseEther("73");
+      // the `lockTime` value passed to `stakeWithLock` below should NOT be taken into account on the contract
+      await contract.connect(stakerA).stakeWithLock(stakeAmtAdd, lockTime);
+
+      const totalStakedAmt = stakeAmtInitial + stakeAmtAdd;
+
+      // fund contract with the exact amount of rewards that should be owed
+      const expectedRewardsInitial = calcStakeRewards(
+        stakeAmtInitial,
+        lockTime,
+        true,
+        config,
+      );
+
+      const remainingLockTime = await contract.connect(stakerA).getRemainingLockTime();
+      const expectedRewardsAdd = calcStakeRewards(
+        stakeAmtAdd,
+        remainingLockTime,
+        true,
+        config,
+      );
+
+      const extraTime = 73n;
+      await time.increase(remainingLockTime + extraTime);
+
+      const extraTimeRewards = calcStakeRewards(
+        stakeAmtInitial + stakeAmtAdd,
+        extraTime + 2n,
+        false,
+        config
+      );
+
+      const totalRewardsRef = expectedRewardsInitial + expectedRewardsAdd + extraTimeRewards;
+
+      await rewardsToken.connect(owner).transfer(
+        await contract.getAddress(),
+        totalRewardsRef
+      );
+
+      const rewardBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+      // unstake to get rewards
+      await contract.connect(stakerA).unstakeLocked(totalStakedAmt, false);
+      const rewardBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      expect(rewardBalanceAfter - rewardBalanceBefore).to.eq(totalRewardsRef);
+    });
+
+    it("Should revert when sending gas token with ERC20 stake", async () => {
+      // without lock
+      await expect(
+        contract.stakeWithoutLock(DEFAULT_STAKED_AMOUNT, { value: DEFAULT_STAKED_AMOUNT })
+      ).to.be.revertedWithCustomError(contract, NON_ZERO_VALUE_ERR);
+
+      // with lock
+      await expect(
+        contract.stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK, { value: DEFAULT_STAKED_AMOUNT })
+      ).to.be.revertedWithCustomError(contract, NON_ZERO_VALUE_ERR);
     });
   });
 });

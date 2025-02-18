@@ -13,8 +13,12 @@ import { IERC20MintableBurnable } from "../../types/IERC20MintableBurnable.sol";
  * @author James Earle <https://github.com/JamesEarle>, Kirill Korchagin <https://github.com/Whytecrowe>
  */
 contract StakingERC20 is StakingBase, IStakingERC20 {
-
     using SafeERC20 for IERC20;
+
+    /**
+     * @notice Mapping of each staker to that staker's data in the `Staker` struct
+     */
+    mapping(address user => Staker staker) public stakers;
 
     /**
      * @notice Track the total amount staked in the pool
@@ -71,7 +75,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to withdraw
      */
-    function unstake(uint256 amount, bool exit) external payable override {
+    function unstake(uint256 amount, bool exit) external override {
         _unstake(amount, false, exit);
     }
 
@@ -82,7 +86,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to withdraw
      * @param exit Boolean if user wants to forfeit rewards
      */
-    function unstakeLocked(uint256 amount, bool exit) external payable override {
+    function unstakeLocked(uint256 amount, bool exit) external override {
         _unstake(amount, true, exit);
     }
 
@@ -114,6 +118,10 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             if (msg.value != amount) {
                 revert InsufficientValue();
             }
+        } else {
+            if (msg.value != 0) {
+                revert NonZeroMsgValue();
+            }
         }
 
         Staker storage staker = stakers[msg.sender];
@@ -122,7 +130,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         totalStaked += amount;
 
-        // Transfers user's funds to this contract  
+        // Transfers user's funds to this contract
         if (config.stakingToken != address(0)) {
             IERC20(config.stakingToken).safeTransferFrom(msg.sender, address(this), amount);
         } // the `else` case is handled by including `recieve` above to accept `msg.value`
@@ -164,7 +172,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             } else {
                 // If claims happen after lock period has passed, the lastTimestampLocked is more accurate
                 // but if they don't happen, then lastTimestampLocked may still be the original stake timestamp
-                // and we should use `unlockedTimestamp` instead. 
+                // and we should use `unlockedTimestamp` instead.
                 // so we have to calculate which is more recent before calculating rewards
                 uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 
@@ -261,13 +269,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * return the balance of the rewards token minus the total staked amount
      */
     function _getContractRewardsBalance() internal view override returns (uint256) {
-        uint256 balance;
-
-        if (address(config.rewardsToken) == address(0)) {
-            balance = address(this).balance;
-        } else {
-            balance = IERC20(config.rewardsToken).balanceOf(address(this));
-        }
+        uint256 balance = super._getContractRewardsBalance();
 
         if (config.rewardsToken == config.stakingToken) {
             return balance - totalStaked;
