@@ -14,7 +14,6 @@ import {
 } from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import { GovernorPreventLateQuorum } from "@openzeppelin/contracts/governance/extensions/GovernorPreventLateQuorum.sol";
 
-// TODO dao: add missing NatSpec !!!
 /**
  * @title ZDAO
  * @notice A customizable governance contract based on OpenZeppelin's Governor contracts.
