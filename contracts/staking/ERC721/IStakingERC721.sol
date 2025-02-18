@@ -96,6 +96,8 @@ interface IStakingERC721 is IERC721Receiver, IStakingBase {
 
     function exit(uint256[] memory tokenIds, bool locked) external;
 
+    function isLocked(uint256 tokenId) external view returns (bool);
+
     function getPendingRewards() external view returns (uint256);
 
     function getRemainingLockTime() external view returns (uint256);

@@ -8,7 +8,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import { console } from "hardhat/console.sol";
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
@@ -104,8 +103,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     function setConfig(Config memory _config) public override onlyOwner {
         if (
             _config.maximumRewardsMultiplier < _config.minimumRewardsMultiplier
-            || _config.minimumRewardsMultiplier > _config.maximumRewardsMultiplier
         ) revert InvalidMultiplierPassed();
+
+        if (_config.periodLength == 0) revert InitializedWithZero();
 
         uint256 timestamp = block.timestamp;
 
@@ -229,10 +229,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             // Get rewards they are owed from past unlocked stakes, if any
             // will return 0 if `amountStaked == 0`
 
-            // if a config change happened while they have been staked
-            // calculate rewards based on past config time period as well
-            // but JUST amount of time they were staked, not full length of time for config
-
             // Get staker rewards for this or past configs as necessary
             staker.owedRewards += _updatedStakeRewards(
                 staker.lastTimestamp,
@@ -352,7 +348,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         // Always pre calculate locked rewards when the user stakes, so always use the current config
         if (locked) {
             Config memory _config = _getLatestConfig();
-            return rewardsMultiplier * amount * _config.rewardsPerPeriod * timeOrDuration / _config.periodLength / LOCKED_PRECISION_DIVISOR;
+
+            return 
+                rewardsMultiplier * amount * _config.rewardsPerPeriod * timeOrDuration
+                / _config.periodLength / LOCKED_PRECISION_DIVISOR;
         }
 
         uint256 rewards;
@@ -361,50 +360,23 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         uint256 duration = block.timestamp - timeOrDuration; // timestamp, as `locked` is false
         uint256 lastTimestamp = block.timestamp;
 
-        // do - 1 in indexing to avoid not looping if only one config
+        // We do `- 1` in indexing to avoid not looping if only one config
         uint256 i = configTimestamps.length;
 
         for (i; i > 0;) {
-            // console.log("configTimestamps.length - 1: ", configTimestamps.length - 1);
-            // console.log("i: ", i - 1);
-            // console.log("configTimestamps[i]: ", configTimestamps[i - 1]);
             Config memory _config = configs[configTimestamps[i - 1]];
 
-            // console.log("c: rpp: ", _config.rewardsPerPeriod);
-
-            // console.log("c: confTimestamp: ", _config.timestamp);
-            // console.log("c: timeOrDuration: ", timeOrDuration);
-            // console.log("c: a > b ?: ", _config.timestamp > timeOrDuration);
-            // If their last timestamp was before the most recent config change
-            // if (timeOrDuration < _config.timestamp) {
             if (_config.timestamp > timeOrDuration) {
-                // console.log("stake WAS before last config change");
-                // rewards for entire period, loop again
-
-                // TODO this causes panic code in pendingRewards in some cases?
-                // console.log("lastTimestamp: ", lastTimestamp);
-                 // should be same as unlockedTimestamp
-                // console.log("lts > cfg.ts ?: ", lastTimestamp > _config.timestamp);
-
+                // Use only the applicable length of time for this config, not entore duration
                 uint256 effectiveDuration = lastTimestamp - _config.timestamp;
                 lastTimestamp = _config.timestamp; // Store for next iteration if needed
                 duration -= effectiveDuration;
-                
-                uint256 addedAmount = amount * _config.rewardsPerPeriod * effectiveDuration / _config.periodLength / PRECISION_DIVISOR;
-                // console.log("addedAmount: ", addedAmount);
-                rewards += addedAmount;
+
+                rewards += amount * _config.rewardsPerPeriod * effectiveDuration
+                    / _config.periodLength / PRECISION_DIVISOR;
             } else {
-                // console.log("stake WAS NOT before last config change");
-
-                // console.log("lastTimestamp: ", lastTimestamp);
-                // console.log("confTimestamp: ", _config.timestamp);
-                // console.log("timeOrDuration: ", timeOrDuration); // should be same as unlockedTimestamp
-                // console.log("lts > cfg.ts ?: ", lastTimestamp > _config.timestamp);
-
-                // rewards for duration of this period, break loop
-                uint256 addedAmount = amount * _config.rewardsPerPeriod * duration / _config.periodLength / PRECISION_DIVISOR;
-                // console.log("addedAmount: ", addedAmount);
-                rewards += addedAmount;
+                rewards += amount * _config.rewardsPerPeriod * duration
+                    / _config.periodLength / PRECISION_DIVISOR;
                 return rewards;
             }
 
@@ -429,15 +401,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 1, // Rewards multiplier is 1 for non-locked funds
                 false
             );
-            // console.log("unlocked rewards: ", rewards);
         }
-        // console.log("staker.lastTimestamp: ", staker.lastTimestamp);
-        // console.log("staker.amountStaked: ", staker.amountStaked);
-
-
-        // Only include rewards from locked funds the user is passed their lock period
-        // console.log("staker.unlockedTimestamp: ", staker.unlockedTimestamp);
-        // console.log("remainingLockTime: ", _getRemainingLockTime(staker));
 
         if (staker.unlockedTimestamp != 0 && _getRemainingLockTime(staker) == 0) {
             // We add the precalculated value of locked rewards to the `staker.owedRewardsLocked`

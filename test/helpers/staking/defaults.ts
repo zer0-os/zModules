@@ -26,7 +26,7 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 export const createDefaultStakingConfig = async (
   erc721 ?: boolean
-): Promise<BaseConfig> => {
+) : Promise<BaseConfig> => {
   const config : Partial<BaseConfig> = {
     minimumLockTime: DEFAULT_MINIMUM_LOCK,
     minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
@@ -34,7 +34,7 @@ export const createDefaultStakingConfig = async (
     canExit: true,
     timestamp: BigInt(await time.latest()) + 1n, // Add 1n for hardhat auto mine
   };
-  
+
   if (erc721) {
     config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC721;
     config.periodLength = DEFAULT_PERIOD_LENGTH_ERC721;

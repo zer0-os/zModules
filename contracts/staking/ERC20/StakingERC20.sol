@@ -8,7 +8,6 @@ import { StakingBase } from "../StakingBase.sol";
 import { IERC20MintableBurnable } from "../../types/IERC20MintableBurnable.sol";
 
 
-import { console } from "hardhat/console.sol";
 /**
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
@@ -39,7 +38,14 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         _rewardsToken,
         _stakeRepToken,
         _config
-    ) {}
+    ) {
+        // Disallow use of native token as stakeRepToken
+        // TODO how to verify address type?
+        // see if certain function selectors exist?
+        if (stakeRepToken.code.length == 0) {
+            revert InitializedWithZero();
+        }
+    }
 
     /**
      * @notice Stake an amount of ERC20 with a lock period By locking,
@@ -166,7 +172,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         uint256 amount;
 
         if (locked) {
-            console.log("exiting locked, set to zeros");
             amount = staker.amountStakedLocked;
 
             staker.amountStakedLocked = 0;

@@ -47,9 +47,9 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             _config
         )
     {
-        // Disallow use of native token as staking token
+        // Disallow use of native token as staking token or stakeRepToken
         // must be specifically an ERC721 token here
-        if (stakingToken.code.length == 0) {
+        if (stakingToken.code.length == 0 || stakeRepToken.code.length == 0) {
             revert InitializedWithZero();
         }
     }
@@ -145,6 +145,14 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         return _getPendingRewards(nftStakers[msg.sender].stake);
     }
 
+    /**
+     * @notice Check if a token is locked
+     * @param tokenId The token ID to check
+     */
+    function isLocked(uint256 tokenId) public view override returns (bool) {
+        return nftStakers[msg.sender].locked[tokenId];
+    }
+
     function onERC721Received(
         address,
         address,
@@ -215,7 +223,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         // Calculate rewards before any state manipulation
         uint256 rewards = nftStaker.stake.owedRewardsLocked + _updatedStakeRewards(
-            block.timestamp - _mostRecentTimestamp(nftStaker.stake),
+            _mostRecentTimestamp(nftStaker.stake),
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
             false
@@ -275,7 +283,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         // Calculate rewards before any state manipulation
         uint256 rewards = nftStaker.stake.owedRewards + _updatedStakeRewards(
-            block.timestamp - nftStaker.stake.lastTimestamp,
+            nftStaker.stake.lastTimestamp,
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
             false

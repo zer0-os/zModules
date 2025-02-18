@@ -5,7 +5,6 @@ import {
 
 export interface BaseConfig {
   timestamp : bigint;
-  contractOwner : string;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
   minimumLockTime : bigint;
