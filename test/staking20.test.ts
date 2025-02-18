@@ -527,7 +527,6 @@ describe("StakingERC20", () => {
     });
 
     it("Returns 0 for a user that is staked with a lock that they have not passed", async () => {
-      // TODO do we want users to be able to see values that are not yet claimable?
       await reset();
       await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
 
@@ -585,7 +584,6 @@ describe("StakingERC20", () => {
 
       const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
 
-      // TODO AMOUNT CHECK NOW THAT UPDATE
       const expectedRewards = calcStakeRewards(
         DEFAULT_STAKED_AMOUNT,
         claimedAt - stakedAt,
@@ -1515,7 +1513,6 @@ describe("StakingERC20", () => {
       // Unstake partial amounts
       const unstakeAmountA = stakedAmountA / 2n;
 
-      // TODO confirm works with full unstake too
       await contract.connect(stakerA).unstakeUnlocked(unstakeAmountA);
 
       const unstakedAtA = BigInt(await time.latest());

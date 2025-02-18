@@ -40,8 +40,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         _config
     ) {
         // Disallow use of native token as stakeRepToken
-        // TODO how to verify address type?
-        // see if certain function selectors exist?
         if (stakeRepToken.code.length == 0) {
             revert InitializedWithZero();
         }
