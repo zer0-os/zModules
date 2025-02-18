@@ -88,7 +88,7 @@ describe("StakingBase Unit Tests", () => {
         config
       )).to.be.revertedWithCustomError(stakingBase, INVALID_ADDR_ERR);
     });
-  })
+  });
 
   describe("#setConfig", () => {
     it("Fails when new min multiplier is greater than the max multiplier", async () => {
