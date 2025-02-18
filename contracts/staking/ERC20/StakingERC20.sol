@@ -38,12 +38,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         _rewardsToken,
         _stakeRepToken,
         _config
-    ) {
-        // Disallow use of native token as stakeRepToken
-        if (stakeRepToken.code.length == 0) {
-            revert InitializedWithZero();
-        }
-    }
+    ) {}
 
     /**
      * @notice Stake an amount of ERC20 with a lock period By locking,

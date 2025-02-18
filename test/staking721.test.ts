@@ -36,6 +36,7 @@ import {
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
   NOT_FULL_EXIT_ERR,
   CANNOT_EXIT_ERR,
+  INVALID_ADDR_ERR,
 } from "./helpers/errors";
 
 describe("StakingERC721", () => {
@@ -171,7 +172,7 @@ describe("StakingERC721", () => {
         await stakeRepToken.getAddress(),
         config
       )
-    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+    ).to.be.revertedWithCustomError(stakingERC721, INVALID_ADDR_ERR);
 
     // Try to deploy with zero address for stakeRepToken
     await expect(
@@ -182,7 +183,7 @@ describe("StakingERC721", () => {
         hre.ethers.ZeroAddress,
         config
       )
-    ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+    ).to.be.revertedWithCustomError(stakingERC721, INVALID_ADDR_ERR);
 
     let localConfig = { ...config };
     localConfig.rewardsPerPeriod = 0n;
@@ -201,7 +202,7 @@ describe("StakingERC721", () => {
     localConfig = { ...config };
     localConfig.periodLength = 0n;
 
-    // Try to deplot with period length of 0
+    // Try to deploy with period length of 0
     await expect(
       stakingFactory.deploy(
         owner,
@@ -211,6 +212,36 @@ describe("StakingERC721", () => {
         localConfig
       )
     ).to.be.revertedWithCustomError(stakingERC721, ZERO_INIT_ERR);
+  });
+
+  it("Fails to deploy when stakeToken is not a contract", async () => {
+    const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+
+    // Try to deploy with EOA address for staking token
+    await expect(
+      stakingFactory.deploy(
+        owner,
+        owner.address,
+        await rewardsToken.getAddress(),
+        await stakeRepToken.getAddress(),
+        config
+      )
+    ).to.be.revertedWithCustomError(stakingERC721, INVALID_ADDR_ERR);
+  });
+
+  it("Fails to deploy when stakeRepToken is not a contract", async () => {
+    const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+
+    // Try to deploy with EOA address for staking token
+    await expect(
+      stakingFactory.deploy(
+        owner,
+        await stakingToken.getAddress(),
+        await rewardsToken.getAddress(),
+        owner.address,
+        config
+      )
+    ).to.be.revertedWithCustomError(stakingERC721, INVALID_ADDR_ERR);
   });
 
   describe("#getContractRewardsBalance", () => {

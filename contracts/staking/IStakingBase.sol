@@ -190,6 +190,11 @@ interface IStakingBase {
      */
     error CannotExit();
 
+    /**
+     * @notice Throw when incoming address is invalid
+     */
+    error InvalidAddress();
+
     receive() external payable;
 
     function withdrawLeftoverRewards() external;

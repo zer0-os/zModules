@@ -49,8 +49,8 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     {
         // Disallow use of native token as staking token or stakeRepToken
         // must be specifically an ERC721 token here
-        if (stakingToken.code.length == 0 || stakeRepToken.code.length == 0) {
-            revert InitializedWithZero();
+        if (_stakingToken.code.length == 0) {
+            revert InvalidAddress();
         }
     }
 
