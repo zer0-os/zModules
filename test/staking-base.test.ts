@@ -1,7 +1,7 @@
 import * as hre from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseConfig, createDefaultStakingConfig } from "./helpers/staking";
-import { MockERC20, StakingBase, ZeroVotingERC20 } from "../typechain";
+import { MockERC20, StakingBase } from "../typechain";
 import { expect } from "chai";
 import { INVALID_ADDR_ERR, INVALID_MULTIPLIER_ERR, ZERO_INIT_ERR } from "./helpers/errors";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
