@@ -185,22 +185,24 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256 i;
         for(i; i < tokenIds.length;) {
             // Transfer their NFT to this contract
+            uint256 tokenId = tokenIds[i];
+
             IERC721(stakingToken).safeTransferFrom(
                 msg.sender,
                 address(this),
-                tokenIds[i]
+                tokenId
             );
 
             // Save `locked` mapping for unstaking
             if (lockDuration > 0) {
-                nftStaker.locked[tokenIds[i]] = true;
+                nftStaker.locked[tokenId] = true;
             }
 
             // Mint user sNFT
             IERC721MintableBurnableURIStorage(stakeRepToken)
-                .safeMint(msg.sender, tokenIds[i], tokenUris[i]);
+                .safeMint(msg.sender, tokenId, tokenUris[i]);
 
-            emit Staked(msg.sender, tokenIds[i]);
+            emit Staked(msg.sender, tokenId);
 
             unchecked {
                 ++i;
@@ -209,15 +211,15 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     }
 
     function _unstakeLocked(uint256[] memory tokenIds) internal {
+        // If no stake or incoming array is empty revert
+        if (tokenIds.length == 0) revert ZeroValue();
+
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
         uint256 stakeBalance = nftStaker.stake.amountStakedLocked;
 
         // Revert to avoid underflow
         if (tokenIds.length > stakeBalance) revert InvalidUnstake();
-
-        // If no stake or incoming array is empty revert
-        if (tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
 
         // If still locked revert
         if (_getRemainingLockTime(nftStaker.stake) > 0) revert TimeLockNotPassed();
@@ -266,16 +268,18 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     }
 
     function _unstakeUnlocked(uint256[] memory _tokenIds) internal {
+        // If no stake or incoming array is empty revert
+        if (_tokenIds.length == 0) revert ZeroValue();
+
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
         // Store values we need and reset appropriately
         uint256 stakeBalance = nftStaker.stake.amountStaked;
 
         // Revert to avoid underflow if incoming array is longer than `amountStaked`
-        if (_tokenIds.length > stakeBalance) revert InvalidUnstake();
-
-        // If no stake or incoming array is empty revert
-        if (_tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
+        if (_tokenIds.length > stakeBalance) {
+            revert InvalidUnstake();
+        }
 
         // Calculate rewards before any state manipulation
         uint256 rewards = nftStaker.stake.owedRewards + _getStakeRewards(
@@ -292,14 +296,16 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         uint256 i;
         for (i; i < _tokenIds.length;) {
-            // Revert if the user passes in tokenIds that were not locked
-            if (nftStaker.locked[_tokenIds[i]]) {
+            // Revert if the user passes in tokenIds that were locked
+            uint256 tokenId = _tokenIds[i];
+
+            if (nftStaker.locked[tokenId]) {
                 revert InvalidUnstake();
             }
 
             // function is `onlySNFTOwner` guarded
-            _coreUnstake(_tokenIds[i]);
-            nftStaker.locked[_tokenIds[i]] = false;
+            _coreUnstake(tokenId);
+            nftStaker.locked[tokenId] = false;
 
             unchecked {
                 ++i;
@@ -328,14 +334,9 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
             // If calling exit for locked/unlocked tokens, but provides valid and owned
             // tokenIds of the opposite lock state, revert
-            bool wasLocked = nftStaker.locked[tokenId];
-
-            if (_locked && !wasLocked) {
+            if (_locked != nftStaker.locked[tokenId]) {
                 revert NotFullExit();
             }
-            // else if (!_locked && wasLocked) {
-            //     revert NotFullExit();
-            // }
 
             _coreUnstake(tokenId);
             nftStaker.locked[tokenId] = false;
