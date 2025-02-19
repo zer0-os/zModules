@@ -40,6 +40,7 @@ import {
   CANNOT_EXIT_ERR,
   INVALID_ADDR_ERR, LOCK_TOO_SHORT_ERR, ZERO_VALUE_ERR,
   INVALID_OWNER_ERR,
+  TIME_LOCK_NOT_PASSED_ERR,
 } from "./helpers/errors";
 
 describe("StakingERC721", () => {
@@ -145,18 +146,9 @@ describe("StakingERC721", () => {
 
       await stakingToken.mint(owner.address, unstakedTokenId);
 
-      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
-      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
-      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
-
-      await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdD);
-      await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdE);
-      await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdF);
-      await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdG);
-
-      await stakingToken.connect(stakerC).approve(await stakingERC721.getAddress(), tokenIdH);
-      await stakingToken.connect(stakerC).approve(await stakingERC721.getAddress(), tokenIdI);
-      await stakingToken.connect(stakerC).approve(await stakingERC721.getAddress(), tokenIdJ);
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
+      await stakingToken.connect(stakerB).setApprovalForAll(await stakingERC721.getAddress(), true);
+      await stakingToken.connect(stakerC).setApprovalForAll(await stakingERC721.getAddress(), true);
     };
 
     // Call to setup the first time
@@ -786,7 +778,7 @@ describe("StakingERC721", () => {
 
       await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
 
-      await time.increase(DEFAULT_LOCK / 2n)
+      await time.increase(DEFAULT_LOCK / 2n);
 
       // Fails while still locked
       await expect(
@@ -822,15 +814,29 @@ describe("StakingERC721", () => {
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
 
       await expect(
-        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdD]) // shouldnt hit this error?
+        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdD])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_OWNER_ERR);
+    });
+
+    it("Fails to unstake when the tokenId is not part of locked or non-locked funds, respectively", async () => {
+      await reset();
+
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
+
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA, tokenIdB], [emptyUri, emptyUri]);
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdC], [emptyUri], DEFAULT_LOCK);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA, tokenIdC])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
 
     it("Fails to unstake when token id is not staked", async () => {
       // If the a token is not staked, the relevant does not exist and so we can't unstake it
       try {
-        await stakingERC721.connect(stakerA).unstakeUnlocked([unstakedTokenId])
-      } catch(e: any) {
+        await stakingERC721.connect(stakerA).unstakeUnlocked([unstakedTokenId]);
+        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      } catch(e : any) {
         // Regular `await expect(...).to.be.revertedWith(...)` is not catching ERC721 error
         expect(e.message).to.include(NONEXISTENT_TOKEN_ERR);
       }
@@ -856,7 +862,7 @@ describe("StakingERC721", () => {
         1n,
         false,
         [config]
-      )
+      );
 
       expect(stakerDataBefore.amountStaked).eq(2n);
       expect(stakerDataBefore.owedRewards).to.eq(rewards);
@@ -870,7 +876,13 @@ describe("StakingERC721", () => {
       expect(stakerDataAfter.amountStaked).to.eq(0n);
       expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
       expect(stakerDataAfter.lastTimestamp).eq(0n);
-    })
+    });
+
+    it("Fails if incoming array is empty", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([])
+      ).to.be.revertedWithCustomError(stakingERC721, ZERO_VALUE_ERR);
+    });
   });
 
   describe("#unstakeLocked", async () => {
@@ -924,6 +936,18 @@ describe("StakingERC721", () => {
       expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
       expect(stakerDataAfter.lastTimestampLocked).to.eq(0n);
       expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
+    });
+
+    it("Fails when calling before passing the lock time", async () => {
+      await reset();
+
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
+
+      await time.increase(DEFAULT_LOCK / 2n);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeLocked([tokenIdA])
+      ).to.be.revertedWithCustomError(stakingERC721, TIME_LOCK_NOT_PASSED_ERR);
     });
 
     it("Can unstake multiple locked tokens", async () => {
@@ -1005,7 +1029,7 @@ describe("StakingERC721", () => {
       await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB], [emptyUri]);
 
-      await time.increase(DEFAULT_LOCK / 2n)
+      await time.increase(DEFAULT_LOCK / 2n);
 
       // Fails while still locked
       await expect(
@@ -1017,6 +1041,18 @@ describe("StakingERC721", () => {
       // Also fails when unlocked
       await expect(
         stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA, tokenIdB])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
+
+    it("Fails to unstake when the tokenId is not part of locked or non-locked funds, respectively", async () => {
+      await reset();
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
+
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB, tokenIdC], [emptyUri, emptyUri]);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeLocked([tokenIdA, tokenIdB, tokenIdC])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
 
@@ -1050,6 +1086,12 @@ describe("StakingERC721", () => {
       await expect(
         stakingERC721.connect(stakerA).unstakeLocked([tokenIdA])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
+
+    it("Fails if empty incoming token array", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).unstakeLocked([])
+      ).to.be.revertedWithCustomError(stakingERC721, ZERO_VALUE_ERR);
     });
   });
 
@@ -1616,7 +1658,7 @@ describe("StakingERC721", () => {
 
       expect(dataAfterPartialUnstake.owedRewards).to.eq(0n);
       expect(dataAfterPartialUnstake.lastTimestamp).to.eq(fullClaimedAt);
-      expect(dataAfterPartialUnstake.lastTimestampLocked).to.eq(partialUnstakedAt); // shouldnt be 0
+      expect(dataAfterPartialUnstake.lastTimestampLocked).to.eq(partialUnstakedAt);
       expect(dataAfterPartialUnstake.amountStaked).to.eq(1n); // Decrement after partial unstake
       expect(dataAfterPartialUnstake.amountStakedLocked).to.eq(1n);
       expect(dataAfterPartialUnstake.owedRewardsLocked).to.eq(0n);
@@ -2199,10 +2241,10 @@ describe("StakingERC721", () => {
         newConfig.timestamp = BigInt(await time.latest()) + 1n;
         await stakingERC721.connect(owner).setRewardConfig(newConfig);
 
-        const _config = await stakingERC721.getLatestConfig();
+        const rewardConfig = await stakingERC721.getLatestConfig();
 
         // Confirm the config change
-        expect(_config.canExit).to.eq(newConfig.canExit);
+        expect(rewardConfig.canExit).to.eq(newConfig.canExit);
 
         await time.increase(DAY_IN_SECONDS * 55n);
 
@@ -2366,10 +2408,10 @@ describe("StakingERC721", () => {
 
         await stakingERC721.connect(owner).setRewardConfig(newConfig);
 
-        const _config = await stakingERC721.getLatestConfig();
+        const rewardConfig = await stakingERC721.getLatestConfig();
 
         // Confirm change
-        expect(_config.rewardsPerPeriod).to.eq(newConfig.rewardsPerPeriod);
+        expect(rewardConfig.rewardsPerPeriod).to.eq(newConfig.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 12n);
 
@@ -2424,11 +2466,11 @@ describe("StakingERC721", () => {
         configA.timestamp = BigInt(await time.latest()) + 1n;
         await stakingERC721.connect(owner).setRewardConfig(configA);
 
-        const _config = await stakingERC721.getLatestConfig();
+        const rewardConfig = await stakingERC721.getLatestConfig();
 
         // Confirm change
-        expect(_config.minimumLockTime).to.eq(configA.minimumLockTime);
-        expect(_config.maximumRewardsMultiplier).to.eq(configA.maximumRewardsMultiplier);
+        expect(rewardConfig.minimumLockTime).to.eq(configA.minimumLockTime);
+        expect(rewardConfig.maximumRewardsMultiplier).to.eq(configA.maximumRewardsMultiplier);
 
         await time.increase(DAY_IN_SECONDS * 35n);
 
@@ -2437,9 +2479,9 @@ describe("StakingERC721", () => {
         configB.timestamp = BigInt(await time.latest()) + 1n;
         await stakingERC721.connect(owner).setRewardConfig(configB);
 
-        const _configB = await stakingERC721.getLatestConfig();
+        const rewardConfigB = await stakingERC721.getLatestConfig();
 
-        expect(_configB.periodLength).to.eq(configB.periodLength);
+        expect(rewardConfigB.periodLength).to.eq(configB.periodLength);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 
@@ -2506,9 +2548,9 @@ describe("StakingERC721", () => {
         configA.timestamp = BigInt(await time.latest()) + 1n;
         await stakingERC721.connect(owner).setRewardConfig(configA);
 
-        const _configA = await stakingERC721.getLatestConfig();
+        const rewardConfigA = await stakingERC721.getLatestConfig();
 
-        expect (_configA.rewardsPerPeriod).to.eq(configA.rewardsPerPeriod);
+        expect (rewardConfigA.rewardsPerPeriod).to.eq(configA.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 4n);
 
@@ -2563,10 +2605,9 @@ describe("StakingERC721", () => {
         configB.timestamp = BigInt(await time.latest()) + 1n;
         await stakingERC721.connect(owner).setRewardConfig(configB);
 
-        // TODO do this for the rest as well to replace removed getter functions
-        const _config = await stakingERC721.getLatestConfig();
-        expect(_config.periodLength).to.eq(configB.periodLength);
-        expect(_config.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
+        const rewardConfig = await stakingERC721.getLatestConfig();
+        expect(rewardConfig.periodLength).to.eq(configB.periodLength);
+        expect(rewardConfig.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 197n);
 
@@ -2940,10 +2981,10 @@ describe("StakingERC721", () => {
         configB.timestamp = BigInt(await time.latest()) + 1n;
         await stakingERC721.connect(owner).setRewardConfig(configB);
 
-        const _config = await stakingERC721.getLatestConfig();
+        const rewardConfig = await stakingERC721.getLatestConfig();
 
-        expect(_config.periodLength).to.eq(configB.periodLength);
-        expect(_config.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
+        expect(rewardConfig.periodLength).to.eq(configB.periodLength);
+        expect(rewardConfig.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 

@@ -908,6 +908,62 @@ describe("StakingERC20", () => {
       expect(stakerData.owedRewardsLocked).to.eq(0n);
     });
 
+    it("Allows unstaking locked funds without affecting non-locked funds", async () => {
+      await reset();
+
+      const amountStakedLocked = DEFAULT_STAKED_AMOUNT / 2n;
+      await contract.connect(stakerA).stakeWithLock(amountStakedLocked, DEFAULT_LOCK);
+      const stakedAtLocked = BigInt(await time.latest());
+
+      const lockedRewards = await calcUpdatedStakeRewards(
+        DEFAULT_LOCK,
+        amountStakedLocked,
+        true,
+        [config]
+      );
+
+      const amountStaked = DEFAULT_STAKED_AMOUNT * 3n;
+      await contract.connect(stakerA).stakeWithoutLock(amountStaked);
+      const stakedAt = BigInt(await time.latest());
+
+      const stakerDataBefore = await contract.stakers(stakerA.address);
+
+      expect(stakerDataBefore.amountStaked).to.eq(amountStaked);
+      expect(stakerDataBefore.amountStakedLocked).to.eq(amountStakedLocked);
+      expect(stakerDataBefore.owedRewardsLocked).to.eq(lockedRewards);
+      expect(stakerDataBefore.owedRewards).to.eq(0n); // not tallied yet
+      expect(stakerDataBefore.lastTimestamp).to.eq(stakedAt);
+      expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtLocked);
+      expect(stakerDataBefore.unlockedTimestamp).to.eq(stakedAtLocked + DEFAULT_LOCK);
+
+      const interimTime = DAY_IN_SECONDS * 99n;
+      await time.increase(DEFAULT_LOCK + interimTime);
+
+      const balanceBefore = await rewardsToken.balanceOf(stakerA.address);
+      await contract.connect(stakerA).unstakeLocked(stakerDataBefore.amountStakedLocked);
+      const balanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      const interimRewards = await calcUpdatedStakeRewards(
+        stakerDataBefore.unlockedTimestamp,
+        stakerDataBefore.amountStakedLocked,
+        false,
+        [config]
+      );
+
+      expect(balanceAfter).to.eq(balanceBefore + lockedRewards + interimRewards);
+
+      const stakerDataAfter = await contract.stakers(stakerA.address);
+
+      // Funds that were not locked are not affected
+      expect(stakerDataAfter.amountStaked).to.eq(amountStaked);
+      expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
+      expect(stakerDataAfter.owedRewards).to.eq(0n); // still not tallied
+      expect(stakerDataAfter.lastTimestamp).to.eq(stakedAt);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(0n);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(0n);
+    });
+
     it("Fails when the user tries to unstake 0 amount", async () => {
       await expect(
         contract.connect(stakerA).unstakeLocked(0)
@@ -1795,10 +1851,10 @@ describe("StakingERC20", () => {
         newConfig.timestamp = BigInt(await time.latest()) + 1n;
         await contract.connect(owner).setRewardConfig(newConfig);
 
-        const _config = await contract.getLatestConfig();
+        const rewardConfig = await contract.getLatestConfig();
 
         // Confirm the config change
-        expect(_config.canExit).to.eq(newConfig.canExit);
+        expect(rewardConfig.canExit).to.eq(newConfig.canExit);
 
         await time.increase(DAY_IN_SECONDS * 55n);
 
@@ -1949,11 +2005,11 @@ describe("StakingERC20", () => {
 
         await contract.connect(owner).setRewardConfig(newConfig);
 
-        const _config = await contract.getLatestConfig();
+        const rewardConfig = await contract.getLatestConfig();
 
 
         // Confirm change
-        expect(_config.rewardsPerPeriod).to.eq(newConfig.rewardsPerPeriod);
+        expect(rewardConfig.rewardsPerPeriod).to.eq(newConfig.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 12n);
 
@@ -2011,12 +2067,12 @@ describe("StakingERC20", () => {
         configA.timestamp = BigInt(await time.latest()) + 1n;
         await contract.connect(owner).setRewardConfig(configA);
 
-        const _config = await contract.getLatestConfig();
+        const rewardConfig = await contract.getLatestConfig();
 
 
         // Confirm change
-        expect(_config.minimumLockTime).to.eq(configA.minimumLockTime);
-        expect(_config.maximumRewardsMultiplier).to.eq(configA.maximumRewardsMultiplier);
+        expect(rewardConfig.minimumLockTime).to.eq(configA.minimumLockTime);
+        expect(rewardConfig.maximumRewardsMultiplier).to.eq(configA.maximumRewardsMultiplier);
 
         await time.increase(DAY_IN_SECONDS * 35n);
 
@@ -2025,9 +2081,9 @@ describe("StakingERC20", () => {
         configB.timestamp = BigInt(await time.latest()) + 1n;
         await contract.connect(owner).setRewardConfig(configB);
 
-        const _configB = await contract.getLatestConfig();
+        const rewardConfigB = await contract.getLatestConfig();
 
-        expect(_configB.periodLength).to.eq(configB.periodLength);
+        expect(rewardConfigB.periodLength).to.eq(configB.periodLength);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 
@@ -2092,9 +2148,9 @@ describe("StakingERC20", () => {
         configA.timestamp = BigInt(await time.latest()) + 1n;
         await contract.connect(owner).setRewardConfig(configA);
 
-        const _config = await contract.getLatestConfig();
+        const rewardConfig = await contract.getLatestConfig();
 
-        expect (_config.rewardsPerPeriod).to.eq(configA.rewardsPerPeriod);
+        expect (rewardConfig.rewardsPerPeriod).to.eq(configA.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 4n);
 
@@ -2149,10 +2205,10 @@ describe("StakingERC20", () => {
         configB.timestamp = BigInt(await time.latest()) + 1n;
         await contract.connect(owner).setRewardConfig(configB);
 
-        const _configB = await contract.getLatestConfig();
+        const rewardConfigB = await contract.getLatestConfig();
 
-        expect(_configB.periodLength).to.eq(configB.periodLength);
-        expect(_configB.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
+        expect(rewardConfigB.periodLength).to.eq(configB.periodLength);
+        expect(rewardConfigB.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 197n);
 
@@ -2233,11 +2289,11 @@ describe("StakingERC20", () => {
 
         await contract.connect(owner).setRewardConfig(configB);
 
-        const _config = await contract.getLatestConfig();
+        const rewardConfig = await contract.getLatestConfig();
 
-        expect(_config.minimumLockTime).to.eq(configB.minimumLockTime);
-        expect(_config.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
-        expect(_config.periodLength).to.eq(configB.periodLength);
+        expect(rewardConfig.minimumLockTime).to.eq(configB.minimumLockTime);
+        expect(rewardConfig.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
+        expect(rewardConfig.periodLength).to.eq(configB.periodLength);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 
@@ -2512,10 +2568,10 @@ describe("StakingERC20", () => {
         configB.timestamp = BigInt(await time.latest()) + 1n;
         await contract.connect(owner).setRewardConfig(configB);
 
-        const _config = await contract.getLatestConfig();
+        const rewardConfig = await contract.getLatestConfig();
 
-        expect(_config.periodLength).to.eq(configB.periodLength);
-        expect(_config.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
+        expect(rewardConfig.periodLength).to.eq(configB.periodLength);
+        expect(rewardConfig.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 

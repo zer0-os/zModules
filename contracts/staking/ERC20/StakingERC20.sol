@@ -164,6 +164,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         uint256 amount;
 
+        // Store the necessary `amount` to transfer
+        // then modify the variables as needed first
         if (locked) {
             amount = staker.amountStakedLocked;
 
@@ -195,11 +197,12 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     function _unstakeUnlocked(uint256 amount) internal {
         Staker storage staker = stakers[msg.sender];
 
-        if (amount > staker.amountStaked) revert UnstakeMoreThanStake();
+        uint256 amountStaked = staker.amountStaked;
+        if (amount > amountStaked) revert UnstakeMoreThanStake();
 
         uint256 rewards = staker.owedRewards += _getStakeRewards(
             staker.lastTimestamp,
-            staker.amountStaked,
+            amountStaked,
             1,
             false
         );
@@ -222,14 +225,12 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             staker.lastTimestamp = block.timestamp;
         }
 
-        if (rewards > 0) {
-            // Transfer the user's rewards
-            // Will fail if the contract does not have funding for this
-            // If rewards address is `0x0` we use the chain's native token
-            _transferAmount(rewardsToken, rewards);
+        // Transfer the user's rewards
+        // Will fail if the contract does not have funding for this
+        // If rewards address is `0x0` we use the chain's native token
+        _transferAmount(rewardsToken, rewards);
 
-            emit Claimed(msg.sender, rewards);
-        }
+        emit Claimed(msg.sender, rewards);
 
         totalStaked -= amount;
 
@@ -285,14 +286,12 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             staker.lastTimestampLocked = block.timestamp;
         }
 
-        if (rewards > 0) {
-            // Transfer the user's rewards
-            // Will fail if the contract does not have funding for this
-            // If rewards address is `0x0` we use the chain's native token
-            _transferAmount(rewardsToken, rewards);
+        // Transfer the user's rewards
+        // Will fail if the contract does not have funding for this
+        // If rewards address is `0x0` we use the chain's native token
+        _transferAmount(rewardsToken, rewards);
 
-            emit Claimed(msg.sender, rewards);
-        }
+        emit Claimed(msg.sender, rewards);
 
         totalStaked -= amount;
 

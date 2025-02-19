@@ -8,7 +8,7 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 import { IERC721MintableBurnableURIStorage } from "../../types/IERC721MintableBurnableURIStorage.sol";
 
-import { console } from "hardhat/console.sol";
+
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
@@ -185,22 +185,24 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256 i;
         for(i; i < tokenIds.length;) {
             // Transfer their NFT to this contract
+            uint256 tokenId = tokenIds[i];
+
             IERC721(stakingToken).safeTransferFrom(
                 msg.sender,
                 address(this),
-                tokenIds[i]
+                tokenId
             );
 
             // Save `locked` mapping for unstaking
             if (lockDuration > 0) {
-                nftStaker.locked[tokenIds[i]] = true;
+                nftStaker.locked[tokenId] = true;
             }
 
             // Mint user sNFT
             IERC721MintableBurnableURIStorage(stakeRepToken)
-                .safeMint(msg.sender, tokenIds[i], tokenUris[i]);
+                .safeMint(msg.sender, tokenId, tokenUris[i]);
 
-            emit Staked(msg.sender, tokenIds[i]);
+            emit Staked(msg.sender, tokenId);
 
             unchecked {
                 ++i;
@@ -217,7 +219,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         if (tokenIds.length > stakeBalance) revert InvalidUnstake();
 
         // If no stake or incoming array is empty revert
-        if (tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
+        if (tokenIds.length == 0) revert ZeroValue();
 
         // If still locked revert
         if (_getRemainingLockTime(nftStaker.stake) > 0) revert TimeLockNotPassed();
@@ -272,10 +274,12 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256 stakeBalance = nftStaker.stake.amountStaked;
 
         // Revert to avoid underflow if incoming array is longer than `amountStaked`
-        if (_tokenIds.length > stakeBalance) revert InvalidUnstake();
+        if (_tokenIds.length > stakeBalance) {
+            revert InvalidUnstake();
+        }
 
         // If no stake or incoming array is empty revert
-        if (_tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
+        if (_tokenIds.length == 0) revert ZeroValue();
 
         // Calculate rewards before any state manipulation
         uint256 rewards = nftStaker.stake.owedRewards + _getStakeRewards(
@@ -332,12 +336,9 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             // tokenIds of the opposite lock state, revert
             bool wasLocked = nftStaker.locked[tokenId];
 
-            if (_locked && !wasLocked) {
+            if ((_locked && !wasLocked) || (!_locked && wasLocked)) {
                 revert NotFullExit();
             }
-            // else if (!_locked && wasLocked) {
-            //     revert NotFullExit();
-            // }
 
             _coreUnstake(tokenId);
             nftStaker.locked[tokenId] = false;
