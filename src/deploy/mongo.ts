@@ -7,15 +7,13 @@ import { getGitTag } from "../utils/git-tag/get-tag";
 const execAsync = promisify(exec);
 
 
-// TODO dep: update function to pass all env variables from local repo as parameters
-//  to the zDC function!
 export const getZModulesMongoAdapter = async ({
   contractsVersion,
   logger,
-  dbUri,
-  dbName,
-  dbVersion,
-  archiveDb,
+  dbUri = process.env.DB_URI,
+  dbName = process.env.DB_NAME,
+  dbVersion = process.env.DB_VERSION,
+  archiveDb = process.env.ARCHIVE_DB,
   clientOpts,
 } : {
   contractsVersion ?: string;
@@ -29,20 +27,7 @@ export const getZModulesMongoAdapter = async ({
   if (!contractsVersion) {
     contractsVersion = getGitTag();
   }
-  if (!dbUri) {
-    dbUri = process.env.DB_URI;
-  }
-  if (!dbName) {
-    dbName = process.env.DB_NAME;
-  }
-  if (!dbVersion) {
-    dbVersion = process.env.DB_VERSION;
-  }
-  if (!archiveDb) {
-    archiveDb = process.env.ARCHIVE_DB;
-  }
 
-  // TODO dep: pass here !!!
   return getMongoAdapter({
     logger,
     contractsVersion,
