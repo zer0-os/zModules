@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-shadow, no-shadow */
+
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
-import { NON_TRANSFERRABLE_ERR } from "./helpers/errors";
+import { NON_TRANSFERRABLE_ERR, ZERO_ADDRESS_ERR } from "./helpers/errors";
 import { roles } from "../src/deploy/constants";
 
 
@@ -317,6 +319,25 @@ describe("Voting tokens tests", () => {
       );
     });
 
+    it("Should decrement total supply after #burn() and increment after #safeMint()", async () => {
+      const totalSupplyInitial = await erc721Token.totalSupply();
+      const newTokenId = "3492342";
+      await erc721Token.connect(owner).safeMint(owner.address, newTokenId, "");
+
+      const totalSupplyAfterMint = await erc721Token.totalSupply();
+      expect(totalSupplyAfterMint).to.equal(totalSupplyInitial + 1n);
+
+      await erc721Token.connect(owner).burn(newTokenId);
+
+      const totalSupplyAfterBurn = await erc721Token.totalSupply();
+
+      expect(
+        totalSupplyAfterBurn
+      ).to.equal(
+        totalSupplyAfterMint - 1n
+      );
+    });
+
     describe("Voting functions", () => {
       it("Should delegate votes for ERC721 token", async () => {
         const balanceBefore = await erc721Token.balanceOf(owner.address);
@@ -362,6 +383,28 @@ describe("Voting tokens tests", () => {
     });
 
     describe("Access control", () => {
+      it("Should assign DEFAULT_ADMIN_ROLE to the provided admin if admin is not address(0)", async () => {
+        expect(
+          await erc721Token.hasRole(await erc20Token.DEFAULT_ADMIN_ROLE(), owner.address)
+        ).to.be.true;
+      });
+
+      it("should revert if admin is address(0)", async () => {
+        await expect(
+          ERC721Factory.deploy(
+            erc721Name,
+            erc721Symbol,
+            initialBaseURI,
+            "ZERO DAO",
+            "1.0",
+            ethers.ZeroAddress
+          )
+        ).to.be.revertedWithCustomError(
+          ERC721Factory,
+          ZERO_ADDRESS_ERR
+        );
+      });
+
       it("Should revert when NON-ADMIN grants role", async () => {
         await expect(
           erc721Token.connect(addr2).grantRole(DEFAULT_ADMIN_ROLE, addr1.address)
