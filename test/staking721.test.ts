@@ -39,6 +39,7 @@ import {
   NOT_FULL_EXIT_ERR,
   CANNOT_EXIT_ERR,
   INVALID_ADDR_ERR, LOCK_TOO_SHORT_ERR, ZERO_VALUE_ERR,
+  INVALID_OWNER_ERR,
 } from "./helpers/errors";
 
 describe("StakingERC721", () => {
@@ -736,13 +737,13 @@ describe("StakingERC721", () => {
 
       expect(balanceAfter).to.eq(balanceBefore + expectedUnlocked);
 
-      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
-
       // User has regained their NFT and the SNFT was burned
       expect(await stakingToken.balanceOf(stakerA.address)).to.eq(1);
       expect(await stakeRepToken.balanceOf(stakerA.address)).to.eq(2);
 
-      // because we fully withdrew non-locked funds, we reset
+      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
+
+      // because we fully withdrew non-locked funds, we delete the struct
       expect(stakerDataAfter.amountStaked).to.eq(0);
       expect(stakerDataAfter.lastTimestamp).to.eq(0);
       expect(stakerDataAfter.owedRewards).to.eq(0n);
@@ -758,18 +759,184 @@ describe("StakingERC721", () => {
         .withArgs(tokenIdA);
     });
 
+    it("Fails when mix of locked and unlocked tokens are provided", async () => {
+      await reset();
+
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdB);
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdC);
+
+      await stakingERC721.connect(stakerA).stakeWithLock(
+        [tokenIdA, tokenIdB],
+        [emptyUri, emptyUri],
+        DEFAULT_LOCK
+      );
+
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdC], [emptyUri]);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA, tokenIdC])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
+
+    it("Cannot be used with tokenIds that were locked", async () => {
+      await reset();
+
+      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
+
+      await time.increase(DEFAULT_LOCK / 2n)
+
+      // Fails while still locked
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+
+      await time.increase(DEFAULT_LOCK / 2n + 1n);
+
+      // Also fails when unlocked
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
+
+    it("Fails to unstake when token id is invalid", async () => {
+      await time.increase(DEFAULT_LOCK);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([unmintedTokenId])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
+
+    it("Fails to unstake when caller is not the owner of the SNFT", async () => {
+      await reset();
+      // If the user has no stakes, the reversion is by default a `TimeLockNotPassed`,
+      // we had stakes here to avoid this path
+      await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdD);
+      await stakingERC721.connect(stakerB).stakeWithoutLock([tokenIdD], [emptyUri]);
+
+      // amount staked is checked internally for unstaked, so to pass this check we have to have
+      // a stake of our own
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdD]) // shouldnt hit this error?
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_OWNER_ERR);
+    });
+
+    it("Fails to unstake when token id is not staked", async () => {
+      // If the a token is not staked, the relevant does not exist and so we can't unstake it
+      try {
+        await stakingERC721.connect(stakerA).unstakeUnlocked([unstakedTokenId])
+      } catch(e: any) {
+        // Regular `await expect(...).to.be.revertedWith(...)` is not catching ERC721 error
+        expect(e.message).to.include(NONEXISTENT_TOKEN_ERR);
+      }
+    });
+
+    it("Deletes the staker struct when a full unstake is made", async () => {
+      await reset();
+
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
+
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
+      const stakedAt = BigInt(await time.latest());
+
+      await time.increase(DAY_IN_SECONDS * 17n);
+
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB], [emptyUri]);
+
+      const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+      const secondStakedAt = BigInt(await time.latest());
+
+      const rewards = await calcUpdatedStakeRewards(
+        stakedAt,
+        1n,
+        false,
+        [config]
+      )
+
+      expect(stakerDataBefore.amountStaked).eq(2n);
+      expect(stakerDataBefore.owedRewards).to.eq(rewards);
+      expect(stakerDataBefore.lastTimestamp).eq(secondStakedAt);
+
+      await stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA, tokenIdB]);
+
+      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
+
+      // Confirm all zeros
+      expect(stakerDataAfter.amountStaked).to.eq(0n);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
+      expect(stakerDataAfter.lastTimestamp).eq(0n);
+    })
+  });
+
+  describe("#unstakeLocked", async () => {
+    it("Fails if the user passes in tokenIds that were not locked", async () => {
+      await reset();
+
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB], [emptyUri]);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeLocked([tokenIdB])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
+
+    it("Allows you to unstake locked tokens passed their unlockedTimestamp", async () => {
+      await reset();
+
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
+
+      const interimTime = 37n;
+      await time.increase(DEFAULT_LOCK + interimTime);
+
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+
+      await stakingERC721.connect(stakerA).unstakeLocked([tokenIdA]);
+
+      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      const expectedLockedRewards = calcStakeRewards(
+        1n,
+        DEFAULT_LOCK,
+        true,
+        config,
+      );
+
+      const expectedInterimRewards = calcStakeRewards(
+        1n,
+        interimTime + 1n, // + 1 for automine after call to `unstakeLocked`
+        false,
+        config,
+      );
+
+      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + expectedLockedRewards + expectedInterimRewards);
+
+      // Never had unlocked stake
+      expect(stakerDataAfter.amountStaked).to.eq(0n);
+      expect(stakerDataAfter.lastTimestamp).to.eq(0n);
+      expect(stakerDataAfter.owedRewards).to.eq(0n);
+
+      expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(0n);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
+    });
+
     it("Can unstake multiple locked tokens", async () => {
       await reset();
 
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdA], [emptyUri]);
-      stakedAtUnlocked = BigInt(await time.latest());
+      const stakedAtUnlocked = BigInt(await time.latest());
 
       await stakingERC721.connect(stakerA).stakeWithLock(
         [tokenIdB, tokenIdC],
         [emptyUri, emptyUri],
         DEFAULT_LOCK
       );
-      stakedAtLocked = BigInt(await time.latest());
 
       // Add arbitrary amount of interim time
       const interimTime = 13n;
@@ -780,7 +947,7 @@ describe("StakingERC721", () => {
       const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
 
       await stakingERC721.connect(stakerA).unstakeLocked([tokenIdB, tokenIdC]);
-      unstakedAt = BigInt(await time.latest());
+      const unstakedAt = BigInt(await time.latest());
 
       const balanceAfter = await rewardsToken.balanceOf(stakerA.address);
 
@@ -830,101 +997,45 @@ describe("StakingERC721", () => {
         .withArgs(tokenIdC);
     });
 
-    it("Fails to unstake locked tokens without 'exit' when not enough time has passed", async () => {
+    it("Cannot be used with tokenIds that weren't locked", async () => {
       await reset();
 
-      // Restake to be able to unstake again
-      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
 
       await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
-
-      await expect(
-        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA])
-      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
-    });
-
-    it("Fails to unstake when token id is invalid", async () => {
-      await time.increase(DEFAULT_LOCK);
-
-      await expect(
-        stakingERC721.connect(stakerA).unstakeUnlocked([unmintedTokenId])
-      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
-    });
-
-    it("Fails to unstake when caller is not the owner of the SNFT", async () => {
-      // If the user has no stakes, the reversion is by default a `TimeLockNotPassed`,
-      // we had stakes here to avoid this path
-      await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenIdD);
-      await stakingERC721.connect(stakerB).stakeWithoutLock([tokenIdD], [emptyUri]);
-      // await time.increase(config.timeLockPeriod);
-
-      await expect(
-        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdD])
-      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
-    });
-
-    it("Fails to unstake when token id is not staked", async () => {
-      // If the a token is not staked, the relevant does not exist and so we can't unstake it
-      await expect(
-        stakingERC721.connect(stakerA).unstakeUnlocked([unstakedTokenId])
-      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
-    });
-  });
-
-  describe("#unstakeLocked", async () => {
-    it("Fails if the user passes in tokenIds that were not locked", async () => {
       await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB], [emptyUri]);
 
+      await time.increase(DEFAULT_LOCK / 2n)
+
+      // Fails while still locked
       await expect(
-        stakingERC721.connect(stakerA).unstakeLocked([tokenIdB])
+        stakingERC721.connect(stakerA).unstakeLocked([tokenIdA, tokenIdB])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
-    });
 
-    it("Allows you to unstake locked tokens passed their unlockedTimestamp", async () => {
-      await reset();
+      await time.increase(DEFAULT_LOCK / 2n + 1n);
 
-      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
-
-      const interimTime = 37n;
-      await time.increase(DEFAULT_LOCK + interimTime);
-
-      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
-
-      await stakingERC721.connect(stakerA).unstakeLocked([tokenIdA]);
-
-      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
-      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
-
-      const expectedLockedRewards = calcStakeRewards(
-        1n,
-        DEFAULT_LOCK,
-        true,
-        config,
-      );
-
-      const expectedInterimRewards = calcStakeRewards(
-        1n,
-        interimTime + 1n, // + 1 for automine after call to `unstakeLocked`
-        false,
-        config,
-      );
-
-      expect(rewardsBalanceAfter).to.eq(rewardsBalanceBefore + expectedLockedRewards + expectedInterimRewards);
-
-      // Never had unlocked stake
-      expect(stakerDataAfter.amountStaked).to.eq(0n);
-      expect(stakerDataAfter.lastTimestamp).to.eq(0n);
-      expect(stakerDataAfter.owedRewards).to.eq(0n);
-
-      expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
-      expect(stakerDataAfter.lastTimestampLocked).to.eq(0n);
-      expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
+      // Also fails when unlocked
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdA, tokenIdB])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
 
     it("Fails if the caller does not own the sNFT", async () => {
-      await stakingToken.connect(stakerA).approve(await stakingERC721.getAddress(), tokenIdA);
+      await reset();
+
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
       await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
 
+      // To avoid the `amountStakedLocked` check, we must first have the same staked amount as first staker
+      await stakingToken.connect(stakerB).setApprovalForAll(await stakingERC721.getAddress(), true);
+      await stakingERC721.connect(stakerB).stakeWithLock([tokenIdD], [emptyUri], DEFAULT_LOCK);
+
+      await time.increase(DEFAULT_LOCK + 2n);
+
+      // In `unstakeUnlocked` we expect the `nftStaker.locked[tokenId]` value to be false, the default
+      // if it does not exist so it can be spoofed, but here if a tokenId under a specific staker doesn't
+      // exist (i.e., they are a not the owner of that stake) then the `.locked[tokenId]` will return false
+      // and this will instead revert `InvalidUnstake`
       await expect(
         stakingERC721.connect(stakerB).unstakeLocked([tokenIdA])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);

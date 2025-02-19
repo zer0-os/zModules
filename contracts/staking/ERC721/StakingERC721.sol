@@ -8,7 +8,7 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 import { IERC721MintableBurnableURIStorage } from "../../types/IERC721MintableBurnableURIStorage.sol";
 
-
+import { console } from "hardhat/console.sol";
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
@@ -292,14 +292,16 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         uint256 i;
         for (i; i < _tokenIds.length;) {
-            // Revert if the user passes in tokenIds that were not locked
-            if (nftStaker.locked[_tokenIds[i]]) {
+            // Revert if the user passes in tokenIds that were locked
+            uint256 tokenId = _tokenIds[i];
+
+            if (nftStaker.locked[tokenId]) {
                 revert InvalidUnstake();
             }
 
             // function is `onlySNFTOwner` guarded
-            _coreUnstake(_tokenIds[i]);
-            nftStaker.locked[_tokenIds[i]] = false;
+            _coreUnstake(tokenId);
+            nftStaker.locked[tokenId] = false;
 
             unchecked {
                 ++i;
