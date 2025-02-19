@@ -8,6 +8,7 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 import { IERC721MintableBurnableURIStorage } from "../../types/IERC721MintableBurnableURIStorage.sol";
 
+
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
@@ -38,7 +39,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         address _rewardsToken,
         address _stakeRepToken,
         RewardConfig memory _config
-    )   
+    )
         StakingBase(
             _contractOwner,
             _stakingToken,
@@ -66,7 +67,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,
         uint256 lockDuration
-    ) external override {
+    ) external override nonReentrant {
         if (lockDuration < _getLatestConfig().minimumLockTime) {
             revert LockTimeTooShort();
         }
@@ -83,14 +84,14 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     function stakeWithoutLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris
-    ) external override {
+    ) external override nonReentrant {
         _stake(tokenIds, tokenUris, 0);
     }
 
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claim() public override {
+    function claim() public override nonReentrant {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
         _coreClaim(nftStaker.stake);
@@ -100,10 +101,10 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @notice Unstake tokens that were not locked
      * @dev Will revert if the incoming array contains tokens that were locked
      * @dev OPTIMIZATION: make unstake flow more manageable by separating functionality
-     * 
+     *
      * @param _tokenIds Array of tokens to unstake
      */
-    function unstakeUnlocked(uint256[] memory _tokenIds) public override {
+    function unstakeUnlocked(uint256[] memory _tokenIds) public override nonReentrant {
         _unstakeUnlocked(_tokenIds);
     }
 
@@ -111,21 +112,21 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @notice Unstake tokens that were locked and are now passed their lock period
      * @dev Will revert if the incoming array contains tokens that were never locked
      * @dev OPTIMIZATION: make unstake flow more manageable by separating functionality
-     * 
+     *
      * @param _tokenIds Array of tokens to unstake
      */
-    function unstakeLocked(uint256[] memory _tokenIds) public override {
+    function unstakeLocked(uint256[] memory _tokenIds) public override nonReentrant {
         _unstakeLocked(_tokenIds);
     }
 
-        /**
-     * @notice Withdraw locked or unlocked staked funds receiving no rewards 
+    /**
+     * @notice Withdraw locked or unlocked staked funds receiving no rewards
      * @dev OPTIMIZATION: make unstake flow more manageable by separating functionality
-     * 
+     *
      * @param _tokenIds Array of token IDs to withdraw
      * @param _locked Indicates whether to withdraw locked or non-locked funds
      */
-    function exit(uint256[] memory _tokenIds, bool _locked) public override {
+    function exit(uint256[] memory _tokenIds, bool _locked) public override nonReentrant {
         if (!_getLatestConfig().canExit) revert CannotExit();
         _exit(_tokenIds, _locked);
     }
@@ -235,7 +236,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         if (nftStaker.stake.amountStakedLocked == 0) {
             nftStaker.stake.lastTimestampLocked = 0;
-            nftStaker.stake.unlockedTimestamp = 0; 
+            nftStaker.stake.unlockedTimestamp = 0;
         } else {
             // No change to unlockedTimestamp if there are still locked funds
             nftStaker.stake.lastTimestampLocked = block.timestamp;
@@ -331,7 +332,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
             if (_locked && !wasLocked) {
                 revert NotFullExit();
-            } 
+            }
             // else if (!_locked && wasLocked) {
             //     revert NotFullExit();
             // }

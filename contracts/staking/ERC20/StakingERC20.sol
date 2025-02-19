@@ -51,7 +51,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to stake
      * @param lockDuration The duration of the lock period
      */
-    function stakeWithLock(uint256 amount, uint256 lockDuration) external payable override {
+    function stakeWithLock(uint256 amount, uint256 lockDuration) external payable override nonReentrant {
         if (lockDuration < _getLatestConfig().minimumLockTime) {
             revert LockTimeTooShort();
         }
@@ -65,14 +65,14 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to stake
      */
-    function stakeWithoutLock(uint256 amount) external payable override {
+    function stakeWithoutLock(uint256 amount) external payable override nonReentrant {
         _stake(amount, 0);
     }
 
     /**
      * @notice Claim all of the user's rewards that are currently available
      */
-    function claim() external override {
+    function claim() external override nonReentrant {
         // transfer a user their owed rewards + any available pending rewards
         // if funds are locked, only transfer if they are past lock duration
         Staker storage staker = stakers[msg.sender];
@@ -85,7 +85,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to withdraw
      */
-    function unstakeUnlocked(uint256 amount) external override {
+    function unstakeUnlocked(uint256 amount) external override nonReentrant {
         if (amount == 0) revert ZeroValue();
 
         _unstakeUnlocked(amount);
@@ -97,13 +97,13 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to withdraw
      */
-    function unstakeLocked(uint256 amount) external override {
+    function unstakeLocked(uint256 amount) external override nonReentrant {
         if (amount == 0) revert ZeroValue();
 
         _unstakeLocked(amount);
     }
 
-    function exit(bool locked) external override {
+    function exit(bool locked) external override nonReentrant {
         if (!_getLatestConfig().canExit) revert CannotExit();
         _exit(locked);
     }

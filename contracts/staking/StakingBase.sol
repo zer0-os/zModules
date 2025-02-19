@@ -8,6 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IStakingBase } from "./IStakingBase.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+
 /**
  * @title StakingBase
  * @notice A set of common elements that are used in any Staking contract
@@ -101,10 +102,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      * @notice Set the config for the staking contract
      * @dev Setting a value to the value it already is will not add extra gas
      * so it is cheaper to set the entire config than to have individual setters
-     * 
+     *
      * @param _config The incoming reward config
      */
-    function setRewardConfig(RewardConfig memory _config) public override onlyOwner {
+    function setRewardConfig(RewardConfig memory _config) public override nonReentrant onlyOwner {
         if (
             _config.maximumRewardsMultiplier < _config.minimumRewardsMultiplier
         ) revert InvalidMultiplierPassed();
@@ -287,7 +288,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         if (locked) {
             RewardConfig memory _config = _getLatestConfig();
 
-            return 
+            return
                 rewardsMultiplier * amount * _config.rewardsPerPeriod * timeOrDuration
                 / _config.periodLength / LOCKED_PRECISION_DIVISOR;
         }
@@ -376,7 +377,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     /**
      * @dev Locked rewards receive a multiplier based on the length of the lock
      * @dev Because we precalc when user is staking, getting the latest config is okay
-     * 
+     *
      * @param lock The length of the lock in seconds
      */
     function _calcRewardsMultiplier(uint256 lock) internal view returns (uint256) {
