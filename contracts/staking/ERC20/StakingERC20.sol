@@ -7,6 +7,7 @@ import { IStakingERC20 } from "./IStakingERC20.sol";
 import { StakingBase } from "../StakingBase.sol";
 import { IERC20MintableBurnable } from "../../types/IERC20MintableBurnable.sol";
 
+
 /**
  * @title StakingERC20
  * @notice A staking contract for ERC20 tokens
@@ -26,11 +27,13 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     uint256 public totalStaked;
 
     constructor(
+        address _contractOwner,
         address _stakingToken,
         address _rewardsToken,
         address _stakeRepToken,
-        Config memory _config
+        RewardConfig memory _config
     ) StakingBase(
+        _contractOwner,
         _stakingToken,
         _rewardsToken,
         _stakeRepToken,
@@ -48,7 +51,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      * @param amount The amount to stake
      * @param lockDuration The duration of the lock period
      */
-    function stakeWithLock(uint256 amount, uint256 lockDuration) external payable override {
+    function stakeWithLock(uint256 amount, uint256 lockDuration) external payable override nonReentrant {
         if (lockDuration < _getLatestConfig().minimumLockTime) {
             revert LockTimeTooShort();
         }
@@ -62,14 +65,14 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to stake
      */
-    function stakeWithoutLock(uint256 amount) external payable override {
+    function stakeWithoutLock(uint256 amount) external payable override nonReentrant {
         _stake(amount, 0);
     }
 
     /**
      * @notice Claim all of the user's rewards that are currently available
      */
-    function claim() external override {
+    function claim() external override nonReentrant {
         // transfer a user their owed rewards + any available pending rewards
         // if funds are locked, only transfer if they are past lock duration
         Staker storage staker = stakers[msg.sender];
@@ -82,7 +85,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to withdraw
      */
-    function unstakeUnlocked(uint256 amount) external override {
+    function unstakeUnlocked(uint256 amount) external override nonReentrant {
         if (amount == 0) revert ZeroValue();
 
         _unstakeUnlocked(amount);
@@ -94,13 +97,13 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
      *
      * @param amount The amount to withdraw
      */
-    function unstakeLocked(uint256 amount) external override {
+    function unstakeLocked(uint256 amount) external override nonReentrant {
         if (amount == 0) revert ZeroValue();
 
         _unstakeLocked(amount);
     }
 
-    function exit(bool locked) external override {
+    function exit(bool locked) external override nonReentrant {
         if (!_getLatestConfig().canExit) revert CannotExit();
         _exit(locked);
     }
@@ -157,7 +160,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     }
 
     function _exit(bool locked) internal {
-        Staker memory staker = stakers[msg.sender];
+        Staker storage staker = stakers[msg.sender];
 
         uint256 amount;
 
@@ -180,11 +183,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             delete stakers[msg.sender];
         }
 
-        // Return user's stake
-        _transferAmount(stakingToken, amount);
-
         // Burn the user's stake representative token
         IERC20MintableBurnable(stakeRepToken).burn(msg.sender, amount);
+
+        // Return user's stake
+        _transferAmount(stakingToken, amount);
 
         emit Exited(msg.sender, amount, locked);
     }
@@ -194,14 +197,14 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         if (amount > staker.amountStaked) revert UnstakeMoreThanStake();
 
-        uint256 rewards = staker.owedRewards + _updatedStakeRewards(
+        uint256 rewards = staker.owedRewards += _getStakeRewards(
             staker.lastTimestamp,
             staker.amountStaked,
             1,
             false
         );
 
-        staker.owedRewards= 0;
+        staker.owedRewards = 0;
         staker.amountStaked -= amount;
 
         // If removal of all non-locked funds
@@ -230,11 +233,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
 
         totalStaked -= amount;
 
-        // Return the user's initial stake
-        _transferAmount(stakingToken, amount);
-
         // Burn the user's stake representative token
         IERC20MintableBurnable(stakeRepToken).burn(msg.sender, amount);
+
+        // Return the user's initial stake
+        _transferAmount(stakingToken, amount);
 
         emit Unstaked(msg.sender, amount);
     }
@@ -242,7 +245,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
     function _unstakeLocked(uint256 amount) internal {
         Staker storage staker = stakers[msg.sender];
 
-        if (amount > staker.amountStakedLocked) revert UnstakeMoreThanStake();
+        uint256 amountStakedLocked = staker.amountStakedLocked;
+        if (amount > amountStakedLocked) revert UnstakeMoreThanStake();
 
         if (_getRemainingLockTime(staker) > 0) revert TimeLockNotPassed();
 
@@ -252,13 +256,11 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
         // so we have to calculate which is more recent before calculating rewards
         uint256 mostRecentTimestamp = _mostRecentTimestamp(staker);
 
-        // If staker's funds are unlocked, we ignore exit
         // We already added the value they are owed in stake when pre calculating
         // now we just add the value they are owed for rewards in between
-
-        uint256 rewards = staker.owedRewardsLocked + _updatedStakeRewards(
+        uint256 rewards = staker.owedRewardsLocked + _getStakeRewards(
             mostRecentTimestamp,
-            staker.amountStakedLocked,
+            amountStakedLocked,
             1,
             false
         );

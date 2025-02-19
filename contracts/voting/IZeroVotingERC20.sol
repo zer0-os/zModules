@@ -14,6 +14,7 @@ interface IZeroVotingERC20 is
     IVotes {
 
     error NonTransferrableToken();
+    error ZeroAddressPassed();
 
     function mint(
         address account,

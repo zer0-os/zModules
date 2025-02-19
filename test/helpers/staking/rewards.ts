@@ -89,53 +89,41 @@ export const calcUpdatedStakeRewards = async (
   timeOrDuration : bigint,
   amount : bigint,
   locked : boolean,
-  configs : BaseConfig[]
+  configs : Array<BaseConfig>
 ) => {
   if (locked) {
     // Simply return calculation from latest config when locked
     const config = configs[configs.length - 1];
-    return calcRewardsMultiplier(timeOrDuration, config) 
+    return calcRewardsMultiplier(timeOrDuration, config)
       * amount * config.rewardsPerPeriod * timeOrDuration / config.periodLength / LOCKED_PRECISION_DIVISOR;
   }
 
-  const duration = BigInt(await time.latest()) - timeOrDuration;
-
-  // can write to incoming values but just for separation
-  let durationCopy = duration;
-
-  let rewards = 0n
-  let lastTimestamp = BigInt(Math.floor(Date.now() / 1000));
+  let rewards = 0n;
+  let duration = BigInt(await time.latest()) - timeOrDuration;
+  let lastTimestamp = BigInt(await time.latest());
 
   let i = configs.length;
   for (i; i > 0; --i) {
     const config = configs[i - 1];
 
-    if (timeOrDuration < config.timestamp ) {
+    if (config.timestamp > timeOrDuration) {
+
       const effectiveDuration = lastTimestamp - config.timestamp;
       lastTimestamp = config.timestamp;
-      durationCopy -= effectiveDuration;
+      duration -= effectiveDuration;
 
-      // const a = amount * config.rewardsPerPeriod * effectiveDuration
-      // const b = config.periodLength
-      // const c = PRECISION_DIVISOR;
+      const addedAmount = amount * config.rewardsPerPeriod * effectiveDuration
+        / config.periodLength / PRECISION_DIVISOR;
 
-      // const x = Math.floor(Number(a) / Number(b) / Number(c));
-
-      // // pick apart the calculation to get the right value that causes rounding error
-      // rewards += BigInt(x);
-
-      rewards += amount * config.rewardsPerPeriod * effectiveDuration / config.periodLength / PRECISION_DIVISOR;
+      rewards += addedAmount;
     } else {
-      // const a = amount * config.rewardsPerPeriod * durationCopy
-      // const b = config.periodLength
-      // const c = PRECISION_DIVISOR;
+      const addedAmount = amount * config.rewardsPerPeriod * duration
+        / config.periodLength / PRECISION_DIVISOR;
 
-      // const x = Math.floor(Number(a) / Number(b) / Number(c));
-
-      rewards += amount * config.rewardsPerPeriod * durationCopy / config.periodLength / PRECISION_DIVISOR;
+      rewards += addedAmount;
       return rewards;
     }
   }
 
   return rewards;
-}
+};

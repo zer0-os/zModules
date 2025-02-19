@@ -22,97 +22,29 @@ import {
   INIT_BALANCE,
 } from "../constants";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 export const createDefaultStakingConfig = async (
-  contractOwner : SignerWithAddress,
-  rewardsERC20 ?: MockERC20,
-  erc721 ?: MockERC721,
-  stakeERC20 ?: MockERC20,
-  stakeRepERC20 ?: ZeroVotingERC20,
-  stakeRepERC721 ?: ZeroVotingERC721,
-): Promise<[string, string, string, BaseConfig]> => {
+  erc721 ?: boolean
+) : Promise<BaseConfig> => {
   const config : Partial<BaseConfig> = {
     minimumLockTime: DEFAULT_MINIMUM_LOCK,
     minimumRewardsMultiplier: DEFAULT_MINIMUM_RM,
     maximumRewardsMultiplier: DEFAULT_MAXIMUM_RM,
-    contractOwner: contractOwner.address,
     canExit: true,
-    timestamp: BigInt(Math.floor(Date.now() / 1000)),
+    timestamp: BigInt(await time.latest()) + 1n, // Add 1n for hardhat auto mine
   };
-  
-  const rewardsToken = rewardsERC20 ? await rewardsERC20.getAddress() : hre.ethers.ZeroAddress;
-
-  let stakingToken;
-  let stakeRepToken;
 
   if (erc721) {
-    stakingToken = await erc721.getAddress();
     config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC721;
     config.periodLength = DEFAULT_PERIOD_LENGTH_ERC721;
-    stakeRepToken = await (stakeRepERC721 as ZeroVotingERC721).getAddress();
-
-    return [
-      stakingToken,
-      rewardsToken,
-      stakeRepToken,
-      config as BaseConfig
-    ]
+    return config as BaseConfig;
   } else {
-    if (stakeERC20) {
-      stakingToken = await stakeERC20.getAddress();
-    } else {
-      stakingToken = hre.ethers.ZeroAddress;
-    }
-
+    // ERC20 or native token
     config.rewardsPerPeriod = DEFAULT_REWARDS_PER_PERIOD_ERC20;
     config.periodLength = DEFAULT_PERIOD_LENGTH_ERC20;
-    stakeRepToken = await (stakeRepERC20 as ZeroVotingERC20).getAddress();
-
-    return [
-      stakingToken,
-      rewardsToken,
-      stakeRepToken,
-      config as BaseConfig
-    ]
+    return config as BaseConfig;
   }
-};
-
-export const getDefaultERC20SetupWithExit = async (
-  owner : SignerWithAddress,
-  incRewardsToken : MockERC20,
-  stakeToken : MockERC20,
-  incStakeRepToken : ZeroVotingERC20,
-  canExit : boolean
-) : Promise<StakingERC20> => {
-
-  const [
-    stakingToken,
-    rewardsToken,
-    stakeRepToken,
-    config
-  ] = await createDefaultStakingConfig(
-    owner,
-    incRewardsToken,
-    undefined,
-    stakeToken,
-    incStakeRepToken
-  );
-
-  config.canExit = canExit;
-
-  const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
-
-  const contract = await stakingFactory.deploy(
-    stakingToken,
-    rewardsToken,
-    stakeRepToken,
-    config
-  ) as StakingERC20;
-
-  await incStakeRepToken.connect(owner).grantRole(await incStakeRepToken.MINTER_ROLE(), await contract.getAddress());
-  await incStakeRepToken.connect(owner).grantRole(await incStakeRepToken.BURNER_ROLE(), await contract.getAddress());
-
-  return contract;
 };
 
 export const getDefaultERC20Setup = async (
@@ -122,25 +54,20 @@ export const getDefaultERC20Setup = async (
   stakeRepToken : ZeroVotingERC20,
 ) : Promise<[StakingERC20, BaseConfig]> => {
 
-  const [
-    stakingTokenAddress,
-    rewardsTokenAddress,
-    stakeRepTokenAddress,
-    config
-  ] = await createDefaultStakingConfig(
-    owner,
-    rewardsToken,
-    undefined,
-    stakeToken,
-    stakeRepToken
+  const config = await createDefaultStakingConfig(
+    false
   );
 
   const stakingFactory = await hre.ethers.getContractFactory("StakingERC20");
 
+  // Add 1n for hardhat auto mine
+  config.timestamp = BigInt(await time.latest()) + 1n;
+
   const contract = await stakingFactory.deploy(
-    stakingTokenAddress,
-    rewardsTokenAddress,
-    stakeRepTokenAddress,
+    owner.address,
+    await stakeToken.getAddress(),
+    await rewardsToken.getAddress(),
+    await stakeRepToken.getAddress(),
     config
   ) as StakingERC20;
 
@@ -153,25 +80,18 @@ export const getDefaultERC20Setup = async (
 export const getNativeSetupERC20 = async (
   owner : SignerWithAddress,
   stakeRepToken : ZeroVotingERC20,
-) => {
-  const [
-    stakeTokenAddress,
-    rewardsTokenAddress,
-    stakeRepTokenAddress,
-    config
-  ] = await createDefaultStakingConfig(
-    owner,
-    undefined,
-    undefined,
-    undefined,
-    stakeRepToken,
+) : Promise<[StakingERC20, BaseConfig]> => {
+  const config = await createDefaultStakingConfig(
+    false
   );
 
   const localStakingFactory = await hre.ethers.getContractFactory("StakingERC20");
+
   const contract = await localStakingFactory.deploy(
-    stakeTokenAddress, // will be 0x0
-    rewardsTokenAddress, // will be 0x0
-    stakeRepTokenAddress,
+    owner.address,
+    hre.ethers.ZeroAddress,
+    hre.ethers.ZeroAddress,
+    await stakeRepToken.getAddress(),
     config
   ) as StakingERC20;
 
@@ -183,7 +103,7 @@ export const getNativeSetupERC20 = async (
   // Provide rewards funding in native token
   await fundRewards(contractAddress);
 
-  return contract;
+  return [contract, config];
 };
 
 export const getNativeSetupERC721 = async (
@@ -191,25 +111,17 @@ export const getNativeSetupERC721 = async (
   stakeToken : MockERC721,
   stakeRepToken : ZeroVotingERC721
 ) => {
-  const [
-    stakingTokenAddress,
-    rewardsTokenAddress,
-    stakeRepTokenAddress,
-    config
-  ] = await createDefaultStakingConfig(
-    owner,
-    undefined,
-    stakeToken,
-    undefined,
-    undefined,
-    stakeRepToken,
+  const config = await createDefaultStakingConfig(
+    true
   );
 
   const stakingFactory = await hre.ethers.getContractFactory("StakingERC721");
+
   const contract = await stakingFactory.deploy(
-    stakingTokenAddress, // will be 0x0
-    rewardsTokenAddress, // will be 0x0
-    stakeRepTokenAddress,
+    owner.address,
+    await stakeToken.getAddress(),
+    hre.ethers.ZeroAddress,
+    await stakeRepToken.getAddress(),
     config
   ) as StakingERC721;
 
@@ -233,7 +145,7 @@ export const fundAndApprove = async (
   amount ?: bigint,
 ) => {
   for (const address of addresses) {
-    await stakeToken.connect(owner).transfer(
+    await stakeToken.connect(owner).mint(
       address,
       amount ?? INIT_BALANCE
     );
@@ -244,6 +156,7 @@ export const fundAndApprove = async (
   }
 };
 
+// For funding when using native token as rewards
 const fundRewards = async (contractAddress : string) => {
   await hre.network.provider.send("hardhat_setBalance", [
     contractAddress,

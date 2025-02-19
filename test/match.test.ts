@@ -642,7 +642,6 @@ describe("Match Contract",  () => {
         match: match2,
         dbAdapter,
       } = campaign);
-      const token = await match2.token();
     });
 
     after(async () => {

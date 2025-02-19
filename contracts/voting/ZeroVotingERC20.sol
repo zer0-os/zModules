@@ -5,7 +5,6 @@ import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { IZeroVotingERC20 } from "./IZeroVotingERC20.sol";
 
 
@@ -45,9 +44,11 @@ contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
         ERC20(name, symbol)
         EIP712(domainName, domainVersion)
     {
+        if (admin == address(0)) {
+            revert ZeroAddressPassed();
+        }
+
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(BURNER_ROLE, admin);
-        _grantRole(MINTER_ROLE, admin);
     }
 
     /**
@@ -59,7 +60,7 @@ contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
     function mint(
         address account,
         uint256 value
-    ) public override onlyRole(MINTER_ROLE) {
+    ) external override onlyRole(MINTER_ROLE) {
         _mint(
             account,
             value
@@ -75,7 +76,7 @@ contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
     function burn(
         address account,
         uint256 amount
-    ) public override onlyRole(BURNER_ROLE) {
+    ) external override onlyRole(BURNER_ROLE) {
         _burn(
             account,
             amount

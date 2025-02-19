@@ -8,6 +8,7 @@ import { IStakingERC721 } from "./IStakingERC721.sol";
 import { StakingBase } from "../StakingBase.sol";
 import { IERC721MintableBurnableURIStorage } from "../../types/IERC721MintableBurnableURIStorage.sol";
 
+
 /**
  * @title Staking721
  * @notice A staking contract that allows depositing ERC721 tokens and mints a
@@ -33,20 +34,24 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     }
 
     constructor(
-        address stakingToken,
-        address rewardsToken,
-        address stakeRepToken,
-        Config memory config
-    )   
+        address _contractOwner,
+        address _stakingToken,
+        address _rewardsToken,
+        address _stakeRepToken,
+        RewardConfig memory _config
+    )
         StakingBase(
-            stakingToken,
-            rewardsToken,
-            stakeRepToken,
-            config
+            _contractOwner,
+            _stakingToken,
+            _rewardsToken,
+            _stakeRepToken,
+            _config
         )
     {
-        if (stakingToken.code.length == 0) {
-            revert InitializedWithZero();
+        // Disallow use of native token as staking token or stakeRepToken
+        // must be specifically an ERC721 token here
+        if (_stakingToken.code.length == 0) {
+            revert InvalidAddress();
         }
     }
 
@@ -62,7 +67,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         uint256[] calldata tokenIds,
         string[] calldata tokenUris,
         uint256 lockDuration
-    ) external override {
+    ) external override nonReentrant {
         if (lockDuration < _getLatestConfig().minimumLockTime) {
             revert LockTimeTooShort();
         }
@@ -79,14 +84,14 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
     function stakeWithoutLock(
         uint256[] calldata tokenIds,
         string[] calldata tokenUris
-    ) external override {
+    ) external override nonReentrant {
         _stake(tokenIds, tokenUris, 0);
     }
 
     /**
      * @notice Claim rewards for the calling user based on their staked amount
      */
-    function claim() public override {
+    function claim() public override nonReentrant {
         NFTStaker storage nftStaker = nftStakers[msg.sender];
 
         _coreClaim(nftStaker.stake);
@@ -96,10 +101,10 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @notice Unstake tokens that were not locked
      * @dev Will revert if the incoming array contains tokens that were locked
      * @dev OPTIMIZATION: make unstake flow more manageable by separating functionality
-     * 
+     *
      * @param _tokenIds Array of tokens to unstake
      */
-    function unstakeUnlocked(uint256[] memory _tokenIds) public override {
+    function unstakeUnlocked(uint256[] memory _tokenIds) public override nonReentrant {
         _unstakeUnlocked(_tokenIds);
     }
 
@@ -107,21 +112,21 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      * @notice Unstake tokens that were locked and are now passed their lock period
      * @dev Will revert if the incoming array contains tokens that were never locked
      * @dev OPTIMIZATION: make unstake flow more manageable by separating functionality
-     * 
+     *
      * @param _tokenIds Array of tokens to unstake
      */
-    function unstakeLocked(uint256[] memory _tokenIds) public override {
+    function unstakeLocked(uint256[] memory _tokenIds) public override nonReentrant {
         _unstakeLocked(_tokenIds);
     }
 
-        /**
-     * @notice Withdraw locked or unlocked staked funds receiving no rewards 
+    /**
+     * @notice Withdraw locked or unlocked staked funds receiving no rewards
      * @dev OPTIMIZATION: make unstake flow more manageable by separating functionality
-     * 
+     *
      * @param _tokenIds Array of token IDs to withdraw
      * @param _locked Indicates whether to withdraw locked or non-locked funds
      */
-    function exit(uint256[] memory _tokenIds, bool _locked) public override {
+    function exit(uint256[] memory _tokenIds, bool _locked) public override nonReentrant {
         if (!_getLatestConfig().canExit) revert CannotExit();
         _exit(_tokenIds, _locked);
     }
@@ -139,6 +144,14 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
      */
     function getPendingRewards() public view override returns (uint256) {
         return _getPendingRewards(nftStakers[msg.sender].stake);
+    }
+
+    /**
+     * @notice Check if a token is locked
+     * @param tokenId The token ID to check
+     */
+    function isLocked(uint256 tokenId) public view override returns (bool) {
+        return nftStakers[msg.sender].locked[tokenId];
     }
 
     function onERC721Received(
@@ -211,9 +224,9 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         // Calculate rewards before any state manipulation
         uint256 rewards = nftStaker.stake.owedRewardsLocked + _getStakeRewards(
+            _mostRecentTimestamp(nftStaker.stake),
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
-            block.timestamp - _mostRecentTimestamp(nftStaker.stake),
             false
         );
 
@@ -223,33 +236,28 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         if (nftStaker.stake.amountStakedLocked == 0) {
             nftStaker.stake.lastTimestampLocked = 0;
-            nftStaker.stake.unlockedTimestamp = 0; 
+            nftStaker.stake.unlockedTimestamp = 0;
         } else {
             // No change to unlockedTimestamp if there are still locked funds
             nftStaker.stake.lastTimestampLocked = block.timestamp;
         }
 
-        
-
         uint256 i;
         for (i; i < tokenIds.length;) {
+            uint256 tokenId = tokenIds[i];
 
             // Revert if the user passes in tokenIds that were not locked
-            if (!nftStaker.locked[tokenIds[i]]) {
+            if (!nftStaker.locked[tokenId]) {
                 revert InvalidUnstake();
             }
 
             // Function is `onlySNFTOwner` guarded
-            _coreUnstake(tokenIds[i]);
-            nftStaker.locked[tokenIds[i]] = false;
+            _coreUnstake(tokenId);
+            nftStaker.locked[tokenId] = false;
 
             unchecked {
                 ++i;
             }
-        }
-
-        if (_getContractRewardsBalance() < rewards) {
-            revert InsufficientContractBalance();
         }
 
         _transferAmount(rewardsToken, rewards);
@@ -271,9 +279,9 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         // Calculate rewards before any state manipulation
         uint256 rewards = nftStaker.stake.owedRewards + _getStakeRewards(
+            nftStaker.stake.lastTimestamp,
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
-            block.timestamp - nftStaker.stake.lastTimestamp,
             false
         );
 
@@ -298,10 +306,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             }
         }
 
-        if (_getContractRewardsBalance() < rewards) {
-            revert InsufficientContractBalance();
-        }
-
         _transferAmount(rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
@@ -324,11 +328,14 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
             // If calling exit for locked/unlocked tokens, but provides valid and owned
             // tokenIds of the opposite lock state, revert
-            if (_locked && !nftStaker.locked[tokenId]) {
-                revert NotFullExit();
-            } else if (!_locked && nftStaker.locked[tokenId]) {
+            bool wasLocked = nftStaker.locked[tokenId];
+
+            if (_locked && !wasLocked) {
                 revert NotFullExit();
             }
+            // else if (!_locked && wasLocked) {
+            //     revert NotFullExit();
+            // }
 
             _coreUnstake(tokenId);
             nftStaker.locked[tokenId] = false;

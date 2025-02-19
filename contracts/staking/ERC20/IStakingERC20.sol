@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
+import { IStakingBase } from "../IStakingBase.sol";
 
 
 /**
  * @title IStakingERC20
  * @notice Interface for the ERC20 staking contract
  */
-interface IStakingERC20 {
+interface IStakingERC20 is IStakingBase{
     /**
      * @notice Emit when a user stakes a token
      * @param staker The address of the account which staked
