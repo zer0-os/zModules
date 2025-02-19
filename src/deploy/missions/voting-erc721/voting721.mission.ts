@@ -32,16 +32,18 @@ IZModulesContracts
     const {
       name,
       symbol,
-      version,
       baseUri,
+      domainName,
+      domainVersion,
       admin,
     } = votingERC721Config as IVotingERC721Config;
 
     return [
       name,
       symbol,
-      version,
       baseUri,
+      domainName,
+      domainVersion,
       admin,
     ];
   }

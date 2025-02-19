@@ -7,6 +7,8 @@ export const getVoting721DeployConfig = ({
 } : {
   tokenAdmin : SignerWithAddress;
 }) : IVotingERC721Config => {
+  if (!tokenAdmin) throw new Error("Missing token admin for VotingERC721!");
+
   if (
     !process.env.VOTING721_TOKEN_NAME ||
       !process.env.VOTING721_TOKEN_SYMBOL ||
@@ -17,13 +19,12 @@ export const getVoting721DeployConfig = ({
     throw new Error("Missing required env variables for VotingERC721!");
   }
 
-  // TODO dep: add other vars here and in the mission when updated with post audit code
   return {
     name: process.env.VOTING721_TOKEN_NAME,
     symbol: process.env.VOTING721_TOKEN_SYMBOL,
-    version: process.env.VOTING721_DOMAIN_VERSION,
     baseUri: process.env.VOTING721_BASE_URI,
+    domainName: process.env.VOTING721_DOMAIN_NAME,
+    domainVersion: process.env.VOTING721_DOMAIN_VERSION,
     admin: tokenAdmin,
   };
 };
-

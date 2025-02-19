@@ -105,9 +105,9 @@ describe("zModules Deploy Integration Test", () => {
       } = campaign);
 
       // tokens
-      expect(await staking.getStakingToken()).to.eq(stakeToken.target);
-      expect(await staking.getRewardsToken()).to.eq(rewardsToken.target);
-      expect(await staking.getStakeRepToken()).to.eq(stakeRepToken.target);
+      expect(await staking.stakingToken()).to.eq(stakeToken.target);
+      expect(await staking.rewardsToken()).to.eq(rewardsToken.target);
+      expect(await staking.stakeRepToken()).to.eq(stakeRepToken.target);
 
       // config
       stakingConfig = staking20Config;
@@ -131,6 +131,7 @@ describe("zModules Deploy Integration Test", () => {
       ).to.eq(
         stakingConfig.STAKING20_REWARDS_PER_PERIOD
       );
+      // TODO dep: check `canExit` flag
     });
 
     it("StakingERC20 should have MINTER_ROLE and BURNER_ROLE of StakeRepToken", async () => {

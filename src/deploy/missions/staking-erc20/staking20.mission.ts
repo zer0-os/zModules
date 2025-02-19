@@ -118,6 +118,8 @@ IZModulesContracts
 
     const stakingAddress = await staking20.getAddress();
 
+    this.logger.debug("Setting up roles on VotingERC20 contract");
+
     await votingErc20
       .connect(admin)
       .grantRole(roles.voting.MINTER_ROLE, stakingAddress);
@@ -127,7 +129,11 @@ IZModulesContracts
       .grantRole(roles.voting.BURNER_ROLE, stakingAddress);
 
     // revoke admin role after granting minter and burner roles
-    if (shouldRevokeAdminRole)
+    if (shouldRevokeAdminRole) {
       await votingErc20.connect(admin).revokeRole(roles.voting.DEFAULT_ADMIN_ROLE, admin.address);
+      this.logger.debug("VotingERC20 DEFAULT_ADMIN_ROLE revoked");
+    }
+
+    this.logger.debug("VotingERC20 roles set up successfully");
   }
 }

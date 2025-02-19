@@ -3,6 +3,7 @@ import {
   IStakingERC721Config,
 } from "../../campaign/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { EnvironmentLevels } from "@zero-tech/zdc";
 
 
 export const getStaking721DeployConfig = ({
@@ -28,13 +29,14 @@ export const getStaking721DeployConfig = ({
     !process.env.STAKING721_PERIOD_LENGTH ||
     !process.env.STAKING721_MIN_LOCK_TIME ||
     !process.env.STAKING721_MIN_REWARDS_MULTIPLIER ||
-    !process.env.STAKING721_MAX_REWARDS_MULTIPLIER
+    !process.env.STAKING721_MAX_REWARDS_MULTIPLIER ||
+    !process.env.STAKING721_CAN_EXIT
   ) {
     throw new Error("Missing required env variables for StakingERC721!");
   }
 
   if (
-    env === "prod" &&
+    env === EnvironmentLevels.prod &&
         (!process.env.STAKING721_STAKING_TOKEN ||
           !process.env.STAKING721_REWARDS_TOKEN)
   ) {
@@ -42,10 +44,10 @@ export const getStaking721DeployConfig = ({
   }
 
   const mockTokens =
-      (env === "dev" || env === "test") &&
+      (env === EnvironmentLevels.dev || env === EnvironmentLevels.test) &&
       (!process.env.STAKING721_STAKING_TOKEN || !process.env.STAKING721_REWARDS_TOKEN);
 
-  if (env === "dev" || env === "test") {
+  if (env === EnvironmentLevels.dev || env === EnvironmentLevels.test) {
     if (!mockTokens) {
       assert.ok(
         !!process.env.STAKING721_STAKING_TOKEN && !!process.env.STAKING721_REWARDS_TOKEN,
@@ -67,6 +69,7 @@ export const getStaking721DeployConfig = ({
     contractOwner: owner,
     minimumRewardsMultiplier: BigInt(process.env.STAKING721_MIN_REWARDS_MULTIPLIER),
     maximumRewardsMultiplier: BigInt(process.env.STAKING721_MAX_REWARDS_MULTIPLIER),
+    canExit: process.env.STAKING721_CAN_EXIT === "true",
   };
 
   return config;

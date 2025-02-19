@@ -42,8 +42,9 @@ export interface IVotingERC20Config {
 export interface IVotingERC721Config {
   name : string;
   symbol : string;
-  version : string;
   baseUri : string;
+  domainName : string;
+  domainVersion : string;
   admin : SignerWithAddress;
 }
 
