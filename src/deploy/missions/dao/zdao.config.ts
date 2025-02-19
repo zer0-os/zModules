@@ -2,9 +2,8 @@ import { IDAOConfig } from "../../campaign/types";
 
 
 export const getDAOConfig = () : IDAOConfig => {
-  let config = {} as IDAOConfig;
-
   if (
+    !process.env.DAO_VOTING_TOKEN ||
     !process.env.DAO_GOV_NAME ||
     !process.env.DAO_VOTING_DELAY ||
     !process.env.DAO_VOTING_PERIOD ||
@@ -15,7 +14,7 @@ export const getDAOConfig = () : IDAOConfig => {
     throw new Error("Missing required env variables for DAO!");
   }
 
-  config = {
+  const config = {
     shouldRevokeAdminRole: process.env.DAO_REVOKE_ADMIN_ROLE !== "false",
     governorName: process.env.DAO_GOV_NAME,
     votingToken: process.env.DAO_VOTING_TOKEN,

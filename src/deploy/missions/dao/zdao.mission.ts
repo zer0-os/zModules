@@ -27,20 +27,37 @@ IZModulesContracts
       },
       votingErc20,
       votingErc721,
-      timelockController: campaignTimelockController,
+      timelockController,
     } = this.campaign;
 
-    if (votingErc20 && votingErc721) {
-      throw new Error("Both votingERC20 and votingERC721 tokens are provided. Only one token should be specified.");
-    }
-
-    let {
-      votingToken,
-      timelockController,
+    const {
+      votingToken: votingTokenAddress,
+      timelockController: timeLockControllerAddress,
     } = this.campaign.config.daoConfig as IDAOConfig;
 
-    if (!timelockController) {
-      timelockController = campaignTimelockController;
+    let votingTokenArg;
+    if (votingErc20 && votingErc721) {
+      // eslint-disable-next-line max-len
+      throw new Error("Both votingERC20 and votingERC721 tokens are in campaign state. Only one token should be specified!");
+    } else if (!votingErc20 && !votingErc721 && !votingTokenAddress) {
+      throw new Error("No voting token provided for zDAO!");
+    } else if (!votingErc20 && !votingErc721) {
+      votingTokenArg = votingTokenAddress;
+    } else if (votingErc20) {
+      votingTokenArg = await votingErc20.getAddress();
+    } else if (votingErc721) {
+      votingTokenArg = await votingErc721.getAddress();
+    }
+
+    let timelockArg;
+    if (!timelockController && !timeLockControllerAddress) {
+      throw new Error("No timelock controller provided for zDAO!");
+    } else if (timelockController && timeLockControllerAddress) {
+      throw new Error("Both timelockController contract and address are present. Only one should be specified!");
+    } else if (!timelockController) {
+      timelockArg = timeLockControllerAddress;
+    } else {
+      timelockArg = await timelockController.getAddress();
     }
 
     const {
@@ -52,27 +69,16 @@ IZModulesContracts
       voteExtension,
     } = daoConfig as IDAOConfig;
 
-    if (!votingToken) votingToken = votingErc20 || votingErc721;
-
-    if (votingToken && timelockController) {
-      const votingTokenAddress =
-        typeof votingToken === "string" ? votingToken : votingToken.target;
-      const timelockControllerAddress =
-        typeof timelockController === "string" ? timelockController : timelockController.target;
-
-      return [
-        governorName,
-        votingTokenAddress,
-        timelockControllerAddress,
-        votingDelay,
-        votingPeriod,
-        proposalThreshold,
-        quorumPercentage,
-        voteExtension,
-      ];
-    } else {
-      throw new Error("Must provide voting token and timelock controller to use for DAO contract");
-    }
+    return [
+      governorName,
+      votingTokenArg,
+      timelockArg,
+      votingDelay,
+      votingPeriod,
+      proposalThreshold,
+      quorumPercentage,
+      voteExtension,
+    ];
   }
 
   async needsPostDeploy () : Promise<boolean> {
@@ -81,18 +87,16 @@ IZModulesContracts
         deployAdmin,
       },
       zDao,
-      timelockController: campaignTimelockController,
+      timelockController,
     } = this.campaign;
 
-    let {
-      timelockController,
+    const {
+      timelockController: timelockControllerAddress,
     } = this.campaign.config.daoConfig as IDAOConfig;
 
-    if (!timelockController) {
-      timelockController = campaignTimelockController;
-    } else {
-      timelockController = await hre.ethers.getContractAt(contractNames.timelock.contract, timelockController);
-    }
+    const timelockControllerContract = !timelockController
+      ? await hre.ethers.getContractAt(contractNames.timelock.contract, timelockControllerAddress!)
+      : timelockController;
 
     const {
       DEFAULT_ADMIN_ROLE,
@@ -101,9 +105,10 @@ IZModulesContracts
     } = roles.timelock;
 
     const needs =
-        !await timelockController.connect(deployAdmin).hasRole(DEFAULT_ADMIN_ROLE, deployAdmin.address) ||
-        !await timelockController.connect(deployAdmin).hasRole(PROPOSER_ROLE, zDao.target) ||
-        !await timelockController.connect(deployAdmin).hasRole(EXECUTOR_ROLE, zDao.target);
+        !await timelockControllerContract.connect(deployAdmin).hasRole(DEFAULT_ADMIN_ROLE, deployAdmin.address) ||
+        !await timelockControllerContract.connect(deployAdmin).hasRole(PROPOSER_ROLE, zDao.target) ||
+        !await timelockControllerContract.connect(deployAdmin).hasRole(EXECUTOR_ROLE, zDao.target);
+    // TODO dep: add canceller role to be able to timelock.cancel()
 
     this.logger.debug(`${this.contractName} ${needs ? "needs" : "doesn't need"} post deploy sequence`);
 
