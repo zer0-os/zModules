@@ -10,7 +10,6 @@ interface IStakingBase {
     /**
      * @notice Struct to track an individual staker's data
      *
-     * @param lockDuration The duration of the lock
      * @param unlockedTimestamp The timestamp when the stake unlocks
      * @param amountStaked The amount of tokens staked
      * @param amountStakedLocked The amount of tokens locked
@@ -20,7 +19,6 @@ interface IStakingBase {
      * @param lastTimestampLocked The timestamp of the last locked action
      */
     struct Staker {
-        uint256 lockDuration;
         uint256 unlockedTimestamp;
         uint256 amountStaked;
         uint256 amountStakedLocked;
@@ -31,26 +29,23 @@ interface IStakingBase {
     }
     /**
      * @notice Struct to hold all required config variables
-     *
-     * @param stakingToken The address of the token being staked
-     * @param contractOwner The address of the contract owner
-     * @param rewardsToken The address of the token being rewarded
-     * @param rewardsPerPeriod The amount of rewards per period
+     * 
+     * @param timestamp When the config was set
+     * @param rewardsPerPeriod The amount of rewards given per period
      * @param periodLength The length of each period
      * @param minimumLockTime The minimum amount of time a user must lock
      * @param minimumRewardsMultiplier The minimum multiplier for rewards
      * @param maximumRewardsMultiplier The maximum multiplier for rewards
+     * @param canExit Flag to indicate if `exit` is allowed or not
      */
-    struct Config {
-        address stakingToken;
-        address contractOwner;
-        address rewardsToken;
-        address stakeRepToken;
+    struct RewardConfig {
+        uint256 timestamp;
         uint256 rewardsPerPeriod;
         uint256 periodLength;
         uint256 minimumLockTime;
         uint256 minimumRewardsMultiplier;
         uint256 maximumRewardsMultiplier;
+        bool canExit;
     }
 
     /**
@@ -75,63 +70,11 @@ interface IStakingBase {
     );
 
     /**
-     * @notice Emit when `reqwardsPerPeriod` is set
-     * @param owner The address of the contract owner
-     * @param rewardsPerPeriod The new rewards per period value
+     * @notice Emit when the config is set
+     * @param rewardConfig The incoming config
      */
-    event RewardsPerPeriodSet(
-        address indexed owner,
-        uint256 indexed rewardsPerPeriod
-    );
-
-    /**
-     * @notice Emit when the period length is set
-     * @param owner The address of the contract owner
-     * @param periodLength The new period length value
-     */
-    event PeriodLengthSet(
-        address indexed owner,
-        uint256 indexed periodLength
-    );
-
-    /**
-     * @notice Emit when the multiplier is set
-     * @param owner The address of the contract owner
-     * @param multiplier The new multiplier value
-     */
-    event MultiplierSet(
-        address indexed owner,
-        uint256 indexed multiplier
-    );
-
-    /**
-     * @notice Emit when the minimum lock time is set
-     * @param owner The address of the contract owner
-     * @param minimumLockTime The new minimum lock time
-     */
-    event MinimumLockTimeSet(
-        address indexed owner,
-        uint256 indexed minimumLockTime
-    );
-
-    /**
-     * @notice Emit when the minimum rewards multiplier is set
-     * @param owner The address of the contract owner
-     * @param minimumRewardsMultiplier The new minimum rewards multiplier
-     */
-    event MinimumRewardsMultiplierSet(
-        address indexed owner,
-        uint256 indexed minimumRewardsMultiplier
-    );
-
-    /**
-     * @notice Emit when the maximum rewards multiplier is set
-     * @param owner The address of the contract owner
-     * @param maximumRewardsMultiplier The new maximum rewards multiplier
-     */
-    event MaximumRewardsMultiplierSet(
-        address indexed owner,
-        uint256 indexed maximumRewardsMultiplier
+    event RewardConfigSet(
+        RewardConfig indexed rewardConfig
     );
 
     /**
@@ -143,11 +86,6 @@ interface IStakingBase {
      * @notice Throw when the lock period has not passed
      */
     error TimeLockNotPassed();
-
-    /**
-     * @notice Throw when the user tries to exit the pool without their full staked amount
-     */
-    error NotFullExit();
 
     /**
      * @notice Throw when trying to claim but user has no rewards
@@ -181,37 +119,27 @@ interface IStakingBase {
      */
     error GasTokenTransferFailed();
 
+    /**
+     * @notice Throw when a call to exit is disallowed
+     */
+    error CannotExit();
+
+    /**
+     * @notice Throw when incoming address is invalid
+     */
+    error InvalidAddress();
+
     receive() external payable;
 
     function withdrawLeftoverRewards() external;
 
-    function setRewardsPerPeriod(uint256 _rewardsPerPeriod) external;
-
-    function setPeriodLength(uint256 _periodLength) external;
-
-    function setMinimumLockTime(uint256 _minimumLockTime) external;
-
-    function setMinimumRewardsMultiplier(uint256 _minimumRewardsMultiplier) external;
-
-    function setMaximumRewardsMultiplier(uint256 _maximumRewardsMultiplier) external;
+    function setRewardConfig(RewardConfig memory _config) external;
 
     function getContractRewardsBalance() external view returns (uint256);
 
-    function getStakingToken() external view returns(address);
-
-    function getRewardsToken() external view returns(address);
-
-    function getStakeRepToken() external view returns (address);
-
-    function getRewardsPerPeriod() external view returns(uint256);
-
     function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) external view returns (uint256);
 
-    function getPeriodLength() external view returns(uint256);
+    function getLatestConfig() external view returns (RewardConfig memory);
 
-    function getMinimumLockTime() external view returns(uint256);
-
-    function getMinimumRewardsMultiplier() external view returns(uint256);
-
-    function getMaximumRewardsMultiplier() external view returns(uint256);
+    function rewardConfigTimestamps(uint256 index) external view returns (uint256);
 }

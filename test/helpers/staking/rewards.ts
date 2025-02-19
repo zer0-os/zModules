@@ -1,3 +1,5 @@
+import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { LOCKED_PRECISION_DIVISOR, PRECISION_DIVISOR } from "../constants";
 import { BaseConfig } from "./types";
 
 export const calcTotalUnlockedRewards = (
@@ -79,6 +81,49 @@ export const calcStakeRewards = (
 
   const rewards =
     rewardsMultiplier * amount * config.rewardsPerPeriod * timeDuration / config.periodLength / divisor;
+
+  return rewards;
+};
+
+export const calcUpdatedStakeRewards = async (
+  timeOrDuration : bigint,
+  amount : bigint,
+  locked : boolean,
+  configs : Array<BaseConfig>
+) => {
+  if (locked) {
+    // Simply return calculation from latest config when locked
+    const config = configs[configs.length - 1];
+    return calcRewardsMultiplier(timeOrDuration, config)
+      * amount * config.rewardsPerPeriod * timeOrDuration / config.periodLength / LOCKED_PRECISION_DIVISOR;
+  }
+
+  let rewards = 0n;
+  let duration = BigInt(await time.latest()) - timeOrDuration;
+  let lastTimestamp = BigInt(await time.latest());
+
+  let i = configs.length;
+  for (i; i > 0; --i) {
+    const config = configs[i - 1];
+
+    if (config.timestamp > timeOrDuration) {
+
+      const effectiveDuration = lastTimestamp - config.timestamp;
+      lastTimestamp = config.timestamp;
+      duration -= effectiveDuration;
+
+      const addedAmount = amount * config.rewardsPerPeriod * effectiveDuration
+        / config.periodLength / PRECISION_DIVISOR;
+
+      rewards += addedAmount;
+    } else {
+      const addedAmount = amount * config.rewardsPerPeriod * duration
+        / config.periodLength / PRECISION_DIVISOR;
+
+      rewards += addedAmount;
+      return rewards;
+    }
+  }
 
   return rewards;
 };

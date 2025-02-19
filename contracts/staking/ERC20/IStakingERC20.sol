@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
+import { IStakingBase } from "../IStakingBase.sol";
 
 
 /**
  * @title IStakingERC20
  * @notice Interface for the ERC20 staking contract
  */
-interface IStakingERC20 {
+interface IStakingERC20 is IStakingBase{
     /**
      * @notice Emit when a user stakes a token
      * @param staker The address of the account which staked
@@ -30,6 +31,18 @@ interface IStakingERC20 {
     );
 
     /**
+     * @notice Emit when a users exits
+     * @param staker The address of the user exiting
+     * @param amount The amount withdrawn
+     * @param locked If the amount was locked
+     */
+    event Exited(
+        address indexed staker,
+        uint256 indexed amount,
+        bool indexed locked
+    );
+
+    /**
      * @notice Revert when the user tries to unstake more than the initial stake amount
      */
     error UnstakeMoreThanStake();
@@ -50,9 +63,11 @@ interface IStakingERC20 {
 
     function claim() external;
 
-    function unstake(uint256 amount, bool exit) external;
+    function unstakeUnlocked(uint256 amount) external;
 
-    function unstakeLocked(uint256 amount, bool exit) external;
+    function unstakeLocked(uint256 amount) external;
+
+    function exit(bool locked) external;
 
     function getRemainingLockTime() external view returns (uint256);
 

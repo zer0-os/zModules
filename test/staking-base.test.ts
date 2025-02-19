@@ -3,127 +3,171 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseConfig, createDefaultStakingConfig } from "./helpers/staking";
 import { MockERC20, StakingBase, ZeroVotingERC20 } from "../typechain";
 import { expect } from "chai";
-import { INVALID_MULTIPLIER_ERR, OWNABLE_UNAUTHORIZED_ERR } from "./helpers/errors";
+import { INVALID_ADDR_ERR, INVALID_MULTIPLIER_ERR, ZERO_INIT_ERR } from "./helpers/errors";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 
 describe("StakingBase Unit Tests", () => {
   let owner : SignerWithAddress;
-  let user : SignerWithAddress;
 
-  let initialConfig : BaseConfig;
+  let config : BaseConfig;
 
   let stakingBase : StakingBase;
-  let mockErc1 : MockERC20;
-  let mockErc2 : MockERC20;
-  let mockErc3 : MockERC20;
+  let mockRewards : MockERC20;
+  let mockStaking : MockERC20;
+  let mockStakeRep : MockERC20;
 
   before(async () => {
-    [owner, user] = await hre.ethers.getSigners();
+    [owner] = await hre.ethers.getSigners();
 
-    const erc20Fact = await hre.ethers.getContractFactory("MockERC20");
-    mockErc1 = await erc20Fact.deploy("reward", "symbol");
-    mockErc2 = await erc20Fact.deploy("stake", "symbol");
-    mockErc3 = await erc20Fact.deploy("stakeRep", "symbol");
+    const erc20Factory = await hre.ethers.getContractFactory("MockERC20");
+    mockRewards = await erc20Factory.deploy("reward", "symbol");
+    mockStaking = await erc20Factory.deploy("stake", "symbol");
+    mockStakeRep = await erc20Factory.deploy("stakeRep", "symbol");
 
-    const fact = await hre.ethers.getContractFactory("StakingBase");
+    const factory = await hre.ethers.getContractFactory("StakingBase");
 
-    initialConfig = await createDefaultStakingConfig(
-      owner,
-      mockErc1,
-      undefined,
-      mockErc2,
-      mockErc3 as ZeroVotingERC20,
-      undefined,
+    config = await createDefaultStakingConfig(
+      false
     );
 
-    stakingBase = await fact.deploy(initialConfig);
+    stakingBase = await factory.deploy(
+      owner,
+      await mockStaking.getAddress(),
+      await mockRewards.getAddress(),
+      await mockStakeRep.getAddress(),
+      config
+    );
   });
 
-  describe("State Setters & Getters", () => {
-    it("#setRewardsPerPeriod() should set value correctly", async () => {
-      const rewards = 13546546;
-      await stakingBase.connect(owner).setRewardsPerPeriod(rewards);
-      expect(await stakingBase.getRewardsPerPeriod()).to.equal(rewards);
+  describe("Deploy", () => {
+    it("Fails when rewardsPerPeriod is 0", async () => {
+      const localFactory = await hre.ethers.getContractFactory("StakingBase");
+
+      const localConfig = await createDefaultStakingConfig(
+        false
+      );
+
+      localConfig.rewardsPerPeriod = 0n;
+
+      await expect(localFactory.deploy(
+        owner,
+        await mockStaking.getAddress(),
+        await mockRewards.getAddress(),
+        await mockStakeRep.getAddress(),
+        localConfig
+      )).to.be.revertedWithCustomError(stakingBase, ZERO_INIT_ERR);
     });
 
-    it("#setRewardsPerPeriod() should revert if called by non-owner", async () => {
-      await expect(
-        stakingBase.connect(user).setRewardsPerPeriod(123),
-      ).to.be.revertedWithCustomError(stakingBase, OWNABLE_UNAUTHORIZED_ERR);
+    it("Fails when periodLength is 0", async () => {
+      const localFactory = await hre.ethers.getContractFactory("StakingBase");
+
+      const localConfig = await createDefaultStakingConfig(
+        false
+      );
+
+      localConfig.periodLength = 0n;
+
+      await expect(localFactory.deploy(
+        owner,
+        await mockStaking.getAddress(),
+        await mockRewards.getAddress(),
+        await mockStakeRep.getAddress(),
+        localConfig
+      )).to.be.revertedWithCustomError(stakingBase, ZERO_INIT_ERR);
     });
 
-    it("#setPeriodLength() should set value correctly", async () => {
-      const periodLength = 123;
-      await stakingBase.connect(owner).setPeriodLength(periodLength);
-      expect(await stakingBase.getPeriodLength()).to.equal(periodLength);
+    it("Fails when stakeRepToken is not a contract", async () => {
+      const localFactory = await hre.ethers.getContractFactory("StakingBase");
+
+      await expect(localFactory.deploy(
+        owner,
+        await mockStaking.getAddress(),
+        await mockRewards.getAddress(),
+        owner.address,
+        config
+      )).to.be.revertedWithCustomError(stakingBase, INVALID_ADDR_ERR);
+    });
+  });
+
+  describe("#setRewardConfig", () => {
+    it("Fails when new min multiplier is greater than the max multiplier", async () => {
+      const localConfig = { ...config };
+      localConfig.minimumRewardsMultiplier = localConfig.maximumRewardsMultiplier + 1n;
+      localConfig.timestamp = BigInt(await time.latest()) + 1n;
+
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig))
+        .to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
     });
 
-    it("#setPeriodLength() should revert if called by non-owner", async () => {
-      await expect(
-        stakingBase.connect(user).setPeriodLength(123),
-      ).to.be.revertedWithCustomError(stakingBase, OWNABLE_UNAUTHORIZED_ERR);
+    it("Fails when new max multiplier is less than the min multiplier", async () => {
+      const localConfig = { ...config };
+      localConfig.maximumRewardsMultiplier = localConfig.minimumRewardsMultiplier - 1n;
+      localConfig.timestamp = BigInt(await time.latest()) + 1n;
+
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig))
+        .to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
     });
 
-    it("#setMinimumLockTime() should set value correctly", async () => {
-      const minLock = 123;
-      await stakingBase.connect(owner).setMinimumLockTime(minLock);
-      expect(await stakingBase.getMinimumLockTime()).to.equal(minLock);
+    it("Fails when new period length is 0", async () => {
+      const localConfig = { ...config };
+      localConfig.periodLength = 0n;
+      localConfig.timestamp = BigInt(await time.latest()) + 1n;
+
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig))
+        .to.be.revertedWithCustomError(stakingBase, ZERO_INIT_ERR);
     });
 
-    it("#setMinimumLockTime() should revert if called by non-owner", async () => {
-      await expect(
-        stakingBase.connect(user).setMinimumLockTime(123),
-      ).to.be.revertedWithCustomError(stakingBase, OWNABLE_UNAUTHORIZED_ERR);
+    it("Succeeds when new max multiplier is equal to min multiplier", async () => {
+      const localConfig = { ...config };
+      localConfig.maximumRewardsMultiplier = localConfig.minimumRewardsMultiplier;
+      localConfig.timestamp = BigInt(await time.latest()) + 1n;
+
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
+
+      const rewardConfig = await stakingBase.getLatestConfig();
+
+      expect(rewardConfig.minimumRewardsMultiplier).to.eq(localConfig.minimumRewardsMultiplier);
+      expect(rewardConfig.maximumRewardsMultiplier).to.eq(localConfig.maximumRewardsMultiplier);
     });
 
-    it("#setMinimumRewardsMultiplier() should set value correctly", async () => {
-      const minRM = 123;
-      await stakingBase.connect(owner).setMinimumRewardsMultiplier(minRM);
-      expect(await stakingBase.getMinimumRewardsMultiplier()).to.equal(minRM);
+    it("Succeeds when new max multiplier is greater than min multiplier", async () => {
+      const localConfig = { ...config };
+      localConfig.maximumRewardsMultiplier = localConfig.minimumRewardsMultiplier + 1n;
+      localConfig.timestamp = BigInt(await time.latest()) + 1n;
+
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
+
+      const rewardConfig = await stakingBase.getLatestConfig();
+
+      expect(rewardConfig.minimumRewardsMultiplier).to.eq(localConfig.minimumRewardsMultiplier);
+      expect(rewardConfig.maximumRewardsMultiplier).to.eq(localConfig.maximumRewardsMultiplier);
     });
 
-    it("#setMinimumRewardsMultiplier() should revert if called by non-owner", async () => {
-      await expect(
-        stakingBase.connect(user).setMinimumRewardsMultiplier(123),
-      ).to.be.revertedWithCustomError(stakingBase, OWNABLE_UNAUTHORIZED_ERR);
+    it("Succeeds when new min multiplier is equal to max multiplier", async () => {
+      const localConfig = { ...config };
+      localConfig.minimumRewardsMultiplier = localConfig.maximumRewardsMultiplier;
+      localConfig.timestamp = BigInt(await time.latest()) + 1n;
+
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
+
+      const rewardConfig = await stakingBase.getLatestConfig();
+
+      expect(rewardConfig.minimumRewardsMultiplier).to.eq(localConfig.minimumRewardsMultiplier);
+      expect(rewardConfig.maximumRewardsMultiplier).to.eq(localConfig.maximumRewardsMultiplier);
     });
 
-    it("#setMinimumRewardsMultiplier() should revert if multiplier passed is larger than maximum", async () => {
-      const currentMax = await stakingBase.getMaximumRewardsMultiplier();
-      await expect(
-        stakingBase.connect(owner).setMinimumRewardsMultiplier(currentMax + 1n),
-      ).to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
-    });
+    it("Succeeds when new min multiplier is less than max multiplier", async () => {
+      const localConfig = { ...config };
+      localConfig.minimumRewardsMultiplier = localConfig.maximumRewardsMultiplier - 1n;
+      localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-    it("#setMaximumRewardsMultiplier() should set value correctly", async () => {
-      const maxRM = 123;
-      await stakingBase.connect(owner).setMaximumRewardsMultiplier(maxRM);
-      expect(await stakingBase.getMaximumRewardsMultiplier()).to.equal(maxRM);
-    });
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
-    it("#setMaximumRewardsMultiplier() should revert if called by non-owner", async () => {
-      await expect(
-        stakingBase.connect(user).setMaximumRewardsMultiplier(123),
-      ).to.be.revertedWithCustomError(stakingBase, OWNABLE_UNAUTHORIZED_ERR);
-    });
+      const rewardConfig = await stakingBase.getLatestConfig();
 
-    it("#setMaximumRewardsMultiplier() should revert if multiplier passed is smaller than minimum", async () => {
-      const currentMin = await stakingBase.getMinimumRewardsMultiplier();
-      await expect(
-        stakingBase.connect(owner).setMaximumRewardsMultiplier(currentMin - 1n),
-      ).to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
-    });
-
-    it("#getStakingToken() should return correct value", async () => {
-      expect(await stakingBase.getStakingToken()).to.equal(await mockErc2.getAddress());
-    });
-
-    it("#getRewardsToken() should return correct value", async () => {
-      expect(await stakingBase.getRewardsToken()).to.equal(await mockErc1.getAddress());
-    });
-
-    it("#getStakeRepToken() should return correct value", async () => {
-      expect(await stakingBase.getStakeRepToken()).to.equal(await (mockErc3 as ZeroVotingERC20).getAddress());
+      expect(rewardConfig.minimumRewardsMultiplier).to.equal(localConfig.minimumRewardsMultiplier);
+      expect(rewardConfig.maximumRewardsMultiplier).to.equal(localConfig.maximumRewardsMultiplier);
     });
   });
 });

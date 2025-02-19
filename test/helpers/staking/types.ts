@@ -4,17 +4,13 @@ import {
 } from "ethers";
 
 export interface BaseConfig {
-  stakingToken : string;
-  rewardsToken : string;
-  stakeRepToken : string;
+  timestamp : bigint;
   rewardsPerPeriod : bigint;
   periodLength : bigint;
   minimumLockTime : bigint;
-  divisor : bigint;
-  lockedDivisor : bigint;
   minimumRewardsMultiplier : bigint;
   maximumRewardsMultiplier : bigint;
-  contractOwner : string;
+  canExit : boolean;
 }
 
 // Simplify the Ethers V6 contract type
