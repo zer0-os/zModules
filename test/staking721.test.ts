@@ -38,7 +38,7 @@ import {
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
   NOT_FULL_EXIT_ERR,
   CANNOT_EXIT_ERR,
-  INVALID_ADDR_ERR,
+  INVALID_ADDR_ERR, LOCK_TOO_SHORT_ERR, ZERO_VALUE_ERR,
 } from "./helpers/errors";
 
 describe("StakingERC721", () => {
@@ -368,6 +368,22 @@ describe("StakingERC721", () => {
       expect(stakerData.lastTimestampLocked).to.eq(secondStakedAtB);
     });
 
+    it("Fails when not passing any tokenIDs", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).stakeWithoutLock([], [])
+      ).to.be.revertedWithCustomError(stakingERC721, ZERO_VALUE_ERR);
+
+      await expect(
+        stakingERC721.connect(stakerA).stakeWithLock([], [], DEFAULT_LOCK)
+      ).to.be.revertedWithCustomError(stakingERC721, ZERO_VALUE_ERR);
+    });
+
+    it("Fails to #stakeWithLock when the `lockDuration` is less than the minimum", async () => {
+      await expect(
+        stakingERC721.connect(stakerB).stakeWithLock([tokenIdG], [emptyUri], DEFAULT_MINIMUM_LOCK - 1n)
+      ).to.be.revertedWithCustomError(stakingERC721, LOCK_TOO_SHORT_ERR);
+    });
+
     it("Fails to stake when the token is already staked", async () => {
       // If the token is staked, the owner will be the staking contract not the original owner
       await expect(
@@ -679,6 +695,12 @@ describe("StakingERC721", () => {
     let stakedAtLocked : bigint;
     let unstakedAt : bigint;
 
+    it("Fails if the user passes in tokenIds that were locked", async () => {
+      await expect(
+        stakingERC721.connect(stakerB).unstakeUnlocked([tokenIdF])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
+
     it("Can unstake a token that is not locked", async () => {
       await reset();
 
@@ -850,6 +872,13 @@ describe("StakingERC721", () => {
   });
 
   describe("#unstakeLocked", async () => {
+    it("Fails if the user passes in tokenIds that were not locked", async () => {
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB], [emptyUri]);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeLocked([tokenIdB])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
 
     it("Allows you to unstake locked tokens passed their unlockedTimestamp", async () => {
       await reset();
