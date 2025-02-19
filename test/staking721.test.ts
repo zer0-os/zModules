@@ -38,7 +38,7 @@ import {
   INSUFFICIENT_CONTRACT_BALANCE_ERR,
   NOT_FULL_EXIT_ERR,
   CANNOT_EXIT_ERR,
-  INVALID_ADDR_ERR,
+  INVALID_ADDR_ERR, LOCK_TOO_SHORT_ERR, ZERO_VALUE_ERR,
 } from "./helpers/errors";
 
 describe("StakingERC721", () => {
@@ -366,6 +366,22 @@ describe("StakingERC721", () => {
       expect(stakerData.amountStakedLocked).to.eq(amountStakedLocked);
 
       expect(stakerData.lastTimestampLocked).to.eq(secondStakedAtB);
+    });
+
+    it("Fails when not passing any tokenIDs", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).stakeWithoutLock([], [])
+      ).to.be.revertedWithCustomError(stakingERC721, ZERO_VALUE_ERR);
+
+      await expect(
+        stakingERC721.connect(stakerA).stakeWithLock([], [], DEFAULT_LOCK)
+      ).to.be.revertedWithCustomError(stakingERC721, ZERO_VALUE_ERR);
+    });
+
+    it("Fails to #stakeWithLock when the `lockDuration` is less than the minimum", async () => {
+      await expect(
+        stakingERC721.connect(stakerB).stakeWithLock([tokenIdG], [emptyUri], DEFAULT_MINIMUM_LOCK - 1n)
+      ).to.be.revertedWithCustomError(stakingERC721, LOCK_TOO_SHORT_ERR);
     });
 
     it("Fails to stake when the token is already staked", async () => {
@@ -847,6 +863,12 @@ describe("StakingERC721", () => {
         stakingERC721.connect(stakerA).unstakeUnlocked([unstakedTokenId])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
+
+    it("Fails if the user passes in tokenIds that were locked", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdD])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
   });
 
   describe("#unstakeLocked", async () => {
@@ -890,6 +912,12 @@ describe("StakingERC721", () => {
       expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
       expect(stakerDataAfter.lastTimestampLocked).to.eq(0n);
       expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
+    });
+
+    it("Fails if the user passes in tokenIds that were not locked", async () => {
+      await expect(
+        stakingERC721.connect(stakerA).unstakeLocked([tokenIdB])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
 
     it("Fails if the caller does not own the sNFT", async () => {
