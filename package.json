@@ -30,10 +30,7 @@
     "mongo:drop": "ts-node src/utils/drop-db.ts",
     "pretest": "yarn mongo:start",
     "posttest": "yarn mongo:stop",
-    "deploy-local": "hardhat run src/deploy/run-campaign.ts --network hardhat",
-    "deploy-sepolia": "hardhat run src/deploy/run-campaign.ts --network sepolia",
-    "deploy-meowtestnet": "hardhat run src/deploy/run-campaign.ts --network meowtestnet",
-    "deploy-moonwalker": "hardhat run src/deploy/run-campaign.ts --network moonwalker"
+    "deploy-local": "hardhat run src/deploy/run-campaign.ts --network hardhat"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",

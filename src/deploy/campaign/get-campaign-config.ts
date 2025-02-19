@@ -3,7 +3,7 @@ import * as hre from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import assert from "assert";
 import { findMissingEnvVars } from "../../environment/validate";
-import { IDeployCampaignConfig } from "@zero-tech/zdc";
+import { EnvironmentLevels, IDeployCampaignConfig } from "@zero-tech/zdc";
 
 
 export const getBaseZModulesConfig = async ({
@@ -33,11 +33,11 @@ export const validateEnv = (env : string) =>  {
   findMissingEnvVars();
 
   assert.ok(
-    env === "dev" || env === "test" || env === "prod",
+    env === EnvironmentLevels.dev || env === EnvironmentLevels.test || env === EnvironmentLevels.prod,
     "Provide correct ENV_LEVEL (dev / test / prod)"
   );
 
-  if (env !== "dev")
+  if (env !== EnvironmentLevels.dev)
     assert.ok(
       !process.env.MONGO_DB_URI.includes("localhost"),
       "Cannot use local mongo URI in 'prod' or 'test' environment!"

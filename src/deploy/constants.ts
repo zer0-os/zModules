@@ -16,7 +16,7 @@ export const roles = {
     ),
   },
   voting: {
-    DEFAULT_ADMIN_ROLE: "0x0000000000000000000000000000000000000000000000000000000000000000",
+    DEFAULT_ADMIN_ROLE: ethers.ZeroHash,
     MINTER_ROLE: ethers.solidityPackedKeccak256(
       ["string"],
       ["MINTER_ROLE"]
