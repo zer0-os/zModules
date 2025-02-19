@@ -2469,7 +2469,7 @@ describe("StakingERC721", () => {
         expect(afterFull).to.eq(beforeFull + fullRewards);
       });
 
-      it.only("6.3 - two locked stakes, two config chages, one before and one after it unlocks", async () => {
+      it("6.3 - two locked stakes, two config chages, one before and one after it unlocks", async () => {
         await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
         await stakingERC721.connect(stakerA).stakeWithLock(
           [tokenIdA, tokenIdB],
