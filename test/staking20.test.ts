@@ -2515,7 +2515,7 @@ describe("StakingERC20", () => {
         const _config = await contract.getLatestConfig();
 
         expect(_config.periodLength).to.eq(configB.periodLength);
-        expect(_config.periodLength).to.eq(configB.rewardsPerPeriod);
+        expect(_config.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 

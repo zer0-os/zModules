@@ -125,8 +125,10 @@ describe("StakingBase Unit Tests", () => {
 
       await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
-      expect(await stakingBase.getMinimumRewardsMultiplier()).to.eq(localConfig.minimumRewardsMultiplier);
-      expect(await stakingBase.getMaximumRewardsMultiplier()).to.eq(localConfig.maximumRewardsMultiplier);
+      const rewardConfig = await stakingBase.getLatestConfig();
+
+      expect(rewardConfig.minimumRewardsMultiplier).to.eq(localConfig.minimumRewardsMultiplier);
+      expect(rewardConfig.maximumRewardsMultiplier).to.eq(localConfig.maximumRewardsMultiplier);
     });
 
     it("Succeeds when new max multiplier is greater than min multiplier", async () => {
@@ -136,8 +138,10 @@ describe("StakingBase Unit Tests", () => {
 
       await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
-      expect(await stakingBase.getMinimumRewardsMultiplier()).to.eq(localConfig.minimumRewardsMultiplier);
-      expect(await stakingBase.getMaximumRewardsMultiplier()).to.eq(localConfig.maximumRewardsMultiplier);
+      const rewardConfig = await stakingBase.getLatestConfig();
+
+      expect(rewardConfig.minimumRewardsMultiplier).to.eq(localConfig.minimumRewardsMultiplier);
+      expect(rewardConfig.maximumRewardsMultiplier).to.eq(localConfig.maximumRewardsMultiplier);
     });
 
     it("Succeeds when new min multiplier is equal to max multiplier", async () => {
@@ -147,8 +151,10 @@ describe("StakingBase Unit Tests", () => {
 
       await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
-      expect(await stakingBase.getMinimumRewardsMultiplier()).to.eq(localConfig.minimumRewardsMultiplier);
-      expect(await stakingBase.getMaximumRewardsMultiplier()).to.eq(localConfig.maximumRewardsMultiplier);
+      const rewardConfig = await stakingBase.getLatestConfig();
+
+      expect(rewardConfig.minimumRewardsMultiplier).to.eq(localConfig.minimumRewardsMultiplier);
+      expect(rewardConfig.maximumRewardsMultiplier).to.eq(localConfig.maximumRewardsMultiplier);
     });
 
     it("Succeeds when new min multiplier is less than max multiplier", async () => {
@@ -158,20 +164,10 @@ describe("StakingBase Unit Tests", () => {
 
       await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
-      expect(await stakingBase.getMinimumRewardsMultiplier()).to.equal(localConfig.minimumRewardsMultiplier);
-      expect(await stakingBase.getMaximumRewardsMultiplier()).to.equal(localConfig.maximumRewardsMultiplier);
-    });
+      const rewardConfig = await stakingBase.getLatestConfig();
 
-    it("#getStakingToken() should return correct value", async () => {
-      expect(await stakingBase.getStakingToken()).to.equal(await mockStaking.getAddress());
-    });
-
-    it("#getRewardsToken() should return correct value", async () => {
-      expect(await stakingBase.getRewardsToken()).to.equal(await mockRewards.getAddress());
-    });
-
-    it("#getStakeRepToken() should return correct value", async () => {
-      expect(await stakingBase.getStakeRepToken()).to.equal(await (mockStakeRep as ZeroVotingERC20).getAddress());
+      expect(rewardConfig.minimumRewardsMultiplier).to.equal(localConfig.minimumRewardsMultiplier);
+      expect(rewardConfig.maximumRewardsMultiplier).to.equal(localConfig.maximumRewardsMultiplier);
     });
   });
 });
