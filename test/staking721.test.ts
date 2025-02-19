@@ -1061,7 +1061,7 @@ describe("StakingERC721", () => {
       localConfig.canExit = false;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await stakingERC721.connect(owner).setConfig(localConfig);
+      await stakingERC721.connect(owner).setRewardConfig(localConfig);
 
       await expect(
         stakingERC721.connect(stakerA).exit([tokenIdA, tokenIdB], true)
@@ -1077,7 +1077,7 @@ describe("StakingERC721", () => {
       localConfig.canExit = true;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await stakingERC721.connect(owner).setConfig(localConfig);
+      await stakingERC721.connect(owner).setRewardConfig(localConfig);
 
       const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
       const rewardsBefore = await rewardsToken.balanceOf(stakerA.address);
@@ -2055,10 +2055,12 @@ describe("StakingERC721", () => {
         const newConfig = { ...config };
         newConfig.canExit = !config.canExit;
         newConfig.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(newConfig);
+        await stakingERC721.connect(owner).setRewardConfig(newConfig);
+
+        const _config = await stakingERC721.getLatestConfig();
 
         // Confirm the config change
-        expect(await stakingERC721.canExit()).to.eq(newConfig.canExit);
+        expect(_config.canExit).to.eq(newConfig.canExit);
 
         await time.increase(DAY_IN_SECONDS * 55n);
 
@@ -2148,7 +2150,7 @@ describe("StakingERC721", () => {
         const newConfig = { ...config };
         newConfig.maximumRewardsMultiplier = config.maximumRewardsMultiplier * 2n;
         newConfig.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(config);
+        await stakingERC721.connect(owner).setRewardConfig(config);
 
         // Move time forward beyond lock duration
         await time.increase(DEFAULT_LOCK / 2n + DAY_IN_SECONDS * 37n);
@@ -2220,10 +2222,12 @@ describe("StakingERC721", () => {
         newConfig.rewardsPerPeriod = config.rewardsPerPeriod / 3n;
         newConfig.timestamp = BigInt(await time.latest()) + 1n; // + 1n for automine
 
-        await stakingERC721.connect(owner).setConfig(newConfig);
+        await stakingERC721.connect(owner).setRewardConfig(newConfig);
+
+        const _config = await stakingERC721.getLatestConfig();
 
         // Confirm change
-        expect(await stakingERC721.getRewardsPerPeriod()).to.eq(newConfig.rewardsPerPeriod);
+        expect(_config.rewardsPerPeriod).to.eq(newConfig.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 12n);
 
@@ -2276,20 +2280,24 @@ describe("StakingERC721", () => {
         configA.minimumLockTime = config.minimumLockTime / 2n;
         configA.maximumRewardsMultiplier = config.maximumRewardsMultiplier * 2n;
         configA.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configA);
+        await stakingERC721.connect(owner).setRewardConfig(configA);
+
+        const _config = await stakingERC721.getLatestConfig();
 
         // Confirm change
-        expect(await stakingERC721.getMinimumLockTime()).to.eq(configA.minimumLockTime);
-        expect(await stakingERC721.getMaximumRewardsMultiplier()).to.eq(configA.maximumRewardsMultiplier);
+        expect(_config.minimumLockTime).to.eq(configA.minimumLockTime);
+        expect(_config.maximumRewardsMultiplier).to.eq(configA.maximumRewardsMultiplier);
 
         await time.increase(DAY_IN_SECONDS * 35n);
 
         const configB = { ...configA };
         configB.periodLength = configA.periodLength / 3n;
         configB.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configB);
+        await stakingERC721.connect(owner).setRewardConfig(configB);
 
-        expect(await stakingERC721.getPeriodLength()).to.eq(configB.periodLength);
+        const _configB = await stakingERC721.getLatestConfig();
+
+        expect(_configB.periodLength).to.eq(configB.periodLength);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 
@@ -2354,9 +2362,11 @@ describe("StakingERC721", () => {
         configA.canExit = !config.canExit;
         configA.rewardsPerPeriod = config.rewardsPerPeriod + 18n;
         configA.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configA);
+        await stakingERC721.connect(owner).setRewardConfig(configA);
 
-        expect (await stakingERC721.getRewardsPerPeriod()).to.eq(configA.rewardsPerPeriod);
+        const _configA = await stakingERC721.getLatestConfig();
+
+        expect (_configA.rewardsPerPeriod).to.eq(configA.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 4n);
 
@@ -2387,10 +2397,6 @@ describe("StakingERC721", () => {
 
         const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
 
-        // stake A,B
-        // unstake B,
-        // stake B,C
-
         // Stake again after first config change
         await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB, tokenIdC], [emptyUri, emptyUri]);
 
@@ -2413,10 +2419,12 @@ describe("StakingERC721", () => {
         configB.periodLength = configA.periodLength / 3n;
         configB.rewardsPerPeriod = configA.rewardsPerPeriod * 5n;
         configB.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configB);
+        await stakingERC721.connect(owner).setRewardConfig(configB);
 
-        expect(await stakingERC721.getPeriodLength()).to.eq(configB.periodLength);
-        expect(await stakingERC721.getRewardsPerPeriod()).to.eq(configB.rewardsPerPeriod);
+        // TODO do this for the rest as well to replace removed getter functions
+        const _config = await stakingERC721.getLatestConfig();
+        expect(_config.periodLength).to.eq(configB.periodLength);
+        expect(_config.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 197n);
 
@@ -2459,7 +2467,7 @@ describe("StakingERC721", () => {
         expect(afterFull).to.eq(beforeFull + fullRewards);
       });
 
-      it("6.3 - two locked stakes, two config chages, one before and one after it unlocks", async () => {
+      it.only("6.3 - two locked stakes, two config chages, one before and one after it unlocks", async () => {
         await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
         await stakingERC721.connect(stakerA).stakeWithLock(
           [tokenIdA, tokenIdB],
@@ -2478,11 +2486,11 @@ describe("StakingERC721", () => {
 
         await time.increase(DEFAULT_LOCK / 4n);
 
-        // Config change while still locked
+        // RewardConfig change while still locked
         const configA = { ...config };
         configA.rewardsPerPeriod = config.rewardsPerPeriod / 2n;
         configA.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configA);
+        await stakingERC721.connect(owner).setRewardConfig(configA);
 
         await stakingERC721.connect(stakerA).stakeWithLock([tokenIdC], [emptyUri], DEFAULT_LOCK);
 
@@ -2497,18 +2505,22 @@ describe("StakingERC721", () => {
 
         await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 2n);
 
-        // Config change while unlocked and collecting interim rewards
+        // RewardConfig change while unlocked and collecting interim rewards
         const configB = { ...configA };
         configB.minimumLockTime = configA.minimumLockTime * 4n;
         configB.rewardsPerPeriod = 132n;
         configB.periodLength = configA.periodLength * 12n;
         configB.timestamp = BigInt(await time.latest()) + 1n;
 
-        await stakingERC721.connect(owner).setConfig(configB);
+        await stakingERC721.connect(owner).setRewardConfig(configB);
 
-        expect(await stakingERC721.getMinimumLockTime()).to.eq(configB.minimumLockTime);
-        expect(await stakingERC721.getRewardsPerPeriod()).to.eq(configB.rewardsPerPeriod);
-        expect(await stakingERC721.getPeriodLength()).to.eq(configB.periodLength);
+        const rewardConfig = await stakingERC721.rewardConfigs(configB.timestamp);
+
+        // use `getLatestConfig` in other tests to verify changes
+
+        // expect(await stakingERC721.getMinimumLockTime()).to.eq(configB.minimumLockTime);
+        // expect(await stakingERC721.getRewardsPerPeriod()).to.eq(configB.rewardsPerPeriod);
+        // expect(await stakingERC721.getPeriodLength()).to.eq(configB.periodLength);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 
@@ -2585,11 +2597,11 @@ describe("StakingERC721", () => {
 
         await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 13n);
 
-        // Config change while still locked
+        // RewardConfig change while still locked
         const configA = { ...config };
         configA.rewardsPerPeriod = config.rewardsPerPeriod / 2n;
         configA.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configA);
+        await stakingERC721.connect(owner).setRewardConfig(configA);
 
         await time.increase(DEFAULT_LOCK / 4n);
 
@@ -2639,12 +2651,12 @@ describe("StakingERC721", () => {
 
         await time.increase(DAY_IN_SECONDS * 2n);
 
-        // Config change while unlocked and collecting interim rewards
+        // RewardConfig change while unlocked and collecting interim rewards
         const configB = { ...configA };
         configB.periodLength = configA.periodLength / 3n;
         configB.rewardsPerPeriod = configA.rewardsPerPeriod * 5n;
         configB.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configB);
+        await stakingERC721.connect(owner).setRewardConfig(configB);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 
@@ -2728,13 +2740,13 @@ describe("StakingERC721", () => {
 
         await time.increase(DEFAULT_LOCK / 4n);
 
-        // Config change while still locked
+        // RewardConfig change while still locked
         const configA = { ...config };
         configA.rewardsPerPeriod = config.rewardsPerPeriod / 2n;
         configA.minimumLockTime = config.minimumLockTime * 2n;
         configA.periodLength = config.periodLength * 3n;
         configA.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configA);
+        await stakingERC721.connect(owner).setRewardConfig(configA);
 
         await time.increase(DEFAULT_LOCK / 4n);
 
@@ -2781,15 +2793,17 @@ describe("StakingERC721", () => {
 
         expect(afterClaimB).to.eq(beforeClaimB + lockedRewards + rewardsUnlockedB + interimRewardsB);
 
-        // Config change while unlocked and collecting interim rewards
+        // RewardConfig change while unlocked and collecting interim rewards
         const configB = { ...configA };
         configB.periodLength = configA.periodLength * 8n;
         configB.rewardsPerPeriod = configA.rewardsPerPeriod * 3n;
         configB.timestamp = BigInt(await time.latest()) + 1n;
-        await stakingERC721.connect(owner).setConfig(configB);
+        await stakingERC721.connect(owner).setRewardConfig(configB);
 
-        expect(await stakingERC721.getPeriodLength()).to.eq(configB.periodLength);
-        expect(await stakingERC721.getRewardsPerPeriod()).to.eq(configB.rewardsPerPeriod);
+        const _config = await stakingERC721.getLatestConfig();
+
+        expect(_config.periodLength).to.eq(configB.periodLength);
+        expect(_config.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 

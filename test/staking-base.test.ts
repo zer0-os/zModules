@@ -90,13 +90,13 @@ describe("StakingBase Unit Tests", () => {
     });
   });
 
-  describe("#setConfig", () => {
+  describe("#setRewardConfig", () => {
     it("Fails when new min multiplier is greater than the max multiplier", async () => {
       const localConfig = { ...config };
       localConfig.minimumRewardsMultiplier = localConfig.maximumRewardsMultiplier + 1n;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await expect(stakingBase.connect(owner).setConfig(localConfig))
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig))
         .to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
     });
 
@@ -105,7 +105,7 @@ describe("StakingBase Unit Tests", () => {
       localConfig.maximumRewardsMultiplier = localConfig.minimumRewardsMultiplier - 1n;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await expect(stakingBase.connect(owner).setConfig(localConfig))
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig))
         .to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
     });
 
@@ -114,7 +114,7 @@ describe("StakingBase Unit Tests", () => {
       localConfig.periodLength = 0n;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await expect(stakingBase.connect(owner).setConfig(localConfig))
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig))
         .to.be.revertedWithCustomError(stakingBase, ZERO_INIT_ERR);
     });
 
@@ -123,7 +123,7 @@ describe("StakingBase Unit Tests", () => {
       localConfig.maximumRewardsMultiplier = localConfig.minimumRewardsMultiplier;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await expect(stakingBase.connect(owner).setConfig(localConfig)).to.not.be.reverted;
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
       expect(await stakingBase.getMinimumRewardsMultiplier()).to.eq(localConfig.minimumRewardsMultiplier);
       expect(await stakingBase.getMaximumRewardsMultiplier()).to.eq(localConfig.maximumRewardsMultiplier);
@@ -134,7 +134,7 @@ describe("StakingBase Unit Tests", () => {
       localConfig.maximumRewardsMultiplier = localConfig.minimumRewardsMultiplier + 1n;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await expect(stakingBase.connect(owner).setConfig(localConfig)).to.not.be.reverted;
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
       expect(await stakingBase.getMinimumRewardsMultiplier()).to.eq(localConfig.minimumRewardsMultiplier);
       expect(await stakingBase.getMaximumRewardsMultiplier()).to.eq(localConfig.maximumRewardsMultiplier);
@@ -145,7 +145,7 @@ describe("StakingBase Unit Tests", () => {
       localConfig.minimumRewardsMultiplier = localConfig.maximumRewardsMultiplier;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await expect(stakingBase.connect(owner).setConfig(localConfig)).to.not.be.reverted;
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
       expect(await stakingBase.getMinimumRewardsMultiplier()).to.eq(localConfig.minimumRewardsMultiplier);
       expect(await stakingBase.getMaximumRewardsMultiplier()).to.eq(localConfig.maximumRewardsMultiplier);
@@ -156,7 +156,7 @@ describe("StakingBase Unit Tests", () => {
       localConfig.minimumRewardsMultiplier = localConfig.maximumRewardsMultiplier - 1n;
       localConfig.timestamp = BigInt(await time.latest()) + 1n;
 
-      await expect(stakingBase.connect(owner).setConfig(localConfig)).to.not.be.reverted;
+      await expect(stakingBase.connect(owner).setRewardConfig(localConfig)).to.not.be.reverted;
 
       expect(await stakingBase.getMinimumRewardsMultiplier()).to.equal(localConfig.minimumRewardsMultiplier);
       expect(await stakingBase.getMaximumRewardsMultiplier()).to.equal(localConfig.maximumRewardsMultiplier);

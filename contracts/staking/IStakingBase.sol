@@ -38,7 +38,7 @@ interface IStakingBase {
      * @param maximumRewardsMultiplier The maximum multiplier for rewards
      * @param canExit Flag to indicate if `exit` is allowed or not
      */
-    struct Config {
+    struct RewardConfig {
         uint256 timestamp;
         uint256 rewardsPerPeriod;
         uint256 periodLength;
@@ -70,77 +70,11 @@ interface IStakingBase {
     );
 
     /**
-     * @notice Emit when a new contract owner is set
-     * @param owner The new owner
-     */
-    event OwnerSet(
-        address indexed owner
-    );
-
-    /**
-     * @notice Emit when `reqwardsPerPeriod` is set
-     * @param owner The address of the contract owner
-     * @param rewardsPerPeriod The new rewards per period value
-     */
-    event RewardsPerPeriodSet(
-        address indexed owner,
-        uint256 indexed rewardsPerPeriod
-    );
-
-    /**
-     * @notice Emit when the period length is set
-     * @param owner The address of the contract owner
-     * @param periodLength The new period length value
-     */
-    event PeriodLengthSet(
-        address indexed owner,
-        uint256 indexed periodLength
-    );
-
-    /**
-     * @notice Emit when the minimum lock time is set
-     * @param owner The address of the contract owner
-     * @param minimumLockTime The new minimum lock time
-     */
-    event MinimumLockTimeSet(
-        address indexed owner,
-        uint256 indexed minimumLockTime
-    );
-
-    /**
-     * @notice Emit when the minimum rewards multiplier is set
-     * @param owner The address of the contract owner
-     * @param minimumRewardsMultiplier The new minimum rewards multiplier
-     */
-    event MinimumRewardsMultiplierSet(
-        address indexed owner,
-        uint256 indexed minimumRewardsMultiplier
-    );
-
-    /**
-     * @notice Emit when the maximum rewards multiplier is set
-     * @param owner The address of the contract owner
-     * @param maximumRewardsMultiplier The new maximum rewards multiplier
-     */
-    event MaximumRewardsMultiplierSet(
-        address indexed owner,
-        uint256 indexed maximumRewardsMultiplier
-    );
-
-    /**
-     * @notice Emit when the `canExit` flag is set
-     * @param exit The new exit status
-     */
-    event ExitSet(
-        bool exit
-    );
-
-    /**
      * @notice Emit when the config is set
-     * @param config The incoming config
+     * @param rewardConfig The incoming config
      */
-    event ConfigSet(
-        Config indexed config
+    event RewardConfigSet(
+        RewardConfig indexed rewardConfig
     );
 
     /**
@@ -199,27 +133,13 @@ interface IStakingBase {
 
     function withdrawLeftoverRewards() external;
 
-    function setConfig(Config memory _config) external;
+    function setRewardConfig(RewardConfig memory _config) external;
 
     function getContractRewardsBalance() external view returns (uint256);
 
-    function getStakingToken() external view returns(address);
-
-    function getRewardsToken() external view returns(address);
-
-    function getStakeRepToken() external view returns (address);
-
-    function getRewardsPerPeriod() external view returns(uint256);
-
     function getStakeRewards(uint256 amount, uint256 timeDuration, bool locked) external view returns (uint256);
 
-    function getPeriodLength() external view returns(uint256);
+    function getLatestConfig() external view returns (RewardConfig memory);
 
-    function getMinimumLockTime() external view returns(uint256);
-
-    function getMinimumRewardsMultiplier() external view returns(uint256);
-
-    function getMaximumRewardsMultiplier() external view returns(uint256);
-
-    function canExit() external view returns(bool);
+    function rewardConfigTimestamps(uint256 index) external view returns (uint256);
 }

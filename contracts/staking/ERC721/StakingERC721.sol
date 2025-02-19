@@ -37,7 +37,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         address _stakingToken,
         address _rewardsToken,
         address _stakeRepToken,
-        Config memory _config
+        RewardConfig memory _config
     )   
         StakingBase(
             _contractOwner,
@@ -222,7 +222,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         if (_getRemainingLockTime(nftStaker.stake) > 0) revert TimeLockNotPassed();
 
         // Calculate rewards before any state manipulation
-        uint256 rewards = nftStaker.stake.owedRewardsLocked + _updatedStakeRewards(
+        uint256 rewards = nftStaker.stake.owedRewardsLocked + _getStakeRewards(
             _mostRecentTimestamp(nftStaker.stake),
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
@@ -241,19 +241,18 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             nftStaker.stake.lastTimestampLocked = block.timestamp;
         }
 
-        
-
         uint256 i;
         for (i; i < tokenIds.length;) {
+            uint256 tokenId = tokenIds[i];
 
             // Revert if the user passes in tokenIds that were not locked
-            if (!nftStaker.locked[tokenIds[i]]) {
+            if (!nftStaker.locked[tokenId]) {
                 revert InvalidUnstake();
             }
 
             // Function is `onlySNFTOwner` guarded
-            _coreUnstake(tokenIds[i]);
-            nftStaker.locked[tokenIds[i]] = false;
+            _coreUnstake(tokenId);
+            nftStaker.locked[tokenId] = false;
 
             unchecked {
                 ++i;
@@ -282,7 +281,7 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         if (_tokenIds.length == 0 || stakeBalance == 0) revert ZeroValue();
 
         // Calculate rewards before any state manipulation
-        uint256 rewards = nftStaker.stake.owedRewards + _updatedStakeRewards(
+        uint256 rewards = nftStaker.stake.owedRewards + _getStakeRewards(
             nftStaker.stake.lastTimestamp,
             stakeBalance,
             1, // Rewards multiplier for interim period is 1
@@ -310,10 +309,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             }
         }
 
-        if (_getContractRewardsBalance() < rewards) {
-            revert InsufficientContractBalance();
-        }
-
         _transferAmount(rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
@@ -336,11 +331,14 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
             // If calling exit for locked/unlocked tokens, but provides valid and owned
             // tokenIds of the opposite lock state, revert
-            if (_locked && !nftStaker.locked[tokenId]) {
+            bool wasLocked = nftStaker.locked[tokenId];
+
+            if (_locked && !wasLocked) {
                 revert NotFullExit();
-            } else if (!_locked && nftStaker.locked[tokenId]) {
-                revert NotFullExit();
-            }
+            } 
+            // else if (!_locked && wasLocked) {
+            //     revert NotFullExit();
+            // }
 
             _coreUnstake(tokenId);
             nftStaker.locked[tokenId] = false;
