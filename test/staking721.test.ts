@@ -695,6 +695,12 @@ describe("StakingERC721", () => {
     let stakedAtLocked : bigint;
     let unstakedAt : bigint;
 
+    it("Fails if the user passes in tokenIds that were locked", async () => {
+      await expect(
+        stakingERC721.connect(stakerB).unstakeUnlocked([tokenIdD])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
+
     it("Can unstake a token that is not locked", async () => {
       await reset();
 
@@ -863,15 +869,16 @@ describe("StakingERC721", () => {
         stakingERC721.connect(stakerA).unstakeUnlocked([unstakedTokenId])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
-
-    it("Fails if the user passes in tokenIds that were locked", async () => {
-      await expect(
-        stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdD])
-      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
-    });
   });
 
   describe("#unstakeLocked", async () => {
+    it("Fails if the user passes in tokenIds that were not locked", async () => {
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB], [emptyUri]);
+
+      await expect(
+        stakingERC721.connect(stakerA).unstakeLocked([tokenIdB])
+      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
+    });
 
     it("Allows you to unstake locked tokens passed their unlockedTimestamp", async () => {
       await reset();
@@ -912,12 +919,6 @@ describe("StakingERC721", () => {
       expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
       expect(stakerDataAfter.lastTimestampLocked).to.eq(0n);
       expect(stakerDataAfter.owedRewardsLocked).to.eq(0n);
-    });
-
-    it("Fails if the user passes in tokenIds that were not locked", async () => {
-      await expect(
-        stakingERC721.connect(stakerA).unstakeLocked([tokenIdB])
-      ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
 
     it("Fails if the caller does not own the sNFT", async () => {
