@@ -135,8 +135,7 @@ describe("Match Contract",  () => {
     MatchFactory = await hre.ethers.getContractFactory("Match");
 
     config = {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      ...campaignConfig.matchConfig!,
+      ...campaignConfig.matchConfig,
       token: await mockERC20.getAddress(),
     };
 

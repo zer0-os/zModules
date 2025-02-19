@@ -70,6 +70,10 @@ describe("zModules Deploy Integration Test", () => {
     [ deployAdmin ] = await hre.ethers.getSigners();
   });
 
+  after(async () => {
+    await dbAdapter.dropDB();
+  });
+
   describe("Staking", () => {
     it("Should deploy StakingERC20 with zDC and default config", async () => {
       config = await getStaking20SystemConfig(deployAdmin);
@@ -131,12 +135,12 @@ describe("zModules Deploy Integration Test", () => {
 
     it("StakingERC20 should have MINTER_ROLE and BURNER_ROLE of StakeRepToken", async () => {
       expect(
-        await stakeRepToken.hasRole(await stakeRepToken.MINTER_ROLE(), staking.target)
+        await stakeRepToken.hasRole(roles.voting.MINTER_ROLE, staking.target)
       ).to.eq(
         true
       );
       expect(
-        await stakeRepToken.hasRole(await stakeRepToken.BURNER_ROLE(), staking.target)
+        await stakeRepToken.hasRole(roles.voting.BURNER_ROLE, staking.target)
       ).to.eq(
         true
       );
@@ -203,108 +207,14 @@ describe("zModules Deploy Integration Test", () => {
 
     it("StakingERC721 should have MINTER_ROLE and BURNER_ROLE of StakeRepToken", async () => {
       expect(
-        await stakeRepToken.hasRole(await stakeRepToken.MINTER_ROLE(), staking.target)
+        await stakeRepToken.hasRole(roles.voting.MINTER_ROLE, staking.target)
       ).to.eq(
         true
       );
       expect(
-        await stakeRepToken.hasRole(await stakeRepToken.BURNER_ROLE(), staking.target)
+        await stakeRepToken.hasRole(roles.voting.BURNER_ROLE, staking.target)
       ).to.eq(
         true
-      );
-    });
-
-    // TODO dep: Should not be here. Move to corresponding file
-    // *made this to test the possibility of minting tokens,
-    // due to the change of roles and their definition in constants*
-    it("StakingERC20 should mint stake rep tokens when stake without lock", async () => {
-
-      config = await getStaking20SystemConfig(deployAdmin);
-
-      campaign = await runZModulesCampaign({
-        config,
-        missions: [
-          getMockERC20Mission({
-            tokenType: TokenTypes.staking,
-            tokenName: "Staking Token",
-            tokenSymbol: "STK",
-          }),
-          getMockERC20Mission({
-            tokenType: TokenTypes.rewards,
-            tokenName: "Rewards Token",
-            tokenSymbol: "RWD",
-          }),
-          ZModulesZeroVotingERC20DM,
-          getStakingERC20Mission(),
-        ],
-      });
-
-      ({
-        staking20: staking,
-        votingErc20: stakeRepToken,
-        mockErc20STK: stakeToken,
-        mockErc20REW: rewardsToken,
-      } = campaign);
-
-      await stakeToken.connect(deployAdmin).mint(deployAdmin.address, BigInt(1000000));
-      await stakeToken.connect(deployAdmin).approve(staking.target, BigInt(1000000));
-
-      const stakeAmount = BigInt(10);
-      await staking.connect(deployAdmin).stakeWithoutLock(stakeAmount);
-
-      // check REP token
-      expect(
-        await stakeRepToken.balanceOf(deployAdmin.address)
-      ).to.eq(
-        stakeAmount
-      );
-    });
-
-    it("StakingERC721 should mint stake rep tokens when stake without lock", async () => {
-
-      config = await getStaking721SystemConfig(deployAdmin);
-
-      campaign = await runZModulesCampaign({
-        config,
-        missions: [
-          getMockERC721Mission({
-            tokenType: TokenTypes.staking,
-            tokenName: "Staking Token",
-            tokenSymbol: "STK",
-            baseUri: "0://NFT/",
-          }),
-          getMockERC20Mission({
-            tokenType: TokenTypes.rewards,
-            tokenName: "Rewards Token",
-            tokenSymbol: "RWD",
-          }),
-          ZModulesZeroVotingERC721DM,
-          getStakingERC721Mission(),
-        ],
-      });
-
-      ({
-        staking721: staking,
-        votingErc721: stakeRepToken,
-        mockErc721STK: stakeToken,
-        mockErc20REW: rewardsToken,
-      } = campaign);
-
-      // Mint ERC721 token
-      await stakeToken.connect(deployAdmin).mint(deployAdmin.address, 1);
-      await stakeToken.connect(deployAdmin).approve(staking.target, 1);
-
-      // Get the token URI and ID
-      const tokenID = BigInt(1);
-      const tokenURI = await stakeToken.tokenURI(tokenID);
-
-      await staking.connect(deployAdmin).stakeWithoutLock([tokenID], [tokenURI]);
-
-      // check REP token
-      expect(
-        await stakeRepToken.balanceOf(deployAdmin.address)
-      ).to.eq(
-        BigInt(1)
       );
     });
 
