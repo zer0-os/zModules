@@ -697,7 +697,7 @@ describe("StakingERC721", () => {
 
     it("Fails if the user passes in tokenIds that were locked", async () => {
       await expect(
-        stakingERC721.connect(stakerB).unstakeUnlocked([tokenIdD])
+        stakingERC721.connect(stakerB).unstakeUnlocked([tokenIdF])
       ).to.be.revertedWithCustomError(stakingERC721, INVALID_UNSTAKE_ERR);
     });
 
