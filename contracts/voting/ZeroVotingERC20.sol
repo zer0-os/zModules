@@ -2,39 +2,58 @@
 pragma solidity 0.8.26;
 
 import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { IZeroVotingERC20 } from "./IZeroVotingERC20.sol";
 
 
-contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingERC20 {
+/**
+ * @title ZeroVotingERC20
+ *
+ * @notice Implementation of the ZeroVotingERC20 token made for voting in the zDAO.
+ *
+ * @dev This contract's code is general, but it was made to primarily be issued 1:1 by the StakingERC20 contract
+ *  as a representative token for user's staked amount.
+ *  This token is non-transferrable, and can only be minted and burned by the minter and burner roles,
+ *  which should be assigned to the StakingERC20 contract only.
+ *  After that it is also advisable to renounce the admin role to leave control of the token to the staking contract.
+ */
+contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     /**
-     * @dev Initializes the token with name and symbol, also sets up ERC20Permit and ownership.
+     * @dev Initializes the token with name and symbol, also sets up ownership.
+     *
      * @param name The name of the ERC20 token.
      * @param symbol The symbol of the ERC20 token.
-    */
+     * @param domainName The name of the EIP712 signing domain.
+     * @param domainVersion The version of the EIP712 signing domain.
+     * @param admin The address that will be granted the DEFAULT_ADMIN_ROLE which will be able to grant other roles,
+     *  specifically MINTER and BURNER.
+     */
     constructor(
         string memory name,
         string memory symbol,
+        string memory domainName,
+        string memory domainVersion,
         address admin
     )
         ERC20(name, symbol)
-        ERC20Permit(name)
+        EIP712(domainName, domainVersion)
     {
+        if (admin == address(0)) {
+            revert ZeroAddressPassed();
+        }
+
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(BURNER_ROLE, admin);
-        _grantRole(MINTER_ROLE, admin);
     }
 
     /**
      * @dev External mint function. Mints a specified amount of tokens to a specified account.
+     *
      * @param account The address that will receive the minted tokens.
      * @param value The amount of tokens to mint to the specified account.
      */
@@ -49,7 +68,8 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
     }
 
     /**
-     * @dev External burn function. Burns a specified amount of tokens from the sender account.
+     * @dev External burn function. Burns a specified amount of tokens from the sender's account.
+     *
      * @param account Account where tokens need to be burned.
      * @param amount The amount of tokens to burn.
      */
@@ -64,15 +84,13 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
     }
 
     /**
-     * @dev Returns the current nonce for `owner`. This value must be
-     * included whenever a signature is generated for {permit}.
+     * @dev Returns the current nonce for `owner`.
      *
-     * Every successful call to {permit} increases ``owner``'s nonce by one. This
-     * prevents a signature from being used multiple times.
-    */
+     * @param owner Address to query the nonce of.
+     */
     function nonces(
         address owner
-    ) public view override(ERC20Permit, Nonces, IERC20Permit) returns (uint256) {
+    ) public view override returns (uint256) {
         return super.nonces(owner);
     }
 
@@ -83,7 +101,7 @@ contract ZeroVotingERC20 is ERC20Permit, ERC20Votes, AccessControl, IZeroVotingE
         address from,
         address to,
         uint256 value
-    ) internal override(ERC20, ERC20Votes) {
+    ) internal override(ERC20Votes) {
         if (from != address(0) && to != address(0)) {
             revert NonTransferrableToken();
         }

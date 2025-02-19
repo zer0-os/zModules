@@ -35,6 +35,8 @@ describe("Governor Voting Flow Test", () => {
     votingERC20 = await VotingERC20.deploy(
       "ZeroVotingERC20",
       "ZV",
+      "ZERO DAO",
+      "1",
       admin
     );
     await votingERC20.waitForDeployment();
@@ -44,8 +46,9 @@ describe("Governor Voting Flow Test", () => {
     votingERC721 = await VotingERC721.deploy(
       "ZeroVotingERC721",
       "ZV721",
-      "1.0",
       "dummyURI",
+      "ZERO DAO",
+      "1.0",
       admin,
     );
     await votingERC721.waitForDeployment();
@@ -87,6 +90,10 @@ describe("Governor Voting Flow Test", () => {
     await timelock.grantRole(await timelock.EXECUTOR_ROLE(), await governance20.getAddress());
     // Grant minter role to the timelock to let it execute proposal on mint
     await votingERC20.grantRole(await votingERC20.MINTER_ROLE(), await timelock.getAddress());
+
+    // Give minter role to admin
+    await votingERC20.connect(admin).grantRole(await votingERC20.MINTER_ROLE(), admin.address);
+    await votingERC721.connect(admin).grantRole(await votingERC721.MINTER_ROLE(), admin.address);
 
     // Mint tokens to users
     await votingERC20.connect(admin).mint(user1.address, initialUser1Balance);

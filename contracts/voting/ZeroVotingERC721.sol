@@ -10,6 +10,17 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
 import { IZeroVotingERC721 } from "./IZeroVotingERC721.sol";
 
 
+/**
+ * @title ZeroVotingERC721
+ *
+ * @notice Implementation of the ZeroVotingERC721 token made for voting in the zDAO.
+ *
+ * @dev This contract's code is general, but it was made to primarily be issued 1:1 by the StakingERC721 contract
+ *  as a representative token for user's staked amount.
+ *  This token is non-transferrable, and can only be minted and burned by the minter and burner roles,
+ *  which should be assigned to the StakingERC721 contract only.
+ *  After that it is also advisable to renounce the admin role to leave control of the token to the staking contract.
+ */
 contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZeroVotingERC721 {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -18,7 +29,7 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
     /**
      * @notice Base URI used for ALL tokens. Can be empty if individual URIs are set.
      */
-    string internal baseURI;
+    string internal __baseURI;
 
     /**
      * @notice Total supply of all tokens
@@ -27,39 +38,49 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
 
     /**
      * @dev Initializes the ERC721 token with a name, symbol.
+     *
      * @param name The name of the ERC721 token.
      * @param symbol The symbol of the ERC721 token.
-     * @param admin The admin of contract.
+     * @param baseUri The base URI for all tokens, can be empty if individual URIs are set.
+     * @param domainName The name of the EIP712 signing domain.
+     * @param domainVersion The version of the EIP712 signing domain.
+     * @param admin The address that will be granted the DEFAULT_ADMIN_ROLE which will be able to grant other roles,
+     *  specifically MINTER and BURNER.
     */
     constructor(
         string memory name,
         string memory symbol,
-        string memory version,
         string memory baseUri,
+        string memory domainName,
+        string memory domainVersion,
         address admin
     )
         ERC721(name, symbol)
-        EIP712(name, version)
+        EIP712(domainName, domainVersion)
     {
+        if (admin == address(0)) {
+            revert ZeroAddressPassed();
+        }
+
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(BURNER_ROLE, admin);
-        _grantRole(MINTER_ROLE, admin);
 
         if (bytes(baseUri).length > 0) {
-            baseURI = baseUri;
+            __baseURI = baseUri;
         }
     }
 
     /**
      * @dev External mint function. Mints a new token to a specified address.
+     *
      * @param to The address that will receive the minted token.
      * @param tokenId The token ID for the newly minted token.
+     * @param tokenUri The URI for the newly minted token (optional if baseURI is used).
      */
     function mint(
         address to,
         uint256 tokenId,
         string memory tokenUri
-    ) external override onlyRole(MINTER_ROLE) {
+    ) public override onlyRole(MINTER_ROLE) {
         ++_totalSupply;
 
         _mint(
@@ -72,20 +93,17 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
 
     /**
      * @dev Mints `tokenId`, transfers it to `to` and checks for `to` acceptance.
+     *  External function for ERC721._safeMint.
      *
-     * Requirements:
-     *
-     * - `tokenId` must not exist.
-     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received},
-     * which is called upon a safe transfer.
-     *
-     * Emits a {Transfer} event.
+     * @param to The address that will receive the minted token.
+     * @param tokenId The token ID for the newly minted token.
+     * @param tokenUri The URI for the newly minted token (optional if baseURI is used).
      */
     function safeMint(
         address to,
         uint256 tokenId,
         string memory tokenUri
-    ) external override onlyRole(MINTER_ROLE) {
+    ) public override onlyRole(MINTER_ROLE) {
         ++_totalSupply;
 
         _safeMint(
@@ -98,19 +116,33 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
 
     /**
      * @dev External burn function. Burns a token for a specified address.
+     *
      * @param tokenId The token ID of the token to burn.
      */
     function burn(
         uint256 tokenId
-    ) external override onlyRole(BURNER_ROLE) {
+    ) public override onlyRole(BURNER_ROLE) {
+        --_totalSupply;
+
         _burn(tokenId);
     }
 
+    /**
+     * @dev Function for setting `baseURI` used for all tokens in the collection.
+     *
+     * @param baseUri The base URI for all tokens.
+     */
     function setBaseURI(string memory baseUri) public override onlyRole(DEFAULT_ADMIN_ROLE) {
-        baseURI = baseUri;
+        __baseURI = baseUri;
         emit BaseURIUpdated(baseUri);
     }
 
+    /**
+     * @dev Function for setting the token URI for a specific token, contrary to using the `baseURI`.
+     *
+     * @param tokenId The token ID for the token to set the URI for.
+     * @param tokenUri The URI for the token.
+     */
     function setTokenURI(
         uint256 tokenId,
         string memory tokenUri
@@ -120,6 +152,10 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
 
     function totalSupply() public view override returns (uint256) {
         return _totalSupply;
+    }
+
+    function baseURI() public view override returns (string memory) {
+        return _baseURI();
     }
 
     function tokenURI(
@@ -168,6 +204,6 @@ contract ZeroVotingERC721 is ERC721Votes, ERC721URIStorage, AccessControl, IZero
     }
 
     function _baseURI() internal view override returns (string memory) {
-        return baseURI;
+        return __baseURI;
     }
 }

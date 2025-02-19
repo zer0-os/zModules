@@ -15,7 +15,6 @@ export const DEFAULT_MINIMUM_LOCK = 30n * DAY_IN_SECONDS;
 export const DEFAULT_MINIMUM_RM = 100n;
 export const DEFAULT_MAXIMUM_RM = 1000n;
 
-// Used in rewards calculations
 export const PRECISION_DIVISOR = 1000n;
 export const LOCKED_PRECISION_DIVISOR = 100000n;
 
