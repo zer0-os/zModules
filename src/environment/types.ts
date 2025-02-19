@@ -41,7 +41,6 @@ export interface IStaking20Environment {
   MOCK_TOKENS : string;
   STAKING20_STAKING_TOKEN ?: string;
   STAKING20_REWARDS_TOKEN ?: string;
-  STAKING20_REP_TOKEN ?: string;
   // TODO dep: decide what to do with it cause we need to pass it as Private Key to HH config to get a signer
   //  into campaign config. Same for Staking721
   STAKING20_CONTRACT_OWNER ?: string;
@@ -58,7 +57,6 @@ export interface IStaking721Environment {
   STAKING721_BASE_URI : string;
   STAKING721_STAKING_TOKEN ?: string;
   STAKING721_REWARDS_TOKEN ?: string;
-  STAKING721_REP_TOKEN : string;
   STAKING721_CONTRACT_OWNER : string;
   STAKING721_REWARDS_PER_PERIOD : string;
   STAKING721_PERIOD_LENGTH : string;

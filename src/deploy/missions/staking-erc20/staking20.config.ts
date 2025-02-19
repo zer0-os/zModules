@@ -59,7 +59,6 @@ export const getStaking20DeployConfig = ({
     shouldRevokeAdminRole: process.env.STAKING20_REVOKE_ADMIN_ROLE !== "false",
     stakingToken: process.env.STAKING20_STAKING_TOKEN,
     rewardsToken: process.env.STAKING20_REWARDS_TOKEN,
-    stakeRepToken: !!process.env.STAKING20_REP_TOKEN ? process.env.STAKING20_REP_TOKEN : undefined,
     rewardsPerPeriod: BigInt(process.env.STAKING20_REWARDS_PER_PERIOD),
     periodLength: BigInt(process.env.STAKING20_PERIOD_LENGTH),
     minimumLockTime: BigInt(process.env.STAKING20_MIN_LOCK_TIME),

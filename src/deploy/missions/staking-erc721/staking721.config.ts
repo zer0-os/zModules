@@ -61,7 +61,6 @@ export const getStaking721DeployConfig = ({
     shouldRevokeAdminRole: process.env.STAKING721_REVOKE_ADMIN_ROLE !== "false",
     stakingToken: process.env.STAKING721_STAKING_TOKEN,
     rewardsToken: process.env.STAKING721_REWARDS_TOKEN,
-    stakeRepToken: !!process.env.STAKING721_REP_TOKEN ? process.env.STAKING721_REP_TOKEN : undefined,
     rewardsPerPeriod: BigInt(process.env.STAKING721_REWARDS_PER_PERIOD),
     periodLength: BigInt(process.env.STAKING721_PERIOD_LENGTH),
     minimumLockTime: BigInt(process.env.STAKING721_MIN_LOCK_TIME),

@@ -12,18 +12,45 @@ const execAsync = promisify(exec);
 export const getZModulesMongoAdapter = async ({
   contractsVersion,
   logger,
+  dbUri,
+  dbName,
+  dbVersion,
+  archiveDb,
+  clientOpts,
 } : {
   contractsVersion ?: string;
   logger ?: TLogger;
+  dbUri ?: string;
+  dbName ?: string;
+  dbVersion ?: string;
+  archiveDb ?: boolean;
+  clientOpts ?: Record<string, unknown>;
 } = {}) => {
   if (!contractsVersion) {
     contractsVersion = getGitTag();
+  }
+  if (!dbUri) {
+    dbUri = process.env.DB_URI;
+  }
+  if (!dbName) {
+    dbName = process.env.DB_NAME;
+  }
+  if (!dbVersion) {
+    dbVersion = process.env.DB_VERSION;
+  }
+  if (!archiveDb) {
+    archiveDb = process.env.ARCHIVE_DB;
   }
 
   // TODO dep: pass here !!!
   return getMongoAdapter({
     logger,
     contractsVersion,
+    dbUri,
+    dbName,
+    dbVersion,
+    archiveDb,
+    clientOpts,
   });
 };
 

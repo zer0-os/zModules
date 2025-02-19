@@ -24,7 +24,5 @@ export const timelockConfig : ITimeLockEnvironment = {
   TIMELOCK_PROPOSERS: "",
   TIMELOCK_EXECUTORS: "",
   TIMELOCK_ADMIN: "",
-  // TODO dep: figure out how to determine token type and subsequently the instanceName of
-  //  the VotingToken contract to get from inside the mission to be able to call it
   TIMELOCK_VOTING_TOKEN_TYPE: "",
 };
