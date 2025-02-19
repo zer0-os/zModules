@@ -1,3 +1,5 @@
+/* eslint-disable no-underscore-dangle */
+
 import * as hre from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
@@ -2516,11 +2518,9 @@ describe("StakingERC721", () => {
 
         const rewardConfig = await stakingERC721.rewardConfigs(configB.timestamp);
 
-        // use `getLatestConfig` in other tests to verify changes
-
-        // expect(await stakingERC721.getMinimumLockTime()).to.eq(configB.minimumLockTime);
-        // expect(await stakingERC721.getRewardsPerPeriod()).to.eq(configB.rewardsPerPeriod);
-        // expect(await stakingERC721.getPeriodLength()).to.eq(configB.periodLength);
+        expect(rewardConfig.minimumLockTime).to.eq(configB.minimumLockTime);
+        expect(rewardConfig.rewardsPerPeriod).to.eq(configB.rewardsPerPeriod);
+        expect(rewardConfig.periodLength).to.eq(configB.periodLength);
 
         await time.increase(DAY_IN_SECONDS * 17n);
 

@@ -1,3 +1,5 @@
+/* eslint-disable no-underscore-dangle */
+
 import * as hre from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";

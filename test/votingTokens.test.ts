@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-shadow, no-shadow */
+
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
