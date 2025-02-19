@@ -259,10 +259,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
             }
         }
 
-        if (_getContractRewardsBalance() < rewards) {
-            revert InsufficientContractBalance();
-        }
-
         _transferAmount(rewardsToken, rewards);
 
         emit Claimed(msg.sender, rewards);
