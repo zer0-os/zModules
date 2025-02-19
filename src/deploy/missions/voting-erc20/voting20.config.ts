@@ -7,6 +7,8 @@ export const getVoting20DeployConfig = ({
 } : {
   tokenAdmin : SignerWithAddress;
 }) : IVotingERC20Config => {
+  if (!tokenAdmin) throw new Error("Missing token admin for VotingERC20!");
+
   if (
     !process.env.VOTING20_TOKEN_NAME ||
     !process.env.VOTING20_TOKEN_SYMBOL ||
@@ -16,10 +18,11 @@ export const getVoting20DeployConfig = ({
     throw new Error("Missing required env variables for VotingERC20!");
   }
 
-  // TODO dep: add other vars here and in the mission when updated with post audit code
   return {
     name: process.env.VOTING20_TOKEN_NAME,
     symbol: process.env.VOTING20_TOKEN_SYMBOL,
+    domainName: process.env.VOTING20_DOMAIN_NAME,
+    domainVersion: process.env.VOTING20_DOMAIN_VERSION,
     admin: tokenAdmin,
   };
 };

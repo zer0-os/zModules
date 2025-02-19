@@ -26,6 +26,7 @@ export interface IStakingERC20Config {
   contractOwner : string;
   minimumRewardsMultiplier : bigint;
   maximumRewardsMultiplier : bigint;
+  canExit : boolean;
 }
 
 export interface IStakingERC721Config extends IStakingERC20Config {}
@@ -33,6 +34,8 @@ export interface IStakingERC721Config extends IStakingERC20Config {}
 export interface IVotingERC20Config {
   name : string;
   symbol : string;
+  domainName : string;
+  domainVersion : string;
   admin : SignerWithAddress;
 }
 
@@ -92,6 +95,11 @@ export type ZModulesContract =
   TimelockController;
 
 export interface IZModulesContracts extends IContractState<ZModulesContract> {
-  stakingERC20 : StakingERC20;
-  stakingERC721 : StakingERC721;
+  staking20 : StakingERC20;
+  staking721 : StakingERC721;
+  votingErc20 : ZeroVotingERC20;
+  votingErc721 : ZeroVotingERC721;
+  zDao : ZDAO;
+  match : Match;
+  timelockController : TimelockController;
 }

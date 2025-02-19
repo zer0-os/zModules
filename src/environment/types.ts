@@ -49,6 +49,7 @@ export interface IStaking20Environment {
   STAKING20_MIN_LOCK_TIME : string;
   STAKING20_MIN_REWARDS_MULTIPLIER : string;
   STAKING20_MAX_REWARDS_MULTIPLIER : string;
+  STAKING20_CAN_EXIT ?: string;
 }
 
 export interface IStaking721Environment {

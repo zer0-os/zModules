@@ -4,7 +4,6 @@ import { IBaseEnvironment } from "../types";
 /**
  * Base default environment configuration applicable to all contracts
  */
-// TODO dep: type this like it is in zNS on `zdc-update-multi-chain` branch
 export const baseConfig : IBaseEnvironment = {
   ENV_LEVEL: "dev",
   CONFIRMATIONS_N: "0",

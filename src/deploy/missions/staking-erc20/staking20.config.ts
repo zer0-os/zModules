@@ -1,6 +1,7 @@
 import assert from "assert";
 import { IStakingERC20Config } from "../../campaign/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { EnvironmentLevels } from "@zero-tech/zdc";
 
 
 export const getStaking20DeployConfig = ({
@@ -13,7 +14,7 @@ export const getStaking20DeployConfig = ({
   let owner;
   if (!contractOwner) {
     assert.ok(
-      process.env.STAKING20_CONTRACT_OWNER,
+      !!process.env.STAKING20_CONTRACT_OWNER,
       "Missing STAKING20_CONTRACT_OWNER env variable for StakingERC20!"
     );
     owner = process.env.STAKING20_CONTRACT_OWNER;
@@ -22,7 +23,7 @@ export const getStaking20DeployConfig = ({
   }
 
   const mockTokens =
-      (env === "dev" || env === "test") &&
+      (env === EnvironmentLevels.dev || env === EnvironmentLevels.test) &&
       (!process.env.STAKING20_STAKING_TOKEN || !process.env.STAKING20_REWARDS_TOKEN);
 
   if (
@@ -36,14 +37,14 @@ export const getStaking20DeployConfig = ({
   }
 
   if (
-    env === "prod" &&
+    env === EnvironmentLevels.prod &&
         (!process.env.STAKING20_STAKING_TOKEN ||
           !process.env.STAKING20_REWARDS_TOKEN)
   ) {
     throw new Error("Missing required env tokens for StakingERC20!");
   }
 
-  if (env === "dev" || env === "test") {
+  if (env === EnvironmentLevels.dev || env === EnvironmentLevels.test) {
     if (!mockTokens) {
       assert.ok(
         !!process.env.STAKING20_STAKING_TOKEN && !!process.env.STAKING20_REWARDS_TOKEN,
@@ -56,7 +57,7 @@ export const getStaking20DeployConfig = ({
 
   const config = {
     mockTokens,
-    shouldRevokeAdminRole: process.env.STAKING20_REVOKE_ADMIN_ROLE !== "false",
+    shouldRevokeAdminRole: process.env.STAKING20_REVOKE_ADMIN_ROLE === "true",
     stakingToken: process.env.STAKING20_STAKING_TOKEN,
     rewardsToken: process.env.STAKING20_REWARDS_TOKEN,
     rewardsPerPeriod: BigInt(process.env.STAKING20_REWARDS_PER_PERIOD),
@@ -65,6 +66,7 @@ export const getStaking20DeployConfig = ({
     contractOwner: owner,
     minimumRewardsMultiplier: BigInt(process.env.STAKING20_MIN_REWARDS_MULTIPLIER),
     maximumRewardsMultiplier: BigInt(process.env.STAKING20_MAX_REWARDS_MULTIPLIER),
+    canExit: process.env.STAKING20_CAN_EXIT === "true",
   };
 
   return config;

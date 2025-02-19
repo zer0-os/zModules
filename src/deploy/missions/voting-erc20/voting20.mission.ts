@@ -28,12 +28,16 @@ IZModulesContracts
     const {
       name,
       symbol,
+      domainName,
+      domainVersion,
       admin,
     } = votingERC20Config as IVotingERC20Config;
 
     return [
       name,
       symbol,
+      domainName,
+      domainVersion,
       admin.address,
     ];
   }
