@@ -13,7 +13,7 @@ export const getZModulesMongoAdapter = async ({
   dbUri = process.env.DB_URI,
   dbName = process.env.DB_NAME,
   dbVersion = process.env.DB_VERSION,
-  archiveDb = process.env.ARCHIVE_DB,
+  archiveDb = process.env.ARCHIVE_DB === "true",
   clientOpts,
 } : {
   contractsVersion ?: string;
