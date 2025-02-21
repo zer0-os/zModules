@@ -1,7 +1,5 @@
-import { getLogger } from "@zero-tech/zdc";
 import { getZModulesMongoAdapter, startMongo, stopMongo } from "../../deploy/mongo";
 
-const logger = getLogger();
 
 export const dropDB = async () => {
   try {

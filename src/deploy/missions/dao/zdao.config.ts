@@ -3,7 +3,6 @@ import { IDAOConfig } from "../../campaign/types";
 
 export const getDAOConfig = () : IDAOConfig => {
   if (
-    !process.env.DAO_VOTING_TOKEN ||
     !process.env.DAO_GOV_NAME ||
     !process.env.DAO_VOTING_DELAY ||
     !process.env.DAO_VOTING_PERIOD ||

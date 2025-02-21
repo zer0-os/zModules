@@ -121,18 +121,16 @@ IZModulesContracts
         deployAdmin,
       },
       zDao,
-      timelockController: campaignTimelockController,
+      timelockController,
     } = this.campaign;
 
-    let {
-      timelockController,
+    const {
+      timelockController: timelockControllerAddress,
     } = this.campaign.config.daoConfig as IDAOConfig;
 
-    if (!timelockController) {
-      timelockController = campaignTimelockController;
-    } else {
-      timelockController = await hre.ethers.getContractAt(contractNames.timelock.contract, timelockController);
-    }
+    const timelockControllerContract = !timelockController
+      ? await hre.ethers.getContractAt(contractNames.timelock.contract, timelockControllerAddress!)
+      : timelockController;
 
     const {
       shouldRevokeAdminRole,
@@ -144,12 +142,16 @@ IZModulesContracts
       EXECUTOR_ROLE,
     } = roles.timelock;
 
-    await timelockController.connect(deployAdmin).grantRole(DEFAULT_ADMIN_ROLE, deployAdmin.address);
-    await timelockController.connect(deployAdmin).grantRole(PROPOSER_ROLE, zDao.target);
-    await timelockController.connect(deployAdmin).grantRole(EXECUTOR_ROLE, zDao.target);
+    this.logger.debug("Granting Proposer and Executor roles to admin");
+
+    await timelockControllerContract.connect(deployAdmin).grantRole(DEFAULT_ADMIN_ROLE, deployAdmin.address);
+    await timelockControllerContract.connect(deployAdmin).grantRole(PROPOSER_ROLE, zDao.target);
+    await timelockControllerContract.connect(deployAdmin).grantRole(EXECUTOR_ROLE, zDao.target);
 
     // revoke admin role after granting procoser and executor roles
-    if (shouldRevokeAdminRole)
-      await timelockController.connect(deployAdmin).revokeRole(DEFAULT_ADMIN_ROLE, deployAdmin.address);
+    if (shouldRevokeAdminRole) {
+      this.logger.debug("Revoking Admin role");
+      await timelockControllerContract.connect(deployAdmin).revokeRole(DEFAULT_ADMIN_ROLE, deployAdmin.address);
+    }
   }
 }

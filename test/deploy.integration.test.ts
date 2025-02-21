@@ -2,7 +2,7 @@ import * as hre from "hardhat";
 import { contractNames, runZModulesCampaign } from "../src/deploy";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ZModulesZeroVotingERC20DM } from "../src/deploy/missions/voting-erc20/voting20.mission";
-import { getStakingERC20Mission } from "../src/deploy/missions/staking-erc20/staking20.mission";
+import { ZModulesStakingERC20DM } from "../src/deploy/missions/staking-erc20/staking20.mission";
 import {
   IZModulesConfig,
   IZModulesContracts,
@@ -20,7 +20,7 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getMockERC721Mission } from "../src/deploy/missions/mocks/mockERC721.mission";
 import { ZModulesZeroVotingERC721DM } from "../src/deploy/missions/voting-erc721/voting721.mission";
-import { getStakingERC721Mission } from "../src/deploy/missions/staking-erc721/staking721.mission";
+import { ZModulesStakingERC721DM } from "../src/deploy/missions/staking-erc721/staking721.mission";
 import {
   MockERC20,
   MockERC721,
@@ -92,7 +92,7 @@ describe("zModules Deploy Integration Test", () => {
             tokenSymbol: "RWD",
           }),
           ZModulesZeroVotingERC20DM,
-          getStakingERC20Mission(),
+          ZModulesStakingERC20DM,
         ],
       });
 
@@ -111,25 +111,38 @@ describe("zModules Deploy Integration Test", () => {
 
       // config
       stakingConfig = staking20Config;
+      const {
+        rewardsPerPeriod,
+        periodLength,
+        minimumLockTime,
+        minimumRewardsMultiplier,
+        maximumRewardsMultiplier,
+      } = await staking.getLatestConfig();
+
       expect(
-        await staking.getMinimumLockTime()
+        minimumLockTime
       ).to.eq(
         stakingConfig.STAKING20_MIN_LOCK_TIME
       );
       expect(
-        await staking.getMinimumRewardsMultiplier()
+        minimumRewardsMultiplier
       ).to.eq(
         stakingConfig.STAKING20_MIN_REWARDS_MULTIPLIER
       );
       expect(
-        await staking.getMaximumRewardsMultiplier()
+        maximumRewardsMultiplier
       ).to.eq(
         stakingConfig.STAKING20_MAX_REWARDS_MULTIPLIER
       );
       expect(
-        await staking.getRewardsPerPeriod()
+        rewardsPerPeriod
       ).to.eq(
         stakingConfig.STAKING20_REWARDS_PER_PERIOD
+      );
+      expect(
+        periodLength
+      ).to.eq(
+        stakingConfig.STAKING20_PERIOD_LENGTH
       );
       // TODO dep: check `canExit` flag
     });
@@ -165,7 +178,7 @@ describe("zModules Deploy Integration Test", () => {
             tokenSymbol: "RWD",
           }),
           ZModulesZeroVotingERC721DM,
-          getStakingERC721Mission(),
+          ZModulesStakingERC721DM,
         ],
       });
 
@@ -176,33 +189,40 @@ describe("zModules Deploy Integration Test", () => {
         mockErc20REW: rewardsToken,
       } = campaign);
 
-      // tokens
-      expect(await staking.getStakingToken()).to.eq(stakeToken.target);
-      expect(await staking.getRewardsToken()).to.eq(rewardsToken.target);
-      expect(await staking.getStakeRepToken()).to.eq(stakeRepToken.target);
-
       // config
       stakingConfig = staking721Config;
+      const {
+        rewardsPerPeriod,
+        periodLength,
+        minimumLockTime,
+        minimumRewardsMultiplier,
+        maximumRewardsMultiplier,
+      } = await staking.getLatestConfig();
 
       expect(
-        await staking.getMinimumLockTime()
+        minimumLockTime
       ).to.eq(
         stakingConfig.STAKING721_MIN_LOCK_TIME
       );
       expect(
-        await staking.getMinimumRewardsMultiplier()
+        minimumRewardsMultiplier
       ).to.eq(
         stakingConfig.STAKING721_MIN_REWARDS_MULTIPLIER
       );
       expect(
-        await staking.getMaximumRewardsMultiplier()
+        maximumRewardsMultiplier
       ).to.eq(
         stakingConfig.STAKING721_MAX_REWARDS_MULTIPLIER
       );
       expect(
-        await staking.getRewardsPerPeriod()
+        rewardsPerPeriod
       ).to.eq(
         stakingConfig.STAKING721_REWARDS_PER_PERIOD
+      );
+      expect(
+        periodLength
+      ).to.eq(
+        stakingConfig.STAKING721_PERIOD_LENGTH
       );
     });
 
@@ -224,7 +244,6 @@ describe("zModules Deploy Integration Test", () => {
 
   describe("DAO", () => {
     it("Should deploy DAO with ERC20 token zDC and default config", async () => {
-
       config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
 
       campaign = await runZModulesCampaign({
@@ -315,18 +334,18 @@ describe("zModules Deploy Integration Test", () => {
     IZModulesContracts>;
 
     // env vars
-    const rewardsPerPeriod = "30";
-    const periodLength = (86400n * 365n * 2n).toString();  // 2 years in seconds
-    const minLockTime = (86400n * 30n * 2n).toString();   // 2 months in seconds
-    const minRewardsMultiplier = "10";
-    const maxRewardsMultiplier = "100";
+    const envRewardsPerPeriod = "30";
+    const envPeriodLength = (86400n * 365n * 2n).toString();  // 2 years in seconds
+    const envMinLockTime = (86400n * 30n * 2n).toString();   // 2 months in seconds
+    const envMinRewardsMultiplier = "10";
+    const envMaxRewardsMultiplier = "100";
 
     before(async () => {
       await dbAdapter.dropDB();
 
       [ contractOwner ] = await hre.ethers.getSigners();
 
-      // a separate campaign with "pre-deployed" tokens
+      // a separate campaign with "pre-deployed" tokens5
       envCampaign = await runZModulesCampaign({
         config,
         missions: [
@@ -383,11 +402,11 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_STAKING_TOKEN = stakingTokenAddress;
       process.env.STAKING20_REWARDS_TOKEN = rewardsTokenAddress;
       process.env.STAKING20_CONTRACT_OWNER = contractOwnerAddress;
-      process.env.STAKING20_REWARDS_PER_PERIOD = rewardsPerPeriod;
-      process.env.STAKING20_PERIOD_LENGTH = periodLength;
-      process.env.STAKING20_MIN_LOCK_TIME = minLockTime;
-      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = minRewardsMultiplier;
-      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = maxRewardsMultiplier;
+      process.env.STAKING20_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+      process.env.STAKING20_PERIOD_LENGTH = envPeriodLength;
+      process.env.STAKING20_MIN_LOCK_TIME = envMinLockTime;
+      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
       config = await getStaking20SystemConfig(deployAdmin);
 
@@ -395,7 +414,7 @@ describe("zModules Deploy Integration Test", () => {
         config,
         missions: [
           ZModulesZeroVotingERC20DM,
-          getStakingERC20Mission(),
+          ZModulesStakingERC20DM,
         ],
       });
 
@@ -403,31 +422,39 @@ describe("zModules Deploy Integration Test", () => {
         staking20: staking,
       } = campaign);
 
-      // tokens
-      expect(await staking.getStakingToken()).to.eq(stakeToken20.target);
-      expect(await staking.getRewardsToken()).to.eq(rewardsToken20.target);
-      expect(await staking.getStakeRepToken()).to.eq(campaign.state.contracts.votingErc20.target);
+      const {
+        rewardsPerPeriod,
+        periodLength,
+        minimumLockTime,
+        minimumRewardsMultiplier,
+        maximumRewardsMultiplier,
+      } = await staking.getLatestConfig();
 
       // config
       expect(
-        await staking.getMinimumLockTime()
+        minimumLockTime
       ).to.eq(
-        minLockTime
+        envMinLockTime
       );
       expect(
-        await staking.getMinimumRewardsMultiplier()
+        minimumRewardsMultiplier
       ).to.eq(
-        minRewardsMultiplier
+        envMinRewardsMultiplier
       );
       expect(
-        await staking.getMaximumRewardsMultiplier()
+        maximumRewardsMultiplier
       ).to.eq(
-        maxRewardsMultiplier
+        envMaxRewardsMultiplier
       );
       expect(
-        await staking.getRewardsPerPeriod()
-      ).to.eq(
         rewardsPerPeriod
+      ).to.eq(
+        envRewardsPerPeriod
+      );
+      expect(
+        periodLength
+      ).to.eq(
+        envPeriodLength
       );
     });
 
@@ -439,11 +466,11 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING721_STAKING_TOKEN = stakingTokenAddress;
       process.env.STAKING721_REWARDS_TOKEN = rewardsTokenAddress;
       process.env.STAKING721_CONTRACT_OWNER = contractOwnerAddress;
-      process.env.STAKING721_REWARDS_PER_PERIOD = rewardsPerPeriod;
-      process.env.STAKING721_PERIOD_LENGTH = periodLength;
-      process.env.STAKING721_MIN_LOCK_TIME = minLockTime;
-      process.env.STAKING721_MIN_REWARDS_MULTIPLIER = minRewardsMultiplier;
-      process.env.STAKING721_MAX_REWARDS_MULTIPLIER = maxRewardsMultiplier;
+      process.env.STAKING721_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+      process.env.STAKING721_PERIOD_LENGTH = envPeriodLength;
+      process.env.STAKING721_MIN_LOCK_TIME = envMinLockTime;
+      process.env.STAKING721_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+      process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
       config = await getStaking721SystemConfig(deployAdmin);
 
@@ -451,7 +478,7 @@ describe("zModules Deploy Integration Test", () => {
         config,
         missions: [
           ZModulesZeroVotingERC721DM,
-          getStakingERC721Mission(),
+          ZModulesStakingERC721DM,
         ],
       });
 
@@ -459,31 +486,39 @@ describe("zModules Deploy Integration Test", () => {
         staking721: staking,
       } = campaign);
 
-      // tokens
-      expect(await staking.getStakingToken()).to.eq(stakeToken721.target);
-      expect(await staking.getRewardsToken()).to.eq(rewardsToken20.target);
-      expect(await staking.getStakeRepToken()).to.eq(campaign.state.contracts.votingErc721.target);
+      const {
+        rewardsPerPeriod,
+        periodLength,
+        minimumLockTime,
+        minimumRewardsMultiplier,
+        maximumRewardsMultiplier,
+      } = await staking.getLatestConfig();
 
       // config
       expect(
-        await staking.getMinimumLockTime()
+        minimumLockTime
       ).to.eq(
-        minLockTime
+        envMinLockTime
       );
       expect(
-        await staking.getMinimumRewardsMultiplier()
+        minimumRewardsMultiplier
       ).to.eq(
-        minRewardsMultiplier
+        envMinRewardsMultiplier
       );
       expect(
-        await staking.getMaximumRewardsMultiplier()
+        maximumRewardsMultiplier
       ).to.eq(
-        maxRewardsMultiplier
+        envMaxRewardsMultiplier
       );
       expect(
-        await staking.getRewardsPerPeriod()
-      ).to.eq(
         rewardsPerPeriod
+      ).to.eq(
+        envRewardsPerPeriod
+      );
+      expect(
+        periodLength
+      ).to.eq(
+        envPeriodLength
       );
     });
 
@@ -649,11 +684,11 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_STAKING_TOKEN = stakingTokenAddress;
       process.env.STAKING20_REWARDS_TOKEN = rewardsTokenAddress;
       process.env.STAKING20_CONTRACT_OWNER = contractOwnerAddress;
-      process.env.STAKING20_REWARDS_PER_PERIOD = rewardsPerPeriod;
-      process.env.STAKING20_PERIOD_LENGTH = periodLength;
-      process.env.STAKING20_MIN_LOCK_TIME = minLockTime;
-      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = minRewardsMultiplier;
-      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = maxRewardsMultiplier;
+      process.env.STAKING20_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+      process.env.STAKING20_PERIOD_LENGTH = envPeriodLength;
+      process.env.STAKING20_MIN_LOCK_TIME = envMinLockTime;
+      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING20_REVOKE_ADMIN_ROLE = "false";
 
       config = await getStaking20SystemConfig(deployAdmin);
@@ -662,7 +697,7 @@ describe("zModules Deploy Integration Test", () => {
         config,
         missions: [
           ZModulesZeroVotingERC20DM,
-          getStakingERC20Mission(),
+          ZModulesStakingERC20DM,
         ],
       });
 
@@ -683,11 +718,11 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING721_STAKING_TOKEN = stakingTokenAddress;
       process.env.STAKING721_REWARDS_TOKEN = rewardsTokenAddress;
       process.env.STAKING721_CONTRACT_OWNER = contractOwnerAddress;
-      process.env.STAKING721_REWARDS_PER_PERIOD = rewardsPerPeriod;
-      process.env.STAKING721_PERIOD_LENGTH = periodLength;
-      process.env.STAKING721_MIN_LOCK_TIME = minLockTime;
-      process.env.STAKING721_MIN_REWARDS_MULTIPLIER = minRewardsMultiplier;
-      process.env.STAKING721_MAX_REWARDS_MULTIPLIER = maxRewardsMultiplier;
+      process.env.STAKING721_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+      process.env.STAKING721_PERIOD_LENGTH = envPeriodLength;
+      process.env.STAKING721_MIN_LOCK_TIME = envMinLockTime;
+      process.env.STAKING721_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+      process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING721_REVOKE_ADMIN_ROLE = "false";
 
       config = await getStaking721SystemConfig(deployAdmin);
@@ -696,7 +731,7 @@ describe("zModules Deploy Integration Test", () => {
         config,
         missions: [
           ZModulesZeroVotingERC721DM,
-          getStakingERC721Mission(),
+          ZModulesStakingERC721DM,
         ],
       });
 
@@ -735,7 +770,7 @@ describe("zModules Deploy Integration Test", () => {
           ],
         })
       ).to.be.rejectedWith(
-        "Must provide voting token and timelock controller to use for DAO contract"
+        "No timelock controller provided for zDAO!"
       );
     });
 
@@ -765,7 +800,7 @@ describe("zModules Deploy Integration Test", () => {
           ],
         })
       ).to.be.rejectedWith(
-        "Must provide voting token and timelock controller to use for DAO contract"
+        "No timelock controller provided for zDAO!"
       );
     });
   });
