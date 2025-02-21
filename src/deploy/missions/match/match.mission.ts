@@ -1,9 +1,9 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission } from "@zero-tech/zdc/dist/missions/base-deploy-mission";
 import { HardhatRuntimeEnvironment } from "hardhat/types/runtime";
-import { IZModulesConfig, IZModulesContracts, IMatchDeployArgs } from "../campaign/types.campaign";
 import { TDeployArgs } from "@zero-tech/zdc/dist/missions/types";
-import { contractNames } from "../contractNames";
+import { contractNames } from "../../contract-names";
+import { IMatchConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 
 
 export class ZModulesMatchDM extends BaseDeployMission<
@@ -25,7 +25,7 @@ IZModulesContracts
         matchConfig,
         mockTokens,
       },
-      mock20,
+      mockErc20,
     } = this.campaign;
 
     const {
@@ -34,11 +34,11 @@ IZModulesContracts
       owner,
       operators,
       gameFeePercentage,
-    } = matchConfig as IMatchDeployArgs;
+    } = matchConfig as IMatchConfig;
 
     if (mockTokens && !token) {
       return [
-        await mock20.getAddress(),
+        await mockErc20.getAddress(),
         feeVault,
         owner,
         operators,

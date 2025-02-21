@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-unused-vars */
 
-require("dotenv").config();
-
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-verify";
@@ -15,6 +13,10 @@ import "hardhat-gas-reporter";
 import { HardhatUserConfig, subtask } from "hardhat/config";
 import { mochaGlobalSetup, mochaGlobalTeardown } from "./test/mongo-global";
 import { TASK_TEST_RUN_MOCHA_TESTS } from "hardhat/builtin-tasks/task-names";
+import { setDefaultEnvironment } from "./src/environment/set-env";
+
+
+setDefaultEnvironment();
 
 subtask(TASK_TEST_RUN_MOCHA_TESTS)
   .setAction(async (args, hre, runSuper) => {
@@ -94,6 +96,15 @@ const config : HardhatUserConfig = {
     // `${process.env.TESTNET_PRIVATE_KEY_D}`,
     // `${process.env.TESTNET_PRIVATE_KEY_E}`,
     // `${process.env.TESTNET_PRIVATE_KEY_F}`,
+    //   ],
+    // },
+
+
+    // moonwalker: {
+    //   url: `${process.env.MOONWALKER_RPC_URL}`,
+    //   chainId: 1828369849,
+    //   accounts: [
+    //     `${process.env.MOON_ADMIN_PR_K}`,
     //   ],
     // },
   },

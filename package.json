@@ -30,9 +30,7 @@
     "mongo:drop": "ts-node src/utils/drop-db.ts",
     "pretest": "yarn mongo:start",
     "posttest": "yarn mongo:stop",
-    "deploy-local": "hardhat run src/deploy/run-campaign.ts --network hardhat",
-    "deploy-sepolia": "hardhat run src/deploy/run-campaign.ts --network sepolia",
-    "deploy-meowtestnet": "hardhat run src/deploy/run-campaign.ts --network meowtestnet"
+    "deploy-local": "hardhat run src/deploy/run-campaign.ts --network hardhat"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
@@ -50,7 +48,7 @@
     "@types/mocha": "^9.1.0",
     "@types/node": "^18.15.11",
     "@zero-tech/eslint-config-cpt": "0.2.7",
-    "@zero-tech/zdc": "0.1.6",
+    "@zero-tech/zdc": "0.2.0",
     "chai": "^4.3.10",
     "eslint": "^8.37.0",
     "ethers": "^6.9.0",

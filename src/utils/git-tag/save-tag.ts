@@ -6,10 +6,12 @@ import { tagFilePath } from "./constants";
 
 
 const execAsync = promisify(exec);
-const logger = getLogger();
 
 
 export const acquireLatestGitTag = async () => {
+  const logger = getLogger({
+    silence: process.env.SILENT_LOGGER === "true",
+  });
   const gitTag = await execAsync("git describe --tags --abbrev=0");
   const tag = gitTag.stdout.trim();
 
@@ -25,6 +27,7 @@ export const acquireLatestGitTag = async () => {
 };
 
 export const saveTag = async () => {
+  const logger = getLogger();
   const tag = await acquireLatestGitTag();
 
   fs.writeFileSync(tagFilePath, tag, "utf8");
