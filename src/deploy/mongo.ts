@@ -10,10 +10,10 @@ const execAsync = promisify(exec);
 export const getZModulesMongoAdapter = async ({
   contractsVersion,
   logger,
-  dbUri = process.env.DB_URI,
-  dbName = process.env.DB_NAME,
-  dbVersion = process.env.DB_VERSION,
-  archiveDb = process.env.ARCHIVE_DB === "true",
+  dbUri = process.env.MONGO_DB_URI,
+  dbName = process.env.MONGO_DB_NAME,
+  dbVersion = process.env.MONGO_DB_VERSION,
+  archiveDb = process.env.ARCHIVE_PREVIOUS_DB_VERSION === "true",
   clientOpts,
 } : {
   contractsVersion ?: string;
