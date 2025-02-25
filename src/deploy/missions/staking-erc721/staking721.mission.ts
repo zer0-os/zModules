@@ -55,7 +55,7 @@ IZModulesContracts
       canExit,
     } = stakingERC721Config as IStakingERC721Config;
 
-    if (mockTokens) {
+    if (mockTokens && mockErc721STK && mockErc20REW) {
       stakingToken = await mockErc721STK.getAddress();
       rewardsToken = await mockErc20REW.getAddress();
     } else {

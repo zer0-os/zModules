@@ -54,7 +54,7 @@ IZModulesContracts
       canExit,
     } = stakingERC20Config as IStakingERC20Config;
 
-    if (mockTokens) {
+    if (mockTokens && mockErc20STK && mockErc20REW) {
       stakingToken = await mockErc20STK.getAddress();
       rewardsToken = await mockErc20REW.getAddress();
     } else {

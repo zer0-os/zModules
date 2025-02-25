@@ -15,6 +15,7 @@ import {
 import { expect } from "chai";
 import {
   DeployCampaign,
+  EnvironmentLevels,
   MongoDBAdapter,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -333,19 +334,28 @@ describe("zModules Deploy Integration Test", () => {
     IZModulesConfig,
     IZModulesContracts>;
 
-    // env vars
+    // Staking env vars
     const envRewardsPerPeriod = "30";
     const envPeriodLength = (86400n * 365n * 2n).toString();  // 2 years in seconds
     const envMinLockTime = (86400n * 30n * 2n).toString();   // 2 months in seconds
     const envMinRewardsMultiplier = "10";
     const envMaxRewardsMultiplier = "100";
 
+    // DAO env vars
+    const envVotingDelay = "1"; // 1 second
+    const envVotingPeriod = "5"; // 5 blocks
+    const envProposalThreshold = "5"; // 5 tokens
+    const envQuorumPercentage = "5"; // 5%
+    const envVoteExtension = "2"; // 2 blocks
+
     before(async () => {
       await dbAdapter.dropDB();
 
       [ contractOwner ] = await hre.ethers.getSigners();
 
-      // a separate campaign with "pre-deployed" tokens5
+      config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
+
+      // a separate campaign with "pre-deployed" tokens
       envCampaign = await runZModulesCampaign({
         config,
         missions: [
@@ -381,7 +391,10 @@ describe("zModules Deploy Integration Test", () => {
       await dbAdapter.dropDB();
 
       Object.keys(process.env).forEach(key => {
-        if (key.startsWith("DAO_")) {
+        if (key.startsWith("DAO_") ||
+            key.startsWith("STAKING20_") ||
+            key.startsWith("STAKING721_")
+        ) {
           delete process.env[key];
         }
       });
@@ -525,19 +538,14 @@ describe("zModules Deploy Integration Test", () => {
     it("Should deploy DAO with ERC20 token using zDC", async () => {
       const votingTokenAddress = stakeToken20.target.toString();
       const timelockAddress = timelockController.target.toString();
-      const votingDelay = "1"; // 1 second
-      const votingPeriod = "5"; // 5 blocks
-      const proposalThreshold = "5"; // 5 tokens
-      const quorumPercentage = "5"; // 5%
-      const voteExtension = "2"; // 2 blocks
 
       process.env.DAO_VOTING_TOKEN = votingTokenAddress;
       process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
-      process.env.DAO_VOTING_DELAY = votingDelay;
-      process.env.DAO_VOTING_PERIOD = votingPeriod;
-      process.env.DAO_PROPOSAL_THRESHOLD = proposalThreshold;
-      process.env.DAO_QUORUM_PERCENTAGE = quorumPercentage;
-      process.env.DAO_VOTE_EXTENSION = voteExtension;
+      process.env.DAO_VOTING_DELAY = envVotingDelay;
+      process.env.DAO_VOTING_PERIOD = envVotingPeriod;
+      process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
+      process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
+      process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
       config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
@@ -553,9 +561,9 @@ describe("zModules Deploy Integration Test", () => {
         zDao,
       } = campaign;
 
-      expect(await zDao.votingDelay()).to.eq(votingDelay);
-      expect(await zDao.votingPeriod()).to.eq(votingPeriod);
-      expect(await zDao.proposalThreshold()).to.eq(proposalThreshold);
+      expect(await zDao.votingDelay()).to.eq(envVotingDelay);
+      expect(await zDao.votingPeriod()).to.eq(envVotingPeriod);
+      expect(await zDao.proposalThreshold()).to.eq(envProposalThreshold);
 
       // tokens
       expect(await zDao.token()).to.eq(votingTokenAddress);
@@ -564,19 +572,14 @@ describe("zModules Deploy Integration Test", () => {
     it("Should deploy DAO with ERC721 token using zDC", async () => {
       const votingTokenAddress = stakeToken721.target.toString();
       const timelockAddress = timelockController.target.toString();
-      const votingDelay = "1"; // 1 second
-      const votingPeriod = "5"; // 5 blocks
-      const proposalThreshold = "5"; // 5 tokens
-      const quorumPercentage = "5"; // 5%
-      const voteExtension = "2"; // 2 blocks
 
       process.env.DAO_VOTING_TOKEN = votingTokenAddress;
       process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
-      process.env.DAO_VOTING_DELAY = votingDelay;
-      process.env.DAO_VOTING_PERIOD = votingPeriod;
-      process.env.DAO_PROPOSAL_THRESHOLD = proposalThreshold;
-      process.env.DAO_QUORUM_PERCENTAGE = quorumPercentage;
-      process.env.DAO_VOTE_EXTENSION = voteExtension;
+      process.env.DAO_VOTING_DELAY = envVotingDelay;
+      process.env.DAO_VOTING_PERIOD = envVotingPeriod;
+      process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
+      process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
+      process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
       config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC721.instance);
@@ -592,9 +595,9 @@ describe("zModules Deploy Integration Test", () => {
         zDao,
       } = campaign;
 
-      expect(await zDao.votingDelay()).to.eq(votingDelay);
-      expect(await zDao.votingPeriod()).to.eq(votingPeriod);
-      expect(await zDao.proposalThreshold()).to.eq(proposalThreshold);
+      expect(await zDao.votingDelay()).to.eq(envVotingDelay);
+      expect(await zDao.votingPeriod()).to.eq(envVotingPeriod);
+      expect(await zDao.proposalThreshold()).to.eq(envProposalThreshold);
 
       // tokens
       expect(await zDao.token()).to.eq(votingTokenAddress);
@@ -603,19 +606,14 @@ describe("zModules Deploy Integration Test", () => {
     it("Should deploy DAO with ERC20 token using zDC and revoke admin role", async () => {
       const votingTokenAddress = stakeToken20.target.toString();
       const timelockAddress = timelockController.target.toString();
-      const votingDelay = "1"; // 1 second
-      const votingPeriod = "5"; // 5 blocks
-      const proposalThreshold = "5"; // 5 tokens
-      const quorumPercentage = "5"; // 5%
-      const voteExtension = "2"; // 2 blocks
 
       process.env.DAO_VOTING_TOKEN = votingTokenAddress;
       process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
-      process.env.DAO_VOTING_DELAY = votingDelay;
-      process.env.DAO_VOTING_PERIOD = votingPeriod;
-      process.env.DAO_PROPOSAL_THRESHOLD = proposalThreshold;
-      process.env.DAO_QUORUM_PERCENTAGE = quorumPercentage;
-      process.env.DAO_VOTE_EXTENSION = voteExtension;
+      process.env.DAO_VOTING_DELAY = envVotingDelay;
+      process.env.DAO_VOTING_PERIOD = envVotingPeriod;
+      process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
+      process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
+      process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "true";
 
       config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
@@ -643,19 +641,14 @@ describe("zModules Deploy Integration Test", () => {
     it("Should deploy DAO with ERC721 token using zDC and revoke admin role", async () => {
       const votingTokenAddress = stakeToken721.target.toString();
       const timelockAddress = timelockController.target.toString();
-      const votingDelay = "1"; // 1 second
-      const votingPeriod = "5"; // 5 blocks
-      const proposalThreshold = "5"; // 5 tokens
-      const quorumPercentage = "5"; // 5%
-      const voteExtension = "2"; // 2 blocks
 
       process.env.DAO_VOTING_TOKEN = votingTokenAddress;
       process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
-      process.env.DAO_VOTING_DELAY = votingDelay;
-      process.env.DAO_VOTING_PERIOD = votingPeriod;
-      process.env.DAO_PROPOSAL_THRESHOLD = proposalThreshold;
-      process.env.DAO_QUORUM_PERCENTAGE = quorumPercentage;
-      process.env.DAO_VOTE_EXTENSION = voteExtension;
+      process.env.DAO_VOTING_DELAY = envVotingDelay;
+      process.env.DAO_VOTING_PERIOD = envVotingPeriod;
+      process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
+      process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
+      process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "true";
 
       config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC721.instance);
@@ -674,6 +667,136 @@ describe("zModules Deploy Integration Test", () => {
       expect(
         await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, staking)
       ).to.eq(false);
+    });
+
+    it("Should deploy StakingERC20 with zDC and revoke the admin role", async () => {
+      const stakingTokenAddress = stakeToken20.target.toString();
+      const rewardsTokenAddress = rewardsToken20.target.toString();
+      const contractOwnerAddress = contractOwner.address.toString();
+
+      process.env.STAKING20_STAKING_TOKEN = stakingTokenAddress;
+      process.env.STAKING20_REWARDS_TOKEN = rewardsTokenAddress;
+      process.env.STAKING20_CONTRACT_OWNER = contractOwnerAddress;
+      process.env.STAKING20_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+      process.env.STAKING20_PERIOD_LENGTH = envPeriodLength;
+      process.env.STAKING20_MIN_LOCK_TIME = envMinLockTime;
+      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
+      process.env.STAKING20_REVOKE_ADMIN_ROLE = "true";
+
+      config = await getStaking20SystemConfig(deployAdmin);
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesZeroVotingERC20DM,
+          ZModulesStakingERC20DM,
+        ],
+      });
+
+      const {
+        votingErc20: campaignVoting,
+      } = campaign;
+
+      expect(
+        await campaignVoting.hasRole(roles.voting.DEFAULT_ADMIN_ROLE, deployAdmin)
+      ).to.be.eq(false);
+    });
+
+    it("Should deploy StakingERC721 with zDC and revoke the admin role", async () => {
+      const stakingTokenAddress = stakeToken721.target.toString();
+      const rewardsTokenAddress = rewardsToken20.target.toString();
+      const contractOwnerAddress = contractOwner.address.toString();
+
+      process.env.STAKING721_STAKING_TOKEN = stakingTokenAddress;
+      process.env.STAKING721_REWARDS_TOKEN = rewardsTokenAddress;
+      process.env.STAKING721_CONTRACT_OWNER = contractOwnerAddress;
+      process.env.STAKING721_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+      process.env.STAKING721_PERIOD_LENGTH = envPeriodLength;
+      process.env.STAKING721_MIN_LOCK_TIME = envMinLockTime;
+      process.env.STAKING721_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+      process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
+      process.env.STAKING721_REVOKE_ADMIN_ROLE = "true";
+
+      config = await getStaking721SystemConfig(deployAdmin);
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesZeroVotingERC721DM,
+          ZModulesStakingERC721DM,
+        ],
+      });
+
+      const {
+        votingErc721: campaignVoting,
+      } = campaign;
+
+      expect(
+        await campaignVoting.hasRole(roles.voting.DEFAULT_ADMIN_ROLE, deployAdmin)
+      ).to.be.eq(false);
+    });
+
+    it("Should deploy DAO with ERC20 token using zDC and DO NOT revoke the admin role", async () => {
+      const votingTokenAddress = stakeToken20.target.toString();
+      const timelockAddress = timelockController.target.toString();
+
+      process.env.DAO_VOTING_TOKEN = votingTokenAddress;
+      process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
+      process.env.DAO_VOTING_DELAY = envVotingDelay;
+      process.env.DAO_VOTING_PERIOD = envVotingPeriod;
+      process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
+      process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
+      process.env.DAO_VOTE_EXTENSION = envVoteExtension;
+      process.env.DAO_REVOKE_ADMIN_ROLE = "false";
+
+      config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesZDAODM,
+        ],
+      });
+
+      const {
+        timelockController: campaignTimelockController,
+      } = envCampaign;
+
+      expect(
+        await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, deployAdmin)
+      ).to.eq(true);
+    });
+
+    it("Should deploy DAO with ERC721 token using zDC and DO NOT revoke the admin role", async () => {
+      const votingTokenAddress = stakeToken721.target.toString();
+      const timelockAddress = timelockController.target.toString();
+
+      process.env.DAO_VOTING_TOKEN = votingTokenAddress;
+      process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
+      process.env.DAO_VOTING_DELAY = envVotingDelay;
+      process.env.DAO_VOTING_PERIOD = envVotingPeriod;
+      process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
+      process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
+      process.env.DAO_VOTE_EXTENSION = envVoteExtension;
+      process.env.DAO_REVOKE_ADMIN_ROLE = "false";
+
+      config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC721.instance);
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesZDAODM,
+        ],
+      });
+
+      const {
+        timelockController: campaignTimelockController,
+      } = envCampaign;
+
+      expect(
+        await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, deployAdmin)
+      ).to.eq(true);
     });
 
     it("Should deploy StakingERC20 with zDC and DO NOT revoke the admin role", async () => {
@@ -744,64 +867,110 @@ describe("zModules Deploy Integration Test", () => {
       ).to.be.eq(true);
     });
 
-    it("Should stop deploy DAO with ERC20 token using zDC and no timelock controller", async () => {
-      const votingTokenAddress = stakeToken20.target.toString();
-      const votingDelay = "1"; // 1 second
-      const votingPeriod = "5"; // 5 blocks
-      const proposalThreshold = "5"; // 5 tokens
-      const quorumPercentage = "5"; // 5%
-      const voteExtension = "2"; // 2 blocks
+    describe("Fails", () => {
+      it("Should stop deploy StakingERC20 with zDC and missing staking token", async () => {
+        const rewardsTokenAddress = rewardsToken20.target.toString();
+        const contractOwnerAddress = contractOwner.address.toString();
 
-      process.env.DAO_VOTING_TOKEN = votingTokenAddress;
-      process.env.DAO_VOTING_DELAY = votingDelay;
-      process.env.DAO_VOTING_PERIOD = votingPeriod;
-      process.env.DAO_PROPOSAL_THRESHOLD = proposalThreshold;
-      process.env.DAO_QUORUM_PERCENTAGE = quorumPercentage;
-      process.env.DAO_VOTE_EXTENSION = voteExtension;
-      process.env.DAO_REVOKE_ADMIN_ROLE = "false";
+        process.env.STAKING20_REWARDS_TOKEN = rewardsTokenAddress;
+        process.env.STAKING20_CONTRACT_OWNER = contractOwnerAddress;
+        process.env.STAKING20_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+        process.env.STAKING20_PERIOD_LENGTH = envPeriodLength;
+        process.env.STAKING20_MIN_LOCK_TIME = envMinLockTime;
+        process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+        process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-      config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
+        config = await getStaking20SystemConfig(deployAdmin);
 
-      await expect(
-        runZModulesCampaign({
-          config,
-          missions: [
-            ZModulesZDAODM,
-          ],
-        })
-      ).to.be.rejectedWith(
-        "No timelock controller provided for zDAO!"
-      );
-    });
+        await expect(
+          runZModulesCampaign({
+            config,
+            missions: [
+              ZModulesZeroVotingERC20DM,
+              ZModulesStakingERC20DM,
+            ],
+          })
+        ).to.be.rejectedWith(
+          "Must provide Staking and Reward tokens if not mocking"
+        );
+      });
 
-    it("Should stop deploy DAO with ERC721 token using zDC and no timelock controller", async () => {
-      const votingTokenAddress = stakeToken721.target.toString();
-      const votingDelay = "1"; // 1 second
-      const votingPeriod = "5"; // 5 blocks
-      const proposalThreshold = "5"; // 5 tokens
-      const quorumPercentage = "5"; // 5%
-      const voteExtension = "2"; // 2 blocks
+      it("Should stop deploy StakingERC20 with zDC and missing rewards token", async () => {
+        const stakingTokenAddress = stakeToken20.target.toString();
+        const contractOwnerAddress = contractOwner.address.toString();
 
-      process.env.DAO_VOTING_TOKEN = votingTokenAddress;
-      process.env.DAO_VOTING_DELAY = votingDelay;
-      process.env.DAO_VOTING_PERIOD = votingPeriod;
-      process.env.DAO_PROPOSAL_THRESHOLD = proposalThreshold;
-      process.env.DAO_QUORUM_PERCENTAGE = quorumPercentage;
-      process.env.DAO_VOTE_EXTENSION = voteExtension;
-      process.env.DAO_REVOKE_ADMIN_ROLE = "false";
+        process.env.STAKING20_STAKING_TOKEN = stakingTokenAddress;
+        process.env.STAKING20_CONTRACT_OWNER = contractOwnerAddress;
+        process.env.STAKING20_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+        process.env.STAKING20_PERIOD_LENGTH = envPeriodLength;
+        process.env.STAKING20_MIN_LOCK_TIME = envMinLockTime;
+        process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+        process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-      config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC721.instance);
+        config = await getStaking20SystemConfig(deployAdmin);
 
-      await expect(
-        runZModulesCampaign({
-          config,
-          missions: [
-            ZModulesZDAODM,
-          ],
-        })
-      ).to.be.rejectedWith(
-        "No timelock controller provided for zDAO!"
-      );
+        await expect(
+          runZModulesCampaign({
+            config,
+            missions: [
+              ZModulesZeroVotingERC20DM,
+              ZModulesStakingERC20DM,
+            ],
+          })
+        ).to.be.rejectedWith(
+          "Must provide Staking and Reward tokens if not mocking"
+        );
+      });
+
+      it("Should stop deploy DAO with ERC20 token using zDC and no timelock controller", async () => {
+        const votingTokenAddress = stakeToken20.target.toString();
+
+        process.env.DAO_VOTING_TOKEN = votingTokenAddress;
+        process.env.DAO_VOTING_DELAY = envVotingDelay;
+        process.env.DAO_VOTING_PERIOD = envVotingPeriod;
+        process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
+        process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
+        process.env.DAO_VOTE_EXTENSION = envVoteExtension;
+        process.env.DAO_REVOKE_ADMIN_ROLE = "false";
+
+        config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC20.instance);
+
+        await expect(
+          runZModulesCampaign({
+            config,
+            missions: [
+              ZModulesZDAODM,
+            ],
+          })
+        ).to.be.rejectedWith(
+          "No timelock controller provided for zDAO!"
+        );
+      });
+
+      it("Should stop deploy DAO with ERC721 token using zDC and no timelock controller", async () => {
+        const votingTokenAddress = stakeToken721.target.toString();
+
+        process.env.DAO_VOTING_TOKEN = votingTokenAddress;
+        process.env.DAO_VOTING_DELAY = envVotingDelay;
+        process.env.DAO_VOTING_PERIOD = envVotingPeriod;
+        process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
+        process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
+        process.env.DAO_VOTE_EXTENSION = envVoteExtension;
+        process.env.DAO_REVOKE_ADMIN_ROLE = "false";
+
+        config = await getDaoSystemConfig(deployAdmin, contractNames.votingERC721.instance);
+
+        await expect(
+          runZModulesCampaign({
+            config,
+            missions: [
+              ZModulesZDAODM,
+            ],
+          })
+        ).to.be.rejectedWith(
+          "No timelock controller provided for zDAO!"
+        );
+      });
     });
   });
 });
