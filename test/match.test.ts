@@ -24,7 +24,7 @@ import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mocks/mockERC20.mission";
 import { ZModulesMatchDM } from "../src/deploy/missions/match/match.mission";
 import { getMatchDeployConfig } from "../src/deploy/missions/match/match.config";
-import { getBaseZModulesConfig } from "../src/deploy/campaign/get-campaign-config";
+import { getBaseZModulesConfig } from "../src/deploy/campaign/base-campaign-config";
 
 const getPlayerBalances = async (
   players : Array<string>,

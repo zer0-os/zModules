@@ -1,5 +1,5 @@
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { getBaseZModulesConfig } from "./get-campaign-config";
+import { getBaseZModulesConfig } from "./base-campaign-config";
 import { getVoting20DeployConfig } from "../missions/voting-erc20/voting20.config";
 import { getTimeLockControllerConfig } from "../missions/dao/timelock.config";
 import { getDAOConfig } from "../missions/dao/zdao.config";

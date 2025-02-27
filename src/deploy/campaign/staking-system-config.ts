@@ -1,7 +1,7 @@
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { getStaking20DeployConfig } from "../missions/staking-erc20/staking20.config";
 import { getVoting20DeployConfig } from "../missions/voting-erc20/voting20.config";
-import { getBaseZModulesConfig } from "./get-campaign-config";
+import { getBaseZModulesConfig } from "./base-campaign-config";
 import { getVoting721DeployConfig } from "../missions/voting-erc721/voting721.config";
 import { getStaking721DeployConfig } from "../missions/staking-erc721/staking721.config";
 
