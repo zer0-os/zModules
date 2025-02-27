@@ -15,7 +15,6 @@ import {
 import { expect } from "chai";
 import {
   DeployCampaign,
-  EnvironmentLevels,
   MongoDBAdapter,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -868,7 +867,7 @@ describe("zModules Deploy Integration Test", () => {
     });
 
     describe("Fails", () => {
-      it("Should stop deploy StakingERC20 with zDC and missing staking token", async () => {
+      it("Should stop deploy StakingERC20 using zDC and no staking token", async () => {
         const rewardsTokenAddress = rewardsToken20.target.toString();
         const contractOwnerAddress = contractOwner.address.toString();
 
@@ -895,7 +894,7 @@ describe("zModules Deploy Integration Test", () => {
         );
       });
 
-      it("Should stop deploy StakingERC20 with zDC and missing rewards token", async () => {
+      it("Should stop deploy StakingERC20 using zDC and no rewards token", async () => {
         const stakingTokenAddress = stakeToken20.target.toString();
         const contractOwnerAddress = contractOwner.address.toString();
 

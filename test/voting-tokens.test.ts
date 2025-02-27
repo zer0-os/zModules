@@ -96,6 +96,18 @@ describe("Voting tokens tests", () => {
       expect(await erc20Token.symbol()).to.equal(erc20Symbol);
     });
 
+    it("Should revert when admin passed as address(0)", async () => {
+      await expect(
+        ERC20Factory.deploy(
+          erc20Name,
+          erc20Symbol,
+          "domainName",
+          "domainVersion",
+          ethers.ZeroAddress
+        )
+      ).to.be.revertedWithCustomError(erc20Token, "ZeroAddressPassed");
+    });
+
     it("tokens should NOT be transferrable", async () => {
       await expect(
         erc20Token.connect(owner).transfer(addr1.address, ethers.parseEther("12"))
@@ -273,6 +285,19 @@ describe("Voting tokens tests", () => {
       ).to.equal(
         erc721Symbol
       );
+    });
+
+    it("Should revert when admin passed as address(0)", async () => {
+      await expect(
+        ERC721Factory.deploy(
+          erc721Name,
+          erc721Symbol,
+          initialBaseURI,
+          "ZERO DAO",
+          "1.0",
+          ethers.ZeroAddress
+        )
+      ).to.be.revertedWithCustomError(erc721Token, "ZeroAddressPassed");
     });
 
     it("tokens should NOT be transferrable", async () => {
