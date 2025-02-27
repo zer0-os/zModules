@@ -6,17 +6,17 @@ import { getDAOConfig } from "../missions/dao/zdao.config";
 
 
 export const getDaoSystemConfig = async (
-  admin : HardhatEthersSigner,
-  instName : string,
+  deployAdmin : HardhatEthersSigner,
+  timeLockAdmin : HardhatEthersSigner,
+  votingTokenAdmin : HardhatEthersSigner,
 ) => {
-  const baseConfig = await getBaseZModulesConfig({ deployAdmin: admin });
+  const baseConfig = await getBaseZModulesConfig({ deployAdmin });
 
   return {
     ...baseConfig,
-    votingERC20Config: getVoting20DeployConfig({ tokenAdmin: admin }),
+    votingERC20Config: getVoting20DeployConfig({ tokenAdmin: votingTokenAdmin }),
     timeLockConfig: getTimeLockControllerConfig({
-      timeLockAdmin: admin,
-      votingTokenInstName: instName,
+      timeLockAdmin,
     }),
     daoConfig: getDAOConfig(),
   };

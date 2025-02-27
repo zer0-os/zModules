@@ -5,10 +5,8 @@ import { ITimelockConfig } from "../../campaign/types";
 
 export const getTimeLockControllerConfig = ({
   timeLockAdmin,
-  votingTokenInstName,
 } : {
   timeLockAdmin : SignerWithAddress;
-  votingTokenInstName : string;
 }) : ITimelockConfig => {
   assert.ok(
     !!process.env.TIMELOCK_DELAY,
@@ -27,6 +25,5 @@ export const getTimeLockControllerConfig = ({
     proposers,
     executors,
     admin: timeLockAdmin,
-    votingTokenInstName,
   };
 };

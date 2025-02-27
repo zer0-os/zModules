@@ -43,10 +43,6 @@ export const validateEnv = (env : string) =>  {
       "Cannot use local mongo URI in 'prod' or 'test' environment!"
     );
 
-  if (process.env.VERIFY_CONTRACTS === "true") {
-    assert.ok(!!process.env.ETHERSCAN_API_KEY, "Must provide an Etherscan API Key to verify contracts");
-  }
-
   if (process.env.MONITOR_CONTRACTS === "true") {
     assert.ok(!!process.env.TENDERLY_PROJECT_SLUG, "Must provide a Tenderly Project Slug to monitor contracts");
     assert.ok(!!process.env.TENDERLY_ACCOUNT_ID, "Must provide a Tenderly Account ID to monitor contracts");

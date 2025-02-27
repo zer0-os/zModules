@@ -14,7 +14,7 @@ export const getDAOConfig = () : IDAOConfig => {
   }
 
   const config = {
-    shouldRevokeAdminRole: process.env.DAO_REVOKE_ADMIN_ROLE !== "false",
+    shouldRevokeAdminRole: process.env.DAO_REVOKE_ADMIN_ROLE === "true",
     governorName: process.env.DAO_GOV_NAME,
     votingToken: process.env.DAO_VOTING_TOKEN,
     timelockController: process.env.DAO_TIMELOCK_CONTROLLER,

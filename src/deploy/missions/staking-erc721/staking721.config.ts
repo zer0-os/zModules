@@ -60,7 +60,7 @@ export const getStaking721DeployConfig = ({
 
   const config = {
     mockTokens,
-    shouldRevokeAdminRole: process.env.STAKING721_REVOKE_ADMIN_ROLE !== "false",
+    shouldRevokeAdminRole: process.env.STAKING721_REVOKE_ADMIN_ROLE === "true",
     stakingToken: process.env.STAKING721_STAKING_TOKEN,
     rewardsToken: process.env.STAKING721_REWARDS_TOKEN,
     rewardsPerPeriod: BigInt(process.env.STAKING721_REWARDS_PER_PERIOD),

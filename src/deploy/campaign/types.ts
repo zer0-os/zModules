@@ -73,7 +73,6 @@ export interface ITimelockConfig {
   proposers : Array<string>;
   executors : Array<string>;
   admin : SignerWithAddress;
-  votingTokenInstName : string;
 }
 
 export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
