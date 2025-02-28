@@ -84,11 +84,15 @@ IZModulesContracts
   async needsPostDeploy () : Promise<boolean> {
     const {
       config: {
-        deployAdmin,
+        timeLockConfig,
       },
       zDao,
       timelockController,
     } = this.campaign;
+
+    const deployAdmin = timeLockConfig?.admin ?? (() => {
+      throw new Error("timeLockConfig is not defined");
+    })();
 
     const {
       timelockController: timelockControllerAddress,
@@ -118,11 +122,15 @@ IZModulesContracts
   async postDeploy () : Promise<void> {
     const {
       config: {
-        deployAdmin,
+        timeLockConfig,
       },
       zDao,
       timelockController,
     } = this.campaign;
+
+    const deployAdmin = timeLockConfig?.admin ?? (() => {
+      throw new Error("timeLockConfig is not defined");
+    })();
 
     const {
       timelockController: timelockControllerAddress,

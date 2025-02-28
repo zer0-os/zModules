@@ -36,12 +36,17 @@ import { roles } from "../src/deploy/constants";
 import { getStaking20SystemConfig, getStaking721SystemConfig } from "../src/deploy/campaign/staking-system-config";
 import { staking20Config, staking721Config } from "../src/environment/configs/staking.configenv";
 import { IStaking20Environment, IStaking721Environment } from "../src/environment/types";
-import { getDaoSystemConfig } from "../src/deploy/campaign/dao-system-config";
+import {
+  getDao20SystemConfig,
+  getDao721SystemConfig,
+} from "../src/deploy/campaign/dao-system-config";
 import { setDefaultEnvironment } from "../src/environment/set-env";
 
 
 describe("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
+  let votingAdmin : SignerWithAddress;
+  let timelockAdmin : SignerWithAddress;
   let contractOwner : SignerWithAddress;
 
   let stakingConfig : IStaking20Environment | IStaking721Environment;
@@ -67,7 +72,7 @@ describe("zModules Deploy Integration Test", () => {
 
 
   before(async () => {
-    [ deployAdmin ] = await hre.ethers.getSigners();
+    [ deployAdmin, votingAdmin, timelockAdmin ] = await hre.ethers.getSigners();
   });
 
   after(async () => {
@@ -244,7 +249,7 @@ describe("zModules Deploy Integration Test", () => {
 
   describe("DAO", () => {
     it("Should deploy DAO with ERC20 token zDC and default config", async () => {
-      config = await getDaoSystemConfig(deployAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -352,7 +357,7 @@ describe("zModules Deploy Integration Test", () => {
 
       [ contractOwner ] = await hre.ethers.getSigners();
 
-      config = await getDaoSystemConfig(deployAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
       // a separate campaign with "pre-deployed" tokens
       envCampaign = await runZModulesCampaign({
@@ -547,7 +552,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-      config = await getDaoSystemConfig(deployAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -581,7 +586,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-      config = await getDaoSystemConfig(deployAdmin);
+      config = await getDao721SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -615,7 +620,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "true";
 
-      config = await getDaoSystemConfig(deployAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -650,7 +655,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "true";
 
-      config = await getDaoSystemConfig(deployAdmin);
+      config = await getDao721SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -749,7 +754,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-      config = await getDaoSystemConfig(deployAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -763,7 +768,7 @@ describe("zModules Deploy Integration Test", () => {
       } = envCampaign;
 
       expect(
-        await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, deployAdmin)
+        await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, timelockAdmin)
       ).to.eq(true);
     });
 
@@ -780,7 +785,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-      config = await getDaoSystemConfig(deployAdmin);
+      config = await getDao721SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -794,7 +799,7 @@ describe("zModules Deploy Integration Test", () => {
       } = envCampaign;
 
       expect(
-        await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, deployAdmin)
+        await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, timelockAdmin)
       ).to.eq(true);
     });
 
@@ -932,7 +937,7 @@ describe("zModules Deploy Integration Test", () => {
         process.env.DAO_VOTE_EXTENSION = envVoteExtension;
         process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-        config = await getDaoSystemConfig(deployAdmin);
+        config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
         await expect(
           runZModulesCampaign({
@@ -957,7 +962,7 @@ describe("zModules Deploy Integration Test", () => {
         process.env.DAO_VOTE_EXTENSION = envVoteExtension;
         process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-        config = await getDaoSystemConfig(deployAdmin);
+        config = await getDao721SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
 
         await expect(
           runZModulesCampaign({
