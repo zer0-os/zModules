@@ -45,7 +45,7 @@ import { DAY_IN_SECONDS, DEFAULT_STAKED_AMOUNT } from "./helpers/constants";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 
-describe.only("zModules Deploy Integration Test", () => {
+describe("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
   let votingAdmin : SignerWithAddress;
   let timelockAdmin : SignerWithAddress;
