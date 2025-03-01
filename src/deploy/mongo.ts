@@ -6,6 +6,20 @@ import { getGitTag } from "../utils/git-tag/get-tag";
 
 const execAsync = promisify(exec);
 
+export const getZModulesLogger = async ({
+  logLevel = process.env.LOG_LEVEL || "info",
+  makeLogFile = process.env.MAKE_LOG_FILE === "false",
+  silence = process.env.SILENT_LOGGER === "true",
+} : {
+  logLevel ?: string;
+  makeLogFile ?: boolean;
+  silence ?: boolean;
+} = {}) => getLogger({
+  logLevel,
+  makeLogFile,
+  silence,
+});
+
 
 export const getZModulesMongoAdapter = async ({
   contractsVersion,
@@ -25,7 +39,7 @@ export const getZModulesMongoAdapter = async ({
   clientOpts ?: Record<string, unknown>;
 } = {}) => {
   if (!contractsVersion) {
-    contractsVersion = getGitTag();
+    contractsVersion = await getGitTag();
   }
 
   return getMongoAdapter({
@@ -40,11 +54,7 @@ export const getZModulesMongoAdapter = async ({
 };
 
 export const startMongo = async () => {
-  const logger = getLogger({
-    logLevel: process.env.LOG_LEVEL,
-    makeLogFile: process.env.MAKE_LOG_FILE === "false",
-    silence: process.env.SILENT_LOGGER === "true",
-  });
+  const logger = await getZModulesLogger();
 
   try {
     exec("npm run mongo:start");
@@ -61,9 +71,7 @@ export const startMongo = async () => {
 };
 
 export const stopMongo = async () => {
-  const logger = getLogger({
-    silence: process.env.SILENT_LOGGER === "true",
-  });
+  const logger = await getZModulesLogger();
 
   try {
     await execAsync("npm run mongo:stop");

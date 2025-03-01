@@ -14,6 +14,10 @@ export const roles = {
       ["string"],
       ["EXECUTOR_ROLE"]
     ),
+    CANCELLER_ROLE: ethers.solidityPackedKeccak256(
+      ["string"],
+      ["CANCELLER_ROLE"]
+    ),
   },
   voting: {
     DEFAULT_ADMIN_ROLE: ethers.ZeroHash,

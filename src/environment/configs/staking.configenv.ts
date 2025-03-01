@@ -15,7 +15,6 @@ import {
  * Default environment for StakingERC20
  */
 export const staking20Config : IStaking20Environment = {
-  MOCK_TOKENS: "true",
   STAKING20_STAKING_TOKEN: "",
   STAKING20_REWARDS_TOKEN: "",
   STAKING20_CONTRACT_OWNER: "",

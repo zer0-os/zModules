@@ -105,6 +105,7 @@ IZModulesContracts
       [this.instanceName]: staking20,
       config: {
         votingERC20Config,
+        stakingERC20Config,
       },
     } = this.campaign;
 
@@ -114,7 +115,7 @@ IZModulesContracts
 
     const {
       shouldRevokeAdminRole,
-    } = this.campaign.config.stakingERC20Config as IStakingERC20Config;
+    } = stakingERC20Config as IStakingERC20Config;
 
     const stakingAddress = await staking20.getAddress();
 
@@ -131,9 +132,8 @@ IZModulesContracts
     // revoke admin role after granting minter and burner roles
     if (shouldRevokeAdminRole) {
       await votingErc20.connect(admin).revokeRole(roles.voting.DEFAULT_ADMIN_ROLE, admin.address);
-      this.logger.debug("VotingERC20 DEFAULT_ADMIN_ROLE revoked");
+      this.logger.debug("VotingERC20 DEFAULT_ADMIN_ROLE revoked successfully");
     }
 
-    this.logger.debug("VotingERC20 roles set up successfully");
   }
 }

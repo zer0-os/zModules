@@ -5,10 +5,9 @@ import {
   DeployCampaign,
   HardhatDeployer,
   TDeployMissionCtor,
-  getLogger,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getZModulesMongoAdapter } from "../mongo";
+import { getZModulesLogger, getZModulesMongoAdapter } from "../mongo";
 
 
 export const runZModulesCampaign = async ({
@@ -37,11 +36,7 @@ export const runZModulesCampaign = async ({
     });
   }
 
-  const logger = getLogger({
-    silence: process.env.SILENT_LOGGER === "true",
-    logLevel: process.env.LOG_LEVEL,
-    makeLogFile: process.env.MAKE_LOG_FILE === "false",
-  });
+  const logger = await getZModulesLogger();
 
   const dbAdapter = await getZModulesMongoAdapter();
 

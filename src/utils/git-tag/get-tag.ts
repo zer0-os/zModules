@@ -1,12 +1,10 @@
 import fs from "fs";
 import { tagFilePath } from "./constants";
-import { getLogger } from "@zero-tech/zdc";
+import { getZModulesLogger } from "../../deploy/mongo";
 
 
-export const getGitTag = () => {
-  const logger = getLogger({
-    silence: process.env.SILENT_LOGGER === "true",
-  });
+export const getGitTag = async () => {
+  const logger = await getZModulesLogger();
   if (!fs.existsSync(tagFilePath)) {
     throw Error(`No git tag found at ${tagFilePath}`);
   }

@@ -68,6 +68,7 @@ describe("zModules Deploy Integration Test", () => {
     DEFAULT_ADMIN_ROLE,
     PROPOSER_ROLE,
     EXECUTOR_ROLE,
+    CANCELLER_ROLE,
   } = roles.timelock;
 
 
@@ -276,7 +277,7 @@ describe("zModules Deploy Integration Test", () => {
       expect(await zDao.proposalThreshold()).to.eq(DAO_PROPOSAL_THRESHOLD);
     });
 
-    it("DAO should have PROPOSER_ROLE and EXECUTOR_ROLE of Timelock", async () => {
+    it("DAO should have PROPOSER_ROLE, EXECUTOR_ROLE and CANCELLER_ROLE of Timelock", async () => {
       const {
         timelockController,
         zDao,
@@ -294,6 +295,15 @@ describe("zModules Deploy Integration Test", () => {
       expect(
         await timelockController.hasRole(
           EXECUTOR_ROLE,
+          zDao.target
+        )
+      ).to.eq(
+        true
+      );
+
+      expect(
+        await timelockController.hasRole(
+          CANCELLER_ROLE,
           zDao.target
         )
       ).to.eq(

@@ -17,28 +17,24 @@ export const getMatchDeployConfig = ({
     configReturn = config;
   } else {
     if (
-      !process.env.MATCH_FEE_VAULT_ADDRESS ||
-      !process.env.MATCH_OPERATOR_ADDRESSES ||
+      !process.env.MATCH_FEE_VAULT  ||
+      !process.env.MATCH_OPERATORS ||
       !process.env.MATCH_GAME_FEE_PERCENTAGE ||
-      !process.env.MATCH_CONTRACT_OWNER_ADDRESS
+      !process.env.MATCH_CONTRACT_OWNER
     ) {
       throw new Error("Missing required env variables for Match!");
     }
 
-    if (env === "prod" && !process.env.MATCH_PAYMENT_TOKEN) {
+    if (env === "prod" && !process.env.MATCH_TOKEN) {
       throw new Error("Missing required env filled token for Match!");
     }
 
-    const decoded = atob(process.env.MATCH_OPERATOR_ADDRESSES);
-    let operators = [decoded];
-    if (decoded.includes(",")) {
-      operators = decoded.split(",");
-    }
+    const operators = JSON.parse(process.env.MATCH_OPERATORS);
 
     configReturn = {
-      token: process.env.MATCH_PAYMENT_TOKEN,
-      feeVault: process.env.MATCH_FEE_VAULT_ADDRESS,
-      owner: process.env.MATCH_CONTRACT_OWNER_ADDRESS, // have to be base64 encoded !
+      token: process.env.MATCH_TOKEN,
+      feeVault: process.env.MATCH_FEE_VAULT,
+      owner: process.env.MATCH_CONTRACT_OWNER, // have to be base64 encoded !
       operators,
       gameFeePercentage: BigInt(process.env.MATCH_GAME_FEE_PERCENTAGE),
     };

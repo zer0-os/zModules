@@ -17,11 +17,11 @@ export interface IBaseEnvironment {
   SRC_CHAIN_NAME : TSupportedChain;
   MAINNET_RPC_URL ?: string;
   SEPOLIA_RPC_URL ?: string;
-  ZCHAIN_MOONWALKER_RPC_URL ?: string;
+  ZCHAIN_ZEPHYR_RPC_URL ?: string;
   ZCHAIN_MAIN_RPC_URL ?: string;
   DEPLOY_ADMIN_MAINNET_PK ?: string;
   DEPLOY_ADMIN_SEPOLIA_PK ?: string;
-  DEPLOY_ADMIN_ZCHAIN_MOONWALKER_PK ?: string;
+  DEPLOY_ADMIN_ZCHAIN_ZEPHYR_PK ?: string;
   DEPLOY_ADMIN_ZCHAIN_MAIN_PK ?: string;
   MONGO_DB_URI : string;
   MONGO_DB_NAME : string;
@@ -38,7 +38,6 @@ export interface IBaseEnvironment {
 }
 
 export interface IStaking20Environment {
-  MOCK_TOKENS : string;
   STAKING20_STAKING_TOKEN ?: string;
   STAKING20_REWARDS_TOKEN ?: string;
   // TODO dep: decide what to do with it cause we need to pass it as Private Key to HH config to get a signer
@@ -102,4 +101,10 @@ export interface ITimeLockEnvironment {
   TIMELOCK_VOTING_TOKEN_TYPE : string;
 }
 
-export interface IMatchEnvironment {}
+export interface IMatchEnvironment {
+  MATCH_TOKEN : string;
+  MATCH_FEE_VAULT : string;
+  MATCH_CONTRACT_OWNER : string;
+  MATCH_OPERATORS : string;
+  MATCH_GAME_FEE_PERCENTAGE : string;
+}

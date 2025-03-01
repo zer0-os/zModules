@@ -1,17 +1,15 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import { getLogger } from "@zero-tech/zdc";
 import fs from "fs";
 import { tagFilePath } from "./constants";
+import { getZModulesLogger } from "../../deploy/mongo";
 
 
 const execAsync = promisify(exec);
 
 
 export const acquireLatestGitTag = async () => {
-  const logger = getLogger({
-    silence: process.env.SILENT_LOGGER === "true",
-  });
+  const logger = await getZModulesLogger();
   const gitTag = await execAsync("git describe --tags --abbrev=0");
   const tag = gitTag.stdout.trim();
 
@@ -27,7 +25,7 @@ export const acquireLatestGitTag = async () => {
 };
 
 export const saveTag = async () => {
-  const logger = getLogger();
+  const logger = await getZModulesLogger();
   const tag = await acquireLatestGitTag();
 
   fs.writeFileSync(tagFilePath, tag, "utf8");
