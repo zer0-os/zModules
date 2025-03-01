@@ -6,22 +6,30 @@ import { getVoting721DeployConfig } from "../missions/voting-erc721/voting721.co
 import { getStaking721DeployConfig } from "../missions/staking-erc721/staking721.config";
 
 
-export const getStaking20SystemConfig = async (admin : HardhatEthersSigner) => {
-  const baseConfig = await getBaseZModulesConfig({ deployAdmin: admin });
+export const getStaking20SystemConfig = async (
+  deployAdmin : HardhatEthersSigner,
+  votingAdmin : HardhatEthersSigner,
+  stakingAdmin : HardhatEthersSigner,
+) => {
+  const baseConfig = await getBaseZModulesConfig({ deployAdmin });
 
   return {
     ...baseConfig,
-    votingERC20Config: getVoting20DeployConfig({ tokenAdmin: admin }),
-    stakingERC20Config: getStaking20DeployConfig({ contractOwner: admin }),
+    votingERC20Config: getVoting20DeployConfig({ tokenAdmin: votingAdmin }),
+    stakingERC20Config: getStaking20DeployConfig({ contractOwner: stakingAdmin }),
   };
 };
 
-export const getStaking721SystemConfig = async (admin : HardhatEthersSigner) => {
-  const baseConfig = await getBaseZModulesConfig({ deployAdmin: admin });
+export const getStaking721SystemConfig = async (
+  deployAdmin : HardhatEthersSigner,
+  votingAdmin : HardhatEthersSigner,
+  stakingAdmin : HardhatEthersSigner,
+) => {
+  const baseConfig = await getBaseZModulesConfig({ deployAdmin });
 
   return {
     ...baseConfig,
-    votingERC721Config: getVoting721DeployConfig({ tokenAdmin: admin }),
-    stakingERC721Config: getStaking721DeployConfig({ contractOwner: admin }),
+    votingERC721Config: getVoting721DeployConfig({ tokenAdmin: votingAdmin }),
+    stakingERC721Config: getStaking721DeployConfig({ contractOwner: stakingAdmin }),
   };
 };

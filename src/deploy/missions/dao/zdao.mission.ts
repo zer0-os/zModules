@@ -130,7 +130,7 @@ IZModulesContracts
     } = this.campaign;
 
     const deployAdmin = timeLockConfig?.admin ?? (() => {
-      throw new Error("timeLockConfig is not defined");
+      throw new Error("TimeLock admin is not defined");
     })();
 
     const {

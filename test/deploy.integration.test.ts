@@ -1,5 +1,5 @@
 import * as hre from "hardhat";
-import { contractNames, runZModulesCampaign } from "../src/deploy";
+import { runZModulesCampaign } from "../src/deploy";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ZModulesZeroVotingERC20DM } from "../src/deploy/missions/voting-erc20/voting20.mission";
 import { ZModulesStakingERC20DM } from "../src/deploy/missions/staking-erc20/staking20.mission";
@@ -41,12 +41,16 @@ import {
   getDao721SystemConfig,
 } from "../src/deploy/campaign/dao-system-config";
 import { setDefaultEnvironment } from "../src/environment/set-env";
+import { DAY_IN_SECONDS, DEFAULT_STAKED_AMOUNT } from "./helpers/constants";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 
-describe("zModules Deploy Integration Test", () => {
+describe.only("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
   let votingAdmin : SignerWithAddress;
   let timelockAdmin : SignerWithAddress;
+  let stakingAdmin : SignerWithAddress;
+  let staker : SignerWithAddress;
   let contractOwner : SignerWithAddress;
 
   let stakingConfig : IStaking20Environment | IStaking721Environment;
@@ -73,7 +77,7 @@ describe("zModules Deploy Integration Test", () => {
 
 
   before(async () => {
-    [ deployAdmin, votingAdmin, timelockAdmin ] = await hre.ethers.getSigners();
+    [ deployAdmin, votingAdmin, timelockAdmin, stakingAdmin, staker ] = await hre.ethers.getSigners();
   });
 
   after(async () => {
@@ -82,7 +86,7 @@ describe("zModules Deploy Integration Test", () => {
 
   describe("Staking", () => {
     it("Should deploy StakingERC20 with zDC and default config", async () => {
-      config = await getStaking20SystemConfig(deployAdmin);
+      config = await getStaking20SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -167,7 +171,7 @@ describe("zModules Deploy Integration Test", () => {
     });
 
     it("Should deploy StakingERC721 with zDC and default config", async () => {
-      config = await getStaking721SystemConfig(deployAdmin);
+      config = await getStaking721SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -244,8 +248,6 @@ describe("zModules Deploy Integration Test", () => {
         true
       );
     });
-
-    // TODO dep: add test and logic for staking deploy with gas token !!!
   });
 
   describe("DAO", () => {
@@ -435,7 +437,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
       process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-      config = await getStaking20SystemConfig(deployAdmin);
+      config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -483,6 +485,10 @@ describe("zModules Deploy Integration Test", () => {
       ).to.eq(
         envPeriodLength
       );
+
+      // tokens
+      expect(await staking.stakingToken()).to.eq(stakingTokenAddress);
+      expect(await staking.rewardsToken()).to.eq(rewardsTokenAddress);
     });
 
     it("Should deploy StakingERC721 with zDC", async () => {
@@ -499,7 +505,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING721_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
       process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-      config = await getStaking721SystemConfig(deployAdmin);
+      config = await getStaking721SystemConfig(deployAdmin, deployAdmin, deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -547,6 +553,107 @@ describe("zModules Deploy Integration Test", () => {
       ).to.eq(
         envPeriodLength
       );
+
+      // tokens
+      expect(await staking.stakingToken()).to.eq(stakingTokenAddress);
+      expect(await staking.rewardsToken()).to.eq(rewardsTokenAddress);
+    });
+
+    it("Should deploy StakingERC20 with zDC and gas token", async () => {
+      process.env.STAKING20_STAKING_TOKEN = hre.ethers.ZeroAddress;
+      process.env.STAKING20_REWARDS_TOKEN = hre.ethers.ZeroAddress;
+      process.env.STAKING20_CONTRACT_OWNER = contractOwner.address;
+      process.env.STAKING20_REWARDS_PER_PERIOD = envRewardsPerPeriod;
+      process.env.STAKING20_PERIOD_LENGTH = envPeriodLength;
+      process.env.STAKING20_MIN_LOCK_TIME = envMinLockTime;
+      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
+      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
+
+      config = await getStaking20SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesZeroVotingERC20DM,
+          ZModulesStakingERC20DM,
+        ],
+      });
+
+      const {
+        staking20: staking,
+      } = campaign;
+
+      const {
+        rewardsPerPeriod,
+        periodLength,
+        minimumLockTime,
+        minimumRewardsMultiplier,
+        maximumRewardsMultiplier,
+      } = await staking.getLatestConfig();
+
+      // config
+      expect(
+        minimumLockTime
+      ).to.eq(
+        envMinLockTime
+      );
+      expect(
+        minimumRewardsMultiplier
+      ).to.eq(
+        envMinRewardsMultiplier
+      );
+      expect(
+        maximumRewardsMultiplier
+      ).to.eq(
+        envMaxRewardsMultiplier
+      );
+      expect(
+        rewardsPerPeriod
+      ).to.eq(
+        envRewardsPerPeriod
+      );
+      expect(
+        periodLength
+      ).to.eq(
+        envPeriodLength
+      );
+
+      // gas token
+      expect(await staking.stakingToken()).to.eq(hre.ethers.ZeroAddress);
+
+      // staking
+      // with lock
+      const lockTime = DAY_IN_SECONDS * 112n;
+      await staking.connect(staker).stakeWithLock(
+        DEFAULT_STAKED_AMOUNT, lockTime,
+        { value: DEFAULT_STAKED_AMOUNT }
+      );
+
+      const stakerData = await staking.connect(staker).stakers(staker.address);
+      expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT);
+
+      await time.increase(lockTime + 1n);
+      const initialBalance = await hre.ethers.provider.getBalance(staker.address);
+      await staking.connect(staker).claim();
+
+      const finalBalance = await hre.ethers.provider.getBalance(staker.address);
+      expect(finalBalance).to.be.gt(initialBalance);
+
+      // without lock
+      await staking.connect(staker).stakeWithoutLock(
+        DEFAULT_STAKED_AMOUNT + 1n,
+        { value: DEFAULT_STAKED_AMOUNT + 1n }
+      );
+
+      const stakerData2 = await staking.connect(staker).stakers(staker.address);
+      expect(stakerData2.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT + 1n);
+
+      const initialBalance2 = await hre.ethers.provider.getBalance(staker.address);
+      await time.increase(lockTime + 1n);
+      await staking.connect(staker).claim();
+
+      const finalBalance2 = await hre.ethers.provider.getBalance(staker.address);
+      expect(finalBalance2).to.be.gt(initialBalance2);
     });
 
     it("Should deploy DAO with ERC20 token using zDC", async () => {
@@ -698,7 +805,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING20_REVOKE_ADMIN_ROLE = "true";
 
-      config = await getStaking20SystemConfig(deployAdmin);
+      config = await getStaking20SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -732,7 +839,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING721_REVOKE_ADMIN_ROLE = "true";
 
-      config = await getStaking721SystemConfig(deployAdmin);
+      config = await getStaking721SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -828,7 +935,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING20_REVOKE_ADMIN_ROLE = "false";
 
-      config = await getStaking20SystemConfig(deployAdmin);
+      config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -862,7 +969,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING721_REVOKE_ADMIN_ROLE = "false";
 
-      config = await getStaking721SystemConfig(deployAdmin);
+      config = await getStaking721SystemConfig(deployAdmin, deployAdmin, deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -894,7 +1001,7 @@ describe("zModules Deploy Integration Test", () => {
         process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
         process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-        config = await getStaking20SystemConfig(deployAdmin);
+        config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
 
         await expect(
           runZModulesCampaign({
@@ -921,7 +1028,7 @@ describe("zModules Deploy Integration Test", () => {
         process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
         process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-        config = await getStaking20SystemConfig(deployAdmin);
+        config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
 
         await expect(
           runZModulesCampaign({

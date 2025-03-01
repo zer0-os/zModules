@@ -110,9 +110,9 @@ IZModulesContracts
       },
     } = this.campaign;
 
-    const {
-      admin,
-    } = votingERC721Config as IVotingERC721Config;
+    const admin = votingERC721Config?.admin ?? (() => {
+      throw new Error("Voting admin is not defined");
+    })();
 
     const {
       shouldRevokeAdminRole,
