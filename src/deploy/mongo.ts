@@ -8,7 +8,7 @@ const execAsync = promisify(exec);
 
 export const getZModulesLogger = async ({
   logLevel = process.env.LOG_LEVEL || "info",
-  makeLogFile = process.env.MAKE_LOG_FILE === "false",
+  makeLogFile = process.env.MAKE_LOG_FILE === "true",
   silence = process.env.SILENT_LOGGER === "true",
 } : {
   logLevel ?: string;

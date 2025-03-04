@@ -127,6 +127,7 @@ describe("zModules Deploy Integration Test", () => {
         minimumLockTime,
         minimumRewardsMultiplier,
         maximumRewardsMultiplier,
+        canExit,
       } = await staking.getLatestConfig();
 
       expect(
@@ -154,7 +155,11 @@ describe("zModules Deploy Integration Test", () => {
       ).to.eq(
         stakingConfig.STAKING20_PERIOD_LENGTH
       );
-      // TODO dep: check `canExit` flag
+      expect(
+        canExit
+      ).to.eq(
+        false
+      );
     });
 
     it("StakingERC20 should have MINTER_ROLE and BURNER_ROLE of StakeRepToken", async () => {
@@ -436,6 +441,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_MIN_LOCK_TIME = envMinLockTime;
       process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
       process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
+      process.env.STAKING20_CAN_EXIT = "true";
 
       config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
 
@@ -457,6 +463,7 @@ describe("zModules Deploy Integration Test", () => {
         minimumLockTime,
         minimumRewardsMultiplier,
         maximumRewardsMultiplier,
+        canExit,
       } = await staking.getLatestConfig();
 
       // config
@@ -485,6 +492,11 @@ describe("zModules Deploy Integration Test", () => {
       ).to.eq(
         envPeriodLength
       );
+      expect(
+        canExit
+      ).to.eq(
+        true
+      );
 
       // tokens
       expect(await staking.stakingToken()).to.eq(stakingTokenAddress);
@@ -504,6 +516,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING721_MIN_LOCK_TIME = envMinLockTime;
       process.env.STAKING721_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
       process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
+      process.env.STAKING721_CAN_EXIT = "true";
 
       config = await getStaking721SystemConfig(deployAdmin, deployAdmin, deployAdmin);
 
@@ -525,6 +538,7 @@ describe("zModules Deploy Integration Test", () => {
         minimumLockTime,
         minimumRewardsMultiplier,
         maximumRewardsMultiplier,
+        canExit,
       } = await staking.getLatestConfig();
 
       // config
@@ -552,6 +566,11 @@ describe("zModules Deploy Integration Test", () => {
         periodLength
       ).to.eq(
         envPeriodLength
+      );
+      expect(
+        canExit
+      ).to.eq(
+        true
       );
 
       // tokens
