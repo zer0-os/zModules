@@ -4,7 +4,6 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { IDAOConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 import { roles } from "../../constants";
-import * as hre from "hardhat";
 
 
 export class ZModulesZDAODM extends BaseDeployMission<

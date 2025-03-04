@@ -599,7 +599,7 @@ describe("zModules Deploy Integration Test", () => {
       });
 
       const {
-        staking20: staking,
+        staking20,
       } = campaign;
 
       const {
@@ -608,7 +608,7 @@ describe("zModules Deploy Integration Test", () => {
         minimumLockTime,
         minimumRewardsMultiplier,
         maximumRewardsMultiplier,
-      } = await staking.getLatestConfig();
+      } = await staking20.getLatestConfig();
 
       // config
       expect(
@@ -638,38 +638,38 @@ describe("zModules Deploy Integration Test", () => {
       );
 
       // gas token
-      expect(await staking.stakingToken()).to.eq(hre.ethers.ZeroAddress);
+      expect(await staking20.stakingToken()).to.eq(hre.ethers.ZeroAddress);
 
       // staking
       // with lock
       const lockTime = DAY_IN_SECONDS * 112n;
-      await staking.connect(staker).stakeWithLock(
+      await staking20.connect(staker).stakeWithLock(
         DEFAULT_STAKED_AMOUNT, lockTime,
         { value: DEFAULT_STAKED_AMOUNT }
       );
 
-      const stakerData = await staking.connect(staker).stakers(staker.address);
+      const stakerData = await staking20.connect(staker).stakers(staker.address);
       expect(stakerData.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT);
 
       await time.increase(lockTime + 1n);
       const initialBalance = await hre.ethers.provider.getBalance(staker.address);
-      await staking.connect(staker).claim();
+      await staking20.connect(staker).claim();
 
       const finalBalance = await hre.ethers.provider.getBalance(staker.address);
       expect(finalBalance).to.be.gt(initialBalance);
 
       // without lock
-      await staking.connect(staker).stakeWithoutLock(
+      await staking20.connect(staker).stakeWithoutLock(
         DEFAULT_STAKED_AMOUNT + 1n,
         { value: DEFAULT_STAKED_AMOUNT + 1n }
       );
 
-      const stakerData2 = await staking.connect(staker).stakers(staker.address);
+      const stakerData2 = await staking20.connect(staker).stakers(staker.address);
       expect(stakerData2.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT + 1n);
 
       const initialBalance2 = await hre.ethers.provider.getBalance(staker.address);
       await time.increase(lockTime + 1n);
-      await staking.connect(staker).claim();
+      await staking20.connect(staker).claim();
 
       const finalBalance2 = await hre.ethers.provider.getBalance(staker.address);
       expect(finalBalance2).to.be.gt(initialBalance2);

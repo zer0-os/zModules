@@ -8,7 +8,6 @@ import {
   IZModulesConfig,
   IStakingERC20Config,
   IZModulesContracts,
-  IVotingERC20Config,
 } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 import { roles } from "../../constants";

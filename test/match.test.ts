@@ -19,7 +19,7 @@ import {
   contractNames,
   runZModulesCampaign,
 } from "../src/deploy";
-import { MongoDBAdapter } from "@zero-tech/zdc";
+import { EnvironmentLevels, MongoDBAdapter } from "@zero-tech/zdc";
 import { acquireLatestGitTag } from "../src/utils/git-tag/save-tag";
 import { getMockERC20Mission, TokenTypes } from "../src/deploy/missions/mocks/mockERC20.mission";
 import { ZModulesMatchDM } from "../src/deploy/missions/match/match.mission";
@@ -67,7 +67,10 @@ describe("Match Contract",  () => {
   const gameFeePercInitial = 1000n; // 10%
   const gameFeePerc = 500n; // 5%
 
-  const mockTokens = process.env.MOCK_TOKENS === "true";
+  const envLvl = process.env.ENV_LEVEL;
+  const mockTokens =
+      (envLvl === EnvironmentLevels.dev || envLvl === EnvironmentLevels.test) &&
+      (!process.env.MATCH_TOKEN);
 
   before(async () => {
     [

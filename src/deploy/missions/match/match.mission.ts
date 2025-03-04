@@ -23,7 +23,6 @@ IZModulesContracts
     const {
       config: {
         matchConfig,
-        mockTokens,
       },
       mockErc20,
     } = this.campaign;
@@ -36,7 +35,7 @@ IZModulesContracts
       gameFeePercentage,
     } = matchConfig as IMatchConfig;
 
-    if (mockTokens && !token) {
+    if (!token && mockErc20) {
       return [
         await mockErc20.getAddress(),
         feeVault,
