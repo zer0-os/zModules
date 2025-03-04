@@ -10,6 +10,7 @@ import {
   IZModulesConfig,
   IZModulesContracts,
   IStakingERC721Config,
+  IVotingERC20Config,
 } from "../../campaign/types";
 import { roles } from "../../constants";
 
@@ -109,9 +110,9 @@ IZModulesContracts
       },
     } = this.campaign;
 
-    const admin = votingERC721Config?.admin ?? (() => {
-      throw new Error("Voting admin is not defined");
-    })();
+    const {
+      admin,
+    } = votingERC721Config as IVotingERC20Config;
 
     const {
       shouldRevokeAdminRole,

@@ -40,8 +40,6 @@ export interface IBaseEnvironment {
 export interface IStaking20Environment {
   STAKING20_STAKING_TOKEN ?: string;
   STAKING20_REWARDS_TOKEN ?: string;
-  // TODO dep: decide what to do with it cause we need to pass it as Private Key to HH config to get a signer
-  //  into campaign config. Same for Staking721
   STAKING20_CONTRACT_OWNER ?: string;
   STAKING20_REWARDS_PER_PERIOD : string;
   STAKING20_PERIOD_LENGTH : string;

@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IDAOConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
+import { IDAOConfig, ITimelockConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 import { roles } from "../../constants";
 
@@ -18,6 +18,11 @@ IZModulesContracts
 
   contractName = contractNames.dao.contract;
   instanceName = contractNames.dao.instance;
+
+  hasAdmin ?: boolean;
+  hasProposer ?: boolean;
+  hasExecutor ?: boolean;
+  hasCanceller ?: boolean;
 
   async deployArgs () : Promise<TDeployArgs> {
     const {
@@ -84,21 +89,23 @@ IZModulesContracts
     const {
       config: {
         timeLockConfig,
+        daoConfig,
       },
       zDao,
       timelockController,
+      deployer,
     } = this.campaign;
 
-    const deployAdmin = timeLockConfig?.admin ?? (() => {
-      throw new Error("timeLockConfig is not defined");
-    })();
+    const {
+      admin,
+    } = timeLockConfig as ITimelockConfig;
 
     const {
       timelockController: timelockControllerAddress,
-    } = this.campaign.config.daoConfig as IDAOConfig;
+    } = daoConfig as IDAOConfig;
 
     const timelockControllerContract = !timelockController
-      ? await this.campaign.deployer.getContractObject(contractNames.timelock.contract, timelockControllerAddress!)
+      ? await deployer.getContractObject(contractNames.timelock.contract, timelockControllerAddress!)
       : timelockController;
 
     const {
@@ -108,11 +115,16 @@ IZModulesContracts
       CANCELLER_ROLE,
     } = roles.timelock;
 
+    this.hasAdmin = await timelockControllerContract.hasRole(DEFAULT_ADMIN_ROLE, admin.address);
+    this.hasProposer = await timelockControllerContract.hasRole(PROPOSER_ROLE, zDao.target);
+    this.hasExecutor = await timelockControllerContract.hasRole(EXECUTOR_ROLE, zDao.target);
+    this.hasCanceller = await timelockControllerContract.hasRole(CANCELLER_ROLE, zDao.target);
+
     const needs =
-        !await timelockControllerContract.hasRole(DEFAULT_ADMIN_ROLE, deployAdmin.address) ||
-        !await timelockControllerContract.hasRole(PROPOSER_ROLE, zDao.target) ||
-        !await timelockControllerContract.hasRole(EXECUTOR_ROLE, zDao.target) ||
-        !await timelockControllerContract.hasRole(CANCELLER_ROLE, zDao.target);
+        !this.hasAdmin ||
+        !this.hasProposer ||
+        !this.hasExecutor ||
+        !this.hasCanceller;
 
     this.logger.debug(`${this.contractName} ${needs ? "needs" : "doesn't need"} post deploy sequence`);
 
@@ -123,22 +135,24 @@ IZModulesContracts
     const {
       config: {
         timeLockConfig,
+        daoConfig,
       },
       zDao,
       timelockController,
+      deployer,
     } = this.campaign;
 
-    const deployAdmin = timeLockConfig?.admin ?? (() => {
-      throw new Error("TimeLock admin is not defined");
-    })();
+    const {
+      admin,
+    } = timeLockConfig as ITimelockConfig;
 
     const {
       timelockController: timelockControllerAddress,
       shouldRevokeAdminRole,
-    } = this.campaign.config.daoConfig as IDAOConfig;
+    } = daoConfig as IDAOConfig;
 
     const timelockControllerContract = !timelockController
-      ? await this.campaign.deployer.getContractObject(contractNames.timelock.contract, timelockControllerAddress!)
+      ? await deployer.getContractObject(contractNames.timelock.contract, timelockControllerAddress!)
       : timelockController;
 
     const {
@@ -150,14 +164,14 @@ IZModulesContracts
 
     this.logger.debug("Granting Proposer and Executor roles to admin");
 
-    await timelockControllerContract.connect(deployAdmin).grantRole(DEFAULT_ADMIN_ROLE, deployAdmin.address);
-    await timelockControllerContract.connect(deployAdmin).grantRole(PROPOSER_ROLE, zDao.target);
-    await timelockControllerContract.connect(deployAdmin).grantRole(EXECUTOR_ROLE, zDao.target);
-    await timelockControllerContract.connect(deployAdmin).grantRole(CANCELLER_ROLE, zDao.target);
+    if (!this.hasAdmin) await timelockControllerContract.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, admin.address);
+    if (!this.hasProposer) await timelockControllerContract.connect(admin).grantRole(PROPOSER_ROLE, zDao.target);
+    if (!this.hasExecutor) await timelockControllerContract.connect(admin).grantRole(EXECUTOR_ROLE, zDao.target);
+    if (!this.hasCanceller) await timelockControllerContract.connect(admin).grantRole(CANCELLER_ROLE, zDao.target);
 
     // revoke admin role after granting procoser and executor roles
     if (shouldRevokeAdminRole) {
-      await timelockControllerContract.connect(deployAdmin).revokeRole(DEFAULT_ADMIN_ROLE, deployAdmin.address);
+      await timelockControllerContract.connect(admin).revokeRole(DEFAULT_ADMIN_ROLE, admin.address);
       this.logger.debug("TimelockController admin role revoked successfully");
     }
   }

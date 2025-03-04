@@ -8,6 +8,7 @@ import {
   IZModulesConfig,
   IStakingERC20Config,
   IZModulesContracts,
+  IVotingERC20Config,
 } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 import { roles } from "../../constants";
@@ -25,6 +26,9 @@ IZModulesContracts
 
   contractName = contractNames.stakingERC20.contract;
   instanceName = contractNames.stakingERC20.instance;
+
+  hasMinter ?: boolean;
+  hasBurner ?: boolean;
 
   async deployArgs () : Promise<TDeployArgs> {
     const {
@@ -87,10 +91,13 @@ IZModulesContracts
 
     const stakingAddress = await staking20.getAddress();
 
-    const hasMinter = await votingErc20.hasRole(roles.voting.MINTER_ROLE, stakingAddress);
-    const hasBurner = await votingErc20.hasRole(roles.voting.BURNER_ROLE, stakingAddress);
+    this.hasMinter = await votingErc20.hasRole(roles.voting.MINTER_ROLE, stakingAddress);
+    this.hasBurner = await votingErc20.hasRole(roles.voting.BURNER_ROLE, stakingAddress);
 
-    const needs = !hasMinter || !hasBurner;
+    const needs =
+      !this.hasMinter ||
+      !this.hasBurner;
+
     const msg = needs ? "needs" : "doesn't need";
 
     this.logger.debug(`${this.contractName} ${msg} post deploy sequence`);
@@ -108,9 +115,9 @@ IZModulesContracts
       },
     } = this.campaign;
 
-    const admin = votingERC20Config?.admin ?? (() => {
-      throw new Error("Voting admin is not defined");
-    })();
+    const {
+      admin,
+    } = votingERC20Config as IVotingERC20Config;
 
     const {
       shouldRevokeAdminRole,
@@ -120,19 +127,13 @@ IZModulesContracts
 
     this.logger.debug("Setting up roles on VotingERC20 contract");
 
-    await votingErc20
-      .connect(admin)
-      .grantRole(roles.voting.MINTER_ROLE, stakingAddress);
-
-    await votingErc20
-      .connect(admin)
-      .grantRole(roles.voting.BURNER_ROLE, stakingAddress);
+    if (!this.hasMinter) await votingErc20.connect(admin).grantRole(roles.voting.MINTER_ROLE, stakingAddress);
+    if (!this.hasBurner) await votingErc20.connect(admin).grantRole(roles.voting.BURNER_ROLE, stakingAddress);
 
     // revoke admin role after granting minter and burner roles
     if (shouldRevokeAdminRole) {
       await votingErc20.connect(admin).revokeRole(roles.voting.DEFAULT_ADMIN_ROLE, admin.address);
       this.logger.debug("VotingERC20 DEFAULT_ADMIN_ROLE revoked successfully");
     }
-
   }
 }
