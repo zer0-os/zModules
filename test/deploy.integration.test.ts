@@ -497,6 +497,11 @@ describe("zModules Deploy Integration Test", () => {
       ).to.eq(
         true
       );
+      expect(
+        await staking.owner()
+      ).to.eq(
+        contractOwnerAddress
+      );
 
       // tokens
       expect(await staking.stakingToken()).to.eq(stakingTokenAddress);
@@ -571,6 +576,11 @@ describe("zModules Deploy Integration Test", () => {
         canExit
       ).to.eq(
         true
+      );
+      expect(
+        await staking.owner()
+      ).to.eq(
+        contractOwnerAddress
       );
 
       // tokens
