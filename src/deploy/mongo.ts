@@ -6,7 +6,7 @@ import { getGitTag } from "../utils/git-tag/get-tag";
 
 const execAsync = promisify(exec);
 
-export const getZModulesLogger = async ({
+export const getZModulesLogger = ({
   logLevel = process.env.LOG_LEVEL || "debug",
   makeLogFile = process.env.MAKE_LOG_FILE === "true",
   silence = process.env.SILENT_LOGGER === "true",
@@ -54,7 +54,7 @@ export const getZModulesMongoAdapter = async ({
 };
 
 export const startMongo = async () => {
-  const logger = await getZModulesLogger();
+  const logger = getZModulesLogger();
 
   try {
     exec("npm run mongo:start");
@@ -71,7 +71,7 @@ export const startMongo = async () => {
 };
 
 export const stopMongo = async () => {
-  const logger = await getZModulesLogger();
+  const logger = getZModulesLogger();
 
   try {
     await execAsync("npm run mongo:stop");

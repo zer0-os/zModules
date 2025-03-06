@@ -30,7 +30,7 @@ export const getDao721SystemConfig = async (
 
   return {
     ...baseConfig,
-    votingERC20Config: getVoting721DeployConfig({ tokenAdmin: votingTokenAdmin }),
+    votingERC721Config: getVoting721DeployConfig({ tokenAdmin: votingTokenAdmin }),
     timeLockConfig: getTimeLockControllerConfig({ timeLockAdmin }),
     daoConfig: getDAOConfig(),
   };

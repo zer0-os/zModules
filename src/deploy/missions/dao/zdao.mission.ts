@@ -164,10 +164,23 @@ IZModulesContracts
 
     this.logger.debug("Granting Proposer and Executor roles to admin");
 
-    if (!this.hasAdmin) await timelockControllerContract.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, admin.address);
-    if (!this.hasProposer) await timelockControllerContract.connect(admin).grantRole(PROPOSER_ROLE, zDao.target);
-    if (!this.hasExecutor) await timelockControllerContract.connect(admin).grantRole(EXECUTOR_ROLE, zDao.target);
-    if (!this.hasCanceller) await timelockControllerContract.connect(admin).grantRole(CANCELLER_ROLE, zDao.target);
+    let tx;
+    if (!this.hasAdmin) {
+      tx = await timelockControllerContract.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, admin.address);
+      await this.awaitConfirmation(tx);
+    }
+    if (!this.hasProposer) {
+      tx = await timelockControllerContract.connect(admin).grantRole(PROPOSER_ROLE, zDao.target);
+      await this.awaitConfirmation(tx);
+    }
+    if (!this.hasExecutor) {
+      tx = await timelockControllerContract.connect(admin).grantRole(EXECUTOR_ROLE, zDao.target);
+      await this.awaitConfirmation(tx);
+    }
+    if (!this.hasCanceller) {
+      tx = await timelockControllerContract.connect(admin).grantRole(CANCELLER_ROLE, zDao.target);
+      await this.awaitConfirmation(tx);
+    }
 
     // revoke admin role after granting procoser and executor roles
     if (shouldRevokeAdminRole) {

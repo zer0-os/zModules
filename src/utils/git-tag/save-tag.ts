@@ -9,7 +9,7 @@ const execAsync = promisify(exec);
 
 
 export const acquireLatestGitTag = async () => {
-  const logger = await getZModulesLogger();
+  const logger = getZModulesLogger();
   const gitTag = await execAsync("git describe --tags --abbrev=0");
   const tag = gitTag.stdout.trim();
 
@@ -25,7 +25,7 @@ export const acquireLatestGitTag = async () => {
 };
 
 export const saveTag = async () => {
-  const logger = await getZModulesLogger();
+  const logger = getZModulesLogger();
   const tag = await acquireLatestGitTag();
 
   fs.writeFileSync(tagFilePath, tag, "utf8");

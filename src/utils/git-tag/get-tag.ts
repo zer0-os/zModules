@@ -4,7 +4,7 @@ import { getZModulesLogger } from "../../deploy/mongo";
 
 
 export const getGitTag = async () => {
-  const logger = await getZModulesLogger();
+  const logger = getZModulesLogger();
   if (!fs.existsSync(tagFilePath)) {
     throw Error(`No git tag found at ${tagFilePath}`);
   }

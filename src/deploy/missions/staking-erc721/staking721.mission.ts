@@ -28,6 +28,9 @@ IZModulesContracts
   contractName = contractNames.stakingERC721.contract;
   instanceName = contractNames.stakingERC721.instance;
 
+  hasMinter ?: boolean;
+  hasBurner ?: boolean;
+
   async deployArgs () : Promise<TDeployArgs> {
     const {
       config: {
@@ -89,10 +92,10 @@ IZModulesContracts
 
     const stakingAddress = await staking721.getAddress();
 
-    const hasMinter = await votingErc721.hasRole(roles.voting.MINTER_ROLE, stakingAddress);
-    const hasBurner = await votingErc721.hasRole(roles.voting.BURNER_ROLE, stakingAddress);
+    this.hasMinter = await votingErc721.hasRole(roles.voting.MINTER_ROLE, stakingAddress);
+    this.hasBurner = await votingErc721.hasRole(roles.voting.BURNER_ROLE, stakingAddress);
 
-    const needs = !hasMinter || !hasBurner;
+    const needs = !this.hasMinter || !this.hasBurner;
     const msg = needs ? "needs" : "doesn't need";
 
     this.logger.debug(`${this.contractName} ${msg} post deploy sequence`);
@@ -122,13 +125,15 @@ IZModulesContracts
 
     this.logger.debug("Setting up roles on VotingERC721 contract");
 
-    await votingErc721
-      .connect(admin)
-      .grantRole(roles.voting.MINTER_ROLE, stakingAddress);
-
-    await votingErc721
-      .connect(admin)
-      .grantRole(roles.voting.BURNER_ROLE, stakingAddress);
+    let tx;
+    if (!this.hasMinter) {
+      tx = await votingErc721.connect(admin).grantRole(roles.voting.MINTER_ROLE, stakingAddress);
+      await this.awaitConfirmation(tx);
+    }
+    if (!this.hasBurner) {
+      tx = await votingErc721.connect(admin).grantRole(roles.voting.BURNER_ROLE, stakingAddress);
+      await this.awaitConfirmation(tx);
+    }
 
     // revoke admin role after granting minter and burner roles
     if (shouldRevokeAdminRole) {

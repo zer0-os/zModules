@@ -36,7 +36,7 @@ export const runZModulesCampaign = async ({
     });
   }
 
-  const logger = await getZModulesLogger();
+  const logger = getZModulesLogger();
 
   const dbAdapter = await getZModulesMongoAdapter();
 

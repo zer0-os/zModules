@@ -127,8 +127,15 @@ IZModulesContracts
 
     this.logger.debug("Setting up roles on VotingERC20 contract");
 
-    if (!this.hasMinter) await votingErc20.connect(admin).grantRole(roles.voting.MINTER_ROLE, stakingAddress);
-    if (!this.hasBurner) await votingErc20.connect(admin).grantRole(roles.voting.BURNER_ROLE, stakingAddress);
+    let tx;
+    if (!this.hasMinter) {
+      tx = await votingErc20.connect(admin).grantRole(roles.voting.MINTER_ROLE, stakingAddress);
+      await this.awaitConfirmation(tx);
+    }
+    if (!this.hasBurner) {
+      tx = await votingErc20.connect(admin).grantRole(roles.voting.BURNER_ROLE, stakingAddress);
+      await this.awaitConfirmation(tx);
+    }
 
     // revoke admin role after granting minter and burner roles
     if (shouldRevokeAdminRole) {
