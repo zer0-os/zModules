@@ -2634,6 +2634,28 @@ describe("StakingERC20", () => {
         expect(stakerDataFinal.unlockedTimestamp).to.eq(0n);
       });
     });
-  });
 
+    it("Fix - totalStaked is not updated upon an exit in StakingERC20 contract", async () => {
+      await reset();
+
+      // Stake
+      await contract.connect(stakerA).stakeWithoutLock(DEFAULT_STAKED_AMOUNT);
+      await contract.connect(stakerA).stakeWithLock(DEFAULT_STAKED_AMOUNT, DEFAULT_LOCK);
+
+      // Confirm totalStaked is updated
+      expect(await contract.totalStaked()).to.eq(DEFAULT_STAKED_AMOUNT * 2n);
+
+      // Exit unlocked funds
+      await contract.connect(stakerA).exit(false);
+
+      // Confirm totalStaked is updated
+      expect(await contract.totalStaked()).to.eq(DEFAULT_STAKED_AMOUNT);
+
+      // Exit locked funds
+      await contract.connect(stakerA).exit(true);
+
+      // Confirm totalStaked is updated
+      expect(await contract.totalStaked()).to.eq(0n);
+    });
+  });
 });

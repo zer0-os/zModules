@@ -181,6 +181,8 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
             staker.lastTimestamp = 0;
         }
 
+        totalStaked -= amount;
+
         if (staker.amountStakedLocked == 0 && staker.amountStaked == 0) {
             delete stakers[msg.sender];
         }
