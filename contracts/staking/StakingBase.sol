@@ -57,11 +57,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         address _stakeRepToken,
         RewardConfig memory _rewardConfig
     ) Ownable(_contractOwner) {
-        if (
-            _rewardConfig.rewardsPerPeriod == 0 ||
-            _rewardConfig.periodLength == 0
-        ) revert InitializedWithZero();
-
         // Disallow use of native token as stakeRepToken
         if (_stakeRepToken.code.length == 0) {
             revert InvalidAddress();
@@ -72,9 +67,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         stakeRepToken = _stakeRepToken;
 
         // Initial config
-        _rewardConfig.timestamp = block.timestamp;
-        rewardConfigTimestamps.push(block.timestamp);
-        rewardConfigs[block.timestamp] = _rewardConfig;
+        _setRewardConfig(_rewardConfig);
     }
 
     // We must be able to receive in the case that the
@@ -105,18 +98,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
      *
      * @param _config The incoming reward config
      */
-    function setRewardConfig(RewardConfig memory _config) public override nonReentrant onlyOwner {
-        if (
-            _config.maximumRewardsMultiplier < _config.minimumRewardsMultiplier
-        ) revert InvalidMultiplierPassed();
-
-        if (_config.periodLength == 0) revert InitializedWithZero();
-
-        _config.timestamp = block.timestamp;
-        rewardConfigTimestamps.push(block.timestamp);
-        rewardConfigs[block.timestamp] = _config;
-
-        emit RewardConfigSet(_config);
+    function setRewardConfig(RewardConfig memory _config) external override nonReentrant onlyOwner {
+        _setRewardConfig(_config);
     }
 
     /**
@@ -262,6 +245,23 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         } else {
             IERC20(token).safeTransfer(msg.sender, amount);
         }
+    }
+
+    function _setRewardConfig(RewardConfig memory _config) internal {
+        if (
+            _config.maximumRewardsMultiplier < _config.minimumRewardsMultiplier
+        ) revert InvalidMultiplierPassed();
+
+        if (
+            _config.rewardsPerPeriod == 0 ||
+            _config.periodLength == 0
+        ) revert InitializedWithZero();
+
+        _config.timestamp = block.timestamp;
+        rewardConfigTimestamps.push(block.timestamp);
+        rewardConfigs[block.timestamp] = _config;
+
+        emit RewardConfigSet(_config);
     }
 
     /**

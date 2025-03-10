@@ -88,6 +88,21 @@ describe("StakingBase Unit Tests", () => {
         config
       )).to.be.revertedWithCustomError(stakingBase, INVALID_ADDR_ERR);
     });
+
+    it("Fails when maximumRewardsMultiplier is less than minimumRewardsMultiplier", async () => {
+      const localFactory = await hre.ethers.getContractFactory("StakingBase");
+
+      const localConfig = { ...config };
+      localConfig.maximumRewardsMultiplier = localConfig.minimumRewardsMultiplier - 1n;
+
+      await expect(localFactory.deploy(
+        owner,
+        await mockStaking.getAddress(),
+        await mockRewards.getAddress(),
+        await mockStakeRep.getAddress(),
+        localConfig
+      )).to.be.revertedWithCustomError(stakingBase, INVALID_MULTIPLIER_ERR);
+    });
   });
 
   describe("#setRewardConfig", () => {
