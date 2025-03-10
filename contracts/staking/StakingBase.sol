@@ -71,8 +71,10 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     // We must be able to receive in the case that the
-    // `stakingToken` is the chain's native token
-    receive() external override payable {}
+    // `rewardsToken` is the chain's native token
+    receive() external override payable {
+        if (rewardsToken != address(0)) revert CanNotAcceptNativeToken();
+    }
 
     /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards

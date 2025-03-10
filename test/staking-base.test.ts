@@ -3,7 +3,12 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseConfig, createDefaultStakingConfig } from "./helpers/staking";
 import { MockERC20, StakingBase } from "../typechain";
 import { expect } from "chai";
-import { INVALID_ADDR_ERR, INVALID_MULTIPLIER_ERR, ZERO_INIT_ERR } from "./helpers/errors";
+import {
+  CANT_ACCEPT_NATIVE_TOKEN_ERR,
+  INVALID_ADDR_ERR,
+  INVALID_MULTIPLIER_ERR,
+  ZERO_INIT_ERR,
+} from "./helpers/errors";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 
@@ -38,6 +43,46 @@ describe("StakingBase Unit Tests", () => {
       await mockStakeRep.getAddress(),
       config
     );
+  });
+
+  describe("#receive()", () => {
+    it("Fails when sending gas token when rewardsToken is NOT a native (gas) token", async () => {
+    // send ETH to the contract
+      await expect(
+        owner.sendTransaction({
+          to: stakingBase.target,
+          value: 1,
+        })).to.be.revertedWithCustomError(stakingBase, CANT_ACCEPT_NATIVE_TOKEN_ERR);
+    });
+
+    it("Succeeds when sending gas token when rewardsToken is a native (gas) token", async () => {
+      const factory = await hre.ethers.getContractFactory("StakingBase");
+
+      const localConfig = await createDefaultStakingConfig(
+        false
+      );
+
+      const contract = await factory.deploy(
+        owner.address,
+        await mockStaking.getAddress(),
+        hre.ethers.ZeroAddress,
+        await mockStakeRep.getAddress(),
+        localConfig
+      );
+
+      const msgValue = 1523n;
+
+      const contractEthBalBefore = await hre.ethers.provider.getBalance(contract.target);
+
+      await owner.sendTransaction({
+        to: contract.target,
+        value: msgValue,
+      });
+
+      const contractEthBalAfter = await hre.ethers.provider.getBalance(contract.target);
+
+      expect(contractEthBalAfter).to.eq(contractEthBalBefore + msgValue);
+    });
   });
 
   describe("Deploy", () => {
