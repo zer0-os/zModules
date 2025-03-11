@@ -8,6 +8,7 @@ import {
   INVALID_ADDR_ERR,
   INVALID_MULTIPLIER_ERR,
   ZERO_INIT_ERR,
+  CONFIG_TOO_SOON_ERR,
 } from "./helpers/errors";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 
@@ -228,6 +229,47 @@ describe("StakingBase Unit Tests", () => {
 
       expect(rewardConfig.minimumRewardsMultiplier).to.equal(localConfig.minimumRewardsMultiplier);
       expect(rewardConfig.maximumRewardsMultiplier).to.equal(localConfig.maximumRewardsMultiplier);
+    });
+
+    it("Fix - Potential duplicate reward configuration for the same timestamp", async () => {
+      const configTimestamp = BigInt(await time.latest()) + 1n;
+
+      const localConfigA = { ...config };
+      localConfigA.timestamp = configTimestamp;
+      localConfigA.minimumLockTime = config.minimumLockTime * 3n;
+
+      const localConfigB = { ...config };
+      localConfigB.timestamp = configTimestamp;
+      localConfigB.rewardsPerPeriod = config.rewardsPerPeriod + 12n;
+
+      // Disable auto mining to test both transactions in the same block
+      await hre.network.provider.request({
+        method: "evm_setAutomine",
+        params: [false],
+      });
+
+
+      // Manual `gasLimit` is required to include multiple tx's in a single block
+      await stakingBase.connect(owner).setRewardConfig(
+        localConfigA,
+        {
+          gasLimit: 500000,
+        }
+      );
+
+      // Set back to true
+      await hre.network.provider.request({
+        method: "evm_setAutomine",
+        params: [true],
+      });
+
+      // New call will be in the same block as the prior call and will fail
+      await expect(stakingBase.connect(owner).setRewardConfig(
+        localConfigB,
+        {
+          gasLimit: 500000,
+        }
+      )).to.be.revertedWithCustomError(stakingBase, CONFIG_TOO_SOON_ERR);
     });
   });
 });

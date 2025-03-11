@@ -37,6 +37,7 @@ export const INVALID_MULTIPLIER_ERR = "InvalidMultiplierPassed";
 export const CANNOT_EXIT_ERR = "CannotExit";
 export const INVALID_ADDR_ERR = "InvalidAddress";
 export const CANT_ACCEPT_NATIVE_TOKEN_ERR = "CanNotAcceptNativeToken";
+export const CONFIG_TOO_SOON_ERR = "LastConfigTooSoon";
 
 // eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";

@@ -237,8 +237,13 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         nftStaker.stake.owedRewardsLocked = 0;
 
         if (nftStaker.stake.amountStakedLocked == 0) {
-            nftStaker.stake.lastTimestampLocked = 0;
-            nftStaker.stake.unlockedTimestamp = 0;
+            // Delete the struct if a user has no more funds
+            if (nftStaker.stake.amountStaked == 0) {
+                delete nftStakers[msg.sender];
+            } else {
+                nftStaker.stake.lastTimestampLocked = 0;
+                nftStaker.stake.unlockedTimestamp = 0;
+            }
         } else {
             // No change to unlockedTimestamp if there are still locked funds
             nftStaker.stake.lastTimestampLocked = block.timestamp;
@@ -294,6 +299,17 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
         nftStaker.stake.lastTimestamp = nftStaker.stake.amountStaked == 0 ? 0  : block.timestamp;
         nftStaker.stake.owedRewards = 0;
 
+        if (nftStaker.stake.amountStaked == 0) {
+            // Delete the struct if a user has no more funds
+            if (nftStaker.stake.amountStakedLocked == 0) {
+                delete nftStakers[msg.sender];
+            } else {
+                nftStaker.stake.lastTimestamp = 0;
+            }
+        } else {
+            nftStaker.stake.lastTimestamp = block.timestamp;
+        }
+
         uint256 i;
         for (i; i < _tokenIds.length;) {
             // Revert if the user passes in tokenIds that were locked
@@ -305,7 +321,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
             // function is `onlySNFTOwner` guarded
             _coreUnstake(tokenId);
-            nftStaker.locked[tokenId] = false;
 
             unchecked {
                 ++i;

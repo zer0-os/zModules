@@ -130,6 +130,11 @@ interface IStakingBase {
     error InvalidAddress();
 
     /**
+     * @notice Throw when the last config was set too recently to call again
+     */
+    error LastConfigTooSoon();
+
+    /**
      * @notice Throw when native (gas) token is sent to the contract
      *  via a regular transfer without calling a function
      *  in the case when the contract is not supposed to accept it
