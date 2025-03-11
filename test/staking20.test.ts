@@ -2660,7 +2660,7 @@ describe("StakingERC20", () => {
       expect(await contract.totalStaked()).to.eq(0n);
     });
 
-    it.only("Fix - Automatic re-locking of previously unlocked tokens and rewards in staking flow", async () => {
+    it("Fix - Automatic re-locking of previously unlocked tokens and rewards in staking flow", async () => {
       // Also fixes "Potential loss of rewards due to incorrect reward calculation for additional locked stake"
       await reset();
 
@@ -2713,10 +2713,7 @@ describe("StakingERC20", () => {
       expect(stakerDataAfter.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT / 2n);
       expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtSecond + DEFAULT_LOCK);
 
-      // Increase but not enough to unlock
       await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 17n);
-
-      // claim, get all unlocked rewards, but second lock rewards are still locked
 
       const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
       await contract.connect(stakerA).claim();
