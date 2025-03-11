@@ -112,6 +112,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         if (_config.periodLength == 0) revert InitializedWithZero();
 
+        // Disallow the possibility of setting two configs within the same block
+        if (_getLatestConfig().timestamp == block.timestamp) revert LastConfigTooSoon();
+
         _config.timestamp = block.timestamp;
         rewardConfigTimestamps.push(block.timestamp);
         rewardConfigs[block.timestamp] = _config;
@@ -186,16 +189,22 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 // The user has never locked or they have and we are past their lock period
                 uint256 amountStakedLocked = staker.amountStakedLocked;
                 if (amountStakedLocked > 0) {
-                    // if not a new stake, get interim rewrds from last lock if any
-                    // get the user's owed rewards from period in between `unlockedTimestamp` and present at rate of 1
-
-                    staker.owedRewardsLocked += _getStakeRewards(
+                    // Move locked owed rewards to non-locked owed rewards
+                    staker.owedRewards += staker.owedRewardsLocked + _getStakeRewards(
                         _mostRecentTimestamp(staker),
                         amountStakedLocked,
                         1, // Rewards multiplier is 1 for non-locked funds
                         false
                     );
-                }
+
+                    // Move locked stake balance to non-locked stake
+                    staker.amountStaked += amountStakedLocked;
+                    staker.lastTimestamp = block.timestamp;
+
+                    // Reset user's locked rewards and staked amount
+                    staker.owedRewardsLocked = 0;
+                    staker.amountStakedLocked = 0;
+                }	
 
                 // Then we update appropriately
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
@@ -306,24 +315,25 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             RewardConfig memory _config = rewardConfigs[rewardConfigTimestamps[i - 1]];
 
             if (_config.timestamp > timeOrDuration) {
-                // Use only the applicable length of time for this config, not entore duration
+                // Use only the applicable length of time for this config, not entIre duration
                 uint256 effectiveDuration = lastTimestamp - _config.timestamp;
                 lastTimestamp = _config.timestamp; // Store for next iteration if needed
                 duration -= effectiveDuration;
 
                 rewards += amount * _config.rewardsPerPeriod * effectiveDuration
-                    / _config.periodLength / PRECISION_DIVISOR;
+                    / _config.periodLength;
             } else {
                 rewards += amount * _config.rewardsPerPeriod * duration
-                    / _config.periodLength / PRECISION_DIVISOR;
-                return rewards;
+                    / _config.periodLength;
+
+                return rewards / PRECISION_DIVISOR;
             }
 
             unchecked {
                 --i;
             }
         }
-        return rewards;
+        return rewards / PRECISION_DIVISOR;
     }
 
     /**
