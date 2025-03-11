@@ -9,14 +9,14 @@ import { IVault } from "./IVault.sol";
 
 /**
  * @title Vault
- * @notice A contract to hold funds previously staked funds and allow eligible users to claim them
+ * @notice A contract to hold previously staked funds and allow eligible users to claim them
  * @author James Earle <https://github.com/JamesEarle>
  */
 contract Vault is Ownable, IVault {
     using SafeERC20 for IERC20;
 
     bytes32 public merkleRoot;
-    IERC20 public rewardToken; // TODO names to make these more abstract, not tied to specific tokens
+    IERC20 public rewardToken;
     IERC20 public lpToken;
 
     mapping(address => bool) public claimed;
@@ -34,24 +34,44 @@ contract Vault is Ownable, IVault {
 
     function claim(
         bytes32[] memory proof,
-        address account,
-        uint256 wildAmount, // should have two amounts, WILD and LP
-        uint256 lpAmount // should have two amounts, WILD and LP
-    ) external onlyOwner {
-        bytes32 leaf = keccak256(abi.encodePacked(account, wildAmount, lpAmount));
-        
+        uint256 wildAmount,
+        uint256 lpAmount
+    ) external {
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, wildAmount, lpAmount))));
+
         if (!MerkleProof.verify(proof, merkleRoot, leaf)) {
             revert InvalidProof();
         }   
 
         // Mark user as claimed
-        claimed[account] = true; // TODO store ts too?
+        if (claimed[msg.sender]) {
+            revert AlreadyClaimed();
+        }
 
-        // TODO make names of tokens more abstract
-        // array of addresses? any number of tokens
-        IERC20(rewardToken).safeTransfer(msg.sender, wildAmount);
-        IERC20(lpToken).safeTransfer(msg.sender, lpAmount);
+        claimed[msg.sender] = true;
 
-        emit Claimed(account, wildAmount, lpAmount);
+        if (wildAmount > 0) IERC20(rewardToken).safeTransfer(msg.sender, wildAmount);
+        if (lpAmount > 0) IERC20(lpToken).safeTransfer(msg.sender, lpAmount);
+
+        emit Claimed(msg.sender, wildAmount, lpAmount);
+    }
+
+    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        merkleRoot = _merkleRoot;
+        // emit MerkleRootSet(_merkleRoot);
+    }
+
+    // admin function to allow owner withdrawal of any unclaimed
+    function withdraw() external onlyOwner {
+        // maybe put some timer here to show owner can't withdraw anything until a specific date
+        // e.g. if block.timestamp != withdrawTimestamp set in config or something
+
+        uint256 wildAmount = IERC20(rewardToken).balanceOf(address(this));
+        uint256 lpAmount = IERC20(lpToken).balanceOf(address(this));
+
+        IERC20(rewardToken).safeTransfer(owner(), wildAmount);
+        IERC20(lpToken).safeTransfer(owner(), lpAmount);
+
+        emit Withdrawn(owner(), wildAmount, lpAmount);
     }
 }

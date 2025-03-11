@@ -53,3 +53,8 @@ export const INVALID_MATCH_ERR = "InvalidMatchOrMatchData";
 export const INVALID_PAYOUTS_ERR = "InvalidPayouts";
 export const ARRAY_MISMATCH_ERR = "ArrayLengthMismatch";
 export const ZERO_MATCH_FEE_ERR = "ZeroMatchFee";
+
+// Vault
+export const ALREADY_CLAIMED_ERR = "AlreadyClaimed";
+export const INVALID_PROOF_ERR = "InvalidProof";
+
