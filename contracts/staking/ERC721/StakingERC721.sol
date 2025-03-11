@@ -296,7 +296,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
         // Update staker values
         nftStaker.stake.amountStaked -= _tokenIds.length;
-        nftStaker.stake.lastTimestamp = nftStaker.stake.amountStaked == 0 ? 0  : block.timestamp;
         nftStaker.stake.owedRewards = 0;
 
         if (nftStaker.stake.amountStaked == 0) {
