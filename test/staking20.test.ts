@@ -2660,7 +2660,7 @@ describe("StakingERC20", () => {
       expect(await contract.totalStaked()).to.eq(0n);
     });
 
-    it("Fix - Automatic re-locking of previously unlocked tokens and rewards in staking flow", async () => {
+    it.only("Fix - Automatic re-locking of previously unlocked tokens and rewards in staking flow", async () => {
       // Also fixes "Potential loss of rewards due to incorrect reward calculation for additional locked stake"
       await reset();
 
@@ -2712,6 +2712,70 @@ describe("StakingERC20", () => {
       expect(stakerDataAfter.amountStaked).to.eq(DEFAULT_STAKED_AMOUNT);
       expect(stakerDataAfter.amountStakedLocked).to.eq(DEFAULT_STAKED_AMOUNT / 2n);
       expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtSecond + DEFAULT_LOCK);
+
+      // Increase but not enough to unlock
+      await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 17n);
+
+      // claim, get all unlocked rewards, but second lock rewards are still locked
+
+      const rewardsBalanceBefore = await rewardsToken.balanceOf(stakerA.address);
+      await contract.connect(stakerA).claim();
+
+      const stakerDataAfterClaim = await contract.stakers(stakerA.address);
+
+      const rewardsBalanceAfter = await rewardsToken.balanceOf(stakerA.address);
+
+      // Interim from first stake amount only, not second stake
+      const newInterimRewards = await calcUpdatedStakeRewards(
+        stakedAtSecond,
+        DEFAULT_STAKED_AMOUNT,
+        false,
+        [config]
+      );
+
+      // Interim rewards from second stake
+      const interimRewardsSecond = await calcUpdatedStakeRewards(
+        stakerDataAfter.unlockedTimestamp,
+        DEFAULT_STAKED_AMOUNT / 2n,
+        false,
+        [config]
+      );
+
+      expect(rewardsBalanceAfter).to.eq(
+        rewardsBalanceBefore +
+        interimRewards +
+        newInterimRewards +
+        interimRewardsSecond +
+        lockedRewardsFirst +
+        lockedRewardsSecond
+      );
+
+      await time.increase(DAY_IN_SECONDS * 134n);
+
+      // unstake everything
+      const beforeFull = await rewardsToken.balanceOf(stakerA.address);
+
+      await contract.connect(stakerA).unstakeLocked(stakerDataAfter.amountStakedLocked);
+
+      const fullRewardsLocked = await calcUpdatedStakeRewards(
+        stakerDataAfterClaim.lastTimestampLocked,
+        stakerDataAfterClaim.amountStakedLocked,
+        false,
+        [config]
+      );
+
+      await contract.connect(stakerA).unstakeUnlocked(stakerDataAfter.amountStaked);
+
+      const afterFull = await rewardsToken.balanceOf(stakerA.address);
+
+      const fullRewardsUnlocked = await calcUpdatedStakeRewards(
+        stakerDataAfterClaim.lastTimestamp,
+        stakerDataAfterClaim.amountStaked,
+        false,
+        [config]
+      );
+
+      expect(afterFull).to.eq(beforeFull + fullRewardsLocked + fullRewardsUnlocked);
     });
   });
 });
