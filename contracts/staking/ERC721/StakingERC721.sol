@@ -321,7 +321,6 @@ contract StakingERC721 is StakingBase, IStakingERC721 {
 
             // function is `onlySNFTOwner` guarded
             _coreUnstake(tokenId);
-            nftStaker.locked[tokenId] = false;
 
             unchecked {
                 ++i;

@@ -218,8 +218,7 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 // and there are no locked funds, delete struct
                 delete stakers[msg.sender];
             } else {
-                // Otherwise set values to 0
-                staker.amountStaked = 0;
+                // Otherwise set 0
                 staker.lastTimestamp = 0;
             }
         } else {
@@ -279,7 +278,6 @@ contract StakingERC20 is StakingBase, IStakingERC20 {
                 delete stakers[msg.sender];
             } else {
                 // Otherwise set locked values to 0
-                staker.amountStakedLocked = 0;
                 staker.lastTimestampLocked = 0;
                 staker.unlockedTimestamp = 0;
             }

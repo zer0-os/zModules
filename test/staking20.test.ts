@@ -2705,7 +2705,7 @@ describe("StakingERC20", () => {
 
       const stakerDataAfter = await contract.stakers(stakerA.address);
 
-      // Follow up stakes that lock move prior owed rewards and staked funds to 
+      // Follow up stakes that lock move prior owed rewards and staked funds to
       // non-locked user variables `owedRewards` and `amountStaked`
       expect(stakerDataAfter.owedRewards).to.eq(interimRewards + lockedRewardsFirst);
       expect(stakerDataAfter.owedRewardsLocked).to.eq(lockedRewardsSecond);

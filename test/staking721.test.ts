@@ -3150,57 +3150,57 @@ describe("StakingERC721", () => {
     });
 
     it("Fix - Automatic re-locking of previously unlocked tokens and rewards in staking flow", async () => {
-        // Also fixes "Potential loss of rewards due to incorrect reward calculation for additional locked stake"
-        await reset();
+      // Also fixes "Potential loss of rewards due to incorrect reward calculation for additional locked stake"
+      await reset();
 
-        await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
-        const stakedAtFirst = BigInt(await time.latest());
-  
-        await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 2n);
-  
-        const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
-  
-        const lockedRewardsFirst = await calcUpdatedStakeRewards(
-          DEFAULT_LOCK,
-          stakerDataBefore.amountStakedLocked,
-          true,
-          [config]
-        );
-  
-        expect(stakerDataBefore.owedRewards).to.eq(0n);
-        expect(stakerDataBefore.owedRewardsLocked).to.eq(lockedRewardsFirst);
-        expect(stakerDataBefore.amountStaked).to.eq(0n);
-        expect(stakerDataBefore.amountStakedLocked).to.eq(1n);
-        expect(stakerDataBefore.unlockedTimestamp).to.eq(stakedAtFirst + DEFAULT_LOCK);
-        expect(stakerDataBefore.lastTimestamp).to.eq(0n);
-        expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtFirst);
-  
-        await stakingERC721.connect(stakerA).stakeWithLock([tokenIdB, tokenIdC], [emptyUri, emptyUri], DEFAULT_LOCK);
-        const stakedAtSecond = BigInt(await time.latest());
-  
-        const interimRewards = await calcUpdatedStakeRewards(
-          stakerDataBefore.unlockedTimestamp,
-          stakerDataBefore.amountStakedLocked,
-          false,
-          [config]
-        );
-  
-        const lockedRewardsSecond = await calcUpdatedStakeRewards(
-          DEFAULT_LOCK,
-          2n,
-          true,
-          [config]
-        );
-  
-        const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
-  
-        // Follow up stakes that lock move prior owed rewards and staked funds to 
-        // non-locked user variables `owedRewards` and `amountStaked`
-        expect(stakerDataAfter.owedRewards).to.eq(interimRewards + lockedRewardsFirst);
-        expect(stakerDataAfter.owedRewardsLocked).to.eq(lockedRewardsSecond);
-        expect(stakerDataAfter.amountStaked).to.eq(1n);
-        expect(stakerDataAfter.amountStakedLocked).to.eq(2n);
-        expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtSecond + DEFAULT_LOCK);
-      });
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
+      const stakedAtFirst = BigInt(await time.latest());
+
+      await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 2n);
+
+      const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+
+      const lockedRewardsFirst = await calcUpdatedStakeRewards(
+        DEFAULT_LOCK,
+        stakerDataBefore.amountStakedLocked,
+        true,
+        [config]
+      );
+
+      expect(stakerDataBefore.owedRewards).to.eq(0n);
+      expect(stakerDataBefore.owedRewardsLocked).to.eq(lockedRewardsFirst);
+      expect(stakerDataBefore.amountStaked).to.eq(0n);
+      expect(stakerDataBefore.amountStakedLocked).to.eq(1n);
+      expect(stakerDataBefore.unlockedTimestamp).to.eq(stakedAtFirst + DEFAULT_LOCK);
+      expect(stakerDataBefore.lastTimestamp).to.eq(0n);
+      expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtFirst);
+
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdB, tokenIdC], [emptyUri, emptyUri], DEFAULT_LOCK);
+      const stakedAtSecond = BigInt(await time.latest());
+
+      const interimRewards = await calcUpdatedStakeRewards(
+        stakerDataBefore.unlockedTimestamp,
+        stakerDataBefore.amountStakedLocked,
+        false,
+        [config]
+      );
+
+      const lockedRewardsSecond = await calcUpdatedStakeRewards(
+        DEFAULT_LOCK,
+        2n,
+        true,
+        [config]
+      );
+
+      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
+
+      // Follow up stakes that lock move prior owed rewards and staked funds to
+      // non-locked user variables `owedRewards` and `amountStaked`
+      expect(stakerDataAfter.owedRewards).to.eq(interimRewards + lockedRewardsFirst);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(lockedRewardsSecond);
+      expect(stakerDataAfter.amountStaked).to.eq(1n);
+      expect(stakerDataAfter.amountStakedLocked).to.eq(2n);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtSecond + DEFAULT_LOCK);
+    });
   });
 });
