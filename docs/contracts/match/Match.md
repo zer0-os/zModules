@@ -4,6 +4,12 @@
 
 Contract for managing matches for escrow funds between players.
 
+### PERCENTAGE_BASIS
+
+```solidity
+uint256 PERCENTAGE_BASIS
+```
+
 ### lockedFunds
 
 ```solidity
@@ -20,11 +26,23 @@ address feeVault
 ```
 
 The address of the fee vault which gathers all the `gameFee`s
+This is a BASE value, that can change depending on the presence of rounding errors
+in the payout calculation. If rounding errors occur, the difference in total payout amount
+and the locked amount will be added to the `gameFee` and sent to the `feeVault`
+
+### gameFeePercentage
+
+```solidity
+uint256 gameFeePercentage
+```
+
+The percentage of the `matchFee` per match that is charged for hosting the match
+by the game. Represented as parts of 10,000 (100% = 10,000)
 
 ### constructor
 
 ```solidity
-constructor(address _token, address _feeVault, address _owner, address[] _operators) public
+constructor(address _token, address _feeVault, address _owner, address[] _operators, uint256 _gameFeePercentage) public
 ```
 
 ### startMatch
@@ -50,7 +68,7 @@ Can ONLY be called by an authorized account!
 ### endMatch
 
 ```solidity
-function endMatch(uint256 matchId, address[] players, uint256[] payouts, uint256 matchFee, uint256 gameFee) external
+function endMatch(uint256 matchId, address[] players, uint256[] payouts, uint256 matchFee) external
 ```
 
 Ends a match, creates and hashes a MatchData struct with the data provided, validates that
@@ -60,6 +78,12 @@ Ends a match, creates and hashes a MatchData struct with the data provided, vali
 
 Can ONLY be called by an authorized account! Note that the `lockedFunds` mapping entry will be deleted
  for a gas refund, leaving historical data only in the event logs.
+> It is important for the caller to calculate the payouts correctly,
+since the contract validates the correctness of the amounts sent and will revert if they
+do not add up exactly to the `lockedAmount` for the match.
+If rounding errors occur in calculating payouts,
+the difference between `payoutSum + gameFee` and `lockedAmount` should be added
+to one of the payouts (probably a loser of the match)!
 
 #### Parameters
 
@@ -69,7 +93,6 @@ Can ONLY be called by an authorized account! Note that the `lockedFunds` mapping
 | players | address[] | Array of player addresses (has to be the exact same array passed to `startMatch()`!) |
 | payouts | uint256[] | The amount of tokens each player will receive (pass 0 for players with no payouts!)  Has to be the same length as `players`! |
 | matchFee | uint256 | The entry fee for the match |
-| gameFee | uint256 | The fee charged by the contract for hosting the match, will go to `feeVault` |
 
 ### setFeeVault
 
@@ -87,44 +110,28 @@ Can ONLY be called by an authorized account!
 | ---- | ---- | ----------- |
 | _feeVault | address | The address of the new fee vault |
 
-### getFeeVault
+### setGameFeePercentage
 
 ```solidity
-function getFeeVault() external view returns (address)
+function setGameFeePercentage(uint256 _gameFeePercentage) external
 ```
 
-Gets the address of the fee vault where all the `gameFee`s go
+Sets the percentage of the `matchFee` per match that is charged for hosting the match
+by the game. Represented as parts of 10,000 (100% = 10,000)
 
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | address | feeVault The address of the fee vault |
-
-### canMatch
-
-```solidity
-function canMatch(address[] players, uint256 matchFee) external view returns (address[] unfundedPlayers)
-```
-
-Checks if all players have enough balance in escrow to participate in the match
-
-Note that the returned array will always be the same length as `players` array, with valid players
- being `address(0)` in the same index as the player in the `players` array. If all players have enough balance
- in escrow, the returned array will be filled with 0x0 addresses.
+Can ONLY be called by the OWNER!
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| players | address[] | Array of player addresses |
-| matchFee | uint256 | The required balance in escrow for each player to participate |
+| _gameFeePercentage | uint256 | The percentage value to set |
 
-#### Return Values
+### _setGameFeePercentage
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| unfundedPlayers | address[] | Array of player addresses who do not have enough balance in escrow |
+```solidity
+function _setGameFeePercentage(uint256 _gameFeePercentage) internal
+```
 
 ### _isFunded
 

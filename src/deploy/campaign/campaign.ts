@@ -1,14 +1,13 @@
-import { IZModulesConfig, IZModulesContracts } from "./types.campaign";
+import { IZModulesConfig, IZModulesContracts } from "./types";
 import * as hre from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   DeployCampaign,
   HardhatDeployer,
   TDeployMissionCtor,
-  getLogger,
 } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getZModulesMongoAdapter } from "../mongo";
+import { getZModulesLogger, getZModulesMongoAdapter } from "../mongo";
 
 
 export const runZModulesCampaign = async ({
@@ -33,10 +32,11 @@ export const runZModulesCampaign = async ({
       hre,
       signer: config.deployAdmin,
       env: config.env,
+      confirmationsN: config.confirmationsN,
     });
   }
 
-  const logger = await getLogger();
+  const logger = getZModulesLogger();
 
   const dbAdapter = await getZModulesMongoAdapter();
 

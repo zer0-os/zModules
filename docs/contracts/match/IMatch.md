@@ -66,14 +66,27 @@ Emitted when a match is ended by the contract operator/owner
 | matchFee | uint256 | The entry fee for the match |
 | gameFee | uint256 | The fee charged by the contract for hosting the match, will go to `feeVault` |
 
-### InvalidMatchOrPayouts
+### GameFeePercentageSet
 
 ```solidity
-error InvalidMatchOrPayouts(uint256 matchId, bytes32 matchDataHash)
+event GameFeePercentageSet(uint256 percentage)
 ```
 
-Reverted when the match data is incorrect or the payout amounts do not add up to `lockedFunds`
- from `startMatch()` calls
+Emitted when the `gameFeePercentage` is set in state
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| percentage | uint256 | The percentage value (as part of 10,000) that is set |
+
+### InvalidMatchOrMatchData
+
+```solidity
+error InvalidMatchOrMatchData(uint256 matchId, bytes32 matchDataHash)
+```
+
+Reverted when the match data passed to the contract is incorrect
 
 #### Parameters
 
@@ -81,6 +94,21 @@ Reverted when the match data is incorrect or the payout amounts do not add up to
 | ---- | ---- | ----------- |
 | matchId | uint256 | The ID of the match assigned by a game client or the operator of this contract |
 | matchDataHash | bytes32 | The hash of the MatchData struct (`keccak256(abi.encode(matchData))`) |
+
+### InvalidPayouts
+
+```solidity
+error InvalidPayouts(uint256 matchId)
+```
+
+Reverted when the payout amounts passed as `payouts` array to `endMatch()` are calculated incorrectly,
+and their sum + `gameFee` do not add up to the total `lockedFunds` set by `startMatch()`
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| matchId | uint256 | The ID of the match assigned by a game client or the operator of this contract |
 
 ### MatchAlreadyStarted
 
@@ -119,6 +147,34 @@ error ArrayLengthMismatch()
 
 Reverted when the length of `players` and `payouts` arrays are different
 
+### ZeroMatchFee
+
+```solidity
+error ZeroMatchFee(uint256 matchId)
+```
+
+Reverted when the match fee is set to 0
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| matchId | uint256 | The ID of the match assigned by a game client or the operator of this contract |
+
+### InvalidPercentageValue
+
+```solidity
+error InvalidPercentageValue(uint256 percentage)
+```
+
+Reverted when setting `gameFeePercentage` as a wrong value (as part of 10,000)
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| percentage | uint256 | The percentage value passed to the function |
+
 ### startMatch
 
 ```solidity
@@ -142,7 +198,7 @@ Can ONLY be called by an authorized account!
 ### endMatch
 
 ```solidity
-function endMatch(uint256 matchId, address[] players, uint256[] payouts, uint256 matchFee, uint256 gameFee) external
+function endMatch(uint256 matchId, address[] players, uint256[] payouts, uint256 matchFee) external
 ```
 
 Ends a match, creates and hashes a MatchData struct with the data provided, validates that
@@ -161,7 +217,6 @@ Can ONLY be called by an authorized account! Note that the `lockedFunds` mapping
 | players | address[] | Array of player addresses (has to be the exact same array passed to `startMatch()`!) |
 | payouts | uint256[] | The amount of tokens each player will receive (pass 0 for players with no payouts!)  Has to be the same length as `players`! |
 | matchFee | uint256 | The entry fee for the match |
-| gameFee | uint256 | The fee charged by the contract for hosting the match, will go to `feeVault` |
 
 ### setFeeVault
 
@@ -179,42 +234,20 @@ Can ONLY be called by an authorized account!
 | ---- | ---- | ----------- |
 | _feeVault | address | The address of the new fee vault |
 
-### getFeeVault
+### setGameFeePercentage
 
 ```solidity
-function getFeeVault() external view returns (address)
+function setGameFeePercentage(uint256 _gameFeePercentage) external
 ```
 
-Gets the address of the fee vault where all the `gameFee`s go
+Sets the percentage of the `matchFee` per match that is charged for hosting the match
+by the game. Represented as parts of 10,000 (100% = 10,000)
 
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| [0] | address | feeVault The address of the fee vault |
-
-### canMatch
-
-```solidity
-function canMatch(address[] players, uint256 matchFee) external view returns (address[] unfundedPlayers)
-```
-
-Checks if all players have enough balance in escrow to participate in the match
-
-Note that the returned array will always be the same length as `players` array, with valid players
- being `address(0)` in the same index as the player in the `players` array. If all players have enough balance
- in escrow, the returned array will be filled with 0x0 addresses.
+Can ONLY be called by the OWNER!
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| players | address[] | Array of player addresses |
-| matchFee | uint256 | The required balance in escrow for each player to participate |
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| unfundedPlayers | address[] | Array of player addresses who do not have enough balance in escrow |
+| _gameFeePercentage | uint256 | The percentage value to set |
 

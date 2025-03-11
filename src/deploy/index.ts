@@ -1,3 +1,3 @@
 export * from "./campaign/campaign";
-export * from "./campaign/types.campaign";
-export * from "./contractNames";
+export * from "./campaign/types";
+export * from "./contract-names";

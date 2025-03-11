@@ -3,7 +3,7 @@
 ### Deposit
 
 ```solidity
-event Deposit(address user, uint256 amount)
+event Deposit(address user, uint256 depositAmount, uint256 amountTransferred)
 ```
 
 Emitted when tokens are deposited into the contract
@@ -13,7 +13,8 @@ Emitted when tokens are deposited into the contract
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | user | address | The address of the user who deposited the tokens |
-| amount | uint256 | The amount of tokens deposited |
+| depositAmount | uint256 | The amount of tokens deposited (argument to `deposit()`) |
+| amountTransferred | uint256 | The amount of tokens actually transferred (deflationary or rebasing tokens) |
 
 ### Withdrawal
 
@@ -29,21 +30,6 @@ Emitted when tokens are withdrawn from the contract
 | ---- | ---- | ----------- |
 | user | address | The address of the user who withdrew the tokens |
 | amount | uint256 | The amount of tokens withdrawn |
-
-### FundsReleased
-
-```solidity
-event FundsReleased(address user, uint256 amount)
-```
-
-Emitted when tokens are refunded to a user by the contract owner or operator
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| user | address | The address of the user to whom the tokens were refunded |
-| amount | uint256 | The amount of tokens refunded |
 
 ### InsufficientFunds
 
@@ -97,19 +83,4 @@ Allows a user to withdraw funds from the escrow contract.
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | amount | uint256 | The amount of tokens to withdraw. |
-
-### releaseFunds
-
-```solidity
-function releaseFunds(address user, uint256 amount) external
-```
-
-Refunds tokens from the escrow back to a user by the contract owner or operator.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| user | address | The address of the user to refund tokens to. |
-| amount | uint256 | The amount of tokens to release for the user. |
 
