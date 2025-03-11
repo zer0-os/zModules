@@ -260,8 +260,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         ) revert InitializedWithZero();
 
         _config.timestamp = block.timestamp;
-        rewardConfigTimestamps.push(block.timestamp);
-        rewardConfigs[block.timestamp] = _config;
+        rewardConfigTimestamps.push(_config.timestamp);
+        rewardConfigs[_config.timestamp] = _config;
 
         emit RewardConfigSet(_config);
     }
@@ -298,8 +298,8 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         uint256 rewards;
 
         // We store as memory variable to be able to write to it
-        uint256 duration = block.timestamp - timeOrDuration; // timestamp, as `locked` is false
         uint256 lastTimestamp = block.timestamp;
+        uint256 duration = lastTimestamp - timeOrDuration; // timestamp, as `locked` is false
 
         // We do `- 1` in indexing to avoid not looping if only one config
         uint256 i = rewardConfigTimestamps.length;
