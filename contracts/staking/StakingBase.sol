@@ -189,16 +189,22 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 // The user has never locked or they have and we are past their lock period
                 uint256 amountStakedLocked = staker.amountStakedLocked;
                 if (amountStakedLocked > 0) {
-                    // if not a new stake, get interim rewrds from last lock if any
-                    // get the user's owed rewards from period in between `unlockedTimestamp` and present at rate of 1
-
-                    staker.owedRewardsLocked += _getStakeRewards(
+                    // Move locked owed rewards to non-locked owed rewards
+                    staker.owedRewards += staker.owedRewardsLocked + _getStakeRewards(
                         _mostRecentTimestamp(staker),
                         amountStakedLocked,
                         1, // Rewards multiplier is 1 for non-locked funds
                         false
                     );
-                }
+
+                    // Move locked stake balance to non-locked stake
+                    staker.amountStaked += amountStakedLocked;
+                    staker.lastTimestamp = block.timestamp;
+
+                    // Reset user's locked rewards and staked amount
+                    staker.owedRewardsLocked = 0;
+                    staker.amountStakedLocked = 0;
+                }	
 
                 // Then we update appropriately
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
