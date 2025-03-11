@@ -129,6 +129,11 @@ interface IStakingBase {
      */
     error InvalidAddress();
 
+    /**
+     * @notice Throw when the last config was set too recently to call again
+     */
+    error LastConfigTooSoon();
+
     receive() external payable;
 
     function withdrawLeftoverRewards() external;

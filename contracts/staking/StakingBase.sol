@@ -112,6 +112,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
 
         if (_config.periodLength == 0) revert InitializedWithZero();
 
+        // Disallow the possibility of setting two configs within the same block
+        if (_getLatestConfig().timestamp == block.timestamp) revert LastConfigTooSoon();
+
         _config.timestamp = block.timestamp;
         rewardConfigTimestamps.push(block.timestamp);
         rewardConfigs[block.timestamp] = _config;
