@@ -315,24 +315,25 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             RewardConfig memory _config = rewardConfigs[rewardConfigTimestamps[i - 1]];
 
             if (_config.timestamp > timeOrDuration) {
-                // Use only the applicable length of time for this config, not entore duration
+                // Use only the applicable length of time for this config, not entIre duration
                 uint256 effectiveDuration = lastTimestamp - _config.timestamp;
                 lastTimestamp = _config.timestamp; // Store for next iteration if needed
                 duration -= effectiveDuration;
 
                 rewards += amount * _config.rewardsPerPeriod * effectiveDuration
-                    / _config.periodLength / PRECISION_DIVISOR;
+                    / _config.periodLength;
             } else {
                 rewards += amount * _config.rewardsPerPeriod * duration
-                    / _config.periodLength / PRECISION_DIVISOR;
-                return rewards;
+                    / _config.periodLength;
+
+                return rewards / PRECISION_DIVISOR;
             }
 
             unchecked {
                 --i;
             }
         }
-        return rewards;
+        return rewards / PRECISION_DIVISOR;
     }
 
     /**
