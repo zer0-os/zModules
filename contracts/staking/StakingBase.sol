@@ -77,6 +77,17 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     /**
+     * @notice Set the config for the staking contract
+     * @dev Setting a value to the value it already is will not add extra gas
+     * so it is cheaper to set the entire config than to have individual setters
+     *
+     * @param _config The incoming reward config
+     */
+    function setRewardConfig(RewardConfig memory _config) external override nonReentrant onlyOwner {
+        _setRewardConfig(_config);
+    }
+
+    /**
      * @notice Emergency function for the contract owner to withdraw leftover rewards
      * in case of an abandoned contract.
      *
@@ -91,17 +102,6 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
         _transferAmount(rewardsToken, balance);
 
         emit LeftoverRewardsWithdrawn(owner(), balance);
-    }
-
-    /**
-     * @notice Set the config for the staking contract
-     * @dev Setting a value to the value it already is will not add extra gas
-     * so it is cheaper to set the entire config than to have individual setters
-     *
-     * @param _config The incoming reward config
-     */
-    function setRewardConfig(RewardConfig memory _config) external override nonReentrant onlyOwner {
-        _setRewardConfig(_config);
     }
 
     /**
