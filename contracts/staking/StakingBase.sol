@@ -413,6 +413,11 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
     }
 
     function _getLatestConfig() internal view returns (RewardConfig memory) {
-        return rewardConfigs[rewardConfigTimestamps[rewardConfigTimestamps.length - 1]];
+        uint256 tsLength = rewardConfigTimestamps.length;
+        if (tsLength == 0) {
+            return rewardConfigs[0];
+        }
+
+        return rewardConfigs[rewardConfigTimestamps[tsLength - 1]];
     }
 }
