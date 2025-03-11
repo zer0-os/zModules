@@ -4,13 +4,17 @@
 
 A set of common elements that are used in any Staking contract
 
-### stakers
+### PRECISION_DIVISOR
 
 ```solidity
-mapping(address => struct IStakingBase.Staker) stakers
+uint256 PRECISION_DIVISOR
 ```
 
-Mapping of each staker to that staker's data in the `Staker` struct
+### LOCKED_PRECISION_DIVISOR
+
+```solidity
+uint256 LOCKED_PRECISION_DIVISOR
+```
 
 ### stakingToken
 
@@ -18,58 +22,73 @@ Mapping of each staker to that staker's data in the `Staker` struct
 address stakingToken
 ```
 
-The staking token for this pool
+The address of the staking token
 
 ### rewardsToken
 
 ```solidity
-contract IERC20 rewardsToken
+address rewardsToken
 ```
 
-The rewards token for this pool
+The address of the rewards token
 
-### rewardsPerPeriod
+### stakeRepToken
 
 ```solidity
-uint256 rewardsPerPeriod
+address stakeRepToken
 ```
 
-The rewards of the pool per period length
+The address of the representative token minted with each stake
 
-### periodLength
+### rewardConfigTimestamps
 
 ```solidity
-uint256 periodLength
+uint256[] rewardConfigTimestamps
 ```
 
-The length of a time period
+List of timestamps that mark when a config was set
 
-### timeLockPeriod
+### rewardConfigs
 
 ```solidity
-uint256 timeLockPeriod
+mapping(uint256 => struct IStakingBase.RewardConfig) rewardConfigs
 ```
 
-The amount of time required to pass to be able to claim or unstake
+Struct to hold each config we've used and when it was implemented
 
 ### constructor
 
 ```solidity
-constructor(address _stakingToken, contract IERC20 _rewardsToken, uint256 _rewardsPerPeriod, uint256 _periodLength, uint256 _timeLockPeriod) public
+constructor(address _contractOwner, address _stakingToken, address _rewardsToken, address _stakeRepToken, struct IStakingBase.RewardConfig _rewardConfig) public
 ```
 
-### claim
+### receive
 
 ```solidity
-function claim() external
+receive() external payable
 ```
 
-Claim rewards for the calling user based on their staked amount
+### setRewardConfig
+
+```solidity
+function setRewardConfig(struct IStakingBase.RewardConfig _config) external
+```
+
+Set the config for the staking contract
+
+Setting a value to the value it already is will not add extra gas
+so it is cheaper to set the entire config than to have individual setters
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _config | struct IStakingBase.RewardConfig | The incoming reward config |
 
 ### withdrawLeftoverRewards
 
 ```solidity
-function withdrawLeftoverRewards() external
+function withdrawLeftoverRewards() public
 ```
 
 Emergency function for the contract owner to withdraw leftover rewards
@@ -77,41 +96,110 @@ in case of an abandoned contract.
 
 Can only be called by the contract owner. Emits a `RewardFundingWithdrawal` event.
 
-### getRemainingLockTime
+### getStakeRewards
 
 ```solidity
-function getRemainingLockTime() external view returns (uint256)
+function getStakeRewards(uint256 timeOrDuration, uint256 amount, bool locked) public view returns (uint256)
 ```
 
-Return the time, in seconds, remaining for a stake to be claimed or unstaked
+Return the potential rewards that would be earned for a given stake
 
-### getPendingRewards
+When `locked` is true, `timeOrDuration is a the duration of the lock period
+When `locked` is false, `timeOrDuration` is a past timestamp of the most recent action
 
-```solidity
-function getPendingRewards() external view returns (uint256)
-```
+#### Parameters
 
-View the pending rewards balance for a user
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| timeOrDuration | uint256 | The the amount of time given funds are staked, provide the lock duration if locking |
+| amount | uint256 | The amount of the staking token to calculate rewards for |
+| locked | bool | Boolean if the stake is locked |
 
 ### getContractRewardsBalance
 
 ```solidity
-function getContractRewardsBalance() external view returns (uint256)
+function getContractRewardsBalance() public view returns (uint256)
 ```
 
 View the rewards balance in this pool
 
-### _checkRewards
+### getLatestConfig
 
 ```solidity
-function _checkRewards(struct IStakingBase.Staker staker) internal
+function getLatestConfig() public view returns (struct IStakingBase.RewardConfig)
 ```
 
-### _baseClaim
+### _coreStake
 
 ```solidity
-function _baseClaim(struct IStakingBase.Staker staker) internal
+function _coreStake(struct IStakingBase.Staker staker, uint256 amount, uint256 lockDuration) internal
 ```
+
+Core stake functionality used by both StakingERC20 and StakingERC721
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| staker | struct IStakingBase.Staker | The user that is staking |
+| amount | uint256 | The amount to stake |
+| lockDuration | uint256 | The duration to lock the stake for, in seconds |
+
+### _coreClaim
+
+```solidity
+function _coreClaim(struct IStakingBase.Staker staker) internal
+```
+
+Core claim functionality used by both StakingERC20 and StakingERC721
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| staker | struct IStakingBase.Staker | The staker to claim rewards for |
+
+### _transferAmount
+
+```solidity
+function _transferAmount(address token, uint256 amount) internal
+```
+
+Transfer funds to a recipient after deciding whether to use
+native or ERC20 tokens
+
+We give `token` as an argument here because in ERC721 it is always the
+reward token to transfer, but in ERC20 it could be either staking or rewards
+token and we won't know which to check.
+
+### _setRewardConfig
+
+```solidity
+function _setRewardConfig(struct IStakingBase.RewardConfig _config) internal
+```
+
+### _getRemainingLockTime
+
+```solidity
+function _getRemainingLockTime(struct IStakingBase.Staker staker) internal view returns (uint256)
+```
+
+Calculate the time remaining for a staker's lock. Return 0 if no locked funds or if passed lock time
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| staker | struct IStakingBase.Staker | The staker to get the lock time for |
+
+### _getStakeRewards
+
+```solidity
+function _getStakeRewards(uint256 timeOrDuration, uint256 amount, uint256 rewardsMultiplier, bool locked) internal view returns (uint256)
+```
+
+When `locked` is true, `timeOrDuration` is the lock period
+When `locked` is false, `timeOrDuration` is the timestamp of the last action
 
 ### _getPendingRewards
 
@@ -119,15 +207,54 @@ function _baseClaim(struct IStakingBase.Staker staker) internal
 function _getPendingRewards(struct IStakingBase.Staker staker) internal view returns (uint256)
 ```
 
+Get the total rewards owed to a staker
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| staker | struct IStakingBase.Staker | The staker to get rewards for |
+
+### _mostRecentTimestamp
+
+```solidity
+function _mostRecentTimestamp(struct IStakingBase.Staker staker) internal view returns (uint256)
+```
+
+Get the most recent timestamp for a staker
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| staker | struct IStakingBase.Staker | The staker to get the most recent timestamp for |
+
+### _calcRewardsMultiplier
+
+```solidity
+function _calcRewardsMultiplier(uint256 lock) internal view returns (uint256)
+```
+
+Locked rewards receive a multiplier based on the length of the lock
+Because we precalc when user is staking, getting the latest config is okay
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| lock | uint256 | The length of the lock in seconds |
+
 ### _getContractRewardsBalance
 
 ```solidity
-function _getContractRewardsBalance() internal view returns (uint256)
+function _getContractRewardsBalance() internal view virtual returns (uint256)
 ```
 
-### _onlyUnlocked
+Get the rewards balance of this contract
+
+### _getLatestConfig
 
 ```solidity
-function _onlyUnlocked(uint256 unlockTimestamp) internal view
+function _getLatestConfig() internal view returns (struct IStakingBase.RewardConfig)
 ```
 
