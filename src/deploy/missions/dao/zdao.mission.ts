@@ -184,7 +184,9 @@ IZModulesContracts
 
     // revoke admin role after granting procoser and executor roles
     if (shouldRevokeAdminRole) {
-      await timelockControllerContract.connect(admin).revokeRole(DEFAULT_ADMIN_ROLE, admin.address);
+      const revokeTx = await timelockControllerContract.connect(admin).revokeRole(DEFAULT_ADMIN_ROLE, admin.address);
+      await this.awaitConfirmation(revokeTx);
+
       this.logger.debug("TimelockController admin role revoked successfully");
     }
   }
