@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-interface IVault {
+interface IMigrationClaim {
 
     /**
      * @notice Throw when a user has already claimed their tokens
@@ -41,7 +41,7 @@ interface IVault {
      * @notice Emit when a new Merkle Root is set
      * @param merkleRoot The new Merkle Root
      */
-    event merkleRootSet(bytes32 indexed merkleRoot);
+    event MerkleRootSet(bytes32 indexed merkleRoot);
 
     function claim(
         bytes32[] memory proof,
@@ -50,7 +50,4 @@ interface IVault {
     ) external;
 
     function setMerkleRoot(bytes32 _merkleRoot) external;
-
-    // admin function to remove any unclaimed tokens     
-    function withdraw() external;
 }

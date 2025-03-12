@@ -24,12 +24,11 @@ export const STAKING721_BASE_URI_DEFAULT = "https://staking721.com/";
 
 export const MATCH_GAME_FEE_PERCENTAGE_DEFAULT = 1000n; // 10%
 
-// Events
+// Staking Events
 export const STAKED_EVENT = "Staked";
 export const CLAIMED_EVENT = "Claimed";
 export const UNSTAKED_EVENT = "Unstaked";
 export const WITHDRAW_EVENT = "LeftoverRewardsWithdrawn";
-
 export const BASE_URI_UPDATED_EVENT  = "BaseURIUpdated";
 
 // Init balance is 10,000 token
@@ -37,3 +36,10 @@ export const INIT_BALANCE = ethers.parseEther("10000");
 
 // Default stake = 1000 token
 export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10n;
+
+// Migration Claim Events
+export const MERKLE_ROOT_SET_EVENT = "MerkleRootSet";
+
+
+
+
