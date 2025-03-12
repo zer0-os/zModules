@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import { TimelockController, ZDAO, ZeroVotingERC20, ZeroVotingERC721 } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { mineBlocks } from "./helpers/voting/mineBlocks";
+import { mineBlocks } from "./helpers/voting/mine";
 
 
 describe("Governor Voting Flow Test", () => {
@@ -86,10 +86,10 @@ describe("Governor Voting Flow Test", () => {
     await governance721.waitForDeployment();
 
     // Grant proposer and executor role to the gov contract to use proposals
-    await timelock.grantRole(await timelock.PROPOSER_ROLE(), await governance20.getAddress());
-    await timelock.grantRole(await timelock.EXECUTOR_ROLE(), await governance20.getAddress());
+    await timelock.connect(admin).grantRole(await timelock.PROPOSER_ROLE(), await governance20.getAddress());
+    await timelock.connect(admin).grantRole(await timelock.EXECUTOR_ROLE(), await governance20.getAddress());
     // Grant minter role to the timelock to let it execute proposal on mint
-    await votingERC20.grantRole(await votingERC20.MINTER_ROLE(), await timelock.getAddress());
+    await votingERC20.connect(admin).grantRole(await votingERC20.MINTER_ROLE(), await timelock.getAddress());
 
     // Give minter role to admin
     await votingERC20.connect(admin).grantRole(await votingERC20.MINTER_ROLE(), admin.address);

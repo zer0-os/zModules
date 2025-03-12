@@ -50,6 +50,34 @@ error ZeroAddressPassed()
 
 Reverted when the zero address is passed to the function
 
+### OperatorAlreadyAssigned
+
+```solidity
+error OperatorAlreadyAssigned(address operator)
+```
+
+Reverted when the operator is already added
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| operator | address | The address of the operator |
+
+### OperatorNotAssigned
+
+```solidity
+error OperatorNotAssigned(address operator)
+```
+
+Reverted when the operator is not assigned
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| operator | address | The address of the operator |
+
 ### addOperator
 
 ```solidity

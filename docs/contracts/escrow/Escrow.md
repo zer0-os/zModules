@@ -54,18 +54,3 @@ Allows a user to withdraw funds from the escrow contract.
 | ---- | ---- | ----------- |
 | amount | uint256 | The amount of tokens to withdraw. |
 
-### releaseFunds
-
-```solidity
-function releaseFunds(address user, uint256 amount) external
-```
-
-Refunds tokens from the escrow back to a user by the contract owner or operator.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| user | address | The address of the user to refund tokens to. |
-| amount | uint256 | The amount of tokens to release for the user. |
-

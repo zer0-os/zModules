@@ -113,17 +113,17 @@ export const calcUpdatedStakeRewards = async (
       duration -= effectiveDuration;
 
       const addedAmount = amount * config.rewardsPerPeriod * effectiveDuration
-        / config.periodLength / PRECISION_DIVISOR;
+        / config.periodLength;
 
       rewards += addedAmount;
     } else {
       const addedAmount = amount * config.rewardsPerPeriod * duration
-        / config.periodLength / PRECISION_DIVISOR;
+        / config.periodLength;
 
       rewards += addedAmount;
-      return rewards;
+      return rewards / PRECISION_DIVISOR;
     }
   }
 
-  return rewards;
+  return rewards / PRECISION_DIVISOR;
 };

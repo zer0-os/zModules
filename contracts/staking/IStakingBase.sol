@@ -29,7 +29,7 @@ interface IStakingBase {
     }
     /**
      * @notice Struct to hold all required config variables
-     * 
+     *
      * @param timestamp When the config was set
      * @param rewardsPerPeriod The amount of rewards given per period
      * @param periodLength The length of each period
@@ -128,6 +128,18 @@ interface IStakingBase {
      * @notice Throw when incoming address is invalid
      */
     error InvalidAddress();
+
+    /**
+     * @notice Throw when the last config was set too recently to call again
+     */
+    error LastConfigTooSoon();
+
+    /**
+     * @notice Throw when native (gas) token is sent to the contract
+     *  via a regular transfer without calling a function
+     *  in the case when the contract is not supposed to accept it
+     */
+    error CanNotAcceptNativeToken();
 
     receive() external payable;
 
