@@ -77,6 +77,13 @@ contract MigrationClaim is Ownable, IMigrationClaim {
             revert AlreadyClaimed();
         }
 
+        // Disallow empty transfers
+        // Note: This should never happen because we sanitize the incoming data
+        // but it is here in case of future changes or bugs
+        if (wildAmount == 0 && lpAmount == 0) {
+            revert ZeroValue();
+        }
+
         // Mark user as claimed
         claimed[msg.sender] = true;
 

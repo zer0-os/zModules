@@ -14,6 +14,7 @@ import {
   INSUFFICIENT_ALLOWANCE_ERR,
   INSUFFICIENT_BALANCE_ERR,
   INVALID_PROOF_ERR,
+  ZERO_VALUE_ERR,
 } from "./helpers/errors";
 import {
   CLAIMED_EVENT,
@@ -32,8 +33,8 @@ describe("Staking Migration Claim Tests", () => {
   let userC : SignerWithAddress;
   let notStakedUser : SignerWithAddress;
 
-  let merkleData : Array<[string, bigint, bigint]>;
-  let merkleTree : StandardMerkleTree<[string, bigint, bigint]>;
+  let merkleData : Array<[string, string, string]>;
+  let merkleTree : StandardMerkleTree<[string, string, string]>;
 
   before(async () => {
     [owner, rewardsVault, userA, userB, userC, notStakedUser] = await hre.ethers.getSigners();
@@ -49,15 +50,15 @@ describe("Staking Migration Claim Tests", () => {
     merkleData = [
       [
         userA.address,
-        hre.ethers.parseEther("100"),
-        hre.ethers.parseEther("100"),
+        hre.ethers.parseEther("100").toString(),
+        hre.ethers.parseEther("100").toString(),
       ],
       [
         userB.address,
-        hre.ethers.parseEther("150"),
-        0n,
+        hre.ethers.parseEther("150").toString(),
+        "0",
       ],
-      [userC.address, 0n, 0n],
+      [userC.address, "0", "0"],
     ];
 
     merkleTree = StandardMerkleTree.of(merkleData, ["address", "uint256", "uint256"]);
@@ -185,6 +186,26 @@ describe("Staking Migration Claim Tests", () => {
       await expect(
         migrationClaim.connect(userC).claim(proof, leaf[1], leaf[2])
       ).to.be.revertedWithCustomError(migrationClaim, INVALID_PROOF_ERR);
+    });
+
+    it("Fails when wrong amount is used", async () => {
+      const leaf = merkleData[2];
+      const proof = merkleTree.getProof(leaf);
+
+      // Call with wrong amount
+      await expect(
+        migrationClaim.connect(userC).claim(proof, leaf[1] + 1n, leaf[2] + 1n)
+      ).to.be.revertedWithCustomError(migrationClaim, INVALID_PROOF_ERR);
+    });
+
+    it("Fails when both transfer amounts are 0", async () => {
+      const leaf = merkleData[2];
+      const proof = merkleTree.getProof(leaf);
+
+      // Call with 0 amounts
+      await expect(
+        migrationClaim.connect(userC).claim(proof, leaf[1], leaf[2])
+      ).to.be.revertedWithCustomError(migrationClaim, ZERO_VALUE_ERR);
     });
   });
 

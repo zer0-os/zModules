@@ -42,6 +42,11 @@ interface IMigrationClaim {
      */
     error InvalidProof();
 
+    /**
+     * @notice Throw when no rewards are owed to avoid empty transfers
+     */
+    error ZeroValue();
+
     function claim(
         bytes32[] memory proof,
         uint256 wildAmount,
