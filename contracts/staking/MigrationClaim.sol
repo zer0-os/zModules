@@ -39,7 +39,7 @@ contract MigrationClaim is Ownable, IMigrationClaim {
     /**
      * @notice Mapping to track users that have claimed
      */
-    mapping(address => bool) public claimed;
+    mapping(address user => bool hasClaimed) public claimed;
 
     constructor(
         bytes32 _merkleRoot,
@@ -65,7 +65,7 @@ contract MigrationClaim is Ownable, IMigrationClaim {
         bytes32[] memory proof,
         uint256 wildAmount,
         uint256 lpAmount
-    ) external {
+    ) external override {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, wildAmount, lpAmount))));
 
         if (!MerkleProof.verify(proof, merkleRoot, leaf)) {
@@ -99,7 +99,7 @@ contract MigrationClaim is Ownable, IMigrationClaim {
      * @notice Allow the owner to set a new merkle tree root
      * @param _merkleRoot The new merkle root
      */
-    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+    function setMerkleRoot(bytes32 _merkleRoot) external override onlyOwner {
         merkleRoot = _merkleRoot;
 
         emit MerkleRootSet(_merkleRoot);

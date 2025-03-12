@@ -41,5 +41,3 @@ export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10n;
 export const MERKLE_ROOT_SET_EVENT = "MerkleRootSet";
 
 
-
-

@@ -2,17 +2,6 @@
 pragma solidity 0.8.26;
 
 interface IMigrationClaim {
-
-    /**
-     * @notice Throw when a user has already claimed their tokens
-     */
-    error AlreadyClaimed();
-
-    /**
-     * @notice Throw when a merkle proof is invalid
-     */
-    error InvalidProof();
-
     /**
      * @notice Emit when a user claims their tokens
      * @param account Address of the account claiming
@@ -42,6 +31,16 @@ interface IMigrationClaim {
      * @param merkleRoot The new Merkle Root
      */
     event MerkleRootSet(bytes32 indexed merkleRoot);
+
+    /**
+     * @notice Throw when a user has already claimed their tokens
+     */
+    error AlreadyClaimed();
+
+    /**
+     * @notice Throw when a merkle proof is invalid
+     */
+    error InvalidProof();
 
     function claim(
         bytes32[] memory proof,

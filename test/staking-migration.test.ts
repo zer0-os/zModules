@@ -1,7 +1,6 @@
 import * as hre from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { setBalance, time } from "@nomicfoundation/hardhat-network-helpers";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
 import {
@@ -10,23 +9,31 @@ import {
   MockERC20,
   MockERC20__factory,
 } from "../typechain";
-import { ALREADY_CLAIMED_ERR, INSUFFICIENT_ALLOWANCE_ERR, INSUFFICIENT_BALANCE_ERR, INVALID_PROOF_ERR } from "./helpers/errors";
-import { CLAIMED_EVENT, MERKLE_ROOT_SET_EVENT } from "./helpers/constants";
+import {
+  ALREADY_CLAIMED_ERR,
+  INSUFFICIENT_ALLOWANCE_ERR,
+  INSUFFICIENT_BALANCE_ERR,
+  INVALID_PROOF_ERR,
+} from "./helpers/errors";
+import {
+  CLAIMED_EVENT,
+  MERKLE_ROOT_SET_EVENT,
+} from "./helpers/constants";
 
 describe("Staking Migration Claim Tests", () => {
-  let mockWild: MockERC20;
-  let mockLp: MockERC20;
-  let migrationClaim: MigrationClaim;
+  let mockWild : MockERC20;
+  let mockLp : MockERC20;
+  let migrationClaim : MigrationClaim;
 
-  let owner: SignerWithAddress;
-  let rewardsVault: SignerWithAddress;
-  let userA: SignerWithAddress;
-  let userB: SignerWithAddress;
-  let userC: SignerWithAddress;
-  let notStakedUser: SignerWithAddress;
+  let owner : SignerWithAddress;
+  let rewardsVault : SignerWithAddress;
+  let userA : SignerWithAddress;
+  let userB : SignerWithAddress;
+  let userC : SignerWithAddress;
+  let notStakedUser : SignerWithAddress;
 
-  let merkleData: [string, bigint, bigint][];
-  let merkleTree: StandardMerkleTree<any>;
+  let merkleData : Array<[string, bigint, bigint]>;
+  let merkleTree : StandardMerkleTree<[string, bigint, bigint]>;
 
   before(async () => {
     [owner, rewardsVault, userA, userB, userC, notStakedUser] = await hre.ethers.getSigners();
@@ -41,14 +48,14 @@ describe("Staking Migration Claim Tests", () => {
     // Create mock data
     merkleData = [
       [
-        userA.address, 
+        userA.address,
         hre.ethers.parseEther("100"),
         hre.ethers.parseEther("100"),
       ],
       [
         userB.address,
         hre.ethers.parseEther("150"),
-        0n
+        0n,
       ],
       [userC.address, 0n, 0n],
     ];
@@ -134,8 +141,8 @@ describe("Staking Migration Claim Tests", () => {
       const lpBalanceBefore = await mockLp.balanceOf(userB.address);
 
       // Claim
-      expect(
-        await migrationClaim.connect(userB).claim(proof, leaf[1], leaf[2])
+      await expect(
+        migrationClaim.connect(userB).claim(proof, leaf[1], leaf[2])
       ).to.emit(migrationClaim, CLAIMED_EVENT).withArgs(userB.address, leaf[1], leaf[2]);
 
       const wildBalanceAfter = await mockWild.balanceOf(userB.address);
@@ -186,8 +193,8 @@ describe("Staking Migration Claim Tests", () => {
       const newMerkleData = merkleData.slice(0, 2);
       const newMerkleTree = StandardMerkleTree.of(newMerkleData, ["address", "uint256", "uint256"]);
 
-      expect(
-        await migrationClaim.connect(owner).setMerkleRoot(newMerkleTree.root)
+      await expect(
+        migrationClaim.connect(owner).setMerkleRoot(newMerkleTree.root)
       ).to.emit(migrationClaim, MERKLE_ROOT_SET_EVENT).withArgs(newMerkleTree.root);
 
       expect(await migrationClaim.merkleRoot()).to.equal(newMerkleTree.root);
