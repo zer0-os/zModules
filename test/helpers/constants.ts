@@ -39,5 +39,6 @@ export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10n;
 
 // Migration Claim Events
 export const MERKLE_ROOT_SET_EVENT = "MerkleRootSet";
+export const REWARDS_VAULT_SET_EVENT = "RewardsVaultSet";
 
 

@@ -33,6 +33,24 @@ interface IMigrationClaim {
     event MerkleRootSet(bytes32 indexed merkleRoot);
 
     /**
+     * @notice Emit when the rewards vault is set
+     * @param rewardsVault The new rewards vault
+     */
+    event RewardsVaultSet(address indexed rewardsVault);
+
+    /**
+     * @notice Emit when the WILD token is set
+     * @param wildToken The new WILD token
+     */
+    event WildTokenSet(address indexed wildToken);
+
+    /**
+     * @notice Emit when the LP token is set
+     * @param lpToken The new LP token
+     */
+    event LpTokenSet(address indexed lpToken);
+
+    /**
      * @notice Throw when a user has already claimed their tokens
      */
     error AlreadyClaimed();
@@ -47,6 +65,11 @@ interface IMigrationClaim {
      */
     error ZeroValue();
 
+    /**
+     * @notice Throw when a setting a variable to zero
+     */
+    error NoZeroVariables();
+
     function claim(
         bytes32[] memory proof,
         uint256 wildAmount,
@@ -54,4 +77,10 @@ interface IMigrationClaim {
     ) external;
 
     function setMerkleRoot(bytes32 _merkleRoot) external;
+
+    function setRewardsVault(address _rewardsVault) external;
+
+    function setWildToken(address _wildToken) external;
+
+    function setLpToken(address _lpToken) external;
 }
