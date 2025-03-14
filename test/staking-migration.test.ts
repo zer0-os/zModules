@@ -76,10 +76,74 @@ describe("Staking Migration Claim Tests", () => {
   });
 
   describe("#constructor", () => {
-    // validate incoming data
     it("Sets the owner properly", async () => {
       const ownerContract = await migrationClaim.owner();
       expect(ownerContract).to.equal(owner.address);
+    });
+
+    it("Allows setting a 0 value for merkle root", async () => {
+      const migrationClaimFactory = new MigrationClaim__factory(owner);
+      migrationClaim = await migrationClaimFactory.deploy(
+        hre.ethers.ZeroHash,
+        owner.address,
+        rewardsVault.address,
+        await mockWild.getAddress(),
+        await mockLp.getAddress(),
+      );
+
+      expect(await migrationClaim.merkleRoot()).to.equal(hre.ethers.ZeroHash);
+    });
+
+    it("Fails when owner address is 0", async () => {
+      const migrationClaimFactory = new MigrationClaim__factory(owner);
+      await expect(
+        migrationClaimFactory.deploy(
+          merkleTree.root,
+          hre.ethers.ZeroAddress,
+          rewardsVault.address,
+          await mockWild.getAddress(),
+          await mockLp.getAddress(),
+        )
+      ).to.be.revertedWithCustomError(migrationClaim, NO_ZERO_VARIABLES_ERR);
+    });
+
+    it("Fails when rewards vault address is 0", async () => {
+      const migrationClaimFactory = new MigrationClaim__factory(owner);
+      await expect(
+        migrationClaimFactory.deploy(
+          merkleTree.root,
+          owner.address,
+          hre.ethers.ZeroAddress,
+          await mockWild.getAddress(),
+          await mockLp.getAddress(),
+        )
+      ).to.be.revertedWithCustomError(migrationClaim, NO_ZERO_VARIABLES_ERR);
+    });
+
+    it("Fails when WILD token address is 0", async () => {
+      const migrationClaimFactory = new MigrationClaim__factory(owner);
+      await expect(
+        migrationClaimFactory.deploy(
+          merkleTree.root,
+          owner.address,
+          rewardsVault.address,
+          hre.ethers.ZeroAddress,
+          await mockLp.getAddress(),
+        )
+      ).to.be.revertedWithCustomError(migrationClaim, NO_ZERO_VARIABLES_ERR);
+    });
+
+    it("Fails when LP token address is 0", async () => {
+      const migrationClaimFactory = new MigrationClaim__factory(owner);
+      await expect(
+        migrationClaimFactory.deploy(
+          merkleTree.root,
+          owner.address,
+          rewardsVault.address,
+          await mockWild.getAddress(),
+          hre.ethers.ZeroAddress,
+        )
+      ).to.be.revertedWithCustomError(migrationClaim, NO_ZERO_VARIABLES_ERR);
     });
   });
 

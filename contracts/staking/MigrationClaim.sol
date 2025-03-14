@@ -49,7 +49,6 @@ contract MigrationClaim is Ownable, IMigrationClaim {
         IERC20 _lpToken
     ) Ownable(_owner) {
         if (
-            _merkleRoot == bytes32(0) ||
             _rewardsVault == address(0) ||
             address(_wildToken) == address(0) ||
             address(_lpToken) == address(0)
@@ -129,6 +128,7 @@ contract MigrationClaim is Ownable, IMigrationClaim {
         if (_merkleRoot == bytes32(0)) {
             revert NoZeroVariables();
         }
+
         merkleRoot = _merkleRoot;
 
         emit MerkleRootSet(_merkleRoot);
