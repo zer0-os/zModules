@@ -132,27 +132,12 @@ const logger = getZModulesLogger({
   silence: process.env.SILENT_LOGGER === "true",
 });
 
-const runDeploy = async (...deployFunctions : Array<() => Promise<void>>) => {
-  try {
-    for (const deployFunction of deployFunctions) {
-      await deployFunction();
-    }
-  } catch (error) {
-    const contractName = "ZDAO";
-    const abiPath = path.resolve(`artifacts/contracts/dao/${contractName}.sol/${contractName}.json`);
-    const contractJson = JSON.parse(fs.readFileSync(abiPath, "utf8"));
-    const abi = contractJson.abi;
-    const iface = new hre.ethers.Interface(abi);
-
-    const errorHash = error.data;
-    const decodedErr = iface.parseError(errorHash);
-
-    logger.error(error.message);
-    logger.error(`Custom error: ${decodedErr.name}`);
-    logger.error(`ARGS: ${decodedErr.args}`);
-
+stakingDeploy(true)
+  .catch(error => {
+    logger.error("Error in staking deploy", error);
     process.exit(1);
-  } finally {
+  })
+  .finally(() => {
+    logger.info("Staking deploy finished");
     process.exit(0);
-  }
-};
+  });
