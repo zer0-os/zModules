@@ -9,9 +9,7 @@ const createMerkleTree = async () => {
     data = JSON.parse(fs.readFileSync("output/merkle_data.json", "utf-8"));
   } else {
     // Temporarily stub data in place of file read
-    data = [
-      ["0x123", 100n, 100n],
-    ];
+    throw new Error("No data file found!");
   }
 
   const merkleTree = StandardMerkleTree.of(data, ["address", "uint256", "uint256"]);

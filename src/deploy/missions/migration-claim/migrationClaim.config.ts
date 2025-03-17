@@ -28,13 +28,11 @@ export const getMigrationClaimDeployConfig = async ({
 
   owner = owner ?? process.env.MIGRATION_CLAIM_CONTRACT_OWNER;
   deployAdmin = deployAdmin ?? process.env.MIGRATION_CLAIM_CONTRACT_DEPLOYER;
-
-  merkleRoot = merkleRoot ?? ZeroHash;
-
   rewardsVault = rewardsVault ?? process.env.MIGRATION_CLAIM_REWARDS_VAULT;
 
-  const wild = wildToken ?? WILD_TOKEN_ADDRESS;
-  const lp = lpToken ?? LP_TOKEN_ADDRESS;
+  merkleRoot = merkleRoot ?? ZeroHash;
+  wildToken = wildToken ?? WILD_TOKEN_ADDRESS;
+  lpToken = lpToken ?? LP_TOKEN_ADDRESS;
 
   const env = process.env.ENV_LEVEL;
 
@@ -47,22 +45,9 @@ export const getMigrationClaimDeployConfig = async ({
       rewardsVault,
       "Missing rewards vault address for MigrationClaim! Is 'MIGRATION_CLAIM_REWARDS_VAULT' set?"
     );
-  } else if (env === EnvironmentLevels.dev || env === EnvironmentLevels.test) {
-    if (!owner) {
-      owner = (await hre.ethers.provider.getSigner(0));
-    }
-
-    if (!rewardsVault) {
-      rewardsVault = (await hre.ethers.provider.getSigner(1)).address;
-    }
   } else {
     throw new Error("Invalid environment level!");
   }
-
-  assert.ok(
-    rewardsVault,
-    "Missing rewards vault address for MigrationClaim! Is 'MIGRATION_CLAIM_REWARDS_VAULT' set?"
-  );
 
   const baseConfig = await getBaseZModulesConfig({ deployAdmin });
 
@@ -72,8 +57,8 @@ export const getMigrationClaimDeployConfig = async ({
       merkleRoot,
       owner: owner.address,
       rewardsVault,
-      wildToken: wild,
-      lpToken: lp,
+      wildToken,
+      lpToken,
     },
   } as IZModulesConfig;
 
