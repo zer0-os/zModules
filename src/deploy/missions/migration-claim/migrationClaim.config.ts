@@ -42,6 +42,10 @@ export const getMigrationClaimDeployConfig = async ({
       "Missing contract owner for MigrationClaim! Is 'MIGRATION_CLAIM_CONTRACT_OWNER' set?"
     );
     assert.ok(
+      deployAdmin,
+      "Missing deployAdmin for MigrationClaim! Is 'MIGRATION_CLAIM_DEPLOY_ADMIN' set?"
+    );
+    assert.ok(
       rewardsVault,
       "Missing rewards vault address for MigrationClaim! Is 'MIGRATION_CLAIM_REWARDS_VAULT' set?"
     );
