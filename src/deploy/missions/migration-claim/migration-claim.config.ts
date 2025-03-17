@@ -49,7 +49,7 @@ export const getMigrationClaimDeployConfig = async ({
       rewardsVault,
       "Missing rewards vault address for MigrationClaim! Is 'MIGRATION_CLAIM_REWARDS_VAULT' set?"
     );
-  } else if (env !== EnvironmentLevels.test || env !== EnvironmentLevels.dev) {
+  } else if (env !== EnvironmentLevels.test && env !== EnvironmentLevels.dev) {
     throw new Error("Invalid environment level!");
   }
 

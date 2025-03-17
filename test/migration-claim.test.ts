@@ -22,8 +22,8 @@ import {
   CLAIMED_EVENT,
   MERKLE_ROOT_SET_EVENT,
 } from "./helpers/constants";
-import { getMigrationClaimDeployConfig } from "../src/deploy/missions/migration-claim/migrationClaim.config";
-import { MigrationClaimDM } from "../src/deploy/missions/migration-claim/migrationClaim.mission";
+import { getMigrationClaimDeployConfig } from "../src/deploy/missions/migration-claim/migration-claim.config";
+import { MigrationClaimDM } from "../src/deploy/missions/migration-claim/migration-claim.mission";
 import { IZModulesConfig, IZModulesContracts, runZModulesCampaign } from "../src/deploy";
 import { DeployCampaign } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
