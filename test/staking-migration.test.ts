@@ -2,7 +2,6 @@ import * as hre from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
-
 import {
   MigrationClaim,
   MigrationClaim__factory,
@@ -15,6 +14,7 @@ import {
   INSUFFICIENT_BALANCE_ERR,
   INVALID_PROOF_ERR,
   NO_ZERO_VARIABLES_ERR,
+  OWNABLE_INVALID_OWNER_ERR,
   OWNABLE_UNAUTHORIZED_ERR,
   ZERO_VALUE_ERR,
 } from "./helpers/errors";
@@ -22,6 +22,11 @@ import {
   CLAIMED_EVENT,
   MERKLE_ROOT_SET_EVENT,
 } from "./helpers/constants";
+import { getMigrationClaimDeployConfig } from "../src/deploy/missions/migration-claim/migrationClaim.config";
+import { MigrationClaimDM } from "../src/deploy/missions/migration-claim/migrationClaim.mission";
+import { IZModulesConfig, IZModulesContracts, runZModulesCampaign } from "../src/deploy";
+import { DeployCampaign } from "@zero-tech/zdc";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 describe("Staking Migration Claim Tests", () => {
   let mockWild : MockERC20;
@@ -30,6 +35,7 @@ describe("Staking Migration Claim Tests", () => {
 
   let owner : SignerWithAddress;
   let rewardsVault : SignerWithAddress;
+  let deployAdmin : SignerWithAddress;
   let userA : SignerWithAddress;
   let userB : SignerWithAddress;
   let userC : SignerWithAddress;
@@ -38,10 +44,17 @@ describe("Staking Migration Claim Tests", () => {
   let merkleData : Array<[string, string, string]>;
   let merkleTree : StandardMerkleTree<[string, string, string]>;
 
-  before(async () => {
-    [owner, rewardsVault, userA, userB, userC, notStakedUser] = await hre.ethers.getSigners();
+  let config : IZModulesConfig;
 
-    // TODO use ZDC instead for deployment
+  let campaign : DeployCampaign<
+  HardhatRuntimeEnvironment,
+  SignerWithAddress,
+  IZModulesConfig,
+  IZModulesContracts>;
+
+  before(async () => {
+    [owner, deployAdmin, rewardsVault, userA, userB, userC, notStakedUser] = await hre.ethers.getSigners();
+
     const mockWildFactory = new MockERC20__factory(owner);
     mockWild = await mockWildFactory.deploy("Wild", "WILD");
 
@@ -65,14 +78,23 @@ describe("Staking Migration Claim Tests", () => {
 
     merkleTree = StandardMerkleTree.of(merkleData, ["address", "uint256", "uint256"]);
 
-    const migrationClaimFactory = new MigrationClaim__factory(owner);
-    migrationClaim = await migrationClaimFactory.deploy(
-      merkleTree.root,
-      owner.address,
-      rewardsVault.address,
-      await mockWild.getAddress(),
-      await mockLp.getAddress(),
-    );
+    config = await getMigrationClaimDeployConfig({
+      owner,
+      deployAdmin,
+      merkleRoot: merkleTree.root,
+      rewardsVault: rewardsVault.address,
+      wildToken: await mockWild.getAddress(),
+      lpToken: await mockLp.getAddress(),
+    });
+
+    campaign = await runZModulesCampaign({
+      config,
+      missions: [
+        MigrationClaimDM,
+      ],
+    });
+
+    migrationClaim = campaign.migrationClaim;
   });
 
   describe("#constructor", () => {
@@ -83,7 +105,7 @@ describe("Staking Migration Claim Tests", () => {
 
     it("Allows setting a 0 value for merkle root", async () => {
       const migrationClaimFactory = new MigrationClaim__factory(owner);
-      migrationClaim = await migrationClaimFactory.deploy(
+      const localMigrationClaim = await migrationClaimFactory.deploy(
         hre.ethers.ZeroHash,
         owner.address,
         rewardsVault.address,
@@ -91,7 +113,7 @@ describe("Staking Migration Claim Tests", () => {
         await mockLp.getAddress(),
       );
 
-      expect(await migrationClaim.merkleRoot()).to.equal(hre.ethers.ZeroHash);
+      expect(await localMigrationClaim.merkleRoot()).to.equal(hre.ethers.ZeroHash);
     });
 
     it("Fails when owner address is 0", async () => {
@@ -104,7 +126,7 @@ describe("Staking Migration Claim Tests", () => {
           await mockWild.getAddress(),
           await mockLp.getAddress(),
         )
-      ).to.be.revertedWithCustomError(migrationClaim, NO_ZERO_VARIABLES_ERR);
+      ).to.be.revertedWithCustomError(migrationClaim, OWNABLE_INVALID_OWNER_ERR);
     });
 
     it("Fails when rewards vault address is 0", async () => {
@@ -151,6 +173,8 @@ describe("Staking Migration Claim Tests", () => {
     it("Fails when the rewards vault has not given allowance to the contract", async () => {
       const [, wildAmount, lpAmount] = merkleData[0];
       const proof = merkleTree.getProof(merkleData[0]);
+
+      console.log(await migrationClaim.merkleRoot());
 
       await expect(
         migrationClaim.connect(userA).claim(proof, wildAmount, lpAmount)

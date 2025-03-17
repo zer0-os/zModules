@@ -37,4 +37,8 @@ export const contractNames = {
     contract: "TimelockController",
     instance: "timelockController",
   },
+  migrationClaim: {
+    contract: "MigrationClaim",
+    instance: "migrationClaim",
+  },
 };
