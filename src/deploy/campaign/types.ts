@@ -10,6 +10,7 @@ import {
   ZDAO,
   ZeroVotingERC20,
   ZeroVotingERC721,
+  MigrationClaim,
 } from "../../../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
@@ -75,6 +76,14 @@ export interface ITimelockConfig {
   admin : SignerWithAddress;
 }
 
+export interface IMigrationClaimConfig {
+  merkleRoot : string;
+  owner : string;
+  rewardsVault : string;
+  wildToken : string;
+  lpToken : string;
+}
+
 export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
   votingERC20Config ?: IVotingERC20Config;
   votingERC721Config ?: IVotingERC721Config;
@@ -83,6 +92,7 @@ export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress
   matchConfig ?: IMatchConfig;
   daoConfig ?: IDAOConfig;
   timeLockConfig ?: ITimelockConfig;
+  migrationClaimConfig ?: IMigrationClaimConfig;
 }
 
 export type ZModulesContract =
@@ -92,7 +102,8 @@ export type ZModulesContract =
   ZeroVotingERC721 |
   ZDAO |
   Match |
-  TimelockController;
+  TimelockController |
+  MigrationClaim;
 
 export interface IZModulesContracts extends IContractState<ZModulesContract> {
   staking20 : StakingERC20;
@@ -102,4 +113,5 @@ export interface IZModulesContracts extends IContractState<ZModulesContract> {
   zDao : ZDAO;
   match : Match;
   timelockController : TimelockController;
+  migrationClaim : MigrationClaim;
 }
