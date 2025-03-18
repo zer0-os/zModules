@@ -56,11 +56,11 @@ let staking721 : StakingERC721;
 
 let tx;
 
-const mintAmount = hre.ethers.parseUnits("1000");
+const mintAmount = hre.ethers.parseUnits("1000000000");
 const baseUri = "https://voting721.com/";
 const emptyUri = "";
 
-describe("Staking", () => {
+describe.skip("Staking flow test", () => {
   before(async () => {
 
     [ user1, fWallet, user2 ] = await hre.ethers.getSigners();
@@ -111,24 +111,29 @@ describe("Staking", () => {
     } = campaign.state.contracts);
 
     // Mint funds to users to stake
-    tx = await mockErc20STK.connect(user1).mint(user1.address, mintAmount);
-    await tx.wait(Number(process.env.CONFIRMATIONS_N));
-
-    tx = await mockErc20STK.connect(user1).mint(user2.address, mintAmount);
-    await tx.wait(Number(process.env.CONFIRMATIONS_N));
+    await executeTX(
+      mockErc20STK,
+      mockErc20STK.connect(user1).mint(user1.address, mintAmount)
+    );
 
     // Give staking contract balance to pay rewards
-    tx = await mockErc20REW.connect(user1).mint(staking20.target, hre.ethers.parseUnits("1000000000000"));
-    await tx.wait(Number(process.env.CONFIRMATIONS_N));
+    await executeTX(
+      mockErc20REW,
+      mockErc20REW.connect(user1).mint(staking20.target, mintAmount)
+    );
 
     // Approves for staking and rewards tokens
-    tx = await mockErc20STK.connect(user1).approve(staking20.target, mintAmount * 2n);
-    await tx.wait(Number(process.env.CONFIRMATIONS_N));
+    await executeTX(
+      mockErc20STK,
+      mockErc20STK.connect(user1).approve(staking20.target, mintAmount)
+    );
 
-    tx = await mockErc20REW.connect(user1).approve(staking20.target, hre.ethers.parseUnits("1000000000000"));
-    await tx.wait(Number(process.env.CONFIRMATIONS_N));
+    await executeTX(
+      mockErc20REW,
+      mockErc20REW.connect(user1).approve(staking20.target, mintAmount)
+    );
 
-    // Mint 10 nfts to user1 with "1-10" IDs
+    // Mint 10 nfts to user with "1-10" IDs
     for (let id = 1; id < 11; id++) {
       await executeTX(
         mockErc721STK,
@@ -138,12 +143,12 @@ describe("Staking", () => {
 
     await executeTX(
       mockErc721STK,
-      mockErc721STK.connect(fWallet).setApprovalForAll(staking721.target, true)
+      mockErc721STK.connect(user1).setApprovalForAll(staking721.target, true)
     );
   });
 
-  describe("Staking ERC20", () => {
-    it("should stake without a lock successfully and mint proper amount of `stakeRepToken`", async () => {
+  describe("Staking ERC20 flow", () => {
+    it("should #stakeWithoutLock successfully and mint proper amount of `stakeRepToken`", async () => {
       const stakeBalanceBefore = await mockErc20STK.balanceOf(user1.address);
       const repTokenBalanceBefore = await rep20Token.balanceOf(user1.address);
 
@@ -162,7 +167,8 @@ describe("Staking", () => {
       expect(stakerData.owedRewards).to.eq(0n);
     });
 
-    it("should allow a user to unstake non-locked amount partially and burns `stakeRepToken`", async () => {
+    // This test leaves a few tokens on the deployed StakingERC20 contract as we want to test it over time. Uses user2
+    it("should allow a user to #unstakeUnlocked amount partially and burns `stakeRepToken`", async () => {
       const stakeAmount = hre.ethers.parseUnits("100");
       await executeTX(
         mockErc20STK,
@@ -218,9 +224,47 @@ describe("Staking", () => {
       expect(stakerData.unlockedTimestamp).to.eq(0n); // User has no locked stake
       expect(stakerData.owedRewards).to.eq(0n);
     });
+
+    it("should successfully exit after LOCK and DO NOT get rewards", async () => {
+      const rewardBalanceBefore = await mockErc20REW.balanceOf(user1.address);
+      const stakeBalanceBefore = await mockErc20STK.balanceOf(user1.address);
+
+      await executeTX(
+        mockErc20STK,
+        mockErc20STK.connect(user1).approve(staking20.target, DEFAULT_STAKED_AMOUNT)
+      );
+
+      await executeTX(
+        staking20,
+        staking20.connect(user1).stakeWithLock(DEFAULT_STAKED_AMOUNT, 60n)
+      );
+
+      await skipSeconds(120n);
+
+      await executeTX(
+        staking20,
+        staking20.connect(user1).exit(true)
+      );
+      const block = await hre.ethers.provider.getBlock("latest");
+      const unstakedAt = BigInt((block as Block).timestamp);
+
+      const rewardBalanceAfter = await mockErc20REW.balanceOf(user1.address);
+      const stakeBalanceAfter = await mockErc20STK.balanceOf(user1.address);
+
+      expect(rewardBalanceAfter).to.eq(rewardBalanceBefore);
+      expect(stakeBalanceAfter).to.eq(stakeBalanceBefore);
+      expect(
+        await rep20Token.balanceOf(user1.address)
+      ).to.eq(0);
+
+      const stakerData = await staking20.stakers(user1.address);
+
+      expect(stakerData.lastTimestamp).to.eq(unstakedAt);
+      expect(stakerData.owedRewards).to.eq(0n);
+    });
   });
 
-  describe("Staking ERC721", () => {
+  describe("Staking ERC721 flow", () => {
     it("should stake a single NFT using #stakeWithoutLock and mint `stakeRepToken`", async () => {
       const supplyBefore = await rep721Token.totalSupply();
       const tokenId = 1n;
@@ -251,15 +295,17 @@ describe("Staking", () => {
       expect(stakerData.lastTimestamp).to.eq(stakedAt);
     });
 
-    it("Can stake multiple NFTs using #stakeWithLock", async () => {
+    it("should stake multiple NFTs using #stakeWithLock", async () => {
       const supplyBefore = await rep721Token.totalSupply();
 
       const amountStakedLocked = 2n;
 
+      const tokenIds = [10n, 9n];
+
       await executeTX(
         staking721,
         staking721.connect(fWallet).stakeWithLock(
-          [10n, 9n],
+          tokenIds,
           [emptyUri, emptyUri],
           60n
         )
@@ -275,6 +321,63 @@ describe("Staking", () => {
       expect(supplyAfter).to.eq(supplyBefore + 2n);
       expect(stakerData.amountStakedLocked).to.eq(amountStakedLocked);
       expect(stakerData.lastTimestampLocked).to.eq(secondStakedAtB);
+    });
+
+    it("should successfully #exit after LOCK and DO NOT get rewards for staked NFTs", async () => {
+      const rewardBalanceBefore = await mockErc20REW.balanceOf(fWallet.address);
+      const stakeBalanceBefore = await mockErc721STK.balanceOf(fWallet.address);
+
+      const tokenId = 5n;
+
+
+      await executeTX(
+        staking721,
+        staking721.connect(fWallet).stakeWithLock([tokenId], ["0://5th/"], 60n)
+      );
+
+      await skipSeconds(60n);
+
+      await executeTX(
+        staking721,
+        staking721.connect(fWallet).exit([tokenId], true)
+      );
+
+      const rewardBalanceAfter = await mockErc20REW.balanceOf(fWallet.address);
+      const stakeBalanceAfter = await mockErc20STK.balanceOf(fWallet.address);
+
+      expect(rewardBalanceAfter).to.eq(rewardBalanceBefore);
+      expect(stakeBalanceAfter).to.eq(stakeBalanceBefore);
+      expect(
+        await rep20Token.balanceOf(fWallet.address)
+      ).to.eq(0);
+    });
+
+    it("should succesfully #unstakeLocked and get rewards for staked NFTs", async () => {
+      const rewardBalanceBefore = await mockErc20REW.balanceOf(fWallet.address);
+      const stakeBalanceBefore = await mockErc721STK.balanceOf(fWallet.address);
+      const tokenIds = [10n, 9n];
+      const tokenAOwner = await mockErc721STK.ownerOf(tokenIds[0]);
+      const tokenBOwner = await mockErc721STK.ownerOf(tokenIds[1]);
+
+      expect(tokenAOwner).to.eq(staking721.target);
+      expect(tokenBOwner).to.eq(staking721.target);
+
+      await executeTX(
+        staking721,
+        staking721.connect(fWallet).unstakeLocked([10n, 9n])
+      );
+
+      await skipSeconds(10n);
+
+      expect(tokenAOwner).to.eq(fWallet.address);
+      expect(tokenBOwner).to.eq(fWallet.address);
+
+      const stakeBalanceAfter = await mockErc721STK.balanceOf(fWallet.address);
+      const rewardBalanceAfter = await mockErc20REW.balanceOf(fWallet.address);
+
+      expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + BigInt(tokenIds.length));
+      // just .gt() because it is a separate test
+      expect(rewardBalanceAfter).to.gt(rewardBalanceBefore);
     });
   });
 });

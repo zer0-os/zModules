@@ -132,12 +132,47 @@ const logger = getZModulesLogger({
   silence: process.env.SILENT_LOGGER === "true",
 });
 
-stakingDeploy(true)
-  .catch(error => {
-    logger.error("Error in staking deploy", error);
-    process.exit(1);
-  })
-  .finally(() => {
-    logger.info("Staking deploy finished");
-    process.exit(0);
-  });
+const loadAbiAndInterface = (contractName : string) => {
+  let abiPath;
+  if (contractName === "Staking20") {
+    abiPath = path.resolve("artifacts/contracts/staking/ERC20/StakingERC20.sol/StakingERC20.json");
+  } else if (contractName === "Staking721") {
+    abiPath = path.resolve("artifacts/contracts/staking/ERC721/StakingERC721.sol/StakingERC721.json");
+  } else if (contractName === "DAO") {
+    abiPath = path.resolve("artifacts/contracts/dao/ZDAO.sol/ZDAO.json");
+  }
+  if (!abiPath) logger.error("Deploy Helper: Couldn't find the contract ABI file");
+
+  const contractJson = JSON.parse(fs.readFileSync(abiPath, "utf8"));
+  const abi = contractJson.abi;
+  return new hre.ethers.Interface(abi);
+};
+
+// Changed the order of the deployQueue to match the order of the deploy functions
+const deployQueue = [
+  { name: "MockDeploy", func: async () => mockDeploy() },
+  { name: "Staking20", func: async () => stakingDeploy(true) },
+  { name: "Staking721", func: async () => stakingDeploy(false) },
+];
+
+// Call this to run the deployment
+export const runDeploy = async () => {
+  for (const task of deployQueue) {
+    try {
+      await task.func();
+    } catch (error) {
+      const iface = loadAbiAndInterface(task.name);
+      const errorHash = error.data;
+      const decodedErr = iface.parseError(errorHash);
+
+      if (decodedErr) {
+        logger.error(`Deploy Helper: Custom error #${error.message}: ${decodedErr.name}; Args: ${decodedErr.args}`);
+      } else {
+        logger.error(`Deploy Helper: Couldn't decode the error! ${error}; ${errorHash}`);
+      }
+      process.exit(1);
+    }
+  }
+  logger.info("Deploy Helper: Deployment finished");
+  process.exit(0);
+};
