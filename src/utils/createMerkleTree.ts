@@ -14,7 +14,7 @@ const createMerkleTree = async () => {
 
   const merkleTree = StandardMerkleTree.of(data, ["address", "uint256", "uint256"]);
   console.log("Merkle root: ", merkleTree.root);
-  // test change 
+  // change again
 };
 
 createMerkleTree().then(() => process.exit(0))
