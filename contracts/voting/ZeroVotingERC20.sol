@@ -108,4 +108,12 @@ contract ZeroVotingERC20 is ERC20Votes, AccessControl, IZeroVotingERC20 {
 
         super._update(from, to, value);
     }
+
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override(ERC20Votes, ERC20) {
+        super._afterTokenTransfer(from, to, amount);
+    }
 }
