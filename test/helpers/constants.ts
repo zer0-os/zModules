@@ -37,3 +37,13 @@ export const INIT_BALANCE = ethers.parseEther("10000");
 
 // Default stake = 1000 token
 export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10n;
+
+export const STAKING_TEST_CONFIG = {
+  STAKING20_PERIOD_LENGTH: "30",
+  STAKING20_MIN_LOCK_TIME: "0",
+  STAKING20_CAN_EXIT: "true",
+
+  STAKING721_PERIOD_LENGTH: "30",
+  STAKING721_MIN_LOCK_TIME: "60",
+  STAKING721_CAN_EXIT: "true",
+};

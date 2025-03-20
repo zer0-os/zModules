@@ -5,7 +5,8 @@ import { ZModulesContract } from "../../src/deploy";
 export const executeTX = async (contract : ZModulesContract, contractCall : Promise<TransactionResponse>) => {
   try {
     const tx = await contractCall;
-    await tx.wait(Number(process.env.CONFIRMATIONS_N));
+    return await tx.wait(Number(process.env.CONFIRMATIONS_N));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error : any) {
 
     const errorHash = error.data;

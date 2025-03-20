@@ -4,39 +4,40 @@ import path from "path";
 import {
   getStaking20SystemConfig,
   getStaking721SystemConfig,
-} from "./campaign/staking-system-config";
+} from "../../src/deploy/campaign/staking-system-config";
 import {
   IZModulesConfig,
   IZModulesContracts,
-} from "./campaign/types";
+} from "../../src/deploy/campaign/types";
 import { DeployCampaign } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { runZModulesCampaign } from "./campaign/campaign";
+import { runZModulesCampaign } from "../../src/deploy/campaign/campaign";
 import {
   getDao20SystemConfig,
   getDao721SystemConfig,
-} from "./campaign/dao-system-config";
-import { ZModulesZeroVotingERC20DM } from "./missions/voting-erc20/voting20.mission";
-import { ZModulesZeroVotingERC721DM } from "./missions/voting-erc721/voting721.mission";
-import { ZModulesTimelockControllerDM } from "./missions/dao/timelock.mission";
-import { ZModulesZDAODM } from "./missions/dao/zdao.mission";
-import { getZModulesLogger } from "./mongo";
-import { ZModulesStakingERC20DM } from "./missions/staking-erc20/staking20.mission";
-import { ZModulesStakingERC721DM } from "./missions/staking-erc721/staking721.mission";
-import { getMockERC20Mission, TokenTypes } from "./missions/mocks/mockERC20.mission";
-import { getBaseZModulesConfig } from "./campaign/base-campaign-config";
-import { getMockERC721Mission } from "./missions/mocks/mockERC721.mission";
+} from "../../src/deploy/campaign/dao-system-config";
+import { ZModulesZeroVotingERC20DM } from "../../src/deploy/missions/voting-erc20/voting20.mission";
+import { ZModulesZeroVotingERC721DM } from "../../src/deploy/missions/voting-erc721/voting721.mission";
+import { ZModulesTimelockControllerDM } from "../../src/deploy/missions/dao/timelock.mission";
+import { ZModulesZDAODM } from "../../src/deploy/missions/dao/zdao.mission";
+import { getZModulesLogger } from "../../src/deploy/mongo";
+import { ZModulesStakingERC20DM } from "../../src/deploy/missions/staking-erc20/staking20.mission";
+import { ZModulesStakingERC721DM } from "../../src/deploy/missions/staking-erc721/staking721.mission";
+import { getMockERC20Mission, TokenTypes } from "../../src/deploy/missions/mocks/mockERC20.mission";
+import { getBaseZModulesConfig } from "../../src/deploy/campaign/base-campaign-config";
+import { getMockERC721Mission } from "../../src/deploy/missions/mocks/mockERC721.mission";
 
 
 let config : IZModulesConfig;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let campaign : DeployCampaign<
 HardhatRuntimeEnvironment,
 SignerWithAddress,
 IZModulesConfig,
 IZModulesContracts>;
 
-const mockDeploy = async () => {
+export const mockDeploy = async (shouldSetDBVersion : boolean) => {
   config = await getBaseZModulesConfig();
 
   campaign = await runZModulesCampaign({
@@ -60,18 +61,20 @@ const mockDeploy = async () => {
       }),
     ],
   });
+
+  if (shouldSetDBVersion) {
+    const {
+      curDbVersion,
+    } = campaign.dbAdapter.versioner;
+
+    process.env.MONGO_DB_VERSION = curDbVersion;
+  }
 };
 
-const stakingDeploy = async (is721 : boolean) => {
+export const stakingDeploy = async (is721 : boolean) => {
   const [ deployAdmin, fWallet, user2 ] = await hre.ethers.getSigners();
 
   if (!is721) {
-    process.env.STAKING20_REWARDS_PER_PERIOD = "100";
-    process.env.STAKING20_PERIOD_LENGTH = "30";
-    process.env.STAKING20_MIN_LOCK_TIME = "0";
-    process.env.STAKING20_CAN_EXIT = "true";
-    process.env.TIMELOCK_VOTING_TOKEN_TYPE = "20";
-
     config = await getStaking20SystemConfig(user2, deployAdmin, fWallet);
 
     campaign = await runZModulesCampaign({
@@ -82,12 +85,6 @@ const stakingDeploy = async (is721 : boolean) => {
       ],
     });
   } else {
-    process.env.STAKING721_REWARDS_PER_PERIOD = "1";
-    process.env.STAKING721_PERIOD_LENGTH = "30";
-    process.env.STAKING721_MIN_LOCK_TIME = "60";
-    process.env.STAKING721_CAN_EXIT = "true";
-    process.env.TIMELOCK_VOTING_TOKEN_TYPE = "721";
-
     config = await getStaking721SystemConfig(user2, deployAdmin, fWallet);
 
     campaign = await runZModulesCampaign({
@@ -100,7 +97,7 @@ const stakingDeploy = async (is721 : boolean) => {
   }
 };
 
-const daoDeploy = async (is721 : boolean) => {
+export const daoDeploy = async (is721 : boolean) => {
   const [ deployAdmin, fWallet, user2 ] = await hre.ethers.getSigners();
 
   if (!is721) {
@@ -132,6 +129,7 @@ const logger = getZModulesLogger({
   silence: process.env.SILENT_LOGGER === "true",
 });
 
+// Error handling for the deployment
 const loadAbiAndInterface = (contractName : string) => {
   let abiPath;
   if (contractName === "Staking20") {
@@ -143,24 +141,31 @@ const loadAbiAndInterface = (contractName : string) => {
   }
   if (!abiPath) logger.error("Deploy Helper: Couldn't find the contract ABI file");
 
-  const contractJson = JSON.parse(fs.readFileSync(abiPath, "utf8"));
+  const contractJson = JSON.parse(fs.readFileSync(abiPath as string, "utf8"));
   const abi = contractJson.abi;
   return new hre.ethers.Interface(abi);
 };
 
 // Changed the order of the deployQueue to match the order of the deploy functions
-const deployQueue = [
-  { name: "MockDeploy", func: async () => mockDeploy() },
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const deployQueueForStakings = [
+  { name: "MockDeploy", func: async () => mockDeploy(true) },
   { name: "Staking20", func: async () => stakingDeploy(true) },
   { name: "Staking721", func: async () => stakingDeploy(false) },
 ];
 
 // Call this to run the deployment
-export const runDeploy = async () => {
+export const runTestDeploy = async (
+  deployQueue : Array<{
+    name : string;
+    func : () => Promise<void>;
+  }>
+) => {
   for (const task of deployQueue) {
     try {
       await task.func();
-    } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error : any) {
       const iface = loadAbiAndInterface(task.name);
       const errorHash = error.data;
       const decodedErr = iface.parseError(errorHash);
