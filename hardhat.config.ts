@@ -66,15 +66,15 @@ const config : HardhatUserConfig = {
     enabled: false,
   },
   networks: {
-    zephyr: {
-      url: process.env.ZCHAIN_ZEPHYR_RPC_URL,
-      chainId: 1417429182,
-      accounts: [
-        `${process.env.DEPLOY_ADMIN_ZEPHYR_PK}`,
-        `${process.env.TESTNET_PRIVATE_KEY_F}`,
-        `${process.env.TESTNET_PRIVATE_KEY_USER_1}`,
-      ],
-    },
+    // zephyr: {
+    //   url: process.env.ZCHAIN_ZEPHYR_RPC_URL,
+    //   chainId: 1417429182,
+    //   accounts: [
+    //     `${process.env.DEPLOY_ADMIN_ZEPHYR_PK}`,
+    //     `${process.env.TESTNET_PRIVATE_KEY_F}`,
+    //     `${process.env.TESTNET_PRIVATE_KEY_USER_1}`,
+    //   ],
+    // },
   },
   etherscan: {
     apiKey: {
