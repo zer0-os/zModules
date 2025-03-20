@@ -36,6 +36,8 @@ export const NOT_FULL_EXIT_ERR = "NotFullExit";
 export const INVALID_MULTIPLIER_ERR = "InvalidMultiplierPassed";
 export const CANNOT_EXIT_ERR = "CannotExit";
 export const INVALID_ADDR_ERR = "InvalidAddress";
+export const CANT_ACCEPT_NATIVE_TOKEN_ERR = "CanNotAcceptNativeToken";
+export const CONFIG_TOO_SOON_ERR = "LastConfigTooSoon";
 
 // eslint-disable-next-line max-len
 export const FUNCTION_SELECTOR_ERR = "Transaction reverted: function selector was not recognized and there's no fallback function";
@@ -53,3 +55,9 @@ export const INVALID_MATCH_ERR = "InvalidMatchOrMatchData";
 export const INVALID_PAYOUTS_ERR = "InvalidPayouts";
 export const ARRAY_MISMATCH_ERR = "ArrayLengthMismatch";
 export const ZERO_MATCH_FEE_ERR = "ZeroMatchFee";
+
+// Vault
+export const ALREADY_CLAIMED_ERR = "AlreadyClaimed";
+export const INVALID_PROOF_ERR = "InvalidProof";
+export const NO_ZERO_VARIABLES_ERR = "NoZeroVariables";
+

@@ -524,11 +524,14 @@ describe("StakingERC721", () => {
     });
 
     it("Returns 0 for users that have not passed any time", async () => {
+      await reset();
+
       const tokenId = 1000n;
       await stakingToken.connect(owner).mint(stakerB.address, tokenId);
       await stakingToken.connect(stakerB).approve(await stakingERC721.getAddress(), tokenId);
 
       await stakingERC721.connect(stakerB).stakeWithLock([tokenId], [emptyUri], DEFAULT_LOCK);
+
       const pendingRewards = await stakingERC721.connect(stakerB).getPendingRewards();
 
       expect(pendingRewards).to.eq(0n);
@@ -3045,6 +3048,158 @@ describe("StakingERC721", () => {
         expect(stakerDataFinal.lastTimestampLocked).to.eq(0n);
         expect(stakerDataFinal.unlockedTimestamp).to.eq(0n);
       });
+    });
+
+    it("Fix - Staker struct not deleted when unstaking all funds in StakingERC721 contract", async () => {
+      await reset();
+
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
+
+      await stakingERC721.connect(stakerA).stakeWithLock(
+        [tokenIdA],
+        [emptyUri],
+        DEFAULT_LOCK
+      );
+      const stakedAtLocked = BigInt(await time.latest());
+
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB], [emptyUri]);
+      const stakedAt = BigInt(await time.latest());
+
+      const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataBefore.amountStaked).to.eq(1n);
+      expect(stakerDataBefore.lastTimestamp).to.eq(stakedAt);
+      expect(stakerDataBefore.amountStakedLocked).to.eq(1n);
+      expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtLocked);
+      expect(stakerDataBefore.unlockedTimestamp).to.eq(stakedAtLocked + DEFAULT_LOCK);
+
+      await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 2n);
+
+      // Unstake only locked tokens, so staker struct shouldn't be deleted
+      await stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdB]);
+
+      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataAfter.amountStaked).to.eq(0n);
+      expect(stakerDataAfter.lastTimestamp).to.eq(0n);
+      expect(stakerDataAfter.amountStakedLocked).to.eq(1n);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(stakedAtLocked);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtLocked + DEFAULT_LOCK);
+
+      // Then full unstake
+      await stakingERC721.connect(stakerA).unstakeLocked([tokenIdA]);
+
+      const stakerDataFinal = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataFinal.amountStaked).to.eq(0n);
+      expect(stakerDataFinal.lastTimestamp).to.eq(0n);
+      expect(stakerDataFinal.amountStakedLocked).to.eq(0n);
+      expect(stakerDataFinal.lastTimestampLocked).to.eq(0n);
+      expect(stakerDataFinal.unlockedTimestamp).to.eq(0n);
+    });
+
+    it("Fix - Staker struct not deleted when unstaking all funds in StakingERC721 contract", async () => {
+      // Above test but in opposite order to show both `unstakeUnlocked` and `unstakeLocked` delete the struct
+      await reset();
+
+      await stakingToken.connect(stakerA).setApprovalForAll(await stakingERC721.getAddress(), true);
+
+      await stakingERC721.connect(stakerA).stakeWithLock(
+        [tokenIdA],
+        [emptyUri],
+        DEFAULT_LOCK
+      );
+      const stakedAtLocked = BigInt(await time.latest());
+
+      await stakingERC721.connect(stakerA).stakeWithoutLock([tokenIdB], [emptyUri]);
+      const stakedAt = BigInt(await time.latest());
+
+      const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataBefore.amountStaked).to.eq(1n);
+      expect(stakerDataBefore.lastTimestamp).to.eq(stakedAt);
+
+      expect(stakerDataBefore.amountStakedLocked).to.eq(1n);
+      expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtLocked);
+      expect(stakerDataBefore.unlockedTimestamp).to.eq(stakedAtLocked + DEFAULT_LOCK);
+
+      await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 2n);
+
+      // Unstake only locked tokens, so staker struct shouldn't be deleted
+      await stakingERC721.connect(stakerA).unstakeLocked([tokenIdA]);
+
+      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataAfter.amountStaked).to.eq(1n);
+      expect(stakerDataAfter.lastTimestamp).to.eq(stakedAt);
+      expect(stakerDataAfter.amountStakedLocked).to.eq(0n);
+      expect(stakerDataAfter.lastTimestampLocked).to.eq(0n);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(0n);
+
+      // Then full unstake
+      await stakingERC721.connect(stakerA).unstakeUnlocked([tokenIdB]);
+
+      const stakerDataFinal = await stakingERC721.nftStakers(stakerA.address);
+
+      expect(stakerDataFinal.amountStaked).to.eq(0n);
+      expect(stakerDataFinal.lastTimestamp).to.eq(0n);
+      expect(stakerDataFinal.amountStakedLocked).to.eq(0n);
+      expect(stakerDataFinal.lastTimestampLocked).to.eq(0n);
+      expect(stakerDataFinal.unlockedTimestamp).to.eq(0n);
+    });
+
+    it("Fix - Automatic re-locking of previously unlocked tokens and rewards in staking flow", async () => {
+      // Also fixes "Potential loss of rewards due to incorrect reward calculation for additional locked stake"
+      await reset();
+
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdA], [emptyUri], DEFAULT_LOCK);
+      const stakedAtFirst = BigInt(await time.latest());
+
+      await time.increase(DEFAULT_LOCK + DAY_IN_SECONDS * 2n);
+
+      const stakerDataBefore = await stakingERC721.nftStakers(stakerA.address);
+
+      const lockedRewardsFirst = await calcUpdatedStakeRewards(
+        DEFAULT_LOCK,
+        stakerDataBefore.amountStakedLocked,
+        true,
+        [config]
+      );
+
+      expect(stakerDataBefore.owedRewards).to.eq(0n);
+      expect(stakerDataBefore.owedRewardsLocked).to.eq(lockedRewardsFirst);
+      expect(stakerDataBefore.amountStaked).to.eq(0n);
+      expect(stakerDataBefore.amountStakedLocked).to.eq(1n);
+      expect(stakerDataBefore.unlockedTimestamp).to.eq(stakedAtFirst + DEFAULT_LOCK);
+      expect(stakerDataBefore.lastTimestamp).to.eq(0n);
+      expect(stakerDataBefore.lastTimestampLocked).to.eq(stakedAtFirst);
+
+      await stakingERC721.connect(stakerA).stakeWithLock([tokenIdB, tokenIdC], [emptyUri, emptyUri], DEFAULT_LOCK);
+      const stakedAtSecond = BigInt(await time.latest());
+
+      const interimRewards = await calcUpdatedStakeRewards(
+        stakerDataBefore.unlockedTimestamp,
+        stakerDataBefore.amountStakedLocked,
+        false,
+        [config]
+      );
+
+      const lockedRewardsSecond = await calcUpdatedStakeRewards(
+        DEFAULT_LOCK,
+        2n,
+        true,
+        [config]
+      );
+
+      const stakerDataAfter = await stakingERC721.nftStakers(stakerA.address);
+
+      // Follow up stakes that lock move prior owed rewards and staked funds to
+      // non-locked user variables `owedRewards` and `amountStaked`
+      expect(stakerDataAfter.owedRewards).to.eq(interimRewards + lockedRewardsFirst);
+      expect(stakerDataAfter.owedRewardsLocked).to.eq(lockedRewardsSecond);
+      expect(stakerDataAfter.amountStaked).to.eq(1n);
+      expect(stakerDataAfter.amountStakedLocked).to.eq(2n);
+      expect(stakerDataAfter.unlockedTimestamp).to.eq(stakedAtSecond + DEFAULT_LOCK);
     });
   });
 });

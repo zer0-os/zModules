@@ -137,7 +137,11 @@ IZModulesContracts
 
     // revoke admin role after granting minter and burner roles
     if (shouldRevokeAdminRole) {
-      await votingErc721.connect(admin).revokeRole(roles.voting.DEFAULT_ADMIN_ROLE, admin.address);
+      const revokeTx = await votingErc721.connect(admin).revokeRole(
+        roles.voting.DEFAULT_ADMIN_ROLE,
+        admin.address
+      );
+      await this.awaitConfirmation(revokeTx);
       this.logger.debug("VotingERC721 DEFAULT_ADMIN_ROLE revoked successfully");
     }
   }

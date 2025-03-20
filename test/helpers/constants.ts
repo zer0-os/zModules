@@ -24,12 +24,11 @@ export const STAKING721_BASE_URI_DEFAULT = "https://staking721.com/";
 
 export const MATCH_GAME_FEE_PERCENTAGE_DEFAULT = 1000n; // 10%
 
-// Events
+// Staking Events
 export const STAKED_EVENT = "Staked";
 export const CLAIMED_EVENT = "Claimed";
 export const UNSTAKED_EVENT = "Unstaked";
 export const WITHDRAW_EVENT = "LeftoverRewardsWithdrawn";
-
 export const BASE_URI_UPDATED_EVENT  = "BaseURIUpdated";
 
 // Init balance is 10,000 token
@@ -38,12 +37,8 @@ export const INIT_BALANCE = ethers.parseEther("10000");
 // Default stake = 1000 token
 export const DEFAULT_STAKED_AMOUNT = INIT_BALANCE / 10n;
 
-export const STAKING_TEST_CONFIG = {
-  STAKING20_PERIOD_LENGTH: "30",
-  STAKING20_MIN_LOCK_TIME: "0",
-  STAKING20_CAN_EXIT: "true",
+// Migration Claim Events
+export const MERKLE_ROOT_SET_EVENT = "MerkleRootSet";
+export const REWARDS_VAULT_SET_EVENT = "RewardsVaultSet";
 
-  STAKING721_PERIOD_LENGTH: "30",
-  STAKING721_MIN_LOCK_TIME: "60",
-  STAKING721_CAN_EXIT: "true",
-};
+

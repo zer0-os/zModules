@@ -1,6 +1,6 @@
 {
   "name": "@zero-tech/zmodules",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "A collection of modular contracts for different use cases",
   "keywords": [],
   "author": "Zero CPT",
@@ -63,6 +63,7 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
+    "@openzeppelin/merkle-tree": "1.0.8",
     "dotenv": "16.0.3"
   }
 }

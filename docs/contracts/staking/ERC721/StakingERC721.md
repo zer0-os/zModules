@@ -5,21 +5,13 @@
 A staking contract that allows depositing ERC721 tokens and mints a
 non-transferable ERC721 token in return as representation of the deposit.
 
-### baseURI
+### nftStakers
 
 ```solidity
-string baseURI
+mapping(address => struct IStakingERC721.NFTStaker) nftStakers
 ```
 
-Base URI used for ALL tokens. Can be empty if individual URIs are set.
-
-### _totalSupply
-
-```solidity
-uint256 _totalSupply
-```
-
-Total supply of all tokens
+Mapping that includes ERC721 specific data for each staker
 
 ### onlySNFTOwner
 
@@ -32,16 +24,36 @@ Revert if a call is not from the SNFT owner
 ### constructor
 
 ```solidity
-constructor(string name, string symbol, string baseUri, address _stakingToken, contract IERC20 _rewardsToken, uint256 _rewardsPerPeriod, uint256 _periodLength, uint256 _timeLockPeriod) public
+constructor(address _contractOwner, address _stakingToken, address _rewardsToken, address _stakeRepToken, struct IStakingBase.RewardConfig _config) public
 ```
 
-### stake
+### stakeWithLock
 
 ```solidity
-function stake(uint256[] tokenIds, string[] tokenUris) external
+function stakeWithLock(uint256[] tokenIds, string[] tokenUris, uint256 lockDuration) external
 ```
 
-Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in return
+Stake one or more ERC721 tokens with a lock period
+
+These functions are separate intentionally for the sake of user clarity
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| tokenIds | uint256[] | The id(s) of the tokens to stake |
+| tokenUris | string[] | The associated metadata URIs of the tokens to stake |
+| lockDuration | uint256 | The lock durations, in seconds, for each token |
+
+### stakeWithoutLock
+
+```solidity
+function stakeWithoutLock(uint256[] tokenIds, string[] tokenUris) external
+```
+
+Stake one or more ERC721 tokens without a lock period
+
+These functions are separate intentionally for the sake of user clarity
 
 #### Parameters
 
@@ -50,116 +62,144 @@ Stake one or more ERC721 tokens and receive non-transferable ERC721 tokens in re
 | tokenIds | uint256[] | Array of tokenIds to be staked by the caller |
 | tokenUris | string[] | (optional) Array of token URIs to be associated with the staked tokens. 0s if baseURI is used! |
 
-### unstake
+### claim
 
 ```solidity
-function unstake(uint256[] tokenIds, bool exit) external
+function claim() external
 ```
 
-Unstake one or more ERC721 tokens
+Claim rewards for the calling user based on their staked amount
+
+### unstakeUnlocked
+
+```solidity
+function unstakeUnlocked(uint256[] _tokenIds) external
+```
+
+Unstake tokens that were not locked
+
+Will revert if the incoming array contains tokens that were locked
+OPTIMIZATION: make unstake flow more manageable by separating functionality
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| tokenIds | uint256[] | Array of tokenIds to be unstaked by the caller |
-| exit | bool | Flag for if the user would like to exit without rewards |
+| _tokenIds | uint256[] | Array of tokens to unstake |
 
-### setBaseURI
-
-```solidity
-function setBaseURI(string baseUri) external
-```
-
-### setTokenURI
+### unstakeLocked
 
 ```solidity
-function setTokenURI(uint256 tokenId, string tokenUri) external virtual
+function unstakeLocked(uint256[] _tokenIds) external
 ```
 
-### getInterfaceId
+Unstake tokens that were locked and are now passed their lock period
+
+Will revert if the incoming array contains tokens that were never locked
+OPTIMIZATION: make unstake flow more manageable by separating functionality
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _tokenIds | uint256[] | Array of tokens to unstake |
+
+### exit
 
 ```solidity
-function getInterfaceId() external pure returns (bytes4)
+function exit(uint256[] _tokenIds, bool _locked) external
 ```
+
+Withdraw locked or unlocked staked funds receiving no rewards
+
+OPTIMIZATION: make unstake flow more manageable by separating functionality
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _tokenIds | uint256[] | Array of token IDs to withdraw |
+| _locked | bool | Indicates whether to withdraw locked or non-locked funds |
+
+### getRemainingLockTime
+
+```solidity
+function getRemainingLockTime() public view returns (uint256)
+```
+
+Return the time in seconds remaining for the staker's lock duration
+
+### getPendingRewards
+
+```solidity
+function getPendingRewards() public view returns (uint256)
+```
+
+Get the total pending rewards for the caller
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | uint256 | The amount of rewards the caller has pending |
+
+### isLocked
+
+```solidity
+function isLocked(uint256 tokenId) public view returns (bool)
+```
+
+Check if a token is locked
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| tokenId | uint256 | The token ID to check |
 
 ### onERC721Received
 
 ```solidity
-function onERC721Received(address, address, uint256, bytes) external pure returns (bytes4)
+function onERC721Received(address, address, uint256, bytes) public pure returns (bytes4)
 ```
-
-### totalSupply
-
-```solidity
-function totalSupply() public view returns (uint256)
-```
-
-### tokenURI
-
-```solidity
-function tokenURI(uint256 tokenId) public view returns (string)
-```
-
-See {IERC721Metadata-tokenURI}.
-
-### supportsInterface
-
-```solidity
-function supportsInterface(bytes4 interfaceId) public view virtual returns (bool)
-```
-
-See {IERC165-supportsInterface}
 
 ### _stake
 
 ```solidity
-function _stake(uint256 tokenId, string tokenUri) internal
+function _stake(uint256[] tokenIds, string[] tokenUris, uint256 lockDuration) internal
 ```
 
-### _unstake
+The ERC721 specific stake function, called by both `stakeWithLock` and `stakeWithoutLock`
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| tokenIds | uint256[] | Array of tokenIds to be staked by the caller |
+| tokenUris | string[] | Array of token URIs to be associated with the staked tokens |
+| lockDuration | uint256 | The lock duration for the staked tokens |
+
+### _unstakeLocked
 
 ```solidity
-function _unstake(uint256 tokenId) internal
+function _unstakeLocked(uint256[] tokenIds) internal
 ```
 
-### _safeMint
+### _unstakeUnlocked
 
 ```solidity
-function _safeMint(address to, uint256 tokenId, string tokenUri) internal
+function _unstakeUnlocked(uint256[] _tokenIds) internal
 ```
 
-### _mint
+### _exit
 
 ```solidity
-function _mint(address to, uint256 tokenId, string tokenUri) internal
+function _exit(uint256[] _tokenIds, bool _locked) internal
 ```
 
-### _burn
+### _coreUnstake
 
 ```solidity
-function _burn(uint256 tokenId) internal
+function _coreUnstake(uint256 tokenId) internal
 ```
-
-See {ERC721-_burn}. This override additionally checks to see if a
-token-specific URI was set for the token, and if so, it deletes the token URI from
-the storage mapping.
-
-### _baseURI
-
-```solidity
-function _baseURI() internal view returns (string)
-```
-
-Base URI for computing {tokenURI}. If set, the resulting URI for each
-token will be the concatenation of the `baseURI` and the `tokenId`. Empty
-by default, can be overridden in child contracts.
-
-### _beforeTokenTransfer
-
-```solidity
-function _beforeTokenTransfer(address from, address to, uint256, uint256) internal pure
-```
-
-Disallow all transfers, only `_mint` and `_burn` are allowed
 
