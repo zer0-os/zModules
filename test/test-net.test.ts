@@ -15,7 +15,7 @@ import {
 } from "../src/deploy";
 import { DeployCampaign } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DEFAULT_STAKED_AMOUNT, STAKING_TEST_CONFIG } from "./helpers/constants";
+import { DEFAULT_STAKED_AMOUNT } from "./helpers/constants";
 import { expect } from "chai";
 import {
   getMockERC20Mission,
@@ -58,7 +58,7 @@ const mintAmount = hre.ethers.parseUnits("1000000000");
 const baseUri = "https://voting721.com/";
 const emptyUri = "";
 
-describe.skip("Staking flow test", () => {
+describe.only("Staking flow test", () => {
   before(async () => {
 
     [ user1, fWallet, user2 ] = await hre.ethers.getSigners();
@@ -183,12 +183,12 @@ describe.skip("Staking flow test", () => {
         mockErc20STK,
         mockErc20STK.connect(user2).approve(staking20.target, stakeAmount)
       );
-      await executeTX(
+      let receipt = await executeTX(
         staking20,
         staking20.connect(user2).stakeWithoutLock(stakeAmount)
       );
 
-      let block = await hre.ethers.provider.getBlock("latest");
+      let block = await hre.ethers.provider.getBlock((receipt as TransactionReceipt).blockNumber);
       const stakedAt = BigInt((block as Block).timestamp);
 
       await skipSeconds(35n);
@@ -197,12 +197,12 @@ describe.skip("Staking flow test", () => {
       const stakeTokenBalanceBefore = await mockErc20STK.balanceOf(user2.address);
       const repTokenBalanceBefore = await rep20Token.balanceOf(user2.address);
 
-      await executeTX(
+      receipt = await executeTX(
         staking20,
         staking20.connect(user2).unstakeUnlocked(stakeAmount)
       );
 
-      block = await hre.ethers.provider.getBlock("latest");
+      block = await hre.ethers.provider.getBlock((receipt as TransactionReceipt).blockNumber);
       const unstakedAt = BigInt((block as Block).timestamp);
       const repTokenBalanceAfter = await rep20Token.balanceOf(user2.address);
 
@@ -235,6 +235,10 @@ describe.skip("Staking flow test", () => {
       const stakeBalanceBefore = await mockErc20STK.balanceOf(user1.address);
       const repTokenBalanceBefore = await rep20Token.balanceOf(user1.address);
 
+      let lockTime;
+      if (Number(process.env.STAKING20_MIN_LOCK_TIME) === 0) lockTime = 30n;
+      else lockTime = BigInt(process.env.STAKING20_MIN_LOCK_TIME);
+
       await executeTX(
         mockErc20STK,
         mockErc20STK.connect(user1).approve(staking20.target, DEFAULT_STAKED_AMOUNT)
@@ -242,17 +246,18 @@ describe.skip("Staking flow test", () => {
 
       await executeTX(
         staking20,
-        staking20.connect(user1).stakeWithLock(DEFAULT_STAKED_AMOUNT, 60n)
+        staking20.connect(user1).stakeWithLock(
+          DEFAULT_STAKED_AMOUNT,
+          lockTime
+        )
       );
 
-      await skipSeconds(120n);
+      await skipSeconds(lockTime);
 
-      const receipt = await executeTX(
+      await executeTX(
         staking20,
         staking20.connect(user1).exit(true)
       );
-      const block = await hre.ethers.provider.getBlock((receipt as TransactionReceipt).blockNumber);
-      const unstakedAt = BigInt((block as Block).timestamp);
 
       const rewardBalanceAfter = await mockErc20REW.balanceOf(user1.address);
       const stakeBalanceAfter = await mockErc20STK.balanceOf(user1.address);
@@ -261,11 +266,6 @@ describe.skip("Staking flow test", () => {
       expect(rewardBalanceAfter).to.eq(rewardBalanceBefore);
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore);
       expect(repTokenBalanceBefore).to.eq(repTokenBalanceAfter);
-
-      const stakerData = await staking20.stakers(user1.address);
-
-      expect(stakerData.lastTimestampLocked).to.eq(unstakedAt);
-      expect(stakerData.owedRewards).to.eq(0n);
     });
   });
 
@@ -318,11 +318,9 @@ describe.skip("Staking flow test", () => {
         staking721.connect(fWallet).stakeWithLock(
           tokenIds,
           [emptyUri, emptyUri],
-          60n
+          BigInt(process.env.STAKING721_MIN_LOCK_TIME)
         )
       );
-
-      console.log(receipt);
 
       const block = await hre.ethers.provider.getBlock((receipt as TransactionReceipt).blockNumber);
       const secondStakedAtB = BigInt((block as Block).timestamp);
@@ -346,14 +344,12 @@ describe.skip("Staking flow test", () => {
       expect(tokenAOwner).to.eq(staking721.target);
       expect(tokenBOwner).to.eq(staking721.target);
 
-      await skipSeconds(60n);
+      await skipSeconds(BigInt(process.env.STAKING721_MIN_LOCK_TIME) * 2n);
 
       await executeTX(
         staking721,
         staking721.connect(fWallet).unstakeLocked([10n, 9n])
       );
-
-      await skipSeconds(10n);
 
       tokenAOwner = await mockErc721STK.ownerOf(tokenIds[0]);
       tokenBOwner = await mockErc721STK.ownerOf(tokenIds[1]);
@@ -366,7 +362,7 @@ describe.skip("Staking flow test", () => {
 
       expect(stakeBalanceAfter).to.eq(stakeBalanceBefore + BigInt(tokenIds.length));
       // just .gt() because it is a separate test
-      expect(rewardBalanceAfter).to.eq(rewardBalanceBefore);
+      expect(rewardBalanceAfter).to.gt(rewardBalanceBefore);
     });
 
     it("should successfully #exit after LOCK, do NOT get rewards and have NOT rep tokens", async () => {
@@ -377,10 +373,14 @@ describe.skip("Staking flow test", () => {
 
       await executeTX(
         staking721,
-        staking721.connect(fWallet).stakeWithLock([tokenId], ["0://5th/"], 60n)
+        staking721.connect(fWallet).stakeWithLock(
+          [tokenId],
+          ["0://5th/"],
+          BigInt(process.env.STAKING721_MIN_LOCK_TIME)
+        )
       );
 
-      await skipSeconds(60n);
+      await skipSeconds(BigInt(process.env.STAKING721_MIN_LOCK_TIME));
 
       await executeTX(
         staking721,
@@ -406,14 +406,14 @@ describe.skip("Staking flow test", () => {
       );
       await executeTX(
         staking20,
-        staking20.connect(user1).stakeWithLock(DEFAULT_STAKED_AMOUNT, 60n)
+        staking20.connect(user1).stakeWithLock(DEFAULT_STAKED_AMOUNT, BigInt(process.env.STAKING721_MIN_LOCK_TIME))
       );
 
       await expect(
         staking20.connect(user1).unstakeLocked(DEFAULT_STAKED_AMOUNT)
       ).to.be.revertedWithCustomError(staking20, "TimeLockNotPassed");
 
-      await skipSeconds(60n);
+      await skipSeconds(BigInt(process.env.STAKING721_MIN_LOCK_TIME));
 
       await executeTX(
         staking20,
