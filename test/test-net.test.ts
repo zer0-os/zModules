@@ -58,7 +58,12 @@ const mintAmount = hre.ethers.parseUnits("1000000000");
 const baseUri = "https://voting721.com/";
 const emptyUri = "";
 
-describe.only("Staking flow test", () => {
+// Before running, be sure to set the env variables in the .env file:
+// STAKING20_MIN_LOCK_TIME,
+// STAKING721_MIN_LOCK_TIME,
+// STAKING20_CAN_EXIT,
+// STAKING721_CAN_EXIT
+describe.skip("Staking flow test", () => {
   before(async () => {
 
     [ user1, fWallet, user2 ] = await hre.ethers.getSigners();
