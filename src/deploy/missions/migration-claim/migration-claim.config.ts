@@ -3,7 +3,6 @@ import { IZModulesConfig } from "../../campaign/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { EnvironmentLevels } from "@zero-tech/zdc";
 import { ZeroHash } from "ethers";
-import * as hre from "hardhat";
 import { LP_TOKEN_ADDRESS, WILD_TOKEN_ADDRESS } from "./constants";
 import { getBaseZModulesConfig } from "../../campaign/base-campaign-config";
 
