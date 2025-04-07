@@ -10,6 +10,7 @@ import {
 } from "../typechain";
 import {
   ALREADY_CLAIMED_ERR,
+  CLAIM_PHASE_ERR,
   INSUFFICIENT_ALLOWANCE_ERR,
   INSUFFICIENT_BALANCE_ERR,
   INVALID_PROOF_ERR,
@@ -28,6 +29,7 @@ import { IZModulesConfig, IZModulesContracts, runZModulesCampaign } from "../src
 import { DeployCampaign } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
+
 describe("Staking Migration Claim Tests", () => {
   let mockWild : MockERC20;
   let mockLp : MockERC20;
@@ -41,7 +43,14 @@ describe("Staking Migration Claim Tests", () => {
   let userC : SignerWithAddress;
   let notStakedUser : SignerWithAddress;
 
-  let merkleData : Array<[string, string, string]>;
+  interface UserData {
+    user : string;
+    wildAmount : string;
+    lpAmount : string;
+  }
+
+  let accountValues : Map<string, UserData>;
+  const merkleData : Array<[string, string, string]> = [];
   let merkleTree : StandardMerkleTree<[string, string, string]>;
 
   let config : IZModulesConfig;
@@ -52,8 +61,18 @@ describe("Staking Migration Claim Tests", () => {
   IZModulesConfig,
   IZModulesContracts>;
 
+  // let reset: () => {};
+
   before(async () => {
-    [owner, deployAdmin, rewardsVault, userA, userB, userC, notStakedUser] = await hre.ethers.getSigners();
+    [
+      owner,
+      deployAdmin,
+      rewardsVault,
+      userA,
+      userB,
+      userC,
+      notStakedUser,
+    ] = await hre.ethers.getSigners();
 
     const mockWildFactory = new MockERC20__factory(owner);
     mockWild = await mockWildFactory.deploy("Wild", "WILD");
@@ -61,20 +80,42 @@ describe("Staking Migration Claim Tests", () => {
     const mockLpFactory = new MockERC20__factory(owner);
     mockLp = await mockLpFactory.deploy("LP", "LP");
 
-    // Create mock data
-    merkleData = [
-      [
-        userA.address,
-        hre.ethers.parseEther("100").toString(),
-        hre.ethers.parseEther("100").toString(),
-      ],
-      [
-        userB.address,
-        hre.ethers.parseEther("150").toString(),
-        "0",
-      ],
-      [userC.address, "0", "0"],
-    ];
+    // Using a map allows indexing using user addresses
+    accountValues = new Map<string, UserData>();
+
+    // Set userA
+    accountValues.set(
+      userA.address,
+      {
+        user: userA.address,
+        wildAmount: hre.ethers.parseEther("100").toString(),
+        lpAmount: hre.ethers.parseEther("100").toString(),
+      },
+    );
+
+    // Set userB
+    accountValues.set(
+      userB.address,
+      {
+        user: userB.address,
+        wildAmount: hre.ethers.parseEther("150").toString(),
+        lpAmount: "0",
+      }
+    );
+
+    // Set userC
+    accountValues.set(
+      userC.address,
+      {
+        user: userC.address,
+        wildAmount: "0",
+        lpAmount: "0",
+      }
+    );
+
+    accountValues.forEach(v => {
+      merkleData.push([v.user, v.wildAmount, v.lpAmount]);
+    });
 
     merkleTree = StandardMerkleTree.of(merkleData, ["address", "uint256", "uint256"]);
 
@@ -169,150 +210,31 @@ describe("Staking Migration Claim Tests", () => {
     });
   });
 
-  describe("#claim", () => {
-    it("Fails when the rewards vault has not given allowance to the contract", async () => {
-      const [, wildAmount, lpAmount] = merkleData[0];
-      const proof = merkleTree.getProof(merkleData[0]);
-
-      console.log(await migrationClaim.merkleRoot());
-
-      await expect(
-        migrationClaim.connect(userA).claim(proof, wildAmount, lpAmount)
-      ).to.be.revertedWithCustomError(mockWild, INSUFFICIENT_ALLOWANCE_ERR)
-        .withArgs(await migrationClaim.getAddress(), 0n, wildAmount);
-    });
-
-    it("Fails when rewards vault does not have balance to pay claim", async () => {
-      const [, wildAmount, lpAmount] = merkleData[0];
-      const proof = merkleTree.getProof(merkleData[0]);
-
-      // Give allowance for WILD transfers
-      await mockWild.connect(rewardsVault).approve(
-        await migrationClaim.getAddress(),
-        hre.ethers.parseEther("1000")
-      );
-
-      // Give allowance for LP transfers
-      await mockLp.connect(rewardsVault).approve(
-        await migrationClaim.getAddress(),
-        hre.ethers.parseEther("1000")
-      );
-
-      await expect(
-        migrationClaim.connect(userA).claim(proof, wildAmount, lpAmount)
-      ).to.be.revertedWithCustomError(mockWild, INSUFFICIENT_BALANCE_ERR)
-        .withArgs(rewardsVault.address, 0n, wildAmount);
-    });
-
-    it("Allows a valid user to claim", async () => {
-      const [, wildAmount, lpAmount] = merkleData[0];
-      const proof = merkleTree.getProof(merkleData[0]);
-
-      // Now we fund the vault with tokens to give to claimants
-      await mockWild.mint(rewardsVault.address, hre.ethers.parseEther("1000"));
-      await mockLp.mint(rewardsVault.address, hre.ethers.parseEther("1000"));
-
-      const wildBalanceBefore = await mockWild.balanceOf(userA.address);
-      const lpBalanceBefore = await mockLp.balanceOf(userA.address);
-
-      // Claim
-      await expect(
-        migrationClaim.connect(userA).claim(proof, wildAmount, lpAmount)
-      ).to.emit(migrationClaim, CLAIMED_EVENT).withArgs(userA.address, wildAmount, lpAmount);
-
-      const wildBalanceAfter = await mockWild.balanceOf(userA.address);
-      const lpBalanceAfter = await mockLp.balanceOf(userA.address);
-
-      // Balance changes reflect the amount the user was owed
-      expect(wildBalanceAfter).to.equal(wildBalanceBefore + wildAmount);
-      expect(lpBalanceAfter).to.equal(lpBalanceBefore + lpAmount);
-    });
-
-    it("Allows claiming when a user is only owed one of the tokens", async () => {
-      const [, wildAmount, lpAmount] = merkleData[1];
-      const proof = merkleTree.getProof(merkleData[1]);
-
-      const wildBalanceBefore = await mockWild.balanceOf(userB.address);
-      const lpBalanceBefore = await mockLp.balanceOf(userB.address);
-
-      // Claim
-      await expect(
-        migrationClaim.connect(userB).claim(proof, wildAmount, lpAmount)
-      ).to.emit(migrationClaim, CLAIMED_EVENT).withArgs(userB.address, wildAmount, lpAmount);
-
-      const wildBalanceAfter = await mockWild.balanceOf(userB.address);
-      const lpBalanceAfter = await mockLp.balanceOf(userB.address);
-
-      // Because amount was non-0, the balance will have changed
-      expect(wildBalanceAfter).to.be.gt(wildBalanceBefore);
-      expect(wildBalanceAfter).to.equal(wildBalanceBefore + wildAmount);
-
-      // Because the amount is 0, they are the same
-      expect(lpBalanceAfter).to.equal(lpBalanceBefore);
-      expect(lpBalanceAfter).to.equal(lpBalanceBefore + lpAmount);
-    });
-
-    it("Fails when user not in merkle tree tries to claim", async () => {
-      const [, wildAmount, lpAmount ] =merkleData[0];
-      const proof = merkleTree.getProof(merkleData[0]);
-
-      // Call with valid data but from a user not in the tree
-      await expect(
-        migrationClaim.connect(notStakedUser).claim(proof, wildAmount, lpAmount)
-      ).to.be.revertedWithCustomError(migrationClaim, INVALID_PROOF_ERR);
-    });
-
-    it("Fails when user already claimed tries to claim again", async () => {
-      const [, wildAmount, lpAmount ] =merkleData[0];
-      const proof = merkleTree.getProof(merkleData[0]);
-
-      // Call again
-      await expect(
-        migrationClaim.connect(userA).claim(proof, wildAmount, lpAmount)
-      ).to.be.revertedWithCustomError(migrationClaim, ALREADY_CLAIMED_ERR);
-    });
-
-    it("Fails when wrong merkle proof is used", async () => {
-      const [, wildAmount, lpAmount ] =merkleData[2];
-      const proof = merkleTree.getProof(merkleData[1]);
-
-      // Call proof for userB as userC
-      await expect(
-        migrationClaim.connect(userC).claim(proof, wildAmount, lpAmount)
-      ).to.be.revertedWithCustomError(migrationClaim, INVALID_PROOF_ERR);
-    });
-
-    it("Fails when wrong amount is used", async () => {
-      const [, wildAmount, lpAmount ] =merkleData[2];
-      const proof = merkleTree.getProof(merkleData[2]);
-
-      // Call with wrong amount
-      await expect(
-        migrationClaim.connect(userC).claim(proof, wildAmount + 1n, lpAmount + 1n)
-      ).to.be.revertedWithCustomError(migrationClaim, INVALID_PROOF_ERR);
-    });
-
-    it("Fails when both transfer amounts are 0", async () => {
-      const [, wildAmount, lpAmount ] =merkleData[2];
-      const proof = merkleTree.getProof(merkleData[2]);
-
-      // Call with 0 amounts
-      await expect(
-        migrationClaim.connect(userC).claim(proof, wildAmount, lpAmount)
-      ).to.be.revertedWithCustomError(migrationClaim, ZERO_VALUE_ERR);
-    });
-  });
-
   describe("#setMerkleRoot", () => {
-    it("Allows the owner to set a new merkle root", async () => {
+    it("Allows the owner to set a new merkle root when `started` is false", async () => {
+      // await reset();
+
       const newMerkleData = merkleData.slice(0, 2);
       const newMerkleTree = StandardMerkleTree.of(newMerkleData, ["address", "uint256", "uint256"]);
 
-      await expect(
-        migrationClaim.connect(owner).setMerkleRoot(newMerkleTree.root)
-      ).to.emit(migrationClaim, MERKLE_ROOT_SET_EVENT).withArgs(newMerkleTree.root);
+      const isStarted = await migrationClaim.started();
+      expect(isStarted).to.be.false;
 
-      expect(await migrationClaim.merkleRoot()).to.equal(newMerkleTree.root);
+      const factory = new MigrationClaim__factory(deployAdmin);
+
+      const localMigrationClaim = await factory.deploy(
+        newMerkleTree.root,
+        owner,
+        rewardsVault,
+        mockWild,
+        mockLp
+      );
+
+      await expect(
+        localMigrationClaim.connect(owner).setMerkleRoot(newMerkleTree.root)
+      ).to.emit(localMigrationClaim, MERKLE_ROOT_SET_EVENT).withArgs(newMerkleTree.root);
+
+      expect(await localMigrationClaim.merkleRoot()).to.equal(newMerkleTree.root);
     });
 
     it("Fails when a non-owner tries to set a new merkle root", async () => {
@@ -331,75 +253,144 @@ describe("Staking Migration Claim Tests", () => {
     });
   });
 
-  describe("#setRewardsVault", () => {
-    it("Allows the owner to set a new rewards vault", async () => {
-      const newRewardsVault = userA.address;
+  describe("#claim", () => {
+    it("Fails when the rewards vault has not given allowance to the contract", async () => {
+      // await reset();
+
+      const data = (accountValues.get(userA.address))!;
+
+      // console.log(await migrationClaim.merkleRoot());
+      // console.log(merkleTree.root)
+
+      const proof = merkleTree.getProof([data.user, data.wildAmount, data.lpAmount]);
 
       await expect(
-        migrationClaim.connect(owner).setRewardsVault(newRewardsVault)
-      ).to.emit(migrationClaim, "RewardsVaultSet").withArgs(newRewardsVault);
-
-      expect(await migrationClaim.rewardsVault()).to.equal(newRewardsVault);
+        migrationClaim.connect(userA).claim(proof, data.wildAmount , data.lpAmount)
+      ).to.be.revertedWithCustomError(mockWild, INSUFFICIENT_ALLOWANCE_ERR)
+        .withArgs(await migrationClaim.getAddress(), 0n, data.wildAmount);
     });
 
-    it("Fails when a non-owner tries to set a new rewards vault", async () => {
+    it("Fails when rewards vault does not have balance to pay claim", async () => {
+      const data = (accountValues.get(userA.address))!;
+
+      const proof = merkleTree.getProof([data.user, data.wildAmount, data.lpAmount]);
+
+      // Give allowance for WILD transfers
+      await mockWild.connect(rewardsVault).approve(
+        await migrationClaim.getAddress(),
+        hre.ethers.parseEther("1000")
+      );
+
+      // Give allowance for LP transfers
+      await mockLp.connect(rewardsVault).approve(
+        await migrationClaim.getAddress(),
+        hre.ethers.parseEther("1000")
+      );
+
       await expect(
-        migrationClaim.connect(userA).setRewardsVault(userB.address)
-      ).to.be.revertedWithCustomError(migrationClaim, OWNABLE_UNAUTHORIZED_ERR);
+        migrationClaim.connect(userA).claim(proof, data.wildAmount, data.lpAmount)
+      ).to.be.revertedWithCustomError(mockWild, INSUFFICIENT_BALANCE_ERR)
+        .withArgs(rewardsVault.address, 0n, data.wildAmount);
     });
 
-    it("Fails when setting 0 value as the new rewards vault", async () => {
-      await expect(
-        migrationClaim.connect(owner).setRewardsVault(hre.ethers.ZeroAddress)
-      ).to.be.revertedWithCustomError(migrationClaim, NO_ZERO_VARIABLES_ERR);
-    });
-  });
+    it("Allows valid claim and sets `started` to true as is first claim, causing `setMerkleRoot` to fail", async () => {
+      let isStarted = await migrationClaim.started();
+      expect(isStarted).to.be.false;
 
-  describe("#setWildToken", () => {
-    it("Allows the owner to set a new WILD token", async () => {
-      const newWildToken = userA.address;
+      const data = (accountValues.get(userA.address))!;
+      const proof = merkleTree.getProof([data.user, data.wildAmount, data.lpAmount]);
 
-      await expect(
-        migrationClaim.connect(owner).setWildToken(newWildToken)
-      ).to.emit(migrationClaim, "WildTokenSet").withArgs(newWildToken);
-
-      expect(await migrationClaim.wildToken()).to.equal(newWildToken);
-    });
-
-    it("Fails when a non-owner tries to set a new WILD token", async () => {
-      await expect(
-        migrationClaim.connect(userA).setWildToken(userB.address)
-      ).to.be.revertedWithCustomError(migrationClaim, OWNABLE_UNAUTHORIZED_ERR);
-    });
-
-    it("Fails when setting 0 value as the new WILD token", async () => {
-      await expect(
-        migrationClaim.connect(owner).setWildToken(hre.ethers.ZeroAddress)
-      ).to.be.revertedWithCustomError(migrationClaim, NO_ZERO_VARIABLES_ERR);
-    });
-  });
-
-  describe("#setLpToken", () => {
-    it("Allows the owner to set a new LP token", async () => {
-      const newLpToken = userA.address;
+      // Fund the vault with tokens to give to claimants
+      await mockWild.mint(rewardsVault.address, hre.ethers.parseEther("1000"));
+      await mockLp.mint(rewardsVault.address, hre.ethers.parseEther("1000"));
 
       await expect(
-        migrationClaim.connect(owner).setLpToken(newLpToken)
-      ).to.emit(migrationClaim, "LpTokenSet").withArgs(newLpToken);
+        migrationClaim.connect(userA).claim(proof, data.wildAmount, data.lpAmount)
+      ).to.emit(migrationClaim, CLAIMED_EVENT).withArgs(userA.address, data.wildAmount, data.lpAmount);
 
-      expect(await migrationClaim.lpToken()).to.equal(newLpToken);
+      isStarted = await migrationClaim.started();
+      expect(isStarted).to.be.true;
+
+      await expect(
+        migrationClaim.connect(owner).setMerkleRoot(hre.ethers.ZeroHash)
+      ).to.be.revertedWithCustomError(migrationClaim, CLAIM_PHASE_ERR);
     });
 
-    it("Fails when a non-owner tries to set a new LP token", async () => {
+    it("Allows claiming when a user is only owed one of the tokens", async () => {
+      const data = (accountValues.get(userB.address))!;
+      const proof = merkleTree.getProof([data.user, data.wildAmount, data.lpAmount]);
+
+      const wildBalanceBefore = await mockWild.balanceOf(userB.address);
+      const lpBalanceBefore = await mockLp.balanceOf(userB.address);
+
+      // Claim
       await expect(
-        migrationClaim.connect(userA).setLpToken(userB.address)
-      ).to.be.revertedWithCustomError(migrationClaim, OWNABLE_UNAUTHORIZED_ERR);
+        migrationClaim.connect(userB).claim(proof, data.wildAmount, data.lpAmount)
+      ).to.emit(migrationClaim, CLAIMED_EVENT).withArgs(userB.address, data.wildAmount, data.lpAmount);
+
+      const wildBalanceAfter = await mockWild.balanceOf(userB.address);
+      const lpBalanceAfter = await mockLp.balanceOf(userB.address);
+
+      // Because amount was non-0, the balance will have changed
+      expect(wildBalanceAfter).to.be.gt(wildBalanceBefore);
+      expect(wildBalanceAfter).to.equal(wildBalanceBefore + data.wildAmount);
+
+      // Because the amount is 0, they are the same
+      expect(lpBalanceAfter).to.equal(lpBalanceBefore);
+      expect(lpBalanceAfter).to.equal(lpBalanceBefore + data.lpAmount);
     });
 
-    it("Fails when setting 0 value as the new LP token", async () => {
+    it("Fails when user not in merkle tree tries to claim", async () => {
+      const data = (accountValues.get(userA.address))!;
+      const proof = merkleTree.getProof([data.user, data.wildAmount, data.lpAmount]);
+
+      // Call with valid data but from a user not in the tree
       await expect(
-        migrationClaim.connect(owner).setLpToken(hre.ethers.ZeroAddress)
-      ).to.be.revertedWithCustomError(migrationClaim, NO_ZERO_VARIABLES_ERR);
+        migrationClaim.connect(notStakedUser).claim(proof, data.wildAmount, data.lpAmount)
+      ).to.be.revertedWithCustomError(migrationClaim, INVALID_PROOF_ERR);
+    });
+
+    it("Fails when user already claimed tries to claim again", async () => {
+      const data = (accountValues.get(userA.address))!;
+      const proof = merkleTree.getProof([data.user, data.wildAmount, data.lpAmount]);
+
+      // Call again
+      await expect(
+        migrationClaim.connect(userA).claim(proof, data.wildAmount, data.lpAmount)
+      ).to.be.revertedWithCustomError(migrationClaim, ALREADY_CLAIMED_ERR);
+    });
+
+    it("Fails when wrong merkle proof is used", async () => {
+      const dataB = (accountValues.get(userB.address))!;
+      const dataC = (accountValues.get(userC.address))!;
+
+      const proofB = merkleTree.getProof([dataB.user, dataB.wildAmount, dataB.lpAmount]);
+
+      // Call proof for userB as userC
+      await expect(
+        migrationClaim.connect(userC).claim(proofB, dataC.wildAmount, dataC.lpAmount)
+      ).to.be.revertedWithCustomError(migrationClaim, INVALID_PROOF_ERR);
+    });
+
+    it("Fails when wrong amount is used", async () => {
+      const data = (accountValues.get(userC.address))!;
+      const proof = merkleTree.getProof([data.user, data.wildAmount, data.lpAmount]);
+
+
+      // Call with wrong amount
+      await expect(
+        migrationClaim.connect(userC).claim(proof, data.wildAmount + 1n, data.lpAmount + 1n)
+      ).to.be.revertedWithCustomError(migrationClaim, INVALID_PROOF_ERR);
+    });
+
+    it("Fails when both transfer amounts are 0", async () => {
+      const data = (accountValues.get(userC.address))!;
+      const proof = merkleTree.getProof([data.user, data.wildAmount, data.lpAmount]);
+
+      // Call with 0 amounts
+      await expect(
+        migrationClaim.connect(userC).claim(proof, data.wildAmount, data.lpAmount)
+      ).to.be.revertedWithCustomError(migrationClaim, ZERO_VALUE_ERR);
     });
   });
 });

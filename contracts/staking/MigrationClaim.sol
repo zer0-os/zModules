@@ -37,6 +37,11 @@ contract MigrationClaim is Ownable, IMigrationClaim {
     IERC20 public lpToken;
 
     /**
+     * @notice Mark whether or not the claiming phase has started yet
+     */
+    bool public started = false;
+
+    /**
      * @notice Mapping to track users that have claimed
      */
     mapping(address user => bool hasClaimed) public claimed;
@@ -74,6 +79,13 @@ contract MigrationClaim is Ownable, IMigrationClaim {
         uint256 wildAmount,
         uint256 lpAmount
     ) external override {
+        // Start the claim phase on the first call to `claim`, which will permanently 
+        // disable the ability to set the merkle root
+        if (!started) {
+            started = !started;
+            emit ClaimPhaseStarted();
+        }
+
         // User's that have already claimed cannot claim again
         if (claimed[msg.sender]) {
             revert AlreadyClaimed();
@@ -125,6 +137,11 @@ contract MigrationClaim is Ownable, IMigrationClaim {
      * @param _merkleRoot The new merkle root
      */
     function setMerkleRoot(bytes32 _merkleRoot) external override onlyOwner {
+        // Only allow setting the merkle root when the claim phase has not started
+        if (started) {
+            revert InClaimPhase();
+        }
+
         if (_merkleRoot == bytes32(0)) {
             revert NoZeroVariables();
         }
@@ -132,51 +149,5 @@ contract MigrationClaim is Ownable, IMigrationClaim {
         merkleRoot = _merkleRoot;
 
         emit MerkleRootSet(_merkleRoot);
-    }
-
-    /**
-     * @notice Allow the owner to set a new rewards vault
-     * @param _rewardsVault The new rewards vault
-     */
-    function setRewardsVault(address _rewardsVault) external override onlyOwner {
-        if (_rewardsVault == address(0)) {
-            revert NoZeroVariables();
-        }
-
-        rewardsVault = _rewardsVault;
-
-        emit RewardsVaultSet(_rewardsVault);
-    }
-
-    /**
-     * @notice Allow the owner to set the WILD token address
-     * @dev It is unlikely we need this function but it is here in case of error to avoid
-     * having to redeploy the contract
-     * 
-     * @param _wildToken The WILD token contract address
-     */
-    function setWildToken(address _wildToken) external override onlyOwner {
-        if (_wildToken == address(0)) {
-            revert NoZeroVariables();
-        }
-
-        wildToken = IERC20(_wildToken);
-        emit WildTokenSet(_wildToken);
-    }
-
-    /**
-     * @notice Allow the owner to set the LP token address
-     * @dev It is unlikely we need this function but it is here in case of error to avoid
-     * having to redeploy the contract
-     * 
-     * @param _lpToken The LP token contract address
-     */
-    function setLpToken(address _lpToken) external override onlyOwner {
-        if (_lpToken == address(0)) {
-            revert NoZeroVariables();
-        }
-
-        lpToken = IERC20(_lpToken);
-        emit LpTokenSet(_lpToken);
     }
 }

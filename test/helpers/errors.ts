@@ -61,3 +61,5 @@ export const ALREADY_CLAIMED_ERR = "AlreadyClaimed";
 export const INVALID_PROOF_ERR = "InvalidProof";
 export const NO_ZERO_VARIABLES_ERR = "NoZeroVariables";
 
+// MigrationClaim
+export const CLAIM_PHASE_ERR = "InClaimPhase";
