@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { MockERC20, ZeroRewardsVault, ZeroRewardsVault__factory } from "../typechain";
+import { MockERC20, ZeroRewardsVault } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree/dist/standard";
 import { ethers } from "hardhat";
@@ -57,7 +57,7 @@ describe.only("ZeroRewardsVault",  () => {
     await rewardsVault.waitForDeployment();
   });
 
-  it.skip("allows user1 to claim with valid proof", async () => {
+  it("allows user1 to claim with valid proof", async () => {
     const {
       amount,
       proof,

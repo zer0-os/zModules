@@ -67,7 +67,7 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable {
             "Zero Rewards Vault: Accumulated rewards are less than the requested amount"
         );
 
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, amount))));
         require(
             MerkleProof.verify(
                 merkleProof,
@@ -80,7 +80,7 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable {
         claimed[msg.sender] = amount;
         rewardsVault.transfer(msg.sender, amount);
     }
-    
+
     function verify(
         bytes32[] calldata proof,
         bytes32 hash
