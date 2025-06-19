@@ -2,37 +2,40 @@
 pragma solidity 0.8.26;
 
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 
-contract ZeroRewardsVault is Ownable {
-    address public owner;
+contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable {
     bytes32 public merkleRoot;
-    address public rewardsVault;
+    IERC20 public rewardsVault;
+    uint256 public totalClaimed;
 
     mapping(address => uint256) public claimed;
 
     event Claimed(address indexed user, uint256 amount);
-    event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
     event MerkleRootUpdated(bytes32 indexed oldRoot, bytes32 indexed newRoot);
-    event setRewardsVault(bytes32 indexed oldVault, bytes32 indexed newVault);
+    event RewardsVaultSet(address indexed oldVault, address indexed newVault);
 
     constructor(
         bytes32 _root,
         address _rewardsVault
-    ) Ownable(msg.sender) {
+    ) Ownable(msg.sender)
+    Pausable()
+    ReentrancyGuard() {
         merkleRoot = _root;
         rewardsVault = IERC20(_rewardsVault);
     }
 
     function setRewardsVault(address _rewardsVault) external onlyOwner {
-        token = IERC20(_rewardsVault);
-        emit setRewardsVault(rewardsVault, _rewardsVault);
+        rewardsVault = IERC20(_rewardsVault);
+        emit RewardsVaultSet(address(rewardsVault), _rewardsVault);
     }
 
-    function setMerkleRoot(bytes32 _root) external onlyOwner {
+    function setMerkleRoot(bytes32 _root) public onlyOwner {
         if (_root == bytes32(0)) {
             revert("Zero Rewards Vault: Merkle root cannot be zero");
         }
@@ -44,60 +47,21 @@ contract ZeroRewardsVault is Ownable {
     function setMerkleRootAndFundVault(
         bytes32 _root,
         uint256 amount
-    ) external onlyOwner {
+    ) public onlyOwner {
         require(amount > 0, "Zero Rewards Vault: Amount must be greater than zero");
 
         setMerkleRoot(_root);
 
         require(
-            rewardsVault.transferFrom(msg.sender, address(this), amount),
+            rewardsVault.transfer(address(this), amount),
             "Zero Rewards Vault: Transfer failed"
         );
-    }
-
-    function fundVault(
-        address token,
-        uint256 amount
-    ) public {
-        require(amount > 0, "Zero Rewards Vault: Amount must be greater than zero");
-        require(
-            token.transfer(address(this), amount),
-            "Zero Rewards Vault: Transfer failed"
-        );
-    }
-
-    function fundVaultFrom(
-        address token,
-        uint256 amount,
-        address from
-    ) external onlyOwner {
-        require(amount > 0, "Zero Rewards Vault: Amount must be greater than zero");
-        require(
-            token.transferFrom(from, address(this), amount),
-            "Zero Rewards Vault: Transfer failed"
-        );
-    }
-
-
-    function verify(
-        bytes32[] calldata proof,
-        bytes32 hash
-    ) internal view returns (bool) {
-        for (uint256 i = 0; i < proof.length; i++) {
-            bytes32 proofElement = proof[i];
-            if (hash < proofElement) {
-                hash = keccak256(abi.encodePacked(hash, proofElement));
-            } else {
-                hash = keccak256(abi.encodePacked(proofElement, hash));
-            }
-        }
-        return hash == merkleRoot;
     }
 
     function claim(
         uint256 amount,
         bytes32[] calldata merkleProof
-    ) external {
+    ) public nonReentrant whenNotPaused {
         require(
             claimed[msg.sender] < amount,
             "Zero Rewards Vault: Accumulated rewards are less than the requested amount"
@@ -114,6 +78,21 @@ contract ZeroRewardsVault is Ownable {
         );
 
         claimed[msg.sender] = amount;
-        token.transfer(msg.sender, amount);
+        rewardsVault.transfer(msg.sender, amount);
+    }
+    
+    function verify(
+        bytes32[] calldata proof,
+        bytes32 hash
+    ) internal view returns (bool) {
+        for (uint256 i = 0; i < proof.length; i++) {
+            bytes32 proofElement = proof[i];
+            if (hash < proofElement) {
+                hash = keccak256(abi.encodePacked(hash, proofElement));
+            } else {
+                hash = keccak256(abi.encodePacked(proofElement, hash));
+            }
+        }
+        return hash == merkleRoot;
     }
 }
