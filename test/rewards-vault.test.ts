@@ -51,21 +51,31 @@ describe.only("ZeroRewardsVault",  () => {
     ));
 
     rewardsVault = await RewardsVaultFactory.deploy(
-      tree.root,
-      await token.getAddress()
+      owner.address,
+      token.target
     );
     await rewardsVault.waitForDeployment();
+
+    // Set the Merkle root in the rewards vault
+    await rewardsVault.setMerkleRoot(tree.root);
+
+    // Fund the rewards vault with tokens
+    await token.mint(rewardsVault.target, ethers.parseEther("1000000"));
+    await token.waitForDeployment();
   });
 
   it("allows user1 to claim with valid proof", async () => {
+    expect(
+      await rewardsVault.token()
+    ).to.equal(token.target);
+
     const {
       amount,
       proof,
     } = claims[user1.address.toLowerCase()];
 
-    await rewardsVault.connect(user1).claim(amount, proof);
     await expect(
-      25n
+      rewardsVault.connect(user1).claim(amount, proof)
     ).to.changeTokenBalances(
       token,
       [user1, rewardsVault],

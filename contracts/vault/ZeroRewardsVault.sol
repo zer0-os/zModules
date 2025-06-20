@@ -7,92 +7,73 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { IZeroRewardsVault } from "./IZeroRewardsVault.sol";
 
 
-contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable {
-    bytes32 public merkleRoot;
-    IERC20 public rewardsVault;
+contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVault {
+    bytes32 private _merkleRoot;
     uint256 public totalClaimed;
+    address public token;
 
     mapping(address => uint256) public claimed;
 
     event Claimed(address indexed user, uint256 amount);
     event MerkleRootUpdated(bytes32 indexed oldRoot, bytes32 indexed newRoot);
-    event RewardsVaultSet(address indexed oldVault, address indexed newVault);
 
     constructor(
-        bytes32 _root,
-        address _rewardsVault
-    ) Ownable(msg.sender)
-    Pausable()
-    ReentrancyGuard() {
-        merkleRoot = _root;
-        rewardsVault = IERC20(_rewardsVault);
-    }
-
-    function setRewardsVault(address _rewardsVault) external onlyOwner {
-        rewardsVault = IERC20(_rewardsVault);
-        emit RewardsVaultSet(address(rewardsVault), _rewardsVault);
-    }
+        address _owner,
+        address _token
+    )
+        Ownable(_owner)
+        Pausable()
+        ReentrancyGuard() {
+            require(_token != address(0), "Zero Rewards Vault: Token address cannot be zero");
+            token = _token;
+        }
 
     function setMerkleRoot(bytes32 _root) public onlyOwner {
         if (_root == bytes32(0)) {
             revert("Zero Rewards Vault: Merkle root cannot be zero");
         }
 
-        merkleRoot = _root;
-        emit MerkleRootUpdated(merkleRoot, _root);
+        _merkleRoot = _root;
+        emit MerkleRootUpdated(_merkleRoot, _root);
     }
 
-    function setMerkleRootAndFundVault(
-        bytes32 _root,
-        uint256 amount
-    ) public onlyOwner {
-        require(amount > 0, "Zero Rewards Vault: Amount must be greater than zero");
+    function setToken(address _token) public onlyOwner {
+        require(_token != address(0), "Zero Rewards Vault: Token address cannot be zero");
+        token = _token;
+    }
 
-        setMerkleRoot(_root);
+    function pause() external onlyOwner whenNotPaused {
+        _pause();
+    }
 
-        require(
-            rewardsVault.transfer(address(this), amount),
-            "Zero Rewards Vault: Transfer failed"
-        );
+    function unpause() external onlyOwner whenPaused{
+        _unpause();
     }
 
     function claim(
-        uint256 amount,
+        uint256 totalCumulativeRewards,
         bytes32[] calldata merkleProof
     ) public nonReentrant whenNotPaused {
-        require(
-            claimed[msg.sender] < amount,
-            "Zero Rewards Vault: Accumulated rewards are less than the requested amount"
-        );
-
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, amount))));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, totalCumulativeRewards))));
         require(
             MerkleProof.verify(
                 merkleProof,
-                merkleRoot,
+                _merkleRoot,
                 leaf
             ),
             "Zero Rewards Vault: Invalid proof"
         );
 
-        claimed[msg.sender] = amount;
-        rewardsVault.transfer(msg.sender, amount);
-    }
+        uint256 amount = totalCumulativeRewards - claimed[msg.sender];
+        require(amount > 0, "Zero Rewards Vault: No rewards to claim");
 
-    function verify(
-        bytes32[] calldata proof,
-        bytes32 hash
-    ) internal view returns (bool) {
-        for (uint256 i = 0; i < proof.length; i++) {
-            bytes32 proofElement = proof[i];
-            if (hash < proofElement) {
-                hash = keccak256(abi.encodePacked(hash, proofElement));
-            } else {
-                hash = keccak256(abi.encodePacked(proofElement, hash));
-            }
-        }
-        return hash == merkleRoot;
+        claimed[msg.sender] += amount;
+        totalClaimed += amount;
+
+        IERC20(token).transfer(msg.sender, amount);
+        emit Claimed(msg.sender, amount);
     }
 }
