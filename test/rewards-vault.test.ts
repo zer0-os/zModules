@@ -11,6 +11,8 @@ describe.only("ZeroRewardsVault",  () => {
   let owner : SignerWithAddress;
   let user1 : SignerWithAddress;
   let user2 : SignerWithAddress;
+  let user3 : SignerWithAddress;
+  let user4 : SignerWithAddress;
 
   // Merkle data
   let tree : StandardMerkleTree<any>;
@@ -21,76 +23,147 @@ describe.only("ZeroRewardsVault",  () => {
     };
   };
 
-  beforeEach(async () => {
-    [owner, user1, user2] = await ethers.getSigners();
+  describe("Main flows", () => {
+    beforeEach(async () => {
+      [owner, user1, user2, user3, user4] = await ethers.getSigners();
 
-    // Mock token deployment
-    const tokenFactory = await ethers.getContractFactory("MockERC20", owner);
-    token = await tokenFactory.deploy("Mock Token", "MTK");
-    await token.waitForDeployment();
+      // Mock token deployment
+      const tokenFactory = await ethers.getContractFactory("MockERC20", owner);
+      token = await tokenFactory.deploy("Mock Token", "MTK");
+      await token.waitForDeployment();
 
-    // Create a Merkle tree
-    const claimData = [
-      [user1.address, ethers.parseEther("10")],
-      [user2.address, ethers.parseEther("20")],
-    ];
+      // Create a Merkle tree
+      const claimData = [
+        [user1.address, ethers.parseEther("10")],
+        [user2.address, ethers.parseEther("20")],
+      ];
 
-    tree = StandardMerkleTree.of(claimData, ["address", "uint256"]);
+      tree = StandardMerkleTree.of(claimData, ["address", "uint256"]);
 
-    claims = {};
-    for (const [index, [address, amount]] of tree.entries()) {
-      claims[address.toLowerCase()] = {
-        amount: BigInt(amount),
-        proof: tree.getProof(index),
-      };
-    }
+      claims = {};
+      for (const [index, [address, amount]] of tree.entries()) {
+        claims[address.toLowerCase()] = {
+          amount: BigInt(amount),
+          proof: tree.getProof(index),
+        };
+      }
 
-    const RewardsVaultFactory = (await ethers.getContractFactory(
-      "ZeroRewardsVault",
-      owner
-    ));
+      const RewardsVaultFactory = (await ethers.getContractFactory(
+        "ZeroRewardsVault",
+        owner
+      ));
 
-    rewardsVault = await RewardsVaultFactory.deploy(
-      owner.address,
-      token.target
-    );
-    await rewardsVault.waitForDeployment();
+      rewardsVault = await RewardsVaultFactory.deploy(
+        owner.address,
+        token.target
+      );
+      await rewardsVault.waitForDeployment();
 
-    // Set the Merkle root in the rewards vault
-    await rewardsVault.setMerkleRoot(tree.root);
+      // Set the Merkle root in the rewards vault
+      await rewardsVault.setMerkleRoot(tree.root);
 
-    // Fund the rewards vault with tokens
-    await token.mint(rewardsVault.target, ethers.parseEther("1000000"));
-    await token.waitForDeployment();
+      // Fund the rewards vault with tokens
+      await token.mint(rewardsVault.target, ethers.parseEther("1000000"));
+      await token.waitForDeployment();
+    });
+
+    it("allows user1 to claim with valid proof", async () => {
+      expect(
+        await rewardsVault.token()
+      ).to.equal(token.target);
+
+      const {
+        amount,
+        proof,
+      } = claims[user1.address.toLowerCase()];
+
+      await expect(
+        rewardsVault.connect(user1).claim(
+          amount,
+          proof
+        )
+      ).to.changeTokenBalances(
+        token,
+        [user1, rewardsVault],
+        [amount, -amount]
+      );
+    });
+
+    it("fails for invalid proof (user1 tries user2's proof)", async () => {
+      const {
+        amount,
+        proof,
+      } = claims[user2.address.toLowerCase()];
+
+      await expect(
+        rewardsVault.connect(user1).claim(amount, proof)
+      ).to.be.revertedWith("Zero Rewards Vault: Invalid proof");
+    });
+
+    it("should allow the owner to set a new Merkle root and properly claim with it", async () => {
+      const newClaimData = [
+        [user3.address, ethers.parseEther("15")],
+        [user4.address, ethers.parseEther("25")],
+      ];
+
+      const newTree = StandardMerkleTree.of(newClaimData, ["address", "uint256"]);
+
+      const newClaims : {
+        [addr : string] : {
+          amount : bigint;
+          proof : Array<string>;
+        };
+      } = {};
+
+      for (const [index, [address, amount]] of newTree.entries()) {
+        newClaims[address.toLowerCase()] = {
+          amount: BigInt(amount),
+          proof: newTree.getProof(index),
+        };
+      }
+
+      await rewardsVault.setMerkleRoot(newTree.root);
+
+      await expect(
+        rewardsVault.connect(user3).claim(
+          newClaimData[0][1], // user3's new amount
+          newTree.getProof(0) // user3's new proof
+        )
+      ).to.changeTokenBalances(
+        token,
+        [user3, rewardsVault],
+        [newClaimData[0][1], -newClaimData[0][1]]
+      );
+    });
   });
 
-  it("allows user1 to claim with valid proof", async () => {
-    expect(
-      await rewardsVault.token()
-    ).to.equal(token.target);
+  describe("Unit tests", () => {
+    it("should have the correct owner", async () => {
+      expect(await rewardsVault.owner()).to.equal(owner.address);
+    });
 
-    const {
-      amount,
-      proof,
-    } = claims[user1.address.toLowerCase()];
+    it("should return the correct token address", async () => {
+      expect(await rewardsVault.token()).to.equal(token.target);
+    });
 
-    await expect(
-      rewardsVault.connect(user1).claim(amount, proof)
-    ).to.changeTokenBalances(
-      token,
-      [user1, rewardsVault],
-      [amount, -amount]
-    );
-  });
+    it("should revert if trying to claim with a proof for the another address", async () => {
+      await expect(
+        rewardsVault.connect(user4).claim(
+          ethers.parseEther("10"),
+          tree.getProof(0)  // user1's proof, but user4 is trying to claim
+        )
+      ).to.be.revertedWith("Zero Rewards Vault: Invalid proof");
+    });
 
-  it("fails for invalid proof (user1 tries user2's proof)", async () => {
-    const {
-      amount,
-      proof,
-    } = claims[user2.address.toLowerCase()];
+    it("should revert if trying to claim more than the allocated amount", async () => {
+      const {
+        amount,
+        proof,
+      } = claims[user1.address.toLowerCase()];
 
-    await expect(
-      rewardsVault.connect(user1).claim(amount, proof)
-    ).to.be.revertedWith("Zero Rewards Vault: Invalid proof");
+      await expect(
+        rewardsVault.connect(user1).claim(amount + 1n, proof)
+      ).to.be.revertedWith("Zero Rewards Vault: Invalid proof");
+    });
   });
 });
