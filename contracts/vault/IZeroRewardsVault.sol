@@ -10,8 +10,6 @@ interface IZeroRewardsVault {
 
     function setMerkleRoot(bytes32 _root) external;
 
-    function setToken(address _token) external;
-
     function pause() external;
 
     function unpause() external;
