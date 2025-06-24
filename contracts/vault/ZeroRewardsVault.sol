@@ -10,20 +10,21 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IZeroRewardsVault } from "./IZeroRewardsVault.sol";
 
 
-contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVault {
+contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVault {    
     bytes32 private _merkleRoot;
     uint256 public totalClaimed;
     address public token;
 
     mapping(address user => uint256 totalClaimed) public claimed;
 
+    event Claimed(address indexed user, uint256 amount);
+    event MerkleRootUpdated(bytes32 indexed oldRoot, bytes32 indexed newRoot);
+
     error ZeroMerkleRoot();
     error ZeroTokenAddress();
     error InvalidMerkleProof();
     error NoRewardsToClaim();
 
-    event Claimed(address indexed user, uint256 amount);
-    event MerkleRootUpdated(bytes32 indexed oldRoot, bytes32 indexed newRoot);
 
     constructor(
         address _owner,
@@ -36,19 +37,19 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVau
             token = _token;
         }
 
-    function setMerkleRoot(bytes32 _root) public override onlyOwner {
-        if (_root == bytes32(0)) revert ZeroMerkleRoot();
-
-        _merkleRoot = _root;
-        emit MerkleRootUpdated(_merkleRoot, _root);
-    }
-
     function pause() external override onlyOwner whenNotPaused {
         _pause();
     }
 
     function unpause() external override onlyOwner whenPaused{
         _unpause();
+    }
+
+    function setMerkleRoot(bytes32 _root) public override onlyOwner {
+        if (_root == bytes32(0)) revert ZeroMerkleRoot();
+
+        _merkleRoot = _root;
+        emit MerkleRootUpdated(_merkleRoot, _root);
     }
 
     function claim(
