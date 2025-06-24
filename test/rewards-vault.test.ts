@@ -3,6 +3,7 @@ import { MockERC20, ZeroRewardsVault } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree/dist/standard";
 import { ethers } from "hardhat";
+import { getClaimsAndTree } from "./helpers/merkle-rewards";
 
 
 describe.only("ZeroRewardsVault",  () => {
@@ -16,6 +17,7 @@ describe.only("ZeroRewardsVault",  () => {
 
   // Merkle data
   let tree : StandardMerkleTree<any>;
+  let claimData : Array<[string, bigint]>;
   let claims : {
     [addr : string] : {
       amount : bigint;
@@ -33,20 +35,14 @@ describe.only("ZeroRewardsVault",  () => {
       await token.waitForDeployment();
 
       // Create a Merkle tree
-      const claimData = [
+      claimData = [
         [user1.address, ethers.parseEther("10")],
         [user2.address, ethers.parseEther("20")],
       ];
 
-      tree = StandardMerkleTree.of(claimData, ["address", "uint256"]);
-
-      claims = {};
-      for (const [index, [address, amount]] of tree.entries()) {
-        claims[address.toLowerCase()] = {
-          amount: BigInt(amount),
-          proof: tree.getProof(index),
-        };
-      }
+      const res = getClaimsAndTree(claimData);
+      claims = res.claims;
+      tree = res.merkleTree;
 
       const RewardsVaultFactory = (await ethers.getContractFactory(
         "ZeroRewardsVault",
@@ -68,10 +64,6 @@ describe.only("ZeroRewardsVault",  () => {
     });
 
     it("allows user1 to claim with valid proof", async () => {
-      expect(
-        await rewardsVault.token()
-      ).to.equal(token.target);
-
       const {
         amount,
         proof,
@@ -101,33 +93,20 @@ describe.only("ZeroRewardsVault",  () => {
     });
 
     it("should allow the owner to set a new Merkle root and properly claim with it", async () => {
-      const newClaimData = [
+      const newClaimData : Array<[string, bigint]> = [
         [user3.address, ethers.parseEther("15")],
         [user4.address, ethers.parseEther("25")],
       ];
 
-      const newTree = StandardMerkleTree.of(newClaimData, ["address", "uint256"]);
+      const res = getClaimsAndTree(newClaimData);
+      tree = res.merkleTree;
 
-      const newClaims : {
-        [addr : string] : {
-          amount : bigint;
-          proof : Array<string>;
-        };
-      } = {};
-
-      for (const [index, [address, amount]] of newTree.entries()) {
-        newClaims[address.toLowerCase()] = {
-          amount: BigInt(amount),
-          proof: newTree.getProof(index),
-        };
-      }
-
-      await rewardsVault.setMerkleRoot(newTree.root);
+      await rewardsVault.setMerkleRoot(tree.root);
 
       await expect(
         rewardsVault.connect(user3).claim(
           newClaimData[0][1], // user3's new amount
-          newTree.getProof(0) // user3's new proof
+          tree.getProof(0) // user3's new proof
         )
       ).to.changeTokenBalances(
         token,
@@ -164,6 +143,150 @@ describe.only("ZeroRewardsVault",  () => {
       await expect(
         rewardsVault.connect(user1).claim(amount + 1n, proof)
       ).to.be.revertedWith("Zero Rewards Vault: Invalid proof");
+    });
+
+    it("should revert if trying to claim after the Merkle root has been changed", async () => {
+      // the same user, different amount
+      const newClaimData : Array<[string, bigint]> = [
+        [user1.address, ethers.parseEther("5")],
+      ];
+
+      const res = getClaimsAndTree(newClaimData);
+      // leave old claims intact
+      tree = res.merkleTree;
+
+      await rewardsVault.setMerkleRoot(tree.root);
+
+      const {
+        amount,
+        proof,
+      } = claims[user1.address.toLowerCase()];
+
+      await expect(
+        rewardsVault.connect(user1).claim(amount, proof)
+      ).to.be.revertedWith("Zero Rewards Vault: Invalid proof");
+    });
+
+    it("should not allow setting a new Merkle root by non-owners", async () => {
+      const newClaimData = [
+        [user1.address, ethers.parseEther("10")],
+      ];
+
+      const newTree = StandardMerkleTree.of(newClaimData, ["address", "uint256"]);
+
+      await expect(
+        rewardsVault.connect(user1).setMerkleRoot(newTree.root)
+      ).to.be.revertedWithCustomError(
+        rewardsVault,
+        "OwnableUnauthorizedAccount"
+      ).withArgs(user1.address);
+    });
+  });
+
+  describe("Pause", () => {
+    it("should allow the owner to PAUSE the contract", async () => {
+      await rewardsVault.pause();
+      expect(await rewardsVault.paused()).to.be.true;
+
+      await expect(
+        rewardsVault.connect(user1).claim(
+          claims[user1.address.toLowerCase()].amount,
+          claims[user1.address.toLowerCase()].proof
+        )
+      ).to.be.revertedWithCustomError(
+        rewardsVault,
+        "EnforcedPause"
+      );
+    });
+
+    it("should allow the owner to UNPAUSE the contract", async () => {
+      await rewardsVault.unpause();
+      expect(await rewardsVault.paused()).to.be.false;
+    });
+
+    it("should not allow non-owners to PAUSE the contract", async () => {
+      await expect(
+        rewardsVault.connect(user1).pause()
+      ).to.be.revertedWithCustomError(
+        rewardsVault,
+        "OwnableUnauthorizedAccount"
+      ).withArgs(user1.address);
+    });
+
+    it("should not allow non-owners to UNPAUSE the contract", async () => {
+      await expect(
+        rewardsVault.connect(user1).unpause()
+      ).to.be.revertedWithCustomError(
+        rewardsVault,
+        "OwnableUnauthorizedAccount"
+      ).withArgs(user1.address);
+    });
+  });
+
+  describe("Ownership", () => {
+    it("should allow the owner to transfer ownership", async () => {
+      await rewardsVault.transferOwnership(user1.address);
+      expect(await rewardsVault.owner()).to.equal(user1.address);
+
+      // give it back to the owner for further tests
+      await rewardsVault.connect(user1).transferOwnership(owner.address);
+    });
+
+    it("should not allow non-owners to transfer ownership", async () => {
+      await expect(
+        rewardsVault.connect(user2).transferOwnership(user3.address)
+      ).to.be.revertedWithCustomError(
+        rewardsVault,
+        "OwnableUnauthorizedAccount"
+      ).withArgs(user2.address);
+    });
+
+    it("should allow the new owner to set a new Merkle root", async () => {
+      await rewardsVault.transferOwnership(user1.address);
+      const newClaimData : Array<[string, bigint]> = [
+        [user1.address, ethers.parseEther("10")],
+      ];
+
+      const res = getClaimsAndTree(newClaimData);
+      tree = res.merkleTree;
+      claims = res.claims;
+
+      await rewardsVault.connect(user1).setMerkleRoot(tree.root);
+
+      const {
+        amount,
+        proof,
+      } = claims[user1.address.toLowerCase()];
+
+      await expect(
+        rewardsVault.connect(user1).claim(amount, proof)
+      ).to.changeTokenBalances(
+        token,
+        [user1, rewardsVault],
+        [amount, -amount]
+      );
+
+      // give it back to the owner for further tests
+      await rewardsVault.connect(user1).transferOwnership(owner.address);
+    });
+
+    it("should not allow the previous owner to set a new Merkle root after ownership transfer", async () => {
+      await rewardsVault.transferOwnership(user1.address);
+
+      const newClaimData : Array<[string, bigint]> = [
+        [user2.address, ethers.parseEther("20")],
+      ];
+
+      const res = getClaimsAndTree(newClaimData);
+      tree = res.merkleTree;
+      claims = res.claims;
+
+      await expect(
+        rewardsVault.connect(owner).setMerkleRoot(tree.root)
+      ).to.be.revertedWithCustomError(
+        rewardsVault,
+        "OwnableUnauthorizedAccount"
+      ).withArgs(owner.address);
     });
   });
 });
