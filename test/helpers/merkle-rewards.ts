@@ -5,7 +5,7 @@ export const getClaimsAndTree = (claimData : Array<[string, bigint]>) => {
   let merkleTree : StandardMerkleTree<any>;
   const claims : {
     [addr : string] : {
-      amount : bigint;
+      totalCumulativeRewards : bigint;
       proof : Array<string>;
     };
   } = {};
@@ -13,9 +13,9 @@ export const getClaimsAndTree = (claimData : Array<[string, bigint]>) => {
   // eslint-disable-next-line prefer-const
   merkleTree = StandardMerkleTree.of(claimData, ["address", "uint256"]);
 
-  for (const [index, [address, amount]] of merkleTree.entries()) {
+  for (const [index, [address, totalCumulativeRewards]] of merkleTree.entries()) {
     claims[address.toLowerCase()] = {
-      amount: BigInt(amount),
+      totalCumulativeRewards: BigInt(totalCumulativeRewards),
       proof: merkleTree.getProof(index),
     };
   }

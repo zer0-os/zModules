@@ -17,14 +17,13 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVau
 
     mapping(address user => uint256 totalClaimed) public claimed;
 
-    event Claimed(address indexed user, uint256 amount);
+    event Claimed(address indexed user, uint256 amount, bytes32[] merkleProof);
     event MerkleRootUpdated(bytes32 indexed oldRoot, bytes32 indexed newRoot);
 
     error ZeroMerkleRoot();
     error ZeroTokenAddress();
-    error InvalidMerkleProof();
-    error NoRewardsToClaim();
-
+    error InvalidMerkleProof(bytes32[] merkleProof);
+    error NoRewardsToClaim(address user);
 
     constructor(
         address _owner,
@@ -48,8 +47,10 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVau
     function setMerkleRoot(bytes32 _root) public override onlyOwner {
         if (_root == bytes32(0)) revert ZeroMerkleRoot();
 
-        _merkleRoot = _root;
+        // TODO rew: Emit event before updating the root to allow for easier tracking
+        // Or do we have to make a var for old root and emit the event after?
         emit MerkleRootUpdated(_merkleRoot, _root);
+        _merkleRoot = _root;
     }
 
     function claim(
@@ -62,15 +63,15 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVau
                 _merkleRoot,
                 leaf
             )
-        ) revert InvalidMerkleProof();
+        ) revert InvalidMerkleProof(merkleProof);
 
         uint256 amount = totalCumulativeRewards - claimed[msg.sender];
-        if (amount == 0) revert NoRewardsToClaim();
+        if (amount == 0) revert NoRewardsToClaim(msg.sender);
 
         claimed[msg.sender] += amount;
         totalClaimed += amount;
 
         IERC20(token).transfer(msg.sender, amount);
-        emit Claimed(msg.sender, amount);
+        emit Claimed(msg.sender, amount, merkleProof);
     }
 }
