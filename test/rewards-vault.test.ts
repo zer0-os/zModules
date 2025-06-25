@@ -6,7 +6,7 @@ import { ethers } from "hardhat";
 import { getClaimsAndTree } from "./helpers/merkle-rewards";
 
 
-describe.only("ZeroRewardsVault",  () => {
+describe("ZeroRewardsVault",  () => {
   let rewardsVault : ZeroRewardsVault;
   let token : MockERC20;
   let owner : SignerWithAddress;
