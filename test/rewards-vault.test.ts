@@ -459,7 +459,6 @@ describe("ZeroRewardsVault",  () => {
     });
 
     it("should emit MerkleRootUpdated event on Merkle root update", async () => {
-      const oldRoot = tree.root;
       const newClaimData : Array<[string, bigint]> = [
         [user1.address, ethers.parseEther("10")],
       ];
@@ -470,7 +469,7 @@ describe("ZeroRewardsVault",  () => {
       await expect(
         rewardsVault.setMerkleRoot(tree.root)
       ).to.emit(rewardsVault, "MerkleRootUpdated")
-        .withArgs(oldRoot, tree.root);
+        .withArgs(tree.root);
     });
   });
 });

@@ -11,19 +11,17 @@ import { IZeroRewardsVault } from "./IZeroRewardsVault.sol";
 
 
 contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVault {    
+    /// @notice The current Merkle root used for rewards distribution.
     bytes32 private _merkleRoot;
+
+    /// @notice The total amount of rewards claimed by all users.
     uint256 public totalClaimed;
+
+    /// @notice The address of the ERC20 token used for rewards.
     address public token;
 
+    /// @notice Mapping of user address to the total amount claimed.
     mapping(address user => uint256 totalClaimed) public claimed;
-
-    event Claimed(address indexed user, uint256 amount, bytes32[] merkleProof);
-    event MerkleRootUpdated(bytes32 indexed oldRoot, bytes32 indexed newRoot);
-
-    error ZeroMerkleRoot();
-    error ZeroTokenAddress();
-    error InvalidMerkleProof(bytes32[] merkleProof);
-    error NoRewardsToClaim(address user);
 
     constructor(
         address _owner,
@@ -36,23 +34,43 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVau
             token = _token;
         }
 
+    /**
+     * @notice Pauses the contract, disabling the claim functionality.
+     * @dev Only callable by the contract owner when not already paused.
+     */
     function pause() external override onlyOwner whenNotPaused {
         _pause();
     }
 
+    /**
+     * @notice Unpauses the contract, enabling the claim functionality.
+     * @dev Only callable by the contract owner when paused.
+     */
     function unpause() external override onlyOwner whenPaused{
         _unpause();
     }
 
+    /**
+     * @notice Sets a new Merkle root for rewards distribution.
+     * @dev Only callable by the contract owner. Reverts if the root is zero.
+     * @param _root The new Merkle root.
+     */
     function setMerkleRoot(bytes32 _root) public override onlyOwner {
         if (_root == bytes32(0)) revert ZeroMerkleRoot();
 
-        // TODO rew: Emit event before updating the root to allow for easier tracking
-        // Or do we have to make a var for old root and emit the event after?
-        emit MerkleRootUpdated(_merkleRoot, _root);
         _merkleRoot = _root;
+        emit MerkleRootUpdated(_root);
     }
 
+    /**
+     * @notice Claims rewards for the sender using a Merkle proof.
+     * @dev The function verifies the provided Merkle proof for the (msg.sender, totalCumulativeRewards) leaf.
+     *      If the proof is valid and the user has unclaimed rewards, the contract transfers the difference
+     *      between the new cumulative amount and the previously claimed amount to the user.
+     *      Emits a {Claimed} event on success.
+     * @param totalCumulativeRewards The total cumulative rewards allocated to the user (including previous claims).
+     * @param merkleProof The Merkle proof that proves the user's entitlement to the specified cumulative rewards.
+     */
     function claim(
         uint256 totalCumulativeRewards,
         bytes32[] calldata merkleProof
