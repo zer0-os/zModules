@@ -3,7 +3,8 @@ import { MockERC20, ZeroRewardsVault } from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree/dist/standard";
 import { ethers } from "hardhat";
-import { getClaimsAndTree } from "./helpers/merkle-rewards";
+import { Claims, getClaimsAndTree } from "./helpers/merkle-rewards";
+import { INVALID_MERKLE_PROOF_ERR } from "./helpers/errors";
 
 
 describe("ZeroRewardsVault",  () => {
@@ -16,14 +17,9 @@ describe("ZeroRewardsVault",  () => {
   let user4 : SignerWithAddress;
 
   // Merkle data
-  let tree : StandardMerkleTree<any>;
+  let tree : StandardMerkleTree<[string, bigint]>;
   let claimData : Array<[string, bigint]>;
-  let claims : {
-    [addr : string] : {
-      totalCumulativeRewards : bigint;
-      proof : Array<string>;
-    };
-  };
+  let claims : Claims;
 
   beforeEach(async () => {
     [owner, user1, user2, user3, user4] = await ethers.getSigners();
@@ -40,13 +36,12 @@ describe("ZeroRewardsVault",  () => {
     ];
 
     const res = getClaimsAndTree(claimData);
-    claims = res.claims;
-    tree = res.merkleTree;
+    ({ claims, merkleTree: tree } = res);
 
-    const RewardsVaultFactory = (await ethers.getContractFactory(
+    const RewardsVaultFactory = await ethers.getContractFactory(
       "ZeroRewardsVault",
       owner
-    ));
+    );
 
     rewardsVault = await RewardsVaultFactory.deploy(
       owner.address,
@@ -59,10 +54,9 @@ describe("ZeroRewardsVault",  () => {
 
     // Fund the rewards vault with tokens
     await token.mint(rewardsVault.target, ethers.parseEther("1000000"));
-    await token.waitForDeployment();
   });
 
-  describe("Main flows", () => {
+  describe("Rewards claim scenarios", () => {
     it("should allow user1 to claim with valid proof", async () => {
       const {
         totalCumulativeRewards,
@@ -91,7 +85,7 @@ describe("ZeroRewardsVault",  () => {
         rewardsVault.connect(user1).claim(totalCumulativeRewards, proof)
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "InvalidMerkleProof"
+        INVALID_MERKLE_PROOF_ERR
       ).withArgs(proof);
     });
 
@@ -143,8 +137,7 @@ describe("ZeroRewardsVault",  () => {
       ];
 
       const res = getClaimsAndTree(newClaimData);
-      claims = res.claims;
-      tree = res.merkleTree;
+      ({ claims, merkleTree: tree } = res);
 
       ({
         totalCumulativeRewards,
@@ -163,6 +156,69 @@ describe("ZeroRewardsVault",  () => {
         token,
         [user1, rewardsVault],
         [newRewardsAmount, -newRewardsAmount]
+      );
+    });
+
+    it("should do multiple root updates and claims in the same test", async () => {
+      const totalCumulativeRewards = ethers.parseEther("10");
+      const newClaimData1 : Array<[string, bigint]> = [
+        [user1.address, totalCumulativeRewards],
+        [user2.address, totalCumulativeRewards],
+      ];
+      const res1 = getClaimsAndTree(newClaimData1);
+      ({ claims, merkleTree: tree } = res1);
+
+      await rewardsVault.setMerkleRoot(tree.root);
+      await expect(
+        rewardsVault.connect(user1).claim(
+          claims[user1.address.toLowerCase()].totalCumulativeRewards,
+          claims[user1.address.toLowerCase()].proof
+        )
+      ).to.changeTokenBalances(
+        token,
+        [user1, rewardsVault],
+        [
+          claims[user1.address.toLowerCase()].totalCumulativeRewards,
+          -claims[user1.address.toLowerCase()].totalCumulativeRewards,
+        ]
+      );
+
+      const newClaimData2 : Array<[string, bigint]> = [
+        [user1.address, totalCumulativeRewards + ethers.parseEther("15")],
+        [user2.address, totalCumulativeRewards + ethers.parseEther("20")],
+        [user3.address, totalCumulativeRewards + ethers.parseEther("25")],
+      ];
+      const res2 = getClaimsAndTree(newClaimData2);
+      ({ claims, merkleTree: tree } = res2);
+
+      await rewardsVault.setMerkleRoot(tree.root);
+
+      await expect(
+        rewardsVault.connect(user2).claim(
+          claims[user2.address.toLowerCase()].totalCumulativeRewards,
+          claims[user2.address.toLowerCase()].proof
+        )
+      ).to.changeTokenBalances(
+        token,
+        [user2, rewardsVault],
+        [
+          claims[user2.address.toLowerCase()].totalCumulativeRewards,
+          -claims[user2.address.toLowerCase()].totalCumulativeRewards,
+        ]
+      );
+
+      await expect(
+        rewardsVault.connect(user3).claim(
+          claims[user3.address.toLowerCase()].totalCumulativeRewards,
+          claims[user3.address.toLowerCase()].proof
+        )
+      ).to.changeTokenBalances(
+        token,
+        [user3, rewardsVault],
+        [
+          claims[user3.address.toLowerCase()].totalCumulativeRewards,
+          -claims[user3.address.toLowerCase()].totalCumulativeRewards,
+        ]
       );
     });
 
@@ -238,7 +294,7 @@ describe("ZeroRewardsVault",  () => {
         )
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "InvalidMerkleProof"
+        INVALID_MERKLE_PROOF_ERR
       ).withArgs(localProof);
     });
 
@@ -252,7 +308,7 @@ describe("ZeroRewardsVault",  () => {
         rewardsVault.connect(user1).claim(totalCumulativeRewards + 1n, proof)
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "InvalidMerkleProof"
+        INVALID_MERKLE_PROOF_ERR
       ).withArgs(proof);
     });
 
@@ -277,7 +333,7 @@ describe("ZeroRewardsVault",  () => {
         rewardsVault.connect(user1).claim(totalCumulativeRewards, proof)
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "InvalidMerkleProof"
+        INVALID_MERKLE_PROOF_ERR
       ).withArgs(proof);
     });
 
@@ -296,14 +352,13 @@ describe("ZeroRewardsVault",  () => {
       ).withArgs(user1.address);
     });
 
-    it("should revert when with NoRewardsToClaim when trying to claim with zero rewards", async () => {
+    it("should revert with NoRewardsToClaim when trying to claim with zero rewards", async () => {
       const zeroClaimData : Array<[string, bigint]> = [
         [user1.address, 0n],
       ];
 
       const res = getClaimsAndTree(zeroClaimData);
-      tree = res.merkleTree;
-      claims = res.claims;
+      ({ claims, merkleTree: tree } = res);
 
       await rewardsVault.setMerkleRoot(tree.root);
 
@@ -403,8 +458,7 @@ describe("ZeroRewardsVault",  () => {
       ];
 
       const res = getClaimsAndTree(newClaimData);
-      tree = res.merkleTree;
-      claims = res.claims;
+      ({ claims, merkleTree: tree } = res);
 
       await rewardsVault.connect(user1).setMerkleRoot(tree.root);
 
@@ -433,8 +487,7 @@ describe("ZeroRewardsVault",  () => {
       ];
 
       const res = getClaimsAndTree(newClaimData);
-      tree = res.merkleTree;
-      claims = res.claims;
+      ({ claims, merkleTree: tree } = res);
 
       await expect(
         rewardsVault.connect(owner).setMerkleRoot(tree.root)

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+
 interface IZeroRewardsVault {
     /**
      * @notice Emitted when a user successfully claims rewards.
@@ -8,7 +9,7 @@ interface IZeroRewardsVault {
      * @param amount The amount of rewards claimed.
      * @param merkleProof The Merkle proof used for the claim.
      */
-    event Claimed(address indexed user, uint256 amount, bytes32[] merkleProof);
+    event Claimed(address indexed user, uint256 indexed amount, bytes32[] merkleProof);
 
     /**
      * @notice Emitted when the Merkle root is updated.

@@ -10,7 +10,7 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IZeroRewardsVault } from "./IZeroRewardsVault.sol";
 
 
-contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVault {    
+contract ZeroRewardsVault is Ownable, Pausable, ReentrancyGuard, IZeroRewardsVault {    
     /// @notice The current Merkle root used for rewards distribution.
     bytes32 private _merkleRoot;
 
@@ -46,7 +46,7 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVau
      * @notice Unpauses the contract, enabling the claim functionality.
      * @dev Only callable by the contract owner when paused.
      */
-    function unpause() external override onlyOwner whenPaused{
+    function unpause() external override onlyOwner whenPaused {
         _unpause();
     }
 
@@ -75,8 +75,16 @@ contract ZeroRewardsVault is ReentrancyGuard, Pausable, Ownable, IZeroRewardsVau
         uint256 totalCumulativeRewards,
         bytes32[] calldata merkleProof
     ) public override nonReentrant whenNotPaused {
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, totalCumulativeRewards))));
-        if (!MerkleProof.verify(
+        bytes32 leaf = keccak256(
+            bytes.concat(
+                keccak256(
+                    abi.encode(msg.sender, totalCumulativeRewards)
+                )
+            )
+        );
+
+        if (
+            !MerkleProof.verify(
                 merkleProof,
                 _merkleRoot,
                 leaf
