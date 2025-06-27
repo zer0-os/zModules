@@ -14,7 +14,7 @@ import {
 } from "./helpers/errors";
 
 
-describe.only("ZeroRewardsVault",  () => {
+describe("ZeroRewardsVault",  () => {
   let rewardsVault : ZeroRewardsVault;
   let token : MockERC20;
   let owner : SignerWithAddress;
