@@ -1,13 +1,20 @@
 import { expect } from "chai";
-import { MockERC20, ZeroRewardsVault } from "../typechain";
+import {
+  MockERC20,
+  ZeroRewardsVault,
+} from "../typechain";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree/dist/standard";
 import { ethers } from "hardhat";
 import { Claims, getClaimsAndTree } from "./helpers/merkle-rewards";
-import { INVALID_MERKLE_PROOF_ERR } from "./helpers/errors";
+import {
+  INVALID_MERKLE_PROOF_ERR,
+  NOT_AUTHORIZED_ERR,
+  OWNABLE_UNAUTHORIZED_ERR,
+} from "./helpers/errors";
 
 
-describe("ZeroRewardsVault",  () => {
+describe.only("ZeroRewardsVault",  () => {
   let rewardsVault : ZeroRewardsVault;
   let token : MockERC20;
   let owner : SignerWithAddress;
@@ -348,7 +355,7 @@ describe("ZeroRewardsVault",  () => {
         rewardsVault.connect(user1).setMerkleRoot(newTree.root)
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "OwnableUnauthorizedAccount"
+        NOT_AUTHORIZED_ERR
       ).withArgs(user1.address);
     });
 
@@ -419,7 +426,7 @@ describe("ZeroRewardsVault",  () => {
         rewardsVault.connect(user1).pause()
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "OwnableUnauthorizedAccount"
+        NOT_AUTHORIZED_ERR
       ).withArgs(user1.address);
     });
 
@@ -428,7 +435,44 @@ describe("ZeroRewardsVault",  () => {
         rewardsVault.connect(user1).unpause()
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "OwnableUnauthorizedAccount"
+        NOT_AUTHORIZED_ERR
+      ).withArgs(user1.address);
+    });
+
+    it("should let operators pause the contract", async () => {
+      await rewardsVault.addOperator(user1.address);
+      expect(await rewardsVault.isOperator(user1.address)).to.be.true;
+
+      await rewardsVault.connect(user1).pause();
+      expect(await rewardsVault.paused()).to.be.true;
+    });
+
+    it("should let operators unpause the contract", async () => {
+      await rewardsVault.addOperator(user1.address);
+      expect(await rewardsVault.isOperator(user1.address)).to.be.true;
+
+      await rewardsVault.connect(user1).pause();
+      expect(await rewardsVault.paused()).to.be.true;
+
+      await rewardsVault.connect(user1).unpause();
+      expect(await rewardsVault.paused()).to.be.false;
+    });
+
+    it("should not allow operators to pause the contract if they are removed", async () => {
+      await rewardsVault.addOperator(user1.address);
+      expect(await rewardsVault.isOperator(user1.address)).to.be.true;
+
+      await rewardsVault.connect(user1).pause();
+      expect(await rewardsVault.paused()).to.be.true;
+
+      await rewardsVault.removeOperator(user1.address);
+      expect(await rewardsVault.isOperator(user1.address)).to.be.false;
+
+      await expect(
+        rewardsVault.connect(user1).unpause()
+      ).to.be.revertedWithCustomError(
+        rewardsVault,
+        NOT_AUTHORIZED_ERR
       ).withArgs(user1.address);
     });
   });
@@ -447,7 +491,7 @@ describe("ZeroRewardsVault",  () => {
         rewardsVault.connect(user2).transferOwnership(user3.address)
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "OwnableUnauthorizedAccount"
+        OWNABLE_UNAUTHORIZED_ERR
       ).withArgs(user2.address);
     });
 
@@ -493,8 +537,51 @@ describe("ZeroRewardsVault",  () => {
         rewardsVault.connect(owner).setMerkleRoot(tree.root)
       ).to.be.revertedWithCustomError(
         rewardsVault,
-        "OwnableUnauthorizedAccount"
+        NOT_AUTHORIZED_ERR
       ).withArgs(owner.address);
+    });
+
+    it("should set new operators for the contract and let them correct #setMerkleRoot", async () => {
+      await rewardsVault.addOperator(user1.address);
+      expect(await rewardsVault.isOperator(user1.address)).to.be.true;
+
+      // User1 can now set a new Merkle root
+      const newClaimData : Array<[string, bigint]> = [
+        [user1.address, ethers.parseEther("10")],
+      ];
+
+      const res = getClaimsAndTree(newClaimData);
+      ({ claims, merkleTree: tree } = res);
+
+      await rewardsVault.connect(user1).setMerkleRoot(tree.root);
+
+      const {
+        totalCumulativeRewards,
+        proof,
+      } = claims[user1.address.toLowerCase()];
+
+      await expect(
+        rewardsVault.connect(user1).claim(totalCumulativeRewards, proof)
+      ).to.changeTokenBalances(
+        token,
+        [user1, rewardsVault],
+        [totalCumulativeRewards, -totalCumulativeRewards]
+      );
+    });
+
+    it("should sucsessfully remove an operator and don't let execute #setMerkleRoot", async () => {
+      await rewardsVault.addOperator(user1.address);
+      expect(await rewardsVault.isOperator(user1.address)).to.be.true;
+
+      await rewardsVault.removeOperator(user1.address);
+      expect(await rewardsVault.isOperator(user1.address)).to.be.false;
+
+      await expect(
+        rewardsVault.connect(user1).setMerkleRoot(tree.root)
+      ).to.be.revertedWithCustomError(
+        rewardsVault,
+        NOT_AUTHORIZED_ERR
+      ).withArgs(user1.address);
     });
   });
 

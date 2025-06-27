@@ -4,13 +4,13 @@ pragma solidity 0.8.26;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { OwnableOperable } from "contracts/access/OwnableOperable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IZeroRewardsVault } from "./IZeroRewardsVault.sol";
 
 
-contract ZeroRewardsVault is Ownable, Pausable, ReentrancyGuard, IZeroRewardsVault {    
+contract ZeroRewardsVault is OwnableOperable, Pausable, ReentrancyGuard, IZeroRewardsVault {    
     /// @notice The current Merkle root used for rewards distribution.
     bytes32 private _merkleRoot;
 
@@ -27,7 +27,7 @@ contract ZeroRewardsVault is Ownable, Pausable, ReentrancyGuard, IZeroRewardsVau
         address _owner,
         address _token
     )
-        Ownable(_owner)
+        OwnableOperable(_owner)
         Pausable()
         ReentrancyGuard() {
             if (_token == address(0)) revert ZeroTokenAddress();
@@ -38,7 +38,7 @@ contract ZeroRewardsVault is Ownable, Pausable, ReentrancyGuard, IZeroRewardsVau
      * @notice Pauses the contract, disabling the claim functionality.
      * @dev Only callable by the contract owner when not already paused.
      */
-    function pause() external override onlyOwner whenNotPaused {
+    function pause() external override onlyAuthorized whenNotPaused {
         _pause();
     }
 
@@ -46,7 +46,7 @@ contract ZeroRewardsVault is Ownable, Pausable, ReentrancyGuard, IZeroRewardsVau
      * @notice Unpauses the contract, enabling the claim functionality.
      * @dev Only callable by the contract owner when paused.
      */
-    function unpause() external override onlyOwner whenPaused {
+    function unpause() external override onlyAuthorized whenPaused {
         _unpause();
     }
 
@@ -55,7 +55,7 @@ contract ZeroRewardsVault is Ownable, Pausable, ReentrancyGuard, IZeroRewardsVau
      * @dev Only callable by the contract owner. Reverts if the root is zero.
      * @param _root The new Merkle root.
      */
-    function setMerkleRoot(bytes32 _root) public override onlyOwner {
+    function setMerkleRoot(bytes32 _root) public override onlyAuthorized {
         if (_root == bytes32(0)) revert ZeroMerkleRoot();
 
         _merkleRoot = _root;
