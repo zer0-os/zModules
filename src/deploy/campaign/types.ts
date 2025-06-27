@@ -4,6 +4,8 @@ import {
 } from "@zero-tech/zdc";
 import {
   Match,
+  MockERC20,
+  MockERC721,
   StakingERC20,
   StakingERC721,
   TimelockController,
@@ -100,6 +102,8 @@ export type ZModulesContract =
   StakingERC721 |
   ZeroVotingERC20 |
   ZeroVotingERC721 |
+  MockERC20 |
+  MockERC721 |
   ZDAO |
   Match |
   TimelockController |
@@ -110,6 +114,9 @@ export interface IZModulesContracts extends IContractState<ZModulesContract> {
   staking721 : StakingERC721;
   votingErc20 : ZeroVotingERC20;
   votingErc721 : ZeroVotingERC721;
+  mockErc20STK : MockERC20;
+  mockErc20REW : MockERC20;
+  mockErc721STK : MockERC721;
   zDao : ZDAO;
   match : Match;
   timelockController : TimelockController;
