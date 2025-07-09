@@ -4,6 +4,7 @@ import { IZModulesEnvironment } from "../types";
 import { voting20Config, voting721Config } from "./voting.configenv";
 import { daoConfig, timelockConfig } from "./dao.configenv";
 import { matchConfig } from "./match.configenv";
+import { rewardsVaultConfig } from "./rewards-vault.configenv";
 
 
 export const environment : IZModulesEnvironment = {
@@ -15,4 +16,5 @@ export const environment : IZModulesEnvironment = {
   ...daoConfig,
   ...timelockConfig,
   ...matchConfig,
+  ...rewardsVaultConfig,
 };

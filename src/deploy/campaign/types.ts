@@ -84,6 +84,12 @@ export interface IMigrationClaimConfig {
   lpToken : string;
 }
 
+export interface IRewardsVaultConfig {
+  owner : string;
+  token : string;
+  operators : Array<string>;
+}
+
 export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress> {
   votingERC20Config ?: IVotingERC20Config;
   votingERC721Config ?: IVotingERC721Config;
@@ -93,6 +99,7 @@ export interface IZModulesConfig extends IDeployCampaignConfig<SignerWithAddress
   daoConfig ?: IDAOConfig;
   timeLockConfig ?: ITimelockConfig;
   migrationClaimConfig ?: IMigrationClaimConfig;
+  rewardsVaultConfig ?: IRewardsVaultConfig;
 }
 
 export type ZModulesContract =

@@ -23,9 +23,11 @@ import { ZModulesZeroVotingERC721DM } from "../src/deploy/missions/voting-erc721
 import { ZModulesStakingERC721DM } from "../src/deploy/missions/staking-erc721/staking721.mission";
 import {
   MockERC20,
+  MockERC20__factory,
   MockERC721,
   StakingERC20,
   StakingERC721,
+  ZeroRewardsVault,
   ZeroVotingERC20,
   ZeroVotingERC721,
 } from "../typechain";
@@ -43,6 +45,9 @@ import {
 import { setDefaultEnvironment } from "../src/environment/set-env";
 import { DAY_IN_SECONDS, DEFAULT_STAKED_AMOUNT } from "./helpers/constants";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { ZModulesRewardsVaultDM } from "../src/deploy/missions/rewards-vault/rewards-vault.mission";
+import { getRewardsVaultConfig } from "../src/deploy/missions/rewards-vault/rewards-vault.config";
+import { getBaseZModulesConfig } from "../src/deploy/campaign/base-campaign-config";
 
 
 describe("zModules Deploy Integration Test", () => {
@@ -52,6 +57,8 @@ describe("zModules Deploy Integration Test", () => {
   let stakingAdmin : SignerWithAddress;
   let staker : SignerWithAddress;
   let contractOwner : SignerWithAddress;
+  let operator1 : SignerWithAddress;
+  let operator2 : SignerWithAddress;
 
   let stakingConfig : IStaking20Environment | IStaking721Environment;
   let config : IZModulesConfig;
@@ -60,6 +67,7 @@ describe("zModules Deploy Integration Test", () => {
   let stakeToken : MockERC20 | MockERC721;
   let rewardsToken : MockERC20 | MockERC721;
   let stakeRepToken : ZeroVotingERC20 | ZeroVotingERC721;
+  let zeroRewardsVault : ZeroRewardsVault;
 
   let campaign : DeployCampaign<
   HardhatRuntimeEnvironment,
@@ -77,7 +85,15 @@ describe("zModules Deploy Integration Test", () => {
 
 
   before(async () => {
-    [ deployAdmin, votingAdmin, timelockAdmin, stakingAdmin, staker ] = await hre.ethers.getSigners();
+    [
+      deployAdmin,
+      votingAdmin,
+      timelockAdmin,
+      stakingAdmin,
+      staker,
+      operator1,
+      operator2,
+    ] = await hre.ethers.getSigners();
   });
 
   after(async () => {
@@ -340,6 +356,65 @@ describe("zModules Deploy Integration Test", () => {
       ).to.eq(
         false
       );
+    });
+  });
+
+  describe("Rewards Vault", () => {
+    before(async () => {
+      // deploy MockERC20 as a token for Rewards Vault
+      const mockTokenFactory = await hre.ethers.getContractFactory("MockERC20");
+      const mockToken = await mockTokenFactory.connect(deployAdmin).deploy(
+        "Rewards Token",
+        "RWD",
+      );
+
+      // assign env vars specifically for this test
+      process.env.REWARDS_VAULT_OPERATORS = [operator1.address, operator2.address].join(",");
+      process.env.REWARDS_VAULT_OWNER = deployAdmin.address;
+      process.env.REWARDS_VAULT_TOKEN = mockToken.target as string;
+
+      const baseConfig = await getBaseZModulesConfig({ deployAdmin });
+
+      config = {
+        ...baseConfig,
+        rewardsVaultConfig: getRewardsVaultConfig(),
+      } as IZModulesConfig;
+
+      campaign = await runZModulesCampaign({
+        config,
+        missions: [
+          ZModulesRewardsVaultDM,
+        ],
+      });
+
+      ({
+        zeroRewardsVault,
+        dbAdapter,
+      } = campaign);
+    });
+
+    it("Should deploy Rewards Vault with zDC and default config", async () => {
+      const {
+        rewardsVaultConfig,
+      } = config;
+
+      expect(rewardsVaultConfig).to.not.be.undefined;
+      expect(rewardsVaultConfig!.token).to.not.be.undefined;
+      expect(rewardsVaultConfig!.owner).to.not.be.undefined;
+      expect(rewardsVaultConfig!.operators).to.not.be.undefined;
+
+      expect(zeroRewardsVault.target).to.not.be.undefined;
+
+      const tokenFromContract = await zeroRewardsVault.token();
+      const ownerFromContract = await zeroRewardsVault.owner();
+      expect(tokenFromContract).to.eq(rewardsVaultConfig!.token);
+      expect(ownerFromContract).to.eq(rewardsVaultConfig!.owner);
+
+      for (const operator of rewardsVaultConfig!.operators) {
+        expect(
+          await zeroRewardsVault.isOperator(operator)
+        ).to.eq(true);
+      }
     });
   });
 
