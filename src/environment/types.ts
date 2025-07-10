@@ -9,6 +9,7 @@ export interface IZModulesEnvironment extends
   IVoting721Environment,
   IDAOEnvironment,
   ITimeLockEnvironment,
+  IRewardsVaultEnvironment,
   IMatchEnvironment {}
 
 export interface IBaseEnvironment {
@@ -105,4 +106,10 @@ export interface IMatchEnvironment {
   MATCH_CONTRACT_OWNER : string;
   MATCH_OPERATORS : string;
   MATCH_GAME_FEE_PERCENTAGE : string;
+}
+
+export interface IRewardsVaultEnvironment {
+  REWARDS_VAULT_OWNER : string;
+  REWARDS_VAULT_TOKEN : string;
+  REWARDS_VAULT_OPERATORS : string;
 }

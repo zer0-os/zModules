@@ -65,20 +65,36 @@ const config : HardhatUserConfig = {
   gasReporter: {
     enabled: false,
   },
-  networks: {},
-  // etherscan: {
-  //   apiKey: `${process.env.ETHERSCAN_API_KEY}`,
-  //   customChains: [
-  //     {
-  //       network: "meowtestnet",
-  //       chainId: 883424730,
-  //       urls: {
-  //         apiURL: "https://meowchain-testnet-blockscout.eu-north-2.gateway.fm/api/",
-  //         browserURL: "https://meowchain-testnet-blockscout.eu-north-2.gateway.fm/",
-  //       },
-  //     },
-  //   ],
-  // },
+  networks: {
+    zephyr: {
+      url: `${process.env.ZCHAIN_ZEPHYR_RPC_URL}`,
+      chainId: 1417429182,
+      accounts: [
+        `${process.env.TESTNET_PRIVATE_KEY_A}`,
+      ],
+    },
+  },
+  etherscan: {
+    // apiKey: `${process.env.ETHERSCAN_API_KEY}`,
+    customChains: [
+      //     {
+      //       network: "meowtestnet",
+      //       chainId: 883424730,
+      //       urls: {
+      //         apiURL: "https://meowchain-testnet-blockscout.eu-north-2.gateway.fm/api/",
+      //         browserURL: "https://meowchain-testnet-blockscout.eu-north-2.gateway.fm/",
+      //       },
+      //     },
+      {
+        network: "zephyr",
+        chainId: 1417429182,
+        urls: {
+          apiURL: "https://zephyr-blockscout.eu-north-2.gateway.fm/api/",
+          browserURL: "https://zephyr-blockscout.eu-north-2.gateway.fm/",
+        },
+      },
+    ],
+  },
   docgen: {
     pages: "files",
     templates: "docs/docgen-templates",
