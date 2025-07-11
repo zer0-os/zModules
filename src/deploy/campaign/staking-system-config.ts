@@ -8,15 +8,14 @@ import { getStaking721DeployConfig } from "../missions/staking-erc721/staking721
 
 export const getStaking20SystemConfig = async (
   deployAdmin : HardhatEthersSigner,
-  votingAdmin : HardhatEthersSigner,
-  stakingAdmin : HardhatEthersSigner,
+  stakingOwner ?: HardhatEthersSigner,
 ) => {
   const baseConfig = await getBaseZModulesConfig({ deployAdmin });
 
   return {
     ...baseConfig,
-    votingERC20Config: getVoting20DeployConfig({ tokenAdmin: votingAdmin }),
-    stakingERC20Config: getStaking20DeployConfig({ contractOwner: stakingAdmin }),
+    votingERC20Config: getVoting20DeployConfig(),
+    stakingERC20Config: getStaking20DeployConfig({ contractOwner: stakingOwner }),
   };
 };
 

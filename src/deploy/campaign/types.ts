@@ -17,7 +17,6 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 export interface IStakingERC20Config {
   mockTokens : boolean;
-  shouldRevokeAdminRole : boolean;
   stakingToken ?: string;
   rewardsToken ?: string;
   stakeRepToken ?: string;
@@ -37,7 +36,6 @@ export interface IVotingERC20Config {
   symbol : string;
   domainName : string;
   domainVersion : string;
-  admin : SignerWithAddress;
 }
 
 export interface IVotingERC721Config {
