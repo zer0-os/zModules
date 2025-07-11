@@ -10,7 +10,7 @@ import {
   IZModulesConfig,
   IZModulesContracts,
   IStakingERC721Config,
-  IVotingERC20Config,
+  IVotingERC721Config,
 } from "../../campaign/types";
 import { roles } from "../../constants";
 
@@ -109,17 +109,12 @@ IZModulesContracts
       [this.instanceName]: staking721,
       config: {
         votingERC721Config,
-        stakingERC721Config,
       },
     } = this.campaign;
 
     const {
       admin,
-    } = votingERC721Config as IVotingERC20Config;
-
-    const {
-      shouldRevokeAdminRole,
-    } = stakingERC721Config as IStakingERC721Config;
+    } = votingERC721Config as IVotingERC721Config;
 
     const stakingAddress = await staking721.getAddress();
 
@@ -136,13 +131,11 @@ IZModulesContracts
     }
 
     // revoke admin role after granting minter and burner roles
-    if (shouldRevokeAdminRole) {
-      const revokeTx = await votingErc721.connect(admin).revokeRole(
-        roles.voting.DEFAULT_ADMIN_ROLE,
-        admin.address
-      );
-      await this.awaitConfirmation(revokeTx);
-      this.logger.debug("VotingERC721 DEFAULT_ADMIN_ROLE revoked successfully");
-    }
+    const revokeTx = await votingErc721.connect(admin).revokeRole(
+      roles.voting.DEFAULT_ADMIN_ROLE,
+      admin.address
+    );
+    await this.awaitConfirmation(revokeTx);
+    this.logger.debug("VotingERC721 DEFAULT_ADMIN_ROLE revoked successfully");
   }
 }
