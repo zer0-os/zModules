@@ -48,7 +48,7 @@ IZModulesContracts
       owner,
     } = rewardsVaultConfig;
 
-    const signerOwner = new hre.ethers.Wallet(owner);
+    const signerOwner = await hre.ethers.getSigner(owner);
 
     for (const operator of rewardsVaultConfig.operators) {
       if (!(await zeroRewardsVault.connect(signerOwner).isOperator(operator))) {
@@ -77,7 +77,7 @@ IZModulesContracts
       owner,
     } = rewardsVaultConfig;
 
-    const signerOwner = new hre.ethers.Wallet(owner);
+    const signerOwner = await hre.ethers.getSigner(owner);
 
     if (!operators || operators.length === 0)
       throw new Error("Operators are not defined!");

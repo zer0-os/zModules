@@ -23,7 +23,6 @@ import { ZModulesZeroVotingERC721DM } from "../src/deploy/missions/voting-erc721
 import { ZModulesStakingERC721DM } from "../src/deploy/missions/staking-erc721/staking721.mission";
 import {
   MockERC20,
-  MockERC20__factory,
   MockERC721,
   StakingERC20,
   StakingERC721,
@@ -46,8 +45,6 @@ import { setDefaultEnvironment } from "../src/environment/set-env";
 import { DAY_IN_SECONDS, DEFAULT_STAKED_AMOUNT } from "./helpers/constants";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { ZModulesRewardsVaultDM } from "../src/deploy/missions/rewards-vault/rewards-vault.mission";
-import { getRewardsVaultConfig } from "../src/deploy/missions/rewards-vault/rewards-vault.config";
-import { getBaseZModulesConfig } from "../src/deploy/campaign/base-campaign-config";
 import { rewardsVaultSystemConfig } from "../src/deploy/campaign/rewards-vault-config";
 
 
