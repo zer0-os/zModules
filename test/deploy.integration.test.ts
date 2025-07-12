@@ -48,6 +48,7 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { ZModulesRewardsVaultDM } from "../src/deploy/missions/rewards-vault/rewards-vault.mission";
 import { getRewardsVaultConfig } from "../src/deploy/missions/rewards-vault/rewards-vault.config";
 import { getBaseZModulesConfig } from "../src/deploy/campaign/base-campaign-config";
+import { rewardsVaultSystemConfig } from "../src/deploy/campaign/rewards-vault-config";
 
 
 describe("zModules Deploy Integration Test", () => {
@@ -373,12 +374,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.REWARDS_VAULT_OWNER = deployAdmin.address;
       process.env.REWARDS_VAULT_TOKEN = mockToken.target as string;
 
-      const baseConfig = await getBaseZModulesConfig({ deployAdmin });
-
-      config = {
-        ...baseConfig,
-        rewardsVaultConfig: getRewardsVaultConfig(),
-      } as IZModulesConfig;
+      config = await rewardsVaultSystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
