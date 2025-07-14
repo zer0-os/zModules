@@ -10,7 +10,6 @@ import {
   IZModulesConfig,
   IZModulesContracts,
   IStakingERC721Config,
-  IVotingERC721Config,
 } from "../../campaign/types";
 import { roles } from "../../constants";
 
