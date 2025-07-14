@@ -189,7 +189,9 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
                 }
 
                 // Then we update appropriately
+                staker.lockDuration = lockDuration;
                 staker.unlockedTimestamp = block.timestamp + lockDuration;
+                staker.rewardsMultiplier = _calcRewardsMultiplier(lockDuration);
 
                 // Use the incoming lock duration if a new stake
                 durationToUse = lockDuration;
@@ -202,7 +204,7 @@ contract StakingBase is Ownable, ReentrancyGuard, IStakingBase {
             staker.owedRewardsLocked += _getStakeRewards(
                 durationToUse,
                 amount,
-                _calcRewardsMultiplier(durationToUse),
+                staker.rewardsMultiplier,
                 true
             );
 

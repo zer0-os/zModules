@@ -26,6 +26,8 @@ interface IStakingBase {
         uint256 owedRewardsLocked;
         uint256 lastTimestamp;
         uint256 lastTimestampLocked;
+        uint256 lockDuration;
+        uint256 rewardsMultiplier;
     }
     /**
      * @notice Struct to hold all required config variables
