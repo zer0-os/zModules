@@ -21,14 +21,13 @@ export const getStaking20SystemConfig = async (
 
 export const getStaking721SystemConfig = async (
   deployAdmin : HardhatEthersSigner,
-  votingAdmin : HardhatEthersSigner,
-  stakingAdmin : HardhatEthersSigner,
+  stakingOwner ?: HardhatEthersSigner,
 ) => {
   const baseConfig = await getBaseZModulesConfig({ deployAdmin });
 
   return {
     ...baseConfig,
-    votingERC721Config: getVoting721DeployConfig({ tokenAdmin: votingAdmin }),
-    stakingERC721Config: getStaking721DeployConfig({ contractOwner: stakingAdmin }),
+    votingERC721Config: getVoting721DeployConfig(),
+    stakingERC721Config: getStaking721DeployConfig({ contractOwner: stakingOwner }),
   };
 };

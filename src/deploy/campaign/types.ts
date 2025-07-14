@@ -44,7 +44,6 @@ export interface IVotingERC721Config {
   baseUri : string;
   domainName : string;
   domainVersion : string;
-  admin : SignerWithAddress;
 }
 
 export interface IDAOConfig {
