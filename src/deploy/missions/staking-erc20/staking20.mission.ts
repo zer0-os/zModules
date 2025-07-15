@@ -8,7 +8,6 @@ import {
   IZModulesConfig,
   IStakingERC20Config,
   IZModulesContracts,
-  IVotingERC20Config,
 } from "../../campaign/types";
 import { contractNames } from "../../contract-names";
 import { roles } from "../../constants";
@@ -110,18 +109,9 @@ IZModulesContracts
       votingErc20,
       [this.instanceName]: staking20,
       config: {
-        votingERC20Config,
-        stakingERC20Config,
+        deployAdmin,
       },
     } = this.campaign;
-
-    const {
-      admin,
-    } = votingERC20Config as IVotingERC20Config;
-
-    const {
-      shouldRevokeAdminRole,
-    } = stakingERC20Config as IStakingERC20Config;
 
     const stakingAddress = await staking20.getAddress();
 
@@ -129,19 +119,20 @@ IZModulesContracts
 
     let tx;
     if (!this.hasMinter) {
-      tx = await votingErc20.connect(admin).grantRole(roles.voting.MINTER_ROLE, stakingAddress);
-      await this.awaitConfirmation(tx);
-    }
-    if (!this.hasBurner) {
-      tx = await votingErc20.connect(admin).grantRole(roles.voting.BURNER_ROLE, stakingAddress);
+      tx = await votingErc20.connect(deployAdmin).grantRole(roles.voting.MINTER_ROLE, stakingAddress);
       await this.awaitConfirmation(tx);
     }
 
-    // revoke admin role after granting minter and burner roles
-    if (shouldRevokeAdminRole) {
-      const revokeTx = await votingErc20.connect(admin).revokeRole(roles.voting.DEFAULT_ADMIN_ROLE, admin.address);
-      await this.awaitConfirmation(revokeTx);
-      this.logger.debug("VotingERC20 DEFAULT_ADMIN_ROLE revoked successfully");
+    if (!this.hasBurner) {
+      tx = await votingErc20.connect(deployAdmin).grantRole(roles.voting.BURNER_ROLE, stakingAddress);
+      await this.awaitConfirmation(tx);
     }
+
+    // renounce admin role after granting minter and burner roles
+    const revokeTx = await votingErc20
+      .connect(deployAdmin)
+      .renounceRole(roles.voting.DEFAULT_ADMIN_ROLE, deployAdmin.address);
+    await this.awaitConfirmation(revokeTx);
+    this.logger.debug("VotingERC20 DEFAULT_ADMIN_ROLE revoked successfully");
   }
 }

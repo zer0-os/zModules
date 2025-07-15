@@ -25,6 +25,7 @@ IZModulesContracts
   async deployArgs () : Promise<TDeployArgs> {
     const {
       config: {
+        deployAdmin,
         votingERC721Config,
       },
     } = this.campaign;
@@ -35,7 +36,6 @@ IZModulesContracts
       baseUri,
       domainName,
       domainVersion,
-      admin,
     } = votingERC721Config as IVotingERC721Config;
 
     return [
@@ -44,7 +44,7 @@ IZModulesContracts
       baseUri,
       domainName,
       domainVersion,
-      admin,
+      deployAdmin.address,
     ];
   }
 }

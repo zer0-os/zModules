@@ -9,13 +9,12 @@ import { getVoting721DeployConfig } from "../missions/voting-erc721/voting721.co
 export const getDao20SystemConfig = async (
   deployAdmin : HardhatEthersSigner,
   timeLockAdmin : HardhatEthersSigner,
-  votingTokenAdmin : HardhatEthersSigner,
 ) => {
   const baseConfig = await getBaseZModulesConfig({ deployAdmin });
 
   return {
     ...baseConfig,
-    votingERC20Config: getVoting20DeployConfig({ tokenAdmin: votingTokenAdmin }),
+    votingERC20Config: getVoting20DeployConfig(),
     timeLockConfig: getTimeLockControllerConfig({ timeLockAdmin }),
     daoConfig: getDAOConfig(),
   };
