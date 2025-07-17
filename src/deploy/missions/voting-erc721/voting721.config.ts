@@ -1,14 +1,7 @@
 import { IVotingERC721Config } from "../../campaign/types";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 
-export const getVoting721DeployConfig = ({
-  tokenAdmin,
-} : {
-  tokenAdmin : SignerWithAddress;
-}) : IVotingERC721Config => {
-  if (!tokenAdmin) throw new Error("Missing token admin for VotingERC721!");
-
+export const getVoting721DeployConfig = () : IVotingERC721Config => {
   if (
     !process.env.VOTING721_TOKEN_NAME ||
       !process.env.VOTING721_TOKEN_SYMBOL ||
@@ -25,6 +18,5 @@ export const getVoting721DeployConfig = ({
     baseUri: process.env.VOTING721_BASE_URI,
     domainName: process.env.VOTING721_DOMAIN_NAME,
     domainVersion: process.env.VOTING721_DOMAIN_VERSION,
-    admin: tokenAdmin,
   };
 };

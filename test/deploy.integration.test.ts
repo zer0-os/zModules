@@ -100,7 +100,7 @@ describe("zModules Deploy Integration Test", () => {
 
   describe("Staking", () => {
     it("Should deploy StakingERC20 with zDC and default config", async () => {
-      config = await getStaking20SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
+      config = await getStaking20SystemConfig(deployAdmin, stakingAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -190,7 +190,8 @@ describe("zModules Deploy Integration Test", () => {
     });
 
     it("Should deploy StakingERC721 with zDC and default config", async () => {
-      config = await getStaking721SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
+      process.env.STAKING721_CONTRACT_OWNER = deployAdmin.address;
+      config = await getStaking721SystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -271,7 +272,7 @@ describe("zModules Deploy Integration Test", () => {
 
   describe("DAO", () => {
     it("Should deploy DAO with ERC20 token zDC and default config", async () => {
-      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -442,7 +443,7 @@ describe("zModules Deploy Integration Test", () => {
 
       [ contractOwner ] = await hre.ethers.getSigners();
 
-      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin);
 
       // a separate campaign with "pre-deployed" tokens
       envCampaign = await runZModulesCampaign({
@@ -511,7 +512,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING20_CAN_EXIT = "true";
 
-      config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
+      config = await getStaking20SystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -591,7 +592,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING721_CAN_EXIT = "true";
 
-      config = await getStaking721SystemConfig(deployAdmin, deployAdmin, deployAdmin);
+      config = await getStaking721SystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -666,7 +667,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
       process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-      config = await getStaking20SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
+      config = await getStaking20SystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -766,7 +767,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -834,7 +835,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "true";
 
-      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
+      config = await getDao20SystemConfig(deployAdmin, timelockAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -902,7 +903,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING20_REVOKE_ADMIN_ROLE = "true";
 
-      config = await getStaking20SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
+      config = await getStaking20SystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -936,7 +937,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
       process.env.STAKING721_REVOKE_ADMIN_ROLE = "true";
 
-      config = await getStaking721SystemConfig(deployAdmin, votingAdmin, stakingAdmin);
+      config = await getStaking721SystemConfig(deployAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -955,136 +956,6 @@ describe("zModules Deploy Integration Test", () => {
       ).to.be.eq(false);
     });
 
-    it("Should deploy DAO with ERC20 token using zDC and DO NOT revoke the admin role", async () => {
-      const votingTokenAddress = stakeToken20.target.toString();
-      const timelockAddress = timelockController.target.toString();
-
-      process.env.DAO_VOTING_TOKEN = votingTokenAddress;
-      process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
-      process.env.DAO_VOTING_DELAY = envVotingDelay;
-      process.env.DAO_VOTING_PERIOD = envVotingPeriod;
-      process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
-      process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
-      process.env.DAO_VOTE_EXTENSION = envVoteExtension;
-      process.env.DAO_REVOKE_ADMIN_ROLE = "false";
-
-      config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
-
-      campaign = await runZModulesCampaign({
-        config,
-        missions: [
-          ZModulesZDAODM,
-        ],
-      });
-
-      const {
-        timelockController: campaignTimelockController,
-      } = envCampaign;
-
-      expect(
-        await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, timelockAdmin)
-      ).to.eq(true);
-    });
-
-    it("Should deploy DAO with ERC721 token using zDC and DO NOT revoke the admin role", async () => {
-      const votingTokenAddress = stakeToken721.target.toString();
-      const timelockAddress = timelockController.target.toString();
-
-      process.env.DAO_VOTING_TOKEN = votingTokenAddress;
-      process.env.DAO_TIMELOCK_CONTROLLER = timelockAddress;
-      process.env.DAO_VOTING_DELAY = envVotingDelay;
-      process.env.DAO_VOTING_PERIOD = envVotingPeriod;
-      process.env.DAO_PROPOSAL_THRESHOLD = envProposalThreshold;
-      process.env.DAO_QUORUM_PERCENTAGE = envQuorumPercentage;
-      process.env.DAO_VOTE_EXTENSION = envVoteExtension;
-      process.env.DAO_REVOKE_ADMIN_ROLE = "false";
-
-      config = await getDao721SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
-
-      campaign = await runZModulesCampaign({
-        config,
-        missions: [
-          ZModulesZDAODM,
-        ],
-      });
-
-      const {
-        timelockController: campaignTimelockController,
-      } = envCampaign;
-
-      expect(
-        await campaignTimelockController.hasRole(DEFAULT_ADMIN_ROLE, timelockAdmin)
-      ).to.eq(true);
-    });
-
-    it("Should deploy StakingERC20 with zDC and DO NOT revoke the admin role", async () => {
-      const stakingTokenAddress = stakeToken20.target.toString();
-      const rewardsTokenAddress = rewardsToken20.target.toString();
-      const contractOwnerAddress = contractOwner.address.toString();
-
-      process.env.STAKING20_STAKING_TOKEN = stakingTokenAddress;
-      process.env.STAKING20_REWARDS_TOKEN = rewardsTokenAddress;
-      process.env.STAKING20_CONTRACT_OWNER = contractOwnerAddress;
-      process.env.STAKING20_REWARDS_PER_PERIOD = envRewardsPerPeriod;
-      process.env.STAKING20_PERIOD_LENGTH = envPeriodLength;
-      process.env.STAKING20_MIN_LOCK_TIME = envMinLockTime;
-      process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
-      process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
-      process.env.STAKING20_REVOKE_ADMIN_ROLE = "false";
-
-      config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
-
-      campaign = await runZModulesCampaign({
-        config,
-        missions: [
-          ZModulesZeroVotingERC20DM,
-          ZModulesStakingERC20DM,
-        ],
-      });
-
-      const {
-        votingErc20: campaignVoting,
-      } = campaign;
-
-      expect(
-        await campaignVoting.hasRole(roles.voting.DEFAULT_ADMIN_ROLE, deployAdmin)
-      ).to.be.eq(true);
-    });
-
-    it("Should stop deploy StakingERC721 with zDC and DO NOT revoke the admin role", async () => {
-      const stakingTokenAddress = stakeToken721.target.toString();
-      const rewardsTokenAddress = rewardsToken20.target.toString();
-      const contractOwnerAddress = contractOwner.address.toString();
-
-      process.env.STAKING721_STAKING_TOKEN = stakingTokenAddress;
-      process.env.STAKING721_REWARDS_TOKEN = rewardsTokenAddress;
-      process.env.STAKING721_CONTRACT_OWNER = contractOwnerAddress;
-      process.env.STAKING721_REWARDS_PER_PERIOD = envRewardsPerPeriod;
-      process.env.STAKING721_PERIOD_LENGTH = envPeriodLength;
-      process.env.STAKING721_MIN_LOCK_TIME = envMinLockTime;
-      process.env.STAKING721_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
-      process.env.STAKING721_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
-      process.env.STAKING721_REVOKE_ADMIN_ROLE = "false";
-
-      config = await getStaking721SystemConfig(deployAdmin, deployAdmin, deployAdmin);
-
-      campaign = await runZModulesCampaign({
-        config,
-        missions: [
-          ZModulesZeroVotingERC721DM,
-          ZModulesStakingERC721DM,
-        ],
-      });
-
-      const {
-        votingErc721: campaignVoting,
-      } = campaign;
-
-      expect(
-        await campaignVoting.hasRole(roles.voting.DEFAULT_ADMIN_ROLE, deployAdmin)
-      ).to.be.eq(true);
-    });
-
     describe("Fails", () => {
       it("Should stop deploy StakingERC20 using zDC and no staking token", async () => {
         const rewardsTokenAddress = rewardsToken20.target.toString();
@@ -1098,7 +969,7 @@ describe("zModules Deploy Integration Test", () => {
         process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
         process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-        config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
+        config = await getStaking20SystemConfig(deployAdmin);
 
         await expect(
           runZModulesCampaign({
@@ -1125,7 +996,7 @@ describe("zModules Deploy Integration Test", () => {
         process.env.STAKING20_MIN_REWARDS_MULTIPLIER = envMinRewardsMultiplier;
         process.env.STAKING20_MAX_REWARDS_MULTIPLIER = envMaxRewardsMultiplier;
 
-        config = await getStaking20SystemConfig(deployAdmin, deployAdmin, deployAdmin);
+        config = await getStaking20SystemConfig(deployAdmin);
 
         await expect(
           runZModulesCampaign({
@@ -1151,7 +1022,7 @@ describe("zModules Deploy Integration Test", () => {
         process.env.DAO_VOTE_EXTENSION = envVoteExtension;
         process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-        config = await getDao20SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
+        config = await getDao20SystemConfig(deployAdmin, timelockAdmin);
 
         await expect(
           runZModulesCampaign({

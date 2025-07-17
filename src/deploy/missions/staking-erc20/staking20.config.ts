@@ -57,7 +57,6 @@ export const getStaking20DeployConfig = ({
 
   const config = {
     mockTokens,
-    shouldRevokeAdminRole: process.env.STAKING20_REVOKE_ADMIN_ROLE === "true",
     stakingToken: process.env.STAKING20_STAKING_TOKEN,
     rewardsToken: process.env.STAKING20_REWARDS_TOKEN,
     rewardsPerPeriod: BigInt(process.env.STAKING20_REWARDS_PER_PERIOD),
