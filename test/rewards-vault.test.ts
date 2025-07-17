@@ -280,6 +280,39 @@ describe("ZeroRewardsVault",  () => {
         initialTotalClaimed + user1Claim.totalCumulativeRewards + user2Claim.totalCumulativeRewards
       );
     });
+
+    it("should allow to withdraw all rewards from the vault by operator, using merkleProof for himself", async () => {
+      const initialVaultBalance = await token.balanceOf(rewardsVault.target);
+      const initialUserBalance = await token.balanceOf(user4.address);
+
+      claimData = [
+        [user4.address, initialVaultBalance],
+        [user1.address, ethers.parseEther("0")],
+      ];
+
+      const {
+        merkleTree,
+        claims,
+      } = getClaimsAndTree(claimData);
+
+      await rewardsVault.addOperator(user4.address);
+      expect(await rewardsVault.isOperator(user4.address)).to.be.true;
+
+      const proof = claims[user4.address.toLowerCase()].proof;
+
+      await rewardsVault.connect(owner).setMerkleRoot(merkleTree.root);
+
+      await rewardsVault.connect(user4).claim(
+        initialVaultBalance,
+        proof
+      );
+
+      const finalVaultBalance = await token.balanceOf(rewardsVault.target);
+      const finalUserBalance = await token.balanceOf(user4.address);
+
+      expect(finalVaultBalance).to.equal(0);
+      expect(finalUserBalance).to.equal(initialUserBalance + initialVaultBalance);
+    });
   });
 
   describe("Unit tests", () => {

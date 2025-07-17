@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { OwnableOperable } from "contracts/access/OwnableOperable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -10,9 +11,11 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IZeroRewardsVault } from "./IZeroRewardsVault.sol";
 
 
-contract ZeroRewardsVault is OwnableOperable, Pausable, ReentrancyGuard, IZeroRewardsVault {    
+contract ZeroRewardsVault is OwnableOperable, Pausable, ReentrancyGuard, IZeroRewardsVault {
+    using SafeERC20 for IERC20;
+
     /// @notice The current Merkle root used for rewards distribution.
-    bytes32 private _merkleRoot;
+    bytes32 public _merkleRoot;
 
     /// @notice The total amount of rewards claimed by all users.
     uint256 public totalClaimed;
@@ -97,7 +100,7 @@ contract ZeroRewardsVault is OwnableOperable, Pausable, ReentrancyGuard, IZeroRe
         claimed[msg.sender] += amount;
         totalClaimed += amount;
 
-        IERC20(token).transfer(msg.sender, amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
         emit Claimed(msg.sender, amount, merkleProof);
     }
 }
