@@ -15,7 +15,7 @@ contract ZeroRewardsVault is OwnableOperable, Pausable, ReentrancyGuard, IZeroRe
     using SafeERC20 for IERC20;
 
     /// @notice The current Merkle root used for rewards distribution.
-    bytes32 public _merkleRoot;
+    bytes32 public merkleRoot;
 
     /// @notice The total amount of rewards claimed by all users.
     uint256 public totalClaimed;
@@ -61,7 +61,7 @@ contract ZeroRewardsVault is OwnableOperable, Pausable, ReentrancyGuard, IZeroRe
     function setMerkleRoot(bytes32 _root) public override onlyAuthorized {
         if (_root == bytes32(0)) revert ZeroMerkleRoot();
 
-        _merkleRoot = _root;
+        merkleRoot = _root;
         emit MerkleRootUpdated(_root);
     }
 
@@ -89,7 +89,7 @@ contract ZeroRewardsVault is OwnableOperable, Pausable, ReentrancyGuard, IZeroRe
         if (
             !MerkleProof.verify(
                 merkleProof,
-                _merkleRoot,
+                merkleRoot,
                 leaf
             )
         ) revert InvalidMerkleProof(merkleProof);
