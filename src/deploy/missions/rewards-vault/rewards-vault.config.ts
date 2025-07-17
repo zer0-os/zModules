@@ -9,11 +9,11 @@ export const getRewardsVaultConfig = () : IRewardsVaultConfig => {
     throw new Error("Missing required env variables for Rewards Vault!");
 
   const operators = process.env.REWARDS_VAULT_OPERATORS
-    ? process.env.REWARDS_VAULT_OPERATORS.split(",").map(addr => addr.trim()).filter(Boolean)
+    ? process.env.REWARDS_VAULT_OPERATORS.split(",").map(addr => addr.trim())
     : [];
 
   return {
-    owner: process.env.REWARDS_VAULT_OWNER || "",
+    owner: process.env.REWARDS_VAULT_OWNER,
     token: process.env.REWARDS_VAULT_TOKEN,
     operators,
   };

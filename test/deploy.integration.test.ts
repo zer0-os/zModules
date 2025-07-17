@@ -801,7 +801,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-      config = await getDao721SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
+      config = await getDao721SystemConfig(deployAdmin, timelockAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -870,7 +870,7 @@ describe("zModules Deploy Integration Test", () => {
       process.env.DAO_VOTE_EXTENSION = envVoteExtension;
       process.env.DAO_REVOKE_ADMIN_ROLE = "true";
 
-      config = await getDao721SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
+      config = await getDao721SystemConfig(deployAdmin, timelockAdmin);
 
       campaign = await runZModulesCampaign({
         config,
@@ -1047,7 +1047,7 @@ describe("zModules Deploy Integration Test", () => {
         process.env.DAO_VOTE_EXTENSION = envVoteExtension;
         process.env.DAO_REVOKE_ADMIN_ROLE = "false";
 
-        config = await getDao721SystemConfig(deployAdmin, timelockAdmin, votingAdmin);
+        config = await getDao721SystemConfig(deployAdmin, timelockAdmin);
 
         await expect(
           runZModulesCampaign({

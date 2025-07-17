@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { BaseDeployMission, TDeployArgs } from "@zero-tech/zdc";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { IZModulesConfig, IZModulesContracts } from "../../campaign/types";
+import { IRewardsVaultConfig, IZModulesConfig, IZModulesContracts } from "../../campaign/types";
 
 
 export class ZModulesRewardsVaultDM extends BaseDeployMission<
@@ -22,6 +22,7 @@ IZModulesContracts
   async deployArgs () : Promise<TDeployArgs> {
     const {
       config: {
+        deployAdmin,
         rewardsVaultConfig,
       },
     } = this.campaign;
@@ -30,7 +31,7 @@ IZModulesContracts
       throw new Error("Not enough input data to deploy Rewards Vault!");
 
     return [
-      rewardsVaultConfig.owner,
+      deployAdmin.address,
       rewardsVaultConfig.token,
     ];
   }
@@ -73,15 +74,12 @@ IZModulesContracts
       zeroRewardsVault,
     } = this.campaign;
 
-    if (!rewardsVaultConfig)
-      throw new Error("Rewards Vault config is not defined!");
-
     const {
       owner,
-    } = rewardsVaultConfig;
+    } = rewardsVaultConfig as IRewardsVaultConfig;
 
     if (!this.operatorsToSet || this.operatorsToSet.length === 0)
-      throw new Error("Operators are not defined!");
+      throw new Error("No operators to set! Error in needsPostDeploy.");
 
     for (const operator of this.operatorsToSet)
       await zeroRewardsVault.connect(deployAdmin).addOperator(operator);

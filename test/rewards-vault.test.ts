@@ -292,13 +292,13 @@ describe("ZeroRewardsVault",  () => {
 
       const {
         merkleTree,
-        claims,
+        claims: newClaims,
       } = getClaimsAndTree(claimData);
 
       await rewardsVault.addOperator(user4.address);
       expect(await rewardsVault.isOperator(user4.address)).to.be.true;
 
-      const proof = claims[user4.address.toLowerCase()].proof;
+      const { proof } = newClaims[user4.address.toLowerCase()];
 
       await rewardsVault.connect(owner).setMerkleRoot(merkleTree.root);
 
