@@ -63,3 +63,6 @@ export const NO_ZERO_VARIABLES_ERR = "NoZeroVariables";
 
 // MigrationClaim
 export const CLAIM_PHASE_ERR = "InClaimPhase";
+
+// Rewards Vault
+export const INVALID_MERKLE_PROOF_ERR = "InvalidMerkleProof";

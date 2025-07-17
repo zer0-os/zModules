@@ -23,13 +23,12 @@ export const getDao20SystemConfig = async (
 export const getDao721SystemConfig = async (
   deployAdmin : HardhatEthersSigner,
   timeLockAdmin : HardhatEthersSigner,
-  votingTokenAdmin : HardhatEthersSigner,
 ) => {
   const baseConfig = await getBaseZModulesConfig({ deployAdmin });
 
   return {
     ...baseConfig,
-    votingERC721Config: getVoting721DeployConfig({ tokenAdmin: votingTokenAdmin }),
+    votingERC721Config: getVoting721DeployConfig(),
     timeLockConfig: getTimeLockControllerConfig({ timeLockAdmin }),
     daoConfig: getDAOConfig(),
   };
