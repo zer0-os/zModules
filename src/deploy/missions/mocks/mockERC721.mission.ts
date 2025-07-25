@@ -31,8 +31,8 @@ export const getMockERC721Mission = ({
       isProxy: false,
     };
 
-    contractName = contractNames.mocks.erc721.contract;
-    instanceName = `${contractNames.mocks.erc721.instance}${tokenType}`;
+    contractName = contractNames.mockErc721.contract;
+    instanceName = `${contractNames.mockErc721.instance}${tokenType}`;
 
     get dbName () {
       return `${this.contractName}${tokenType}`;

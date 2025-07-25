@@ -40,8 +40,8 @@ export const getMockERC20Mission = ({
       isProxy: false,
     };
 
-    contractName = contractNames.mocks.erc20.contract;
-    instanceName = `${contractNames.mocks.erc20.instance}${tokenType}`;
+    contractName = contractNames.mockErc20.contract;
+    instanceName = `${contractNames.mockErc20.instance}${tokenType}`;
 
     get dbName () {
       return `${this.contractName}${tokenType}`;
