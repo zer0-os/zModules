@@ -30,6 +30,7 @@
     "mongo:drop": "ts-node src/utils/drop-db.ts",
     "pretest": "yarn mongo:start",
     "posttest": "yarn mongo:stop",
+    "decode-error": "hardhat run src/utils/scripts/decode-error.ts",
     "deploy-local": "hardhat run src/deploy/run-campaign.ts --network hardhat"
   },
   "devDependencies": {
