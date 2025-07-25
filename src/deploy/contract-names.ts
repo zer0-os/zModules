@@ -11,15 +11,13 @@ export const contractNames = {
     contract: "Match",
     instance: "match",
   },
-  mocks: {
-    erc20: {
-      contract: "MockERC20",
-      instance: "mockErc20",
-    },
-    erc721: {
-      contract: "MockERC721",
-      instance: "mockErc721",
-    },
+  mockErc20: {
+    contract: "MockERC20",
+    instance: "mockErc20",
+  },
+  mockErc721: {
+    contract: "MockERC721",
+    instance: "mockErc721",
   },
   votingERC20: {
     contract: "ZeroVotingERC20",

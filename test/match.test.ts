@@ -132,7 +132,7 @@ describe("Match Contract",  () => {
     ({
       dbAdapter,
       match,
-      [`${contractNames.mocks.erc20.instance}${TokenTypes.general}`]: mockERC20,
+      [`${contractNames.mockErc20.instance}${TokenTypes.general}`]: mockERC20,
     } = campaign);
 
     MatchFactory = await hre.ethers.getContractFactory("Match");
