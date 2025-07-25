@@ -42,6 +42,6 @@ decodeCustomError()
     process.exit(0);
   })
   .catch(error => {
-    console.error("Error decoding file with:", error);
+    console.error("Failed to decode error:", error);
     process.exit(1);
   });
