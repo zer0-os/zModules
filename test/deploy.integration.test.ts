@@ -84,7 +84,6 @@ describe("zModules Deploy Integration Test", () => {
   before(async () => {
     [
       deployAdmin,
-      votingAdmin,
       timelockAdmin,
       stakingAdmin,
       staker,
