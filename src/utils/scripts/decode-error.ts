@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
-import { decodeError, IContractDecoderInput } from "../error-decoder";
 import { contractNames } from "../../deploy";
+import { decodeCustomError, IContractDecoderInput } from "@zero-tech/protocol-utils";
 
 
 const getContractsDecoderInput = async () : Promise<Array<IContractDecoderInput>> =>
@@ -23,20 +23,21 @@ const getContractsDecoderInput = async () : Promise<Array<IContractDecoderInput>
     }, Promise.resolve([])
   );
 
-const decodeCustomError = async () => {
+const decode = async () => {
   const contractFactories = await getContractsDecoderInput();
   const encodedError = process.env.ENCODED_ERROR;
   if (!encodedError || !encodedError.startsWith("0x")) {
     throw new Error("Incorrect error passed or not passed at all. Pass error string after the script name.");
   }
 
-  return decodeError({
+  return decodeCustomError({
     contractFactories,
     encodedError,
   });
 };
 
-decodeCustomError()
+
+decode()
   .then(decodedError => {
     console.log(decodedError);
     process.exit(0);
