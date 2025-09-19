@@ -1,7 +1,7 @@
 import { exec } from "child_process";
 import { getLogger, getMongoAdapter, TLogger } from "@zero-tech/zdc";
 import { promisify } from "util";
-import { getGitTag } from "../utils/git-tag/get-tag";
+import { getGitTag } from "@zero-tech/protocol-utils";
 
 
 const execAsync = promisify(exec);
