@@ -1909,6 +1909,13 @@
     eslint-plugin-prefer-arrow "^1.2.3"
     typescript "^5.0.2"
 
+"@zero-tech/protocol-utils@0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@zero-tech/protocol-utils/-/protocol-utils-0.1.0.tgz#8a4c680837cee0431f54997f8623e8231728fbb7"
+  integrity sha512-0qL1lCPuTyi1HX8jB++tw7FC9RZHrKkzz44dDHVX+mBtwSN4baC+PjZ4mbakKZElJPab+EBHynRv57gsdzfRHA==
+  dependencies:
+    winston "^3.11.0"
+
 "@zero-tech/zdc@0.2.0":
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/@zero-tech/zdc/-/zdc-0.2.0.tgz#9b785a79a3d22b44cbdd927355614631d5b51e87"
