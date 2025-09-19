@@ -39,4 +39,8 @@ export const contractNames = {
     contract: "MigrationClaim",
     instance: "migrationClaim",
   },
+  rewardsVault: {
+    contract: "ZeroRewardsVault",
+    instance: "rewardsVault",
+  },
 };
