@@ -50,7 +50,6 @@ import { rewardsVaultSystemConfig } from "../src/deploy/campaign/rewards-vault-c
 
 describe("zModules Deploy Integration Test", () => {
   let deployAdmin : SignerWithAddress;
-  let votingAdmin : SignerWithAddress;
   let timelockAdmin : SignerWithAddress;
   let stakingAdmin : SignerWithAddress;
   let staker : SignerWithAddress;
@@ -85,7 +84,6 @@ describe("zModules Deploy Integration Test", () => {
   before(async () => {
     [
       deployAdmin,
-      votingAdmin,
       timelockAdmin,
       stakingAdmin,
       staker,
